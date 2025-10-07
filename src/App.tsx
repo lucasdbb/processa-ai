@@ -1,0 +1,59 @@
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import LoginModal from './components/LoginModal';
+import LandingPage from './pages/LandingPage';
+import Dashboard from './pages/Dashboard';
+import BlogPage from './pages/BlogPage';
+import ToolsPage from './pages/ToolsPage';
+import CalculatorsPage from './pages/CalculatorsPage';
+
+function App() {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+
+  const handleLogin = (email: string, password: string) => {
+    // Aqui você implementaria a lógica real de autenticação
+    console.log('Login:', { email, password });
+    
+    // Simulando login bem-sucedido
+    setUser({ email, name: email.split('@')[0] });
+    setIsLoggedIn(true);
+    setIsLoginModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setIsLoggedIn(false);
+  };
+
+  return (
+    <Router>
+      <div className="min-h-screen flex flex-col">
+        <Header onLoginClick={() => setIsLoginModalOpen(true)} />
+        
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/dashboard" element={<Dashboard user={user} onLogout={handleLogout} />} />
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/ferramentas" element={<ToolsPage />} />
+            <Route path="/calculadoras" element={<CalculatorsPage />} />
+          </Routes>
+        </main>
+
+        <Footer />
+
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setIsLoginModalOpen(false)}
+          onLogin={handleLogin}
+        />
+      </div>
+    </Router>
+  );
+}
+
+export default App;
