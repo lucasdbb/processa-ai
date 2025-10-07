@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -11,7 +11,6 @@ import CalculatorsPage from './pages/CalculatorsPage';
 
 function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
 
   const handleLogin = (email: string, password: string) => {
@@ -20,13 +19,11 @@ function App() {
     
     // Simulando login bem-sucedido
     setUser({ email, name: email.split('@')[0] });
-    setIsLoggedIn(true);
     setIsLoginModalOpen(false);
   };
 
   const handleLogout = () => {
     setUser(null);
-    setIsLoggedIn(false);
   };
 
   return (

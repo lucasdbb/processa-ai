@@ -4,8 +4,6 @@ import {
   Calculator, 
   Newspaper, 
   Shield, 
-  Clock, 
-  Users, 
   ArrowRight,
   CheckCircle,
   Star

@@ -4,7 +4,6 @@ import {
   Calculator, 
   Newspaper, 
   FileText, 
-  TrendingUp, 
   Clock,
   LogOut,
   User

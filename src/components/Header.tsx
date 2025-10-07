@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, User, LogIn } from 'lucide-react';
+import { Menu, X, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface HeaderProps {
