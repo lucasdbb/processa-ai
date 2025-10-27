@@ -17,25 +17,25 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
               <img src="/logo.svg" alt="Processa AI" className="h-8 w-8 text-navy-800" />
-              <span className="text-xl font-bold text-navy-900">Processa AI</span>
+              <span className="text-xl font-bold text-primary-900">Processa AI</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-gray-700 hover:text-navy-700 transition-colors">
+            <Link to="/" className="text-gray-700 hover:text-primary-700 transition-colors">
               Início
             </Link>
-            <Link to="/blog" className="text-gray-700 hover:text-navy-700 transition-colors">
+            <Link to="/blog" className="text-gray-700 hover:text-primary-700 transition-colors">
               Blog
             </Link>
-            <Link to="/tools" className="text-gray-700 hover:text-navy-700 transition-colors">
+            <Link to="/tools" className="text-gray-700 hover:text-primary-700 transition-colors">
               Ferramentas
             </Link>
-            <Link to="/calculators" className="text-gray-700 hover:text-navy-700 transition-colors">
+            <Link to="/calculators" className="text-gray-700 hover:text-primary-700 transition-colors">
               Calculadoras
             </Link>
-            <Link to="/about" className="text-gray-700 hover:text-navy-700 transition-colors">
+            <Link to="/about" className="text-gray-700 hover:text-primary-700 transition-colors">
               Sobre
             </Link>
           </nav>
@@ -55,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-navy-700"
+              className="text-gray-700 hover:text-primary-700"
             >
               {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -68,35 +68,35 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
               <Link
                 to="/"
-                className="block px-3 py-2 text-gray-700 hover:text-navy-700 transition-colors"
+                className="block px-3 py-2 text-gray-700 hover:text-primary-700 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Início
               </Link>
               <Link
                 to="/blog"
-                className="block px-3 py-2 text-gray-700 hover:text-navy-700 transition-colors"
+                className="block px-3 py-2 text-gray-700 hover:text-primary-700 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Blog
               </Link>
               <Link
                 to="/tools"
-                className="block px-3 py-2 text-gray-700 hover:text-navy-700 transition-colors"
+                className="block px-3 py-2 text-gray-700 hover:text-primary-700 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Ferramentas
               </Link>
               <Link
                 to="/calculators"
-                className="block px-3 py-2 text-gray-700 hover:text-navy-700 transition-colors"
+                className="block px-3 py-2 text-gray-700 hover:text-primary-700 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Calculadoras
               </Link>
               <Link
                 to="/about"
-                className="block px-3 py-2 text-gray-700 hover:text-navy-700 transition-colors"
+                className="block px-3 py-2 text-gray-700 hover:text-primary-700 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Sobre
@@ -106,7 +106,7 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
                   onLoginClick();
                   setIsMenuOpen(false);
                 }}
-                className="w-full text-left px-3 py-2 text-navy-700 font-medium"
+                className="w-full text-left px-3 py-2 text-primary-700 font-medium"
               >
                 Entrar
               </button>

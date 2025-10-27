@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
           {/* Logo e Descrição */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <img src="/logo.svg" alt="Processa AI" className="h-8 w-8 text-gold-400" />
+              <img src="/logo.svg" alt="Processa AI" className="h-8 w-8 text-secondary-900" />
               <span className="text-xl font-bold">Processa AI</span>
             </div>
             <p className="text-gray-300 mb-4 max-w-md">
@@ -18,10 +18,10 @@ const Footer: React.FC = () => {
               calculadoras jurídicas e as últimas notícias do meio jurídico.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-gold-400 transition-colors">
+              <a href="#" className="text-gray-400 hover:text-secondary-900 transition-colors">
                 <Mail className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-gold-400 transition-colors">
+              <a href="#" className="text-gray-400 hover:text-secondary-900 transition-colors">
                 <Phone className="h-5 w-5" />
               </a>
             </div>
@@ -32,22 +32,22 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4">Links Rápidos</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/" className="text-gray-300 hover:text-gold-400 transition-colors">
+                <Link to="/" className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Início
                 </Link>
               </li>
               <li>
-                <Link to="/blog" className="text-gray-300 hover:text-gold-400 transition-colors">
+                <Link to="/blog" className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link to="/tools" className="text-gray-300 hover:text-gold-400 transition-colors">
+                <Link to="/tools" className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Ferramentas IA
                 </Link>
               </li>
               <li>
-                <Link to="/calculators" className="text-gray-300 hover:text-gold-400 transition-colors">
+                <Link to="/calculators" className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Calculadoras
                 </Link>
               </li>
