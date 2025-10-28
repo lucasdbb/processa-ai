@@ -1,13 +1,40 @@
 import React, { useState } from 'react';
-import { 
-  Calculator, 
-  DollarSign, 
-  Calendar, 
-  TrendingUp, 
+import {
+  Calculator,
+  DollarSign,
+  Calendar,
   FileText,
   Download,
   Info
 } from 'lucide-react';
+
+interface ResultadoRescisao {
+  tipo: 'rescisao';
+  detalhes: {
+    saldoSalario: number;
+    avisoPrevio: number;
+    feriasVencidas: number;
+    feriasProporcionais: number;
+    decimoTerceiro: number;
+    fgts: number;
+    multaFgts: number;
+    total: number;
+  };
+}
+
+interface ResultadoAposentadoria {
+  tipo: 'aposentadoria';
+  detalhes: {
+    podeAposentar: boolean;
+    anosRestantes: number;
+    tempoRestante: number;
+    beneficio: number;
+    idadeMinima: number;
+    tempoMinimoContrib: number;
+  };
+}
+
+type Resultado = ResultadoRescisao | ResultadoAposentadoria;
 
 const CalculatorsPage: React.FC = () => {
   const [selectedCalculator, setSelectedCalculator] = useState('rescisao');
@@ -21,7 +48,7 @@ const CalculatorsPage: React.FC = () => {
     feriasVencidas: '',
     feriasProporcionais: true,
     decimoTerceiro: true,
-    
+
     // Aposentadoria
     idade: '',
     tempoContribuicao: '',
@@ -30,7 +57,7 @@ const CalculatorsPage: React.FC = () => {
     tipoAposentadoria: 'tempo_contribuicao'
   });
 
-  const [resultado, setResultado] = useState<any>(null);
+  const [resultado, setResultado] = useState<Resultado | null>(null);
 
   const calculators = [
     {
