@@ -87,16 +87,16 @@ const LandingPage: React.FC = () => {
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
+                    <div className="w-3 h-3 bg-secondary-500 rounded-full"></div>
+                    <span>Blog em Tempo Real</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-secondary-400 rounded-full"></div>
                     <span>IA Jurídica Ativa</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-secondary-300 rounded-full"></div>
                     <span>Calculadoras Atualizadas</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-secondary-500 rounded-full"></div>
-                    <span>Blog em Tempo Real</span>
                   </div>
                 </div>
               </div>

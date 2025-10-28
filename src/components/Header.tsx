@@ -52,7 +52,7 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
             <Link to="/calculadoras" className={getLinkClasses('/calculadoras')}>
               Calculadoras
             </Link>
-            <Link to="/about" className={getLinkClasses('/about')}>
+            <Link to="/sobre" className={getLinkClasses('/sobre')}>
               Sobre
             </Link>
           </nav>
@@ -112,8 +112,8 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
                 Calculadoras
               </Link>
               <Link
-                to="/about"
-                className={getMobileLinkClasses('/about')}
+                to="/sobre"
+                className={getMobileLinkClasses('/sobre')}
                 onClick={() => setIsMenuOpen(false)}
               >
                 Sobre
