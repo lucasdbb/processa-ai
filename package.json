@@ -1,38 +1,43 @@
 {
-  "name": "processa-ai",
+  "name": "processa-ai-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo para o Processa AI - Plataforma de cálculos trabalhistas e IA",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "npm run dev --workspace=@processa-ai/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "install-all": "npm install --workspaces",
+    "web:dev": "npm run dev --workspace=@processa-ai/web",
+    "web:build": "npm run build --workspace=@processa-ai/web",
+    "api:dev": "npm run dev --workspace=@processa-ai/api",
+    "api:build": "npm run build --workspace=@processa-ai/api",
+    "types:build": "npm run build --workspace=@processa-ai/types"
   },
-  "dependencies": {
-    "@tailwindcss/forms": "^0.5.10",
-    "@types/react-router-dom": "^5.3.3",
-    "autoprefixer": "^10.4.21",
-    "lucide-react": "^0.545.0",
-    "postcss": "^8.5.6",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.3"
-  },
+  "keywords": [
+    "monorepo",
+    "typescript",
+    "react",
+    "vite",
+    "tailwind",
+    "supabase",
+    "vercel",
+    "processa-ai"
+  ],
+  "author": "Processa AI Team",
+  "license": "MIT",
   "devDependencies": {
-    "@eslint/js": "^9.36.0",
-    "@types/node": "^24.6.0",
-    "@types/react": "^19.1.16",
-    "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.4",
-    "babel-plugin-react-compiler": "^19.1.0-rc.3",
-    "eslint": "^9.36.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.22",
-    "globals": "^16.4.0",
-    "tailwindcss": "^3.4.18",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.45.0",
-    "vite": "^7.1.7"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

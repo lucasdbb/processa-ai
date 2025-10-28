@@ -1,0 +1,26 @@
+{
+  "name": "@processa-ai/api",
+  "version": "1.0.0",
+  "description": "API backend para autenticação e funções do Processa AI",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc",
+    "deploy": "vercel --prod",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "@vercel/node": "^3.0.0"
+  },
+  "devDependencies": {
+    "@processa-ai/types": "*",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.2.2",
+    "vercel": "^32.0.0"
+  },
+  "keywords": ["vercel", "functions", "supabase", "auth", "api"],
+  "author": "Processa AI Team",
+  "license": "MIT"
+}

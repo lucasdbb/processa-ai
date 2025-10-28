@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
-import type { LoginModalProps, AuthFormData, AuthFormErrors } from '../types/auth';
+import type { LoginModalProps, AuthFormData } from '../types/auth';
 import { useFormValidation } from '../hooks/useFormValidation';
-import ValidationError from './ValidationError';
 
 /**
  * Modal component for user authentication (login/registration)
@@ -30,7 +29,6 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
   // Form validation setup
   const {
     errors,
-    validateField,
     validateForm,
     clearFieldError,
     clearErrors
@@ -106,9 +104,17 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     e.preventDefault();
     
     // Validate form using the new validation system
-    const fieldsToValidate = isLogin 
-      ? { email: formData.email, password: formData.password }
-      : formData;
+    const fieldsToValidate: Record<string, string> = {};
+    
+    if (isLogin) {
+      fieldsToValidate.email = formData.email || '';
+      fieldsToValidate.password = formData.password || '';
+    } else {
+      fieldsToValidate.name = formData.name || '';
+      fieldsToValidate.email = formData.email || '';
+      fieldsToValidate.password = formData.password || '';
+      fieldsToValidate.confirmPassword = formData.confirmPassword || '';
+    }
     
     if (!validateForm(fieldsToValidate)) {
       return;
@@ -140,12 +146,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     }
   }, [formData, errors, clearFieldError]);
 
-  /**
-   * Handles field blur events for validation
-   */
-  const handleFieldBlur = useCallback((fieldName: string, value: string) => {
-    validateField(fieldName, value);
-  }, [validateField]);
+
 
   /**
    * Toggles between login and registration modes, clearing form data and errors

@@ -1,128 +1,210 @@
-# 🏛️ Processa AI
+# Processa AI - Monorepo
 
-**Plataforma completa de Inteligência Artificial Jurídica**
+Uma plataforma moderna para cálculos trabalhistas e assistência com IA, desenvolvida com React, TypeScript, Tailwind CSS e Supabase em arquitetura de monorepo.
 
-Uma solução moderna e abrangente para profissionais do direito, oferecendo ferramentas de IA, calculadoras jurídicas especializadas e conteúdo atualizado do meio jurídico.
+## 🏗️ Estrutura do Monorepo
 
-![Processa AI](public/logo.svg)
+```
+processa-ai/
+├── apps/
+│   ├── web/           # Frontend React + Vite
+│   └── api/           # Backend Vercel Functions
+├── packages/
+│   ├── types/         # Tipos TypeScript compartilhados
+│   ├── ui/            # Componentes UI reutilizáveis
+│   └── utils/         # Utilitários compartilhados
+├── tools/
+│   ├── eslint-config/ # Configuração ESLint compartilhada
+│   └── tsconfig/      # Configurações TypeScript base
+└── package.json       # Workspace raiz
+```
 
 ## 🚀 Funcionalidades
 
-### 🤖 Inteligência Artificial
-- **Análise de Contratos**: Revisão automatizada de documentos jurídicos
-- **Pesquisa Jurisprudencial**: Busca inteligente em bases de dados legais
-- **Geração de Petições**: Criação assistida de documentos processuais
-- **Análise de Riscos**: Avaliação preditiva de casos jurídicos
+- **Calculadoras Trabalhistas**: Cálculos precisos de rescisão e aposentadoria
+- **Assistente IA**: Geração de textos e análises com inteligência artificial
+- **Interface Moderna**: Design responsivo e intuitivo
+- **Autenticação Segura**: Sistema completo de login e registro via API
+- **Blog Integrado**: Artigos e conteúdo educativo
+- **API Backend**: Vercel Functions para autenticação e lógica de negócio
 
-### 🧮 Calculadoras Jurídicas
-- **Cálculos Trabalhistas**: Rescisões, horas extras, férias
-- **Cálculos Previdenciários**: Aposentadorias e benefícios
-- **Juros e Correção Monetária**: Atualizações de valores
-- **Honorários Advocatícios**: Cálculo de sucumbência
+## 🛠️ Tecnologias
 
-### 📰 Blog Jurídico
-- Notícias atualizadas do meio jurídico
-- Análises de jurisprudência
-- Artigos especializados
-- Tendências do direito digital
+### Frontend (apps/web)
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **Roteamento**: React Router DOM
+- **Ícones**: Lucide React
 
-### ♿ Acessibilidade
-- **WCAG 2.1 Compliant**: Atende às diretrizes de acessibilidade web
-- **Navegação por Teclado**: Suporte completo para navegação sem mouse
-- **Leitores de Tela**: Compatibilidade com tecnologias assistivas
-- **Skip Navigation**: Links de navegação rápida
-- **Alto Contraste**: Design otimizado para diferentes necessidades visuais
+### Backend (apps/api)
+- **Runtime**: Vercel Functions
+- **Database**: Supabase
+- **Auth**: Supabase Auth
+- **Language**: TypeScript
 
-## 🛠️ Tecnologias Utilizadas
+### Packages
+- **types**: Tipos TypeScript compartilhados
+- **ui**: Componentes React reutilizáveis
+- **utils**: Funções utilitárias
 
-### Core Technologies
-- **Frontend**: React 19.1.1 + TypeScript 5.9.3
-- **Build Tool**: Vite 7.1.7
-- **Styling**: Tailwind CSS 3.4.18
-- **Roteamento**: React Router DOM 7.9.3
-- **Ícones**: Lucide React 0.545.0
+## 📦 Instalação
 
-### Development Tools
-- **Linting**: ESLint 9.36.0 + TypeScript ESLint 8.45.0
-- **Type Checking**: TypeScript com strict mode
-- **Forms**: @tailwindcss/forms 0.5.10
-- **PostCSS**: Autoprefixer 10.4.21
-- **React Compiler**: Babel Plugin React Compiler 19.1.0-rc.3
-
-## 📋 Pré-requisitos
-
-- Node.js (versão 18 ou superior)
-- npm ou yarn
-- Git
-
-## 🚀 Instalação e Execução
-
-### 1. Clone o repositório
+1. Clone o repositório:
 ```bash
 git clone https://github.com/seu-usuario/processa-ai.git
 cd processa-ai
 ```
 
-### 2. Instale as dependências
+2. Instale as dependências de todos os workspaces:
 ```bash
 npm install
-# ou
-yarn install
 ```
 
-### 3. Execute o projeto em modo de desenvolvimento
+3. Configure as variáveis de ambiente:
 ```bash
-npm run dev
-# ou
-yarn dev
+cp .env.example .env
 ```
 
-### 4. Acesse a aplicação
-Abra seu navegador e acesse: `http://localhost:5173`
-
-## 📦 Scripts Disponíveis
-
+4. Inicie o desenvolvimento:
 ```bash
-# Desenvolvimento
+# Frontend
+npm run web:dev
+
+# API (em outro terminal)
+npm run api:dev
+
+# Ou ambos
 npm run dev
-
-# Build para produção
-npm run build
-
-# Preview da build de produção
-npm run preview
-
-# Linting
-npm run lint
 ```
 
-## 🎨 Estrutura do Projeto
+## 🔧 Scripts Disponíveis
 
+### Scripts Globais
+- `npm run dev` - Inicia o frontend
+- `npm run build` - Build de todos os projetos
+- `npm run lint` - Lint de todos os projetos
+- `npm run type-check` - Verificação de tipos
+- `npm run clean` - Limpa builds
+
+### Scripts Específicos
+- `npm run web:dev` - Frontend em modo desenvolvimento
+- `npm run web:build` - Build do frontend
+- `npm run api:dev` - API em modo desenvolvimento
+- `npm run api:build` - Build da API
+- `npm run types:build` - Build dos tipos
+
+## 🌐 Desenvolvimento
+
+### Frontend (localhost:3000)
+```bash
+cd apps/web
+npm run dev
 ```
-processa-ai/
-├── public/                 # Assets estáticos
-│   ├── logo.ico           # Favicon
-│   ├── logo.svg           # Logo SVG
-│   └── vite.svg           # Logo do Vite
-├── src/
-│   ├── components/        # Componentes reutilizáveis
-│   │   ├── Header.tsx     # Cabeçalho da aplicação
-│   │   ├── Footer.tsx     # Rodapé da aplicação
-│   │   └── LoginModal.tsx # Modal de login
-│   ├── pages/             # Páginas da aplicação
-│   │   ├── LandingPage.tsx    # Página inicial
-│   │   ├── BlogPage.tsx       # Blog jurídico
-│   │   ├── ToolsPage.tsx      # Ferramentas de IA
-│   │   ├── CalculatorsPage.tsx # Calculadoras
-│   │   └── Dashboard.tsx      # Dashboard do usuário
-│   ├── assets/            # Assets do projeto
-│   ├── App.tsx            # Componente principal
-│   ├── main.tsx           # Ponto de entrada
-│   └── index.css          # Estilos globais
-├── tailwind.config.js     # Configuração do Tailwind
-├── vite.config.ts         # Configuração do Vite
-└── package.json           # Dependências e scripts
+
+### API (Vercel Dev)
+```bash
+cd apps/api
+npm run dev
 ```
+
+## 📱 Aplicações
+
+### Frontend (apps/web)
+- **Home**: Página inicial com apresentação da plataforma
+- **Calculadoras**: Ferramentas de cálculo trabalhista
+- **Ferramentas**: Assistente IA para geração de textos
+- **Blog**: Artigos e conteúdo educativo
+- **Sobre**: Informações sobre a plataforma
+
+### API (apps/api)
+- **POST /api/auth/login** - Autenticação de usuário
+- **POST /api/auth/register** - Registro de novo usuário
+- **POST /api/auth/logout** - Logout do usuário
+- **POST /api/auth/refresh** - Renovação de token
+- **GET /api/auth/me** - Informações do usuário
+
+## 📦 Packages
+
+### @processa-ai/types
+Tipos TypeScript compartilhados entre frontend e backend:
+- Tipos de autenticação
+- Tipos de calculadoras
+- Tipos de blog
+- Tipos comuns (API responses, estados, etc.)
+
+### @processa-ai/ui (Futuro)
+Componentes React reutilizáveis:
+- Botões, inputs, modais
+- Layouts e grids
+- Componentes de formulário
+
+### @processa-ai/utils (Futuro)
+Funções utilitárias compartilhadas:
+- Validações
+- Formatações
+- Helpers de data/hora
+
+## 🔐 Autenticação
+
+Sistema completo de autenticação com Supabase:
+- **Login/Registro**: Via API Vercel Functions
+- **JWT Tokens**: Access e refresh tokens
+- **Middleware**: Proteção de rotas da API
+- **CORS**: Configurado para frontend
+
+## 🚀 Deploy
+
+### Frontend (Vercel)
+```bash
+cd apps/web
+vercel --prod
+```
+
+### API (Vercel Functions)
+```bash
+cd apps/api
+vercel --prod
+```
+
+### Variáveis de Ambiente
+Configure no Vercel:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `FRONTEND_URL`
+
+## 🔧 Configuração do Workspace
+
+O projeto usa npm workspaces para gerenciar dependências:
+
+```json
+{
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
+```
+
+## 📊 Calculadoras
+
+### Rescisão Trabalhista
+- Cálculo de verbas rescisórias
+- Diferentes tipos de rescisão
+- Relatório detalhado
+
+### Aposentadoria
+- Cálculo de tempo de contribuição
+- Diferentes modalidades
+- Projeções futuras
+
+## 🤖 Assistente IA
+
+- Geração de textos jurídicos
+- Análise de documentos
+- Sugestões personalizadas
+- Interface conversacional
 
 ## 🏗️ Arquitetura
 

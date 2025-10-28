@@ -12,7 +12,7 @@ import type {
   Resultado, 
   CalculatorType,
   CalculatorConfig 
-} from '../types/calculator';
+} from '@processa-ai/types/calculator';
 
 /**
  * Página de calculadoras trabalhistas que oferece ferramentas para cálculos de rescisão e aposentadoria
@@ -61,14 +61,16 @@ const CalculatorsPage: React.FC = React.memo(() => {
       name: 'Rescisão Trabalhista',
       description: 'Calcule todas as verbas rescisórias',
       icon: DollarSign,
-      color: 'bg-primary-600'
+      color: 'bg-primary-600',
+      available: true
     },
     {
       id: 'aposentadoria',
       name: 'Simulação de Aposentadoria',
       description: 'Simule aposentadoria e benefícios',
       icon: Calendar,
-      color: 'bg-secondary-600'
+      color: 'bg-secondary-600',
+      available: true
     }
   ];
 

@@ -31,7 +31,7 @@ function App() {
     children,
   }: {
     isAuthenticated: boolean;
-    children: JSX.Element;
+    children: React.ReactElement;
   }) => {
     if (!isAuthenticated) {
       return <Navigate to="/" replace />;

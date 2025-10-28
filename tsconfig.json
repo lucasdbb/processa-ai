@@ -1,7 +1,41 @@
 {
-  "files": [],
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@processa-ai/types": ["./packages/types"],
+      "@processa-ai/types/*": ["./packages/types/*"],
+      "@processa-ai/ui": ["./packages/ui"],
+      "@processa-ai/ui/*": ["./packages/ui/*"],
+      "@processa-ai/utils": ["./packages/utils"],
+      "@processa-ai/utils/*": ["./packages/utils/*"]
+    }
+  },
+  "include": [],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".vercel",
+    "build"
+  ],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "./apps/web" },
+    { "path": "./apps/api" },
+    { "path": "./packages/types" }
   ]
 }
