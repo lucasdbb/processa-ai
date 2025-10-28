@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, User, Clock, Search, Tag } from 'lucide-react';
+import { Calendar, User, Clock, Search, Tag, Newspaper } from 'lucide-react';
 
 const BlogPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,14 +95,17 @@ const BlogPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-navy-800 text-white py-16">
+      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
+              <Newspaper className="h-8 w-8" />
+            </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Blog Jurídico
             </h1>
-            <p className="text-xl text-navy-100 max-w-2xl mx-auto">
-              Mantenha-se atualizado com as últimas notícias, análises e 
+            <p className="text-xl text-primary-100 max-w-2xl mx-auto">
+              Mantenha-se atualizado com as últimas notícias, análises e
               insights do mundo jurídico brasileiro.
             </p>
           </div>
@@ -175,7 +178,7 @@ const BlogPage: React.FC = () => {
                     {featuredPost.tags.map(tag => (
                       <span
                         key={tag}
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-navy-100 text-navy-800"
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
                       >
                         <Tag className="h-3 w-3 mr-1" />
                         {tag}
@@ -225,7 +228,7 @@ const BlogPage: React.FC = () => {
                     <User className="h-4 w-4 mr-1" />
                     {post.author}
                   </span>
-                  <button className="text-navy-700 hover:text-navy-800 font-medium text-sm">
+                  <button className="text-primary-700 hover:text-primary-800 font-medium text-sm">
                     Ler mais
                   </button>
                 </div>
@@ -246,21 +249,21 @@ const BlogPage: React.FC = () => {
 
         {/* Newsletter */}
         <div className="mt-16">
-          <div className="bg-navy-800 rounded-2xl p-8 text-center text-white">
+          <div className="bg-gradient-to-br from-primary-800 to-primary-900 rounded-2xl p-8 text-center text-white shadow-xl">
             <h3 className="text-2xl font-bold mb-4">
               Receba as últimas notícias jurídicas
             </h3>
-            <p className="text-navy-100 mb-6 max-w-2xl mx-auto">
-              Assine nossa newsletter e seja o primeiro a saber sobre mudanças 
+            <p className="text-primary-100 mb-6 max-w-2xl mx-auto">
+              Assine nossa newsletter e seja o primeiro a saber sobre mudanças
               na legislação, novos precedentes e análises jurídicas relevantes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
               <input
                 type="email"
                 placeholder="Seu e-mail"
-                className="flex-1 px-4 py-2 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold-300"
+                className="flex-1 px-4 py-2 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-secondary-300"
               />
-              <button className="bg-white text-navy-800 hover:bg-gray-100 font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
+              <button className="bg-white text-primary-800 hover:bg-gray-100 font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                 Assinar
               </button>
             </div>
