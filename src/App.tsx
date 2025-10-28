@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import LoginModal from './components/LoginModal';
@@ -13,6 +13,20 @@ import AboutPage from './pages/AboutPage';
 function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+
+  // Componente de proteção de rota: redireciona para "/" se não autenticado
+  const ProtectedRoute = ({
+    isAuthenticated,
+    children,
+  }: {
+    isAuthenticated: boolean;
+    children: JSX.Element;
+  }) => {
+    if (!isAuthenticated) {
+      return <Navigate to="/" replace />;
+    }
+    return children;
+  };
 
   const handleLogin = (email: string, password: string) => {
     // Aqui você implementaria a lógica real de autenticação
@@ -35,11 +49,21 @@ function App() {
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/dashboard" element={<Dashboard user={user} onLogout={handleLogout} />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute isAuthenticated={!!user}>
+                  <Dashboard user={user} onLogout={handleLogout} />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/ferramentas" element={<ToolsPage />} />
             <Route path="/calculadoras" element={<CalculatorsPage />} />
             <Route path="/sobre" element={<AboutPage />} />
+            {/* Rotas alternativas (aliases) para compatibilidade futura */}
+            <Route path="/tools" element={<ToolsPage />} />
+            <Route path="/calculators" element={<CalculatorsPage />} />
           </Routes>
         </main>
 
