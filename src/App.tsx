@@ -44,9 +44,23 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen flex flex-col">
+        {/* Skip Navigation Links */}
+        <a 
+          href="#main-content" 
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary-700 text-white px-4 py-2 rounded-lg z-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+        >
+          Pular para o conteúdo principal
+        </a>
+        <a 
+          href="#main-navigation" 
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-48 bg-primary-700 text-white px-4 py-2 rounded-lg z-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+        >
+          Pular para a navegação
+        </a>
+
         <Header onLoginClick={() => setIsLoginModalOpen(true)} />
         
-        <main className="flex-grow">
+        <main id="main-content" className="flex-grow" role="main">
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route

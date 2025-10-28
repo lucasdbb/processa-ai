@@ -27,31 +27,59 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-white shadow-sm border-b border-gray-200" role="banner">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <img src="/logo.svg" alt="Processa AI" className="h-12 w-auto object-contain" />
+            <Link 
+              to="/" 
+              className="flex items-center hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg"
+              aria-label="Processa AI - Página inicial"
+            >
+              <img 
+                src="/logo.svg" 
+                alt="Processa AI - Plataforma de soluções jurídicas com inteligência artificial" 
+                className="h-12 w-auto object-contain" 
+              />
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className={getLinkClasses('/')}>
+          <nav id="main-navigation" className="hidden md:flex items-center space-x-8" role="navigation" aria-label="Navegação principal">
+            <Link 
+              to="/" 
+              className={`${getLinkClasses('/')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              aria-current={isActive('/') ? 'page' : undefined}
+            >
               Início
             </Link>
-            <Link to="/blog" className={getLinkClasses('/blog')}>
+            <Link 
+              to="/blog" 
+              className={`${getLinkClasses('/blog')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              aria-current={isActive('/blog') ? 'page' : undefined}
+            >
               Blog
             </Link>
-            <Link to="/ferramentas" className={getLinkClasses('/ferramentas')}>
+            <Link 
+              to="/ferramentas" 
+              className={`${getLinkClasses('/ferramentas')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              aria-current={isActive('/ferramentas') ? 'page' : undefined}
+            >
               Ferramentas
             </Link>
-            <Link to="/calculadoras" className={getLinkClasses('/calculadoras')}>
+            <Link 
+              to="/calculadoras" 
+              className={`${getLinkClasses('/calculadoras')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              aria-current={isActive('/calculadoras') ? 'page' : undefined}
+            >
               Calculadoras
             </Link>
-            <Link to="/sobre" className={getLinkClasses('/sobre')}>
+            <Link 
+              to="/sobre" 
+              className={`${getLinkClasses('/sobre')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              aria-current={isActive('/sobre') ? 'page' : undefined}
+            >
               Sobre
             </Link>
           </nav>
@@ -60,9 +88,10 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           <div className="hidden md:flex items-center space-x-4">
             <button
               onClick={onLoginClick}
-              className="flex items-center space-x-2 btn-primary hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+              className="flex items-center space-x-2 btn-primary hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              aria-label="Fazer login na plataforma"
             >
-              <LogIn className="h-4 w-4" />
+              <LogIn className="h-4 w-4" aria-hidden="true" />
               <span>Entrar</span>
             </button>
           </div>
@@ -71,49 +100,65 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-primary-700 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200"
+              className="text-gray-700 hover:text-primary-700 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-menu"
+              aria-label={isMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
             >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMenuOpen ? (
+                <X className="h-6 w-6" aria-hidden="true" />
+              ) : (
+                <Menu className="h-6 w-6" aria-hidden="true" />
+              )}
             </button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
+          <div className="md:hidden" id="mobile-menu">
+            <nav 
+              className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200" 
+              role="navigation" 
+              aria-label="Navegação móvel"
+            >
               <Link
                 to="/"
-                className={getMobileLinkClasses('/')}
+                className={`${getMobileLinkClasses('/')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={isActive('/') ? 'page' : undefined}
               >
                 Início
               </Link>
               <Link
                 to="/blog"
-                className={getMobileLinkClasses('/blog')}
+                className={`${getMobileLinkClasses('/blog')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={isActive('/blog') ? 'page' : undefined}
               >
                 Blog
               </Link>
               <Link
                 to="/ferramentas"
-                className={getMobileLinkClasses('/ferramentas')}
+                className={`${getMobileLinkClasses('/ferramentas')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={isActive('/ferramentas') ? 'page' : undefined}
               >
                 Ferramentas
               </Link>
               <Link
                 to="/calculadoras"
-                className={getMobileLinkClasses('/calculadoras')}
+                className={`${getMobileLinkClasses('/calculadoras')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={isActive('/calculadoras') ? 'page' : undefined}
               >
                 Calculadoras
               </Link>
               <Link
                 to="/sobre"
-                className={getMobileLinkClasses('/sobre')}
+                className={`${getMobileLinkClasses('/sobre')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={isActive('/sobre') ? 'page' : undefined}
               >
                 Sobre
               </Link>
@@ -122,14 +167,15 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
                   onLoginClick();
                   setIsMenuOpen(false);
                 }}
-                className="w-full text-left px-3 py-2 text-white bg-primary-700 hover:bg-primary-800 font-medium rounded-lg transition-colors duration-200 mt-2"
+                className="w-full text-left px-3 py-2 text-white bg-primary-700 hover:bg-primary-800 font-medium rounded-lg transition-colors duration-200 mt-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                aria-label="Fazer login na plataforma"
               >
                 <div className="flex items-center space-x-2">
-                  <LogIn className="h-4 w-4" />
+                  <LogIn className="h-4 w-4" aria-hidden="true" />
                   <span>Entrar</span>
                 </div>
               </button>
-            </div>
+            </nav>
           </div>
         )}
       </div>

@@ -148,22 +148,23 @@ const BlogPage: React.FC = () => {
               <div className="md:w-1/3">
                 <img
                   src={featuredPost.image}
-                  alt={featuredPost.title}
+                  alt={`Imagem ilustrativa do artigo: ${featuredPost.title}`}
                   className="w-full h-48 md:h-full object-cover"
+                  loading="lazy"
                 />
               </div>
               <div className="md:w-2/3 p-6">
                 <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                   <span className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-1" />
+                    <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
                     {new Date(featuredPost.date).toLocaleDateString('pt-BR')}
                   </span>
                   <span className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1" />
+                    <Clock className="h-4 w-4 mr-1" aria-hidden="true" />
                     {featuredPost.readTime}
                   </span>
                   <span className="flex items-center">
-                    <User className="h-4 w-4 mr-1" />
+                    <User className="h-4 w-4 mr-1" aria-hidden="true" />
                     {featuredPost.author}
                   </span>
                 </div>
@@ -180,7 +181,7 @@ const BlogPage: React.FC = () => {
                         key={tag}
                         className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
                       >
-                        <Tag className="h-3 w-3 mr-1" />
+                        <Tag className="h-3 w-3 mr-1" aria-hidden="true" />
                         {tag}
                       </span>
                     ))}
@@ -204,28 +205,29 @@ const BlogPage: React.FC = () => {
               <article key={post.id} className="card hover:shadow-lg transition-shadow duration-300">
                 <img
                   src={post.image}
-                  alt={post.title}
+                  alt={`Imagem ilustrativa do artigo: ${post.title}`}
                   className="w-full h-48 object-cover rounded-t-lg -mt-6 -mx-6 mb-4"
+                  loading="lazy"
                 />
                 <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                   <span className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-1" />
+                    <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
                     {new Date(post.date).toLocaleDateString('pt-BR')}
                   </span>
                   <span className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1" />
+                    <Clock className="h-4 w-4 mr-1" aria-hidden="true" />
                     {post.readTime}
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                <h3 className="text-lg font-bold text-gray-900 mb-2 hover:text-primary-700 transition-colors">
                   {post.title}
                 </h3>
                 <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                   {post.excerpt}
                 </p>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 flex items-center">
-                    <User className="h-4 w-4 mr-1" />
+                  <span className="flex items-center text-sm text-gray-600">
+                    <User className="h-4 w-4 mr-1" aria-hidden="true" />
                     {post.author}
                   </span>
                   <button className="text-primary-700 hover:text-primary-800 font-medium text-sm">

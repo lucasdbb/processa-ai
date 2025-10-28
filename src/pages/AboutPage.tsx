@@ -138,8 +138,9 @@ const AboutPage: React.FC = () => {
             <div className="relative">
               <img
                 src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=600&h=400&fit=crop"
-                alt="Equipe Processa AI"
+                alt="Equipe da Processa AI trabalhando em conjunto em um ambiente moderno de escritório"
                 className="rounded-2xl shadow-2xl"
+                loading="lazy"
               />
               <div className="absolute -bottom-6 -left-6 bg-secondary-600 text-white p-6 rounded-xl shadow-lg">
                 <p className="text-3xl font-bold">2023</p>
@@ -155,7 +156,7 @@ const AboutPage: React.FC = () => {
             <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="bg-primary-600 p-3 rounded-lg">
-                  <Target className="h-6 w-6 text-white" />
+                  <Target className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl font-bold text-primary-900">Missão</h3>
               </div>
@@ -168,7 +169,7 @@ const AboutPage: React.FC = () => {
             <div className="card bg-gradient-to-br from-secondary-50 to-secondary-100 border-secondary-200">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="bg-secondary-600 p-3 rounded-lg">
-                  <Eye className="h-6 w-6 text-white" />
+                  <Eye className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl font-bold text-secondary-900">Visão</h3>
               </div>
@@ -181,7 +182,7 @@ const AboutPage: React.FC = () => {
             <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="bg-primary-600 p-3 rounded-lg">
-                  <Heart className="h-6 w-6 text-white" />
+                  <Heart className="h-6 w-6 text-white" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl font-bold text-primary-900">Valores</h3>
               </div>
@@ -200,7 +201,7 @@ const AboutPage: React.FC = () => {
             {values.map((value, index) => (
               <div key={index} className="card text-center hover:shadow-xl transition-shadow duration-300">
                 <div className={`${value.color} w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4`}>
-                  <value.icon className="h-8 w-8 text-white" />
+                  <value.icon className="h-8 w-8 text-white" aria-hidden="true" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">{value.title}</h3>
                 <p className="text-sm text-gray-600">{value.description}</p>
@@ -217,7 +218,7 @@ const AboutPage: React.FC = () => {
               {achievements.map((achievement, index) => (
                 <div key={index} className="text-center">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
-                    <achievement.icon className="h-8 w-8" />
+                    <achievement.icon className="h-8 w-8" aria-hidden="true" />
                   </div>
                   <p className="text-4xl font-bold mb-2">{achievement.number}</p>
                   <p className="text-primary-100">{achievement.label}</p>
@@ -235,8 +236,9 @@ const AboutPage: React.FC = () => {
               <div key={index} className="card text-center hover:shadow-xl transition-shadow duration-300">
                 <img
                   src={member.image}
-                  alt={member.name}
+                  alt={`Foto de ${member.name}, ${member.role} da Processa AI`}
                   className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-primary-100"
+                  loading="lazy"
                 />
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h3>
                 <p className="text-primary-700 font-semibold mb-3">{member.role}</p>
