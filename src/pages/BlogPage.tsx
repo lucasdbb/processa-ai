@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Calendar, User, Clock, Search, Tag, Newspaper } from 'lucide-react';
 import type { BlogPost, BlogCategory, BlogCategoryId } from '../types/blog';
 
-const BlogPage: React.FC = () => {
+const BlogPage: React.FC = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<BlogCategoryId>('all');
 
@@ -84,6 +84,14 @@ const BlogPage: React.FC = () => {
     }
   ];
 
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handleCategoryChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategory(e.target.value as BlogCategoryId);
+  }, []);
+
   const filteredPosts = blogPosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
@@ -123,13 +131,13 @@ const BlogPage: React.FC = () => {
                 type="text"
                 placeholder="Buscar artigos..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 className="input-field pl-10"
               />
             </div>
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={handleCategoryChange}
               className="input-field md:w-64"
             >
               {categories.map(category => (
@@ -275,6 +283,8 @@ const BlogPage: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+BlogPage.displayName = 'BlogPage';
 
 export default BlogPage;

@@ -14,7 +14,7 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = React.memo(({ user, onLogout }) => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-warm-bg">
@@ -227,6 +227,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       </div>
     </div>
   );
-};
+});
+
+Dashboard.displayName = 'Dashboard';
 
 export default Dashboard;

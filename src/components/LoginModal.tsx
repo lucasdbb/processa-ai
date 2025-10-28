@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import type { LoginModalProps, AuthFormData, AuthFormErrors } from '../types/auth';
 import { useFormValidation } from '../hooks/useFormValidation';
@@ -8,21 +8,16 @@ import ValidationError from './ValidationError';
  * Modal component for user authentication (login/registration)
  * Features form validation, accessibility support, and keyboard navigation
  * 
- * @param {LoginModalProps} props - Component props
- * @param {boolean} props.isOpen - Controls modal visibility
- * @param {() => void} props.onClose - Callback when modal is closed
- * @param {(email: string, password: string) => void} props.onLogin - Callback when login is successful
- * 
  * @example
  * ```tsx
- * <LoginModal
- *   isOpen={isModalOpen}
- *   onClose={() => setIsModalOpen(false)}
- *   onLogin={(email, password) => handleLogin(email, password)}
+ * <LoginModal 
+ *   isOpen={showModal} 
+ *   onClose={() => setShowModal(false)}
+ *   onLogin={(userData) => handleLogin(userData)}
  * />
  * ```
  */
-const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => {
+const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onLogin }) => {
   const [isLogin, setIsLogin] = useState<boolean>(true);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [formData, setFormData] = useState<AuthFormData>({
@@ -107,7 +102,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
    * Handles form submission for both login and registration
    * @param {React.FormEvent} e - Form submission event
    */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form using the new validation system
@@ -126,13 +121,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
       console.log('Registro:', formData);
     }
     onClose();
-  };
+  }, [isLogin, formData, validateForm, onLogin, onClose]);
 
   /**
    * Handles input field changes with real-time validation
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
    */
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
@@ -143,19 +138,19 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
     if (errors[name as keyof typeof errors]) {
       clearFieldError(name);
     }
-  };
+  }, [formData, errors, clearFieldError]);
 
   /**
    * Handles field blur events for validation
    */
-  const handleFieldBlur = (fieldName: string, value: string) => {
+  const handleFieldBlur = useCallback((fieldName: string, value: string) => {
     validateField(fieldName, value);
-  };
+  }, [validateField]);
 
   /**
    * Toggles between login and registration modes, clearing form data and errors
    */
-  const handleModeToggle = () => {
+  const handleModeToggle = useCallback(() => {
     setIsLogin(!isLogin);
     clearErrors();
     setFormData({
@@ -164,7 +159,21 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
       password: '',
       confirmPassword: ''
     });
-  };
+  }, [isLogin, clearErrors]);
+
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const handleTogglePassword = useCallback(() => {
+    setShowPassword(!showPassword);
+  }, [showPassword]);
+
+  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  }, [onClose]);
 
   if (!isOpen) return null;
 
@@ -174,7 +183,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={handleBackdropClick}
     >
       <div 
         ref={modalRef}
@@ -183,7 +192,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
       >
         {/* Botão Fechar */}
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg p-1"
           aria-label="Fechar modal de login"
         >
@@ -280,7 +289,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={handleTogglePassword}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded p-1"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               >
@@ -354,6 +363,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
       </div>
     </div>
   );
-};
+});
+
+LoginModal.displayName = 'LoginModal';
 
 export default LoginModal;

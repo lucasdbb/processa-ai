@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Calculator,
   DollarSign,
@@ -32,7 +32,7 @@ import type {
  * Os cálculos são simplificados para fins demonstrativos.
  * Para uso em produção, implementar as regras oficiais da CLT e INSS.
  */
-const CalculatorsPage: React.FC = () => {
+const CalculatorsPage: React.FC = React.memo(() => {
   const [selectedCalculator, setSelectedCalculator] = useState<CalculatorType>('rescisao');
   const [formData, setFormData] = useState<CalculatorFormData>({
     // Rescisão
@@ -72,12 +72,12 @@ const CalculatorsPage: React.FC = () => {
     }
   ];
 
-  const handleInputChange = (field: keyof CalculatorFormData, value: string | boolean) => {
+  const handleInputChange = useCallback((field: keyof CalculatorFormData, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
   /**
    * Calcula os valores de rescisão trabalhista baseado nos dados fornecidos
@@ -160,7 +160,7 @@ const CalculatorsPage: React.FC = () => {
    * Executa o cálculo apropriado baseado no tipo de calculadora selecionada
    * Chama a função de cálculo correspondente e atualiza o estado do resultado
    */
-  const handleCalculate = () => {
+  const handleCalculate = useCallback(() => {
 
     switch (selectedCalculator) {
       case 'rescisao':
@@ -172,7 +172,12 @@ const CalculatorsPage: React.FC = () => {
       default:
         break;
     }
-  };
+  }, [selectedCalculator, formData]);
+
+  const handleCalculatorSelect = useCallback((calculatorId: CalculatorType) => {
+    setSelectedCalculator(calculatorId);
+    setResultado(null);
+  }, []);
 
   const renderRescisaoForm = () => (
     <div className="space-y-6">
@@ -478,10 +483,7 @@ const CalculatorsPage: React.FC = () => {
               {calculators.map(calc => (
                 <button
                   key={calc.id}
-                  onClick={() => {
-                    setSelectedCalculator(calc.id);
-                    setResultado(null);
-                  }}
+                  onClick={() => handleCalculatorSelect(calc.id)}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 transform hover:scale-105 ${
                     selectedCalculator === calc.id
                       ? 'border-primary-500 bg-primary-50 shadow-lg'
@@ -589,6 +591,8 @@ const CalculatorsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+CalculatorsPage.displayName = 'CalculatorsPage';
 
 export default CalculatorsPage;

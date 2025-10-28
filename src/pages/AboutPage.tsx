@@ -14,7 +14,7 @@ import {
   Phone
 } from 'lucide-react';
 
-const AboutPage: React.FC = () => {
+const AboutPage: React.FC = React.memo(() => {
   const values = [
     {
       icon: Target,
@@ -339,6 +339,8 @@ const AboutPage: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+AboutPage.displayName = 'AboutPage';
 
 export default AboutPage;

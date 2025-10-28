@@ -14,7 +14,7 @@ interface ValidationErrorProps {
  * ValidationError component for displaying form validation errors
  * with proper accessibility attributes and consistent styling
  */
-const ValidationError: React.FC<ValidationErrorProps> = ({ 
+const ValidationError: React.FC<ValidationErrorProps> = React.memo(({ 
   error, 
   className = '', 
   id 
@@ -32,6 +32,8 @@ const ValidationError: React.FC<ValidationErrorProps> = ({
       <span>{error}</span>
     </div>
   );
-};
+});
+
+ValidationError.displayName = 'ValidationError';
 
 export default ValidationError;

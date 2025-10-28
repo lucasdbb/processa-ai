@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Menu, X, LogIn } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -6,7 +6,7 @@ interface HeaderProps {
   onLoginClick: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
+const Header: React.FC<HeaderProps> = React.memo(({ onLoginClick }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -25,6 +25,14 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
       ? 'block px-3 py-2 text-primary-700 font-semibold bg-primary-50 rounded-lg transition-colors'
       : 'block px-3 py-2 text-gray-700 hover:text-primary-700 hover:bg-warm-bg rounded-lg transition-all duration-200';
   };
+
+  const handleMenuToggle = useCallback(() => {
+    setIsMenuOpen(!isMenuOpen);
+  }, [isMenuOpen]);
+
+  const handleLoginClick = useCallback(() => {
+    onLoginClick();
+  }, [onLoginClick]);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200" role="banner">
@@ -87,7 +95,7 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           {/* Login Button */}
           <div className="hidden md:flex items-center space-x-4">
             <button
-              onClick={onLoginClick}
+              onClick={handleLoginClick}
               className="flex items-center space-x-2 btn-primary hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               aria-label="Fazer login na plataforma"
             >
@@ -99,7 +107,7 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           {/* Mobile menu button */}
           <div className="md:hidden">
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={handleMenuToggle}
               className="text-gray-700 hover:text-primary-700 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               aria-expanded={isMenuOpen}
               aria-controls="mobile-menu"
@@ -181,6 +189,8 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
       </div>
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

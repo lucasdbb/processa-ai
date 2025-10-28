@@ -2,7 +2,7 @@
  * Reusable error message component for displaying errors consistently across the application
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { AlertCircle, RefreshCw, X } from 'lucide-react';
 import type { ErrorState } from '../types/common';
 
@@ -74,7 +74,7 @@ const sizeClasses = {
  * />
  * ```
  */
-const ErrorMessage: React.FC<ErrorMessageProps> = ({
+const ErrorMessage: React.FC<ErrorMessageProps> = React.memo(({
   error,
   onRetry,
   onDismiss,
@@ -107,6 +107,14 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
     classes.button
   ].join(' ');
 
+  const handleRetry = useCallback(() => {
+    onRetry?.();
+  }, [onRetry]);
+
+  const handleDismiss = useCallback(() => {
+    onDismiss?.();
+  }, [onDismiss]);
+
   return (
     <div className={containerClasses} role="alert" aria-live="assertive">
       <div className={inline ? 'flex items-center gap-2' : 'flex items-start gap-3'}>
@@ -133,7 +141,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
         <div className={`flex gap-2 ${inline ? '' : 'flex-shrink-0'}`}>
           {onRetry && (
             <button
-              onClick={onRetry}
+              onClick={handleRetry}
               className={`${buttonClasses} text-red-700 hover:text-red-800 hover:bg-red-100`}
               aria-label="Retry operation"
             >
@@ -144,7 +152,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
           
           {onDismiss && (
             <button
-              onClick={onDismiss}
+              onClick={handleDismiss}
               className={`${buttonClasses} text-red-500 hover:text-red-600 hover:bg-red-100`}
               aria-label="Dismiss error"
             >
@@ -156,6 +164,8 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ErrorMessage.displayName = 'ErrorMessage';
 
 export default ErrorMessage;

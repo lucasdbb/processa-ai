@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const LandingPage: React.FC = () => {
+const LandingPage: React.FC = React.memo(() => {
   const features = [
     {
       icon: Newspaper,
@@ -246,6 +246,8 @@ const LandingPage: React.FC = () => {
       </section>
     </div>
   );
-};
+});
+
+LandingPage.displayName = 'LandingPage';
 
 export default LandingPage;

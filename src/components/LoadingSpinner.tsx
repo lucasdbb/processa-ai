@@ -66,7 +66,7 @@ const variantClasses = {
  * />
  * ```
  */
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = React.memo(({
   size = 'md',
   className = '',
   message,
@@ -95,6 +95,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       <span className="sr-only">Loading...</span>
     </div>
   );
-};
+});
+
+LoadingSpinner.displayName = 'LoadingSpinner';
 
 export default LoadingSpinner;

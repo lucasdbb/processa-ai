@@ -18,24 +18,14 @@ import ValidationError from '../components/ValidationError';
 
 /**
  * Página de ferramentas de IA para geração de documentos jurídicos
- * 
- * @component
- * @description
- * Oferece ferramentas de inteligência artificial para gerar:
- * - Petições iniciais
- * - Contratos
- * - Contestações
- * - Recursos
+ * Permite aos usuários selecionar templates e gerar documentos personalizados
  * 
  * @example
  * ```tsx
  * <ToolsPage />
  * ```
- * 
- * @remarks
- * Atualmente utiliza texto simulado. Em produção, integrar com API de IA real.
  */
-const ToolsPage: React.FC = () => {
+const ToolsPageComponent: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState('petition');
   const [prompt, setPrompt] = useState('');
 
@@ -180,7 +170,7 @@ OAB/SP nº [número]
   /**
    * Handles prompt input changes with real-time validation
    */
-  const handlePromptChange = (value: string) => {
+  const handlePromptChange = useCallback((value: string) => {
     setPrompt(value);
     
     // Clear field error when user starts typing
@@ -192,13 +182,13 @@ OAB/SP nº [número]
     if (value.trim().length > 5) {
       validateField('prompt', value);
     }
-  };
+  }, [errors.prompt, clearFieldError, validateField]);
 
   /**
    * Handles form submission with validation
    * Only generates text if validation passes
    */
-  const handleGenerate = () => {
+  const handleGenerate = useCallback(() => {
     // Clear any existing errors
     clearError();
     
@@ -208,7 +198,7 @@ OAB/SP nº [número]
     if (isValid) {
       generateText(prompt);
     }
-  };
+  }, [clearError, validateForm, prompt, generateText]);
 
   /**
    * Copia o texto gerado para a área de transferência do usuário
@@ -221,12 +211,12 @@ OAB/SP nº [número]
    * Em produção, considere adicionar feedback visual (toast/notificação)
    * para confirmar que o texto foi copiado com sucesso
    */
-  const handleCopy = () => {
+  const handleCopy = useCallback(() => {
     if (generatedText) {
       navigator.clipboard.writeText(generatedText);
       // Aqui você poderia adicionar uma notificação de sucesso
     }
-  };
+  }, [generatedText]);
 
   /**
    * Faz o download do texto gerado como arquivo .txt
@@ -239,7 +229,7 @@ OAB/SP nº [número]
    * O nome do arquivo é gerado automaticamente baseado no tipo de ferramenta
    * e timestamp atual para evitar conflitos de nomes
    */
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (generatedText) {
       const element = document.createElement('a');
       const file = new Blob([generatedText], { type: 'text/plain' });
@@ -249,7 +239,11 @@ OAB/SP nº [número]
       element.click();
       document.body.removeChild(element);
     }
-  };
+  }, [generatedText, selectedTool]);
+
+  const handleToolSelect = useCallback((toolId: string) => {
+    setSelectedTool(toolId);
+  }, []);
 
   return (
     <div className="min-h-screen bg-warm-bg">
@@ -284,7 +278,7 @@ OAB/SP nº [número]
               {tools.map((tool) => (
                 <button
                   key={tool.id}
-                  onClick={() => setSelectedTool(tool.id)}
+                  onClick={() => handleToolSelect(tool.id)}
                   role="radio"
                   aria-checked={selectedTool === tool.id}
                   aria-describedby={`tool-${tool.id}-description`}
@@ -479,5 +473,8 @@ OAB/SP nº [número]
     </div>
   );
 };
+
+const ToolsPage = React.memo(ToolsPageComponent);
+ToolsPage.displayName = 'ToolsPage';
 
 export default ToolsPage;
