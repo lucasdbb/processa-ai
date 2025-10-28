@@ -18,7 +18,10 @@
     "web:build": "npm run build --workspace=@processa-ai/web",
     "api:dev": "npm run dev --workspace=@processa-ai/api",
     "api:build": "npm run build --workspace=@processa-ai/api",
-    "types:build": "npm run build --workspace=@processa-ai/types"
+    "types:build": "npm run build --workspace=@processa-ai/types",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel",
+    "vercel:build": "npm run types:build && npm run web:build"
   },
   "keywords": [
     "monorepo",
