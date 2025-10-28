@@ -38,28 +38,14 @@ const CalculatorsPage: React.FC = () => {
       name: 'Rescisão Trabalhista',
       description: 'Calcule todas as verbas rescisórias',
       icon: DollarSign,
-      color: 'bg-green-500'
+      color: 'bg-primary-600'
     },
     {
       id: 'aposentadoria',
       name: 'Simulação de Aposentadoria',
       description: 'Simule aposentadoria e benefícios',
       icon: Calendar,
-      color: 'bg-blue-500'
-    },
-    {
-      id: 'ferias',
-      name: 'Cálculo de Férias',
-      description: 'Calcule férias vencidas e proporcionais',
-      icon: TrendingUp,
-      color: 'bg-purple-500'
-    },
-    {
-      id: 'horas_extras',
-      name: 'Horas Extras',
-      description: 'Calcule horas extras e adicionais',
-      icon: Calculator,
-      color: 'bg-orange-500'
+      color: 'bg-secondary-600'
     }
   ];
 
@@ -146,22 +132,23 @@ const CalculatorsPage: React.FC = () => {
 
   const renderRescisaoForm = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Salário Mensal (R$)
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            💰 Salário Mensal (R$) *
           </label>
           <input
             type="number"
             value={formData.salario}
             onChange={(e) => handleInputChange('salario', e.target.value)}
             className="input-field"
-            placeholder="0,00"
+            placeholder="Ex: 3500,00"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tipo de Rescisão
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            📋 Tipo de Rescisão *
           </label>
           <select
             value={formData.tipoRescisao}
@@ -175,79 +162,85 @@ const CalculatorsPage: React.FC = () => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Data de Admissão
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            📅 Data de Admissão *
           </label>
           <input
             type="date"
             value={formData.dataAdmissao}
             onChange={(e) => handleInputChange('dataAdmissao', e.target.value)}
             className="input-field"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Data de Rescisão
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            📅 Data de Rescisão *
           </label>
           <input
             type="date"
             value={formData.dataRescisao}
             onChange={(e) => handleInputChange('dataRescisao', e.target.value)}
             className="input-field"
+            required
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Férias Vencidas (R$)
+        <div className="md:col-span-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            🏖️ Férias Vencidas (R$)
           </label>
           <input
             type="number"
             value={formData.feriasVencidas}
             onChange={(e) => handleInputChange('feriasVencidas', e.target.value)}
             className="input-field"
-            placeholder="0,00"
+            placeholder="Ex: 1000,00 (opcional)"
           />
+          <p className="text-xs text-gray-500 mt-1">Deixe em branco se não houver férias vencidas</p>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.avisoPrevio}
-            onChange={(e) => handleInputChange('avisoPrevio', e.target.checked)}
-            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <span className="ml-2 text-sm text-gray-700">Aviso Prévio</span>
-        </label>
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.feriasProporcionais}
-            onChange={(e) => handleInputChange('feriasProporcionais', e.target.checked)}
-            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <span className="ml-2 text-sm text-gray-700">Férias Proporcionais</span>
-        </label>
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.decimoTerceiro}
-            onChange={(e) => handleInputChange('decimoTerceiro', e.target.checked)}
-            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <span className="ml-2 text-sm text-gray-700">13º Salário Proporcional</span>
-        </label>
+      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">✅ Verbas Adicionais</h3>
+        <div className="space-y-3">
+          <label className="flex items-center cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={formData.avisoPrevio}
+              onChange={(e) => handleInputChange('avisoPrevio', e.target.checked)}
+              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-5 h-5"
+            />
+            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 font-medium">Aviso Prévio</span>
+          </label>
+          <label className="flex items-center cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={formData.feriasProporcionais}
+              onChange={(e) => handleInputChange('feriasProporcionais', e.target.checked)}
+              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-5 h-5"
+            />
+            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 font-medium">Férias Proporcionais</span>
+          </label>
+          <label className="flex items-center cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={formData.decimoTerceiro}
+              onChange={(e) => handleInputChange('decimoTerceiro', e.target.checked)}
+              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-5 h-5"
+            />
+            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 font-medium">13º Salário Proporcional</span>
+          </label>
+        </div>
       </div>
     </div>
   );
 
   const renderAposentadoriaForm = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Idade Atual
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            👤 Idade Atual *
           </label>
           <input
             type="number"
@@ -255,11 +248,14 @@ const CalculatorsPage: React.FC = () => {
             onChange={(e) => handleInputChange('idade', e.target.value)}
             className="input-field"
             placeholder="Ex: 55"
+            min="0"
+            max="120"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Sexo
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            👥 Sexo *
           </label>
           <select
             value={formData.sexo}
@@ -271,8 +267,8 @@ const CalculatorsPage: React.FC = () => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tempo de Contribuição (anos)
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            ⏱️ Tempo de Contribuição (anos) *
           </label>
           <input
             type="number"
@@ -280,20 +276,33 @@ const CalculatorsPage: React.FC = () => {
             onChange={(e) => handleInputChange('tempoContribuicao', e.target.value)}
             className="input-field"
             placeholder="Ex: 25"
+            min="0"
+            max="60"
+            required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Salário de Contribuição (R$)
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            💵 Salário de Contribuição (R$) *
           </label>
           <input
             type="number"
             value={formData.salarioContribuicao}
             onChange={(e) => handleInputChange('salarioContribuicao', e.target.value)}
             className="input-field"
-            placeholder="0,00"
+            placeholder="Ex: 4500,00"
+            required
           />
         </div>
+      </div>
+
+      <div className="bg-secondary-50 p-4 rounded-lg border border-secondary-200">
+        <h3 className="text-sm font-semibold text-secondary-900 mb-2">ℹ️ Informações Importantes</h3>
+        <ul className="text-xs text-secondary-800 space-y-1">
+          <li>• Idade mínima para homens: 65 anos</li>
+          <li>• Idade mínima para mulheres: 62 anos</li>
+          <li>• Tempo mínimo de contribuição: 15 anos</li>
+        </ul>
       </div>
     </div>
   );
@@ -304,8 +313,8 @@ const CalculatorsPage: React.FC = () => {
     if (resultado.tipo === 'rescisao') {
       const { detalhes } = resultado;
       return (
-        <div className="card bg-green-50 border-green-200">
-          <h3 className="text-lg font-semibold text-green-900 mb-4">Resultado do Cálculo</h3>
+        <div className="card bg-primary-50 border-primary-200">
+          <h3 className="text-lg font-semibold text-primary-900 mb-4">Resultado do Cálculo</h3>
           <div className="space-y-3">
             <div className="flex justify-between">
               <span>Saldo de Salário:</span>
@@ -335,8 +344,8 @@ const CalculatorsPage: React.FC = () => {
               <span>Multa FGTS (40%):</span>
               <span className="font-medium">R$ {detalhes.multaFgts.toFixed(2)}</span>
             </div>
-            <div className="border-t border-green-300 pt-3">
-              <div className="flex justify-between text-lg font-bold text-green-900">
+            <div className="border-t border-primary-300 pt-3">
+              <div className="flex justify-between text-lg font-bold text-primary-900">
                 <span>Total:</span>
                 <span>R$ {detalhes.total.toFixed(2)}</span>
               </div>
@@ -349,14 +358,14 @@ const CalculatorsPage: React.FC = () => {
     if (resultado.tipo === 'aposentadoria') {
       const { detalhes } = resultado;
       return (
-        <div className={`card ${detalhes.podeAposentar ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-          <h3 className={`text-lg font-semibold mb-4 ${detalhes.podeAposentar ? 'text-green-900' : 'text-yellow-900'}`}>
+        <div className={`card ${detalhes.podeAposentar ? 'bg-secondary-50 border-secondary-200' : 'bg-yellow-50 border-yellow-200'}`}>
+          <h3 className={`text-lg font-semibold mb-4 ${detalhes.podeAposentar ? 'text-secondary-900' : 'text-yellow-900'}`}>
             Resultado da Simulação
           </h3>
           <div className="space-y-3">
             <div className="flex justify-between">
               <span>Status:</span>
-              <span className={`font-medium ${detalhes.podeAposentar ? 'text-green-600' : 'text-yellow-600'}`}>
+              <span className={`font-medium ${detalhes.podeAposentar ? 'text-secondary-800' : 'text-yellow-600'}`}>
                 {detalhes.podeAposentar ? 'Pode se aposentar' : 'Não pode se aposentar ainda'}
               </span>
             </div>
@@ -381,8 +390,8 @@ const CalculatorsPage: React.FC = () => {
               <span className="font-medium">{detalhes.tempoMinimoContrib} anos</span>
             </div>
             {detalhes.podeAposentar && (
-              <div className="border-t border-green-300 pt-3">
-                <div className="flex justify-between text-lg font-bold text-green-900">
+              <div className="border-t border-secondary-300 pt-3">
+                <div className="flex justify-between text-lg font-bold text-secondary-900">
                   <span>Benefício estimado:</span>
                   <span>R$ {detalhes.beneficio.toFixed(2)}</span>
                 </div>
@@ -399,7 +408,7 @@ const CalculatorsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-navy-800 to-navy-900 text-white py-16">
+      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
@@ -408,8 +417,8 @@ const CalculatorsPage: React.FC = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Calculadoras Jurídicas
             </h1>
-            <p className="text-xl text-navy-100 max-w-2xl mx-auto">
-              Ferramentas precisas para cálculos trabalhistas e previdenciários. 
+            <p className="text-xl text-primary-100 max-w-2xl mx-auto">
+              Ferramentas precisas para cálculos trabalhistas e previdenciários.
               Economize tempo e evite erros em seus cálculos.
             </p>
           </div>
@@ -420,44 +429,62 @@ const CalculatorsPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar com Calculadoras */}
           <div className="lg:col-span-1">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Calculadoras</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Escolha a Calculadora</h2>
             <div className="space-y-3">
               {calculators.map(calc => (
                 <button
                   key={calc.id}
-                  onClick={() => setSelectedCalculator(calc.id)}
-                  className={`w-full text-left p-4 rounded-lg border transition-colors duration-200 ${
+                  onClick={() => {
+                    setSelectedCalculator(calc.id);
+                    setResultado(null);
+                  }}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 transform hover:scale-105 ${
                     selectedCalculator === calc.id
-                      ? 'border-navy-500 bg-navy-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
+                      ? 'border-primary-500 bg-primary-50 shadow-lg'
+                      : 'border-gray-200 bg-white hover:border-primary-300 hover:shadow-md'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`${calc.color} p-2 rounded-lg`}>
-                      <calc.icon className="h-5 w-5 text-white" />
+                    <div className={`${calc.color} p-3 rounded-lg shadow-md`}>
+                      <calc.icon className="h-6 w-6 text-white" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{calc.name}</h3>
-                      <p className="text-sm text-gray-600">{calc.description}</p>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-sm">{calc.name}</h3>
+                      <p className="text-xs text-gray-600 mt-1">{calc.description}</p>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
+
+            {/* Info Card */}
+            <div className="mt-6 p-4 bg-gradient-to-br from-secondary-50 to-secondary-100 rounded-xl border border-secondary-200">
+              <div className="flex items-start space-x-2">
+                <Info className="h-5 w-5 text-secondary-700 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-secondary-900 mb-1">Dica</h3>
+                  <p className="text-xs text-secondary-800">
+                    Preencha todos os campos obrigatórios para obter um cálculo preciso.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Área Principal */}
           <div className="lg:col-span-3">
-            <div className="card">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className={`${calculators.find(c => c.id === selectedCalculator)?.color} p-3 rounded-lg`}>
-                  <Calculator className="h-6 w-6 text-white" />
+            <div className="card shadow-lg">
+              <div className="flex items-center space-x-4 mb-8 pb-6 border-b border-gray-200">
+                <div className={`${calculators.find(c => c.id === selectedCalculator)?.color} p-4 rounded-xl shadow-lg`}>
+                  {calculators.find(c => c.id === selectedCalculator)?.icon &&
+                    React.createElement(calculators.find(c => c.id === selectedCalculator)!.icon, { className: "h-8 w-8 text-white" })
+                  }
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-3xl font-bold text-gray-900">
                     {calculators.find(c => c.id === selectedCalculator)?.name}
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 mt-1">
                     {calculators.find(c => c.id === selectedCalculator)?.description}
                   </p>
                 </div>
@@ -466,25 +493,15 @@ const CalculatorsPage: React.FC = () => {
               {/* Formulário */}
               {selectedCalculator === 'rescisao' && renderRescisaoForm()}
               {selectedCalculator === 'aposentadoria' && renderAposentadoriaForm()}
-              {selectedCalculator === 'ferias' && (
-                <div className="text-center py-8 text-gray-500">
-                  Calculadora em desenvolvimento
-                </div>
-              )}
-              {selectedCalculator === 'horas_extras' && (
-                <div className="text-center py-8 text-gray-500">
-                  Calculadora em desenvolvimento
-                </div>
-              )}
 
               {(selectedCalculator === 'rescisao' || selectedCalculator === 'aposentadoria') && (
-                <div className="mt-6">
+                <div className="mt-8 pt-6 border-t border-gray-200">
                   <button
                     onClick={handleCalculate}
-                    className="btn-primary flex items-center space-x-2"
+                    className="btn-primary flex items-center space-x-2 px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-shadow"
                   >
-                    <Calculator className="h-4 w-4" />
-                    <span>Calcular</span>
+                    <Calculator className="h-5 w-5" />
+                    <span>Calcular Agora</span>
                   </button>
                 </div>
               )}
@@ -492,14 +509,14 @@ const CalculatorsPage: React.FC = () => {
 
             {/* Resultado */}
             {resultado && (
-              <div className="mt-8">
+              <div className="mt-8 animate-fade-in">
                 {renderResultado()}
-                <div className="mt-4 flex space-x-4">
-                  <button className="btn-secondary flex items-center space-x-2">
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button className="btn-secondary flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow">
                     <Download className="h-4 w-4" />
-                    <span>Baixar Relatório</span>
+                    <span>Baixar Relatório PDF</span>
                   </button>
-                  <button className="btn-secondary flex items-center space-x-2">
+                  <button className="btn-secondary flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow">
                     <FileText className="h-4 w-4" />
                     <span>Salvar Cálculo</span>
                   </button>
@@ -508,15 +525,17 @@ const CalculatorsPage: React.FC = () => {
             )}
 
             {/* Aviso Legal */}
-            <div className="mt-8 card bg-yellow-50 border-yellow-200">
+            <div className="mt-8 card bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-200 shadow-md">
               <div className="flex items-start space-x-3">
-                <Info className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div className="bg-yellow-100 p-2 rounded-lg">
+                  <Info className="h-5 w-5 text-yellow-700" />
+                </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-yellow-900 mb-2">Aviso Legal</h3>
-                  <p className="text-sm text-yellow-800">
-                    Os cálculos apresentados são estimativas baseadas na legislação vigente. 
-                    Sempre consulte a legislação atualizada e considere as particularidades 
-                    de cada caso. Recomenda-se a revisão por profissional especializado.
+                  <h3 className="text-sm font-bold text-yellow-900 mb-2">⚠️ Aviso Legal Importante</h3>
+                  <p className="text-sm text-yellow-800 leading-relaxed">
+                    Os cálculos apresentados são <strong>estimativas</strong> baseadas na legislação vigente.
+                    Sempre consulte a legislação atualizada e considere as particularidades
+                    de cada caso. <strong>Recomenda-se fortemente</strong> a revisão por profissional especializado antes de tomar decisões jurídicas.
                   </p>
                 </div>
               </div>
