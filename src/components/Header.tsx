@@ -23,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
   const getMobileLinkClasses = (path: string) => {
     return isActive(path)
       ? 'block px-3 py-2 text-primary-700 font-semibold bg-primary-50 rounded-lg transition-colors'
-      : 'block px-3 py-2 text-gray-700 hover:text-primary-700 hover:bg-gray-50 rounded-lg transition-all duration-200';
+      : 'block px-3 py-2 text-gray-700 hover:text-primary-700 hover:bg-warm-bg rounded-lg transition-all duration-200';
   };
 
   return (
@@ -32,9 +32,8 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <img src="/logo.svg" alt="Processa AI" className="h-8 w-8 text-navy-800" />
-              <span className="text-xl font-bold text-primary-900">Processa AI</span>
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <img src="/light-logo.jpeg" alt="Processa AI" className="h-12 w-auto object-contain" />
             </Link>
           </div>
 
