@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import BlogPage from './pages/BlogPage';
 import ToolsPage from './pages/ToolsPage';
 import CalculatorsPage from './pages/CalculatorsPage';
+import AboutPage from './pages/AboutPage';
 
 function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -38,6 +39,7 @@ function App() {
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/ferramentas" element={<ToolsPage />} />
             <Route path="/calculadoras" element={<CalculatorsPage />} />
+            <Route path="/about" element={<AboutPage />} />
           </Routes>
         </main>
 
