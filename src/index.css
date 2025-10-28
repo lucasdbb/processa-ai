@@ -6,9 +6,10 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
   }
-  
+
   body {
-    @apply bg-white text-gray-900;
+    background-color: #fffaf6;
+    @apply text-gray-900;
   }
 }
 

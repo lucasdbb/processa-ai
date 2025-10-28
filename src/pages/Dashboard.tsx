@@ -17,7 +17,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-warm-bg">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
             Acesso Restrito
@@ -101,7 +101,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-warm-bg">
       {/* Header do Dashboard */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

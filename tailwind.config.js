@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        'warm-bg': '#fffaf6',
         primary: {
           50: '#e8f0f7',
           100: '#c3d8e8',
