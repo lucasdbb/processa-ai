@@ -1,33 +1,37 @@
 import React from 'react';
-import { 
-  Brain, 
-  Calculator, 
-  Newspaper, 
-  Shield, 
+import {
+  Brain,
+  Calculator,
+  Newspaper,
+  Shield,
   ArrowRight,
   CheckCircle,
   Star
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
   const features = [
     {
+      icon: Newspaper,
+      title: 'Blog Jurídico',
+      description: 'Mantenha-se atualizado com as últimas notícias e mudanças na legislação.',
+      color: 'text-primary-600',
+      link: '/blog'
+    },
+    {
       icon: Brain,
       title: 'IA para Peças Processuais',
       description: 'Crie petições, contratos e documentos jurídicos com auxílio da inteligência artificial.',
-      color: 'text-primary-700'
+      color: 'text-primary-700',
+      link: '/ferramentas'
     },
     {
       icon: Calculator,
       title: 'Calculadoras Jurídicas',
       description: 'Calcule rescisões trabalhistas, simulações previdenciárias e muito mais.',
-      color: 'text-secondary-900'
-    },
-    {
-      icon: Newspaper,
-      title: 'Blog Jurídico',
-      description: 'Mantenha-se atualizado com as últimas notícias e mudanças na legislação.',
-      color: 'text-primary-600'
+      color: 'text-secondary-900',
+      link: '/calculadoras'
     }
   ];
 
@@ -127,10 +131,13 @@ const LandingPage: React.FC = () => {
                   <p className="text-gray-600 mb-6">
                     {feature.description}
                   </p>
-                  <button className="text-primary-700 hover:text-primary-800 font-medium flex items-center justify-center space-x-2">
+                  <Link
+                    to={feature.link}
+                    className="text-primary-700 hover:text-primary-800 font-medium flex items-center justify-center space-x-2"
+                  >
                     <span>Saiba mais</span>
                     <ArrowRight className="h-4 w-4" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}
