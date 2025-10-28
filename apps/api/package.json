@@ -15,10 +15,12 @@
     "@vercel/node": "^3.0.0"
   },
   "devDependencies": {
-    "@processa-ai/types": "*",
     "@types/node": "^20.0.0",
     "typescript": "^5.2.2",
     "vercel": "^32.0.0"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "keywords": ["vercel", "functions", "supabase", "auth", "api"],
   "author": "Processa AI Team",

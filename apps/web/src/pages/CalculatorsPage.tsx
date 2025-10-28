@@ -12,7 +12,7 @@ import type {
   Resultado, 
   CalculatorType,
   CalculatorConfig 
-} from '@processa-ai/types/calculator';
+} from '../types/calculator';
 
 /**
  * Página de calculadoras trabalhistas que oferece ferramentas para cálculos de rescisão e aposentadoria

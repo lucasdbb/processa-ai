@@ -145,6 +145,8 @@ export interface CalculatorConfig {
   icon: React.ComponentType<{ className?: string }>;
   /** Whether the calculator is currently available */
   available: boolean;
+  /** Background color class */
+  color: string;
 }
 
 /**

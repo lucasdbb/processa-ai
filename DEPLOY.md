@@ -11,27 +11,9 @@ Este guia explica como fazer o deploy do monorepo Processa AI na Vercel.
 
 ## 🏗️ Estratégias de Deploy
 
-### Opção 1: Deploy Unificado (Recomendado)
+### Opção 1: Deploy Separado (Recomendado)
 
-Deploy de todo o monorepo como um único projeto Vercel.
-
-#### Configuração:
-- ✅ `vercel.json` na raiz (já configurado)
-- ✅ `.vercelignore` para otimizar upload
-- ✅ Scripts de build configurados
-
-#### Comandos:
-```bash
-# Deploy de preview
-npm run deploy:preview
-
-# Deploy de produção
-npm run deploy
-```
-
-### Opção 2: Deploy Separado
-
-Deploy de cada app como projeto independente.
+Deploy de cada app como projeto independente na Vercel.
 
 #### Frontend (apps/web):
 ```bash
@@ -45,18 +27,68 @@ cd apps/api
 vercel --prod
 ```
 
+**Vantagens:**
+- ✅ Builds independentes e mais rápidos
+- ✅ Configurações específicas por app
+- ✅ Melhor isolamento de recursos
+- ✅ Deploys independentes
+
+### Opção 2: Deploy Unificado
+
+Deploy de todo o monorepo como um único projeto Vercel.
+
+#### Configuração:
+- ✅ `vercel.json` na raiz (apenas para API)
+- ✅ `.vercelignore` para otimizar upload
+- ✅ Scripts de build configurados
+
+#### Comandos:
+```bash
+# Deploy de preview
+npm run deploy:preview
+
+# Deploy de produção
+npm run deploy
+```
+
+**Nota:** Esta opção é mais complexa e pode ter limitações.
+
 ## 🔧 Configuração das Variáveis de Ambiente
 
-### Na Vercel Dashboard:
+⚠️ **IMPORTANTE**: Configure as variáveis de ambiente diretamente no Vercel Dashboard, não use secrets no vercel.json.
 
-1. **SUPABASE_URL** - URL do seu projeto Supabase
-2. **SUPABASE_ANON_KEY** - Chave anônima do Supabase
-3. **SUPABASE_SERVICE_ROLE_KEY** - Chave de service role (apenas para API)
-4. **FRONTEND_URL** - URL do frontend deployado
+### Como Configurar no Vercel Dashboard:
 
-### Exemplo de configuração:
+1. Acesse seu projeto no [Vercel Dashboard](https://vercel.com/dashboard)
+2. Vá em **Settings** → **Environment Variables**
+3. Adicione as seguintes variáveis:
+
+#### Para o Frontend (apps/web):
+```
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-anonima-aqui
+VITE_API_URL=https://seu-projeto.vercel.app/api
+```
+
+#### Para a API (apps/api):
+```
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY=sua-chave-anonima-aqui
+SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role-aqui
+FRONTEND_URL=https://seu-projeto.vercel.app
+```
+
+### Valores para cada Environment:
+- **Production**: Use para deploy de produção
+- **Preview**: Use para deploys de preview/staging
+- **Development**: Use para desenvolvimento local (opcional)
+
+### Exemplo de configuração via CLI:
 ```bash
-# Via CLI
+# Via CLI (alternativo)
+vercel env add VITE_SUPABASE_URL
+vercel env add VITE_SUPABASE_ANON_KEY
+vercel env add VITE_API_URL
 vercel env add SUPABASE_URL
 vercel env add SUPABASE_ANON_KEY
 vercel env add SUPABASE_SERVICE_ROLE_KEY

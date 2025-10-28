@@ -1,19 +1,9 @@
 {
+  "buildCommand": "",
+  "outputDirectory": ".",
   "functions": {
-    "src/**/*.ts": {
-      "runtime": "@vercel/node"
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3.1.0"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/src/$1"
-    }
-  ],
-  "env": {
-    "SUPABASE_URL": "@supabase-url",
-    "SUPABASE_ANON_KEY": "@supabase-anon-key",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key",
-    "FRONTEND_URL": "@frontend-url"
   }
 }
