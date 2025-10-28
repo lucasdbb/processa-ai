@@ -10,14 +10,14 @@
       }
     },
     {
-      "src": "apps/api/api/**/*.ts",
+      "src": "apps/api/src/**/*.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/apps/api/api/$1"
+      "dest": "/apps/api/src/$1"
     },
     {
       "src": "/(.*)",
@@ -25,7 +25,7 @@
     }
   ],
   "functions": {
-    "apps/api/api/**/*.ts": {
+    "apps/api/src/**/*.ts": {
       "runtime": "@vercel/node@3"
     }
   },
