@@ -11,6 +11,25 @@ import {
   Save
 } from 'lucide-react';
 
+/**
+ * Página de ferramentas de IA para geração de documentos jurídicos
+ * 
+ * @component
+ * @description
+ * Oferece ferramentas de inteligência artificial para gerar:
+ * - Petições iniciais
+ * - Contratos
+ * - Contestações
+ * - Recursos
+ * 
+ * @example
+ * ```tsx
+ * <ToolsPage />
+ * ```
+ * 
+ * @remarks
+ * Atualmente utiliza texto simulado. Em produção, integrar com API de IA real.
+ */
 const ToolsPage: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState('petition');
   const [prompt, setPrompt] = useState('');
@@ -79,6 +98,18 @@ const ToolsPage: React.FC = () => {
     ]
   };
 
+  /**
+   * Simula a geração de texto usando IA baseado no prompt fornecido
+   * Atualmente retorna texto de exemplo após um delay simulado
+   * 
+   * @async
+   * @function
+   * @returns {Promise<void>} Promise que resolve quando a geração é concluída
+   * 
+   * @remarks
+   * Em produção, esta função deve integrar com uma API de IA real
+   * como OpenAI GPT, Claude, ou similar para gerar conteúdo jurídico
+   */
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
@@ -125,11 +156,33 @@ OAB/SP nº [número]
     }, 2000);
   };
 
+  /**
+   * Copia o texto gerado para a área de transferência do usuário
+   * Utiliza a Clipboard API do navegador para realizar a operação
+   * 
+   * @function
+   * @returns {void}
+   * 
+   * @remarks
+   * Em produção, considere adicionar feedback visual (toast/notificação)
+   * para confirmar que o texto foi copiado com sucesso
+   */
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
     // Aqui você poderia adicionar uma notificação de sucesso
   };
 
+  /**
+   * Faz o download do texto gerado como arquivo .txt
+   * Cria um blob com o conteúdo e força o download no navegador
+   * 
+   * @function
+   * @returns {void}
+   * 
+   * @remarks
+   * O nome do arquivo é gerado automaticamente baseado no tipo de ferramenta
+   * e timestamp atual para evitar conflitos de nomes
+   */
   const handleDownload = () => {
     const element = document.createElement('a');
     const file = new Blob([generatedText], { type: 'text/plain' });

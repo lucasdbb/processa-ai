@@ -36,6 +36,24 @@ interface ResultadoAposentadoria {
 
 type Resultado = ResultadoRescisao | ResultadoAposentadoria;
 
+/**
+ * Página de calculadoras trabalhistas que oferece ferramentas para cálculos de rescisão e aposentadoria
+ * 
+ * @component
+ * @description
+ * Fornece calculadoras interativas para:
+ * - Cálculo de rescisão trabalhista (saldo, aviso prévio, férias, 13º, FGTS)
+ * - Simulação de aposentadoria (elegibilidade e valor do benefício)
+ * 
+ * @example
+ * ```tsx
+ * <CalculatorsPage />
+ * ```
+ * 
+ * @remarks
+ * Os cálculos são simplificados para fins demonstrativos.
+ * Para uso em produção, implementar as regras oficiais da CLT e INSS.
+ */
 const CalculatorsPage: React.FC = () => {
   const [selectedCalculator, setSelectedCalculator] = useState('rescisao');
   const [formData, setFormData] = useState({
@@ -83,6 +101,14 @@ const CalculatorsPage: React.FC = () => {
     }));
   };
 
+  /**
+   * Calcula os valores de rescisão trabalhista baseado nos dados fornecidos
+   * Inclui saldo de salário, aviso prévio, férias, 13º salário, FGTS e multa
+   * 
+   * @remarks
+   * Esta é uma implementação simplificada para fins demonstrativos.
+   * Em produção, deve-se usar as regras oficiais da CLT e legislação vigente.
+   */
   const calcularRescisao = () => {
     const salario = parseFloat(formData.salario) || 0;
     const dataAdm = new Date(formData.dataAdmissao);
@@ -116,6 +142,14 @@ const CalculatorsPage: React.FC = () => {
     });
   };
 
+  /**
+   * Calcula a elegibilidade e valor da aposentadoria baseado na idade, tempo de contribuição e salário
+   * Utiliza as regras básicas do INSS para aposentadoria por idade
+   * 
+   * @remarks
+   * Esta é uma implementação simplificada. As regras reais de aposentadoria são mais complexas
+   * e incluem fatores como regras de transição, teto do INSS, entre outros.
+   */
   const calcularAposentadoria = () => {
     const idade = parseInt(formData.idade) || 0;
     const tempoContrib = parseInt(formData.tempoContribuicao) || 0;
@@ -144,7 +178,12 @@ const CalculatorsPage: React.FC = () => {
     });
   };
 
+  /**
+   * Executa o cálculo apropriado baseado no tipo de calculadora selecionada
+   * Chama a função de cálculo correspondente e atualiza o estado do resultado
+   */
   const handleCalculate = () => {
+
     switch (selectedCalculator) {
       case 'rescisao':
         calcularRescisao();

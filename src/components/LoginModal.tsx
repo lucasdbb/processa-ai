@@ -7,6 +7,24 @@ interface LoginModalProps {
   onLogin: (email: string, password: string) => void;
 }
 
+/**
+ * Modal component for user authentication (login/registration)
+ * Features form validation, accessibility support, and keyboard navigation
+ * 
+ * @param {LoginModalProps} props - Component props
+ * @param {boolean} props.isOpen - Controls modal visibility
+ * @param {() => void} props.onClose - Callback when modal is closed
+ * @param {(email: string, password: string) => void} props.onLogin - Callback when login is successful
+ * 
+ * @example
+ * ```tsx
+ * <LoginModal
+ *   isOpen={isModalOpen}
+ *   onClose={() => setIsModalOpen(false)}
+ *   onLogin={(email, password) => handleLogin(email, password)}
+ * />
+ * ```
+ */
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +65,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
     };
   }, [isOpen, onClose]);
 
+  /**
+   * Validates the form data based on current mode (login/register)
+   * @returns {boolean} True if form is valid, false otherwise
+   */
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -74,6 +96,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * Handles form submission for both login and registration
+   * @param {React.FormEvent} e - Form submission event
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -90,6 +116,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
     onClose();
   };
 
+  /**
+   * Handles input field changes and clears validation errors
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
@@ -106,6 +136,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
     }
   };
 
+  /**
+   * Toggles between login and registration modes, clearing form data and errors
+   */
   const handleModeToggle = () => {
     setIsLogin(!isLogin);
     setErrors({});
