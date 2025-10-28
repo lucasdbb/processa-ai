@@ -23,28 +23,28 @@ const ToolsPage: React.FC = () => {
       name: 'Petição Inicial',
       description: 'Crie petições iniciais com base nos fatos do caso',
       icon: FileText,
-      color: 'bg-blue-500'
+      color: 'bg-primary-600'
     },
     {
       id: 'contract',
       name: 'Contratos',
       description: 'Gere minutas de contratos personalizados',
       icon: Edit3,
-      color: 'bg-green-500'
+      color: 'bg-secondary-600'
     },
     {
       id: 'defense',
       name: 'Contestação',
       description: 'Elabore contestações e defesas processuais',
       icon: MessageSquare,
-      color: 'bg-purple-500'
+      color: 'bg-primary-700'
     },
     {
       id: 'appeal',
       name: 'Recursos',
       description: 'Crie recursos e apelações fundamentadas',
       icon: Settings,
-      color: 'bg-orange-500'
+      color: 'bg-secondary-700'
     }
   ];
 
@@ -143,7 +143,7 @@ OAB/SP nº [número]
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-navy-800 to-navy-900 text-white py-16">
+      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
@@ -152,8 +152,8 @@ OAB/SP nº [número]
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Ferramentas de IA Jurídica
             </h1>
-            <p className="text-xl text-navy-100 max-w-2xl mx-auto">
-              Crie documentos jurídicos profissionais com auxílio da inteligência artificial. 
+            <p className="text-xl text-primary-100 max-w-2xl mx-auto">
+              Crie documentos jurídicos profissionais com auxílio da inteligência artificial.
               Economize tempo e melhore a qualidade das suas peças processuais.
             </p>
           </div>
@@ -172,7 +172,7 @@ OAB/SP nº [número]
                   onClick={() => setSelectedTool(tool.id)}
                   className={`w-full text-left p-4 rounded-lg border transition-colors duration-200 ${
                     selectedTool === tool.id
-                      ? 'border-navy-500 bg-navy-50'
+                      ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
                 >
@@ -292,9 +292,9 @@ OAB/SP nº [número]
             </div>
 
             {/* Dicas */}
-            <div className="mt-8 card bg-blue-50 border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-900 mb-4">💡 Dicas para melhores resultados</h3>
-              <ul className="space-y-2 text-blue-800">
+            <div className="mt-8 card bg-gradient-to-br from-secondary-50 to-secondary-100 border-secondary-200">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-4">💡 Dicas para melhores resultados</h3>
+              <ul className="space-y-2 text-secondary-800">
                 <li>• Seja específico sobre os fatos do caso</li>
                 <li>• Inclua valores, datas e partes envolvidas</li>
                 <li>• Mencione a legislação aplicável quando souber</li>
