@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <img src="/light-logo.jpeg" alt="Processa AI" className="h-12 w-auto object-contain" />
+              <img src="/logo.svg" alt="Processa AI" className="h-12 w-auto object-contain" />
             </Link>
           </div>
 
