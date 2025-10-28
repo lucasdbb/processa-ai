@@ -147,7 +147,7 @@ npm run types:build
 ```
 Vercel Project
 ├── Frontend (apps/web/dist) → Servido na raiz "/"
-├── API (apps/api/api/*) → Servido em "/api/*"
+├── API (apps/api/src/*) → Servido em "/api/*"
 └── Types (packages/types) → Compilado e usado pelos apps
 ```
 
