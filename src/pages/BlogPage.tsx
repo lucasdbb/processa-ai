@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Calendar, User, Clock, Search, Tag, Newspaper } from 'lucide-react';
+import type { BlogPost, BlogCategory, BlogCategoryId } from '../types/blog';
 
 const BlogPage: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<BlogCategoryId>('all');
 
-  const categories = [
+  const categories: BlogCategory[] = [
     { id: 'all', name: 'Todas' },
     { id: 'trabalhista', name: 'Direito Trabalhista' },
     { id: 'previdenciario', name: 'Direito Previdenciário' },
@@ -14,7 +15,7 @@ const BlogPage: React.FC = () => {
     { id: 'tributario', name: 'Direito Tributário' }
   ];
 
-  const blogPosts = [
+  const blogPosts: BlogPost[] = [
     {
       id: 1,
       title: 'Nova Lei Trabalhista: Principais Mudanças para 2024',

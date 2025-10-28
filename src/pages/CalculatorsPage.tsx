@@ -7,34 +7,12 @@ import {
   Download,
   Info
 } from 'lucide-react';
-
-interface ResultadoRescisao {
-  tipo: 'rescisao';
-  detalhes: {
-    saldoSalario: number;
-    avisoPrevio: number;
-    feriasVencidas: number;
-    feriasProporcionais: number;
-    decimoTerceiro: number;
-    fgts: number;
-    multaFgts: number;
-    total: number;
-  };
-}
-
-interface ResultadoAposentadoria {
-  tipo: 'aposentadoria';
-  detalhes: {
-    podeAposentar: boolean;
-    anosRestantes: number;
-    tempoRestante: number;
-    beneficio: number;
-    idadeMinima: number;
-    tempoMinimoContrib: number;
-  };
-}
-
-type Resultado = ResultadoRescisao | ResultadoAposentadoria;
+import type { 
+  CalculatorFormData, 
+  Resultado, 
+  CalculatorType,
+  CalculatorConfig 
+} from '../types/calculator';
 
 /**
  * Página de calculadoras trabalhistas que oferece ferramentas para cálculos de rescisão e aposentadoria
@@ -55,8 +33,8 @@ type Resultado = ResultadoRescisao | ResultadoAposentadoria;
  * Para uso em produção, implementar as regras oficiais da CLT e INSS.
  */
 const CalculatorsPage: React.FC = () => {
-  const [selectedCalculator, setSelectedCalculator] = useState('rescisao');
-  const [formData, setFormData] = useState({
+  const [selectedCalculator, setSelectedCalculator] = useState<CalculatorType>('rescisao');
+  const [formData, setFormData] = useState<CalculatorFormData>({
     // Rescisão
     salario: '',
     dataAdmissao: '',
@@ -77,7 +55,7 @@ const CalculatorsPage: React.FC = () => {
 
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
-  const calculators = [
+  const calculators: CalculatorConfig[] = [
     {
       id: 'rescisao',
       name: 'Rescisão Trabalhista',
@@ -94,7 +72,7 @@ const CalculatorsPage: React.FC = () => {
     }
   ];
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: keyof CalculatorFormData, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value

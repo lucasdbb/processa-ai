@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
-
-interface LoginModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onLogin: (email: string, password: string) => void;
-}
+import type { LoginModalProps, AuthFormData, AuthFormErrors } from '../types/auth';
+import { useFormValidation } from '../hooks/useFormValidation';
+import ValidationError from './ValidationError';
 
 /**
  * Modal component for user authentication (login/registration)
@@ -26,14 +23,55 @@ interface LoginModalProps {
  * ```
  */
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState({
+  const [isLogin, setIsLogin] = useState<boolean>(true);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [formData, setFormData] = useState<AuthFormData>({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
+  });
+
+  // Form validation setup
+  const {
+    errors,
+    validateField,
+    validateForm,
+    clearFieldError,
+    clearErrors
+  } = useFormValidation({
+    name: {
+      required: !isLogin,
+      minLength: 2,
+      maxLength: 50
+    },
+    email: {
+      required: true,
+      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      custom: (value: string) => {
+        if (!value.trim()) return 'E-mail é obrigatório';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'E-mail inválido';
+        return null;
+      }
+    },
+    password: {
+      required: true,
+      minLength: 6,
+      custom: (value: string) => {
+        if (!value) return 'Senha é obrigatória';
+        if (value.length < 6) return 'Senha deve ter pelo menos 6 caracteres';
+        return null;
+      }
+    },
+    confirmPassword: {
+      required: !isLogin,
+      custom: (value: string) => {
+        if (!isLogin && value !== formData.password) {
+          return 'Senhas não coincidem';
+        }
+        return null;
+      }
+    }
   });
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -66,44 +104,18 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
   }, [isOpen, onClose]);
 
   /**
-   * Validates the form data based on current mode (login/register)
-   * @returns {boolean} True if form is valid, false otherwise
-   */
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!isLogin && !formData.name.trim()) {
-      newErrors.name = 'Nome é obrigatório';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'E-mail é obrigatório';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'E-mail inválido';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Senha é obrigatória';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Senha deve ter pelo menos 6 caracteres';
-    }
-
-    if (!isLogin && formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Senhas não coincidem';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  /**
    * Handles form submission for both login and registration
    * @param {React.FormEvent} e - Form submission event
    */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    // Validate form using the new validation system
+    const fieldsToValidate = isLogin 
+      ? { email: formData.email, password: formData.password }
+      : formData;
+    
+    if (!validateForm(fieldsToValidate)) {
       return;
     }
 
@@ -117,7 +129,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
   };
 
   /**
-   * Handles input field changes and clears validation errors
+   * Handles input field changes with real-time validation
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
    */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,13 +139,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
       [name]: value
     });
 
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ''
-      });
+    // Clear field error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      clearFieldError(name);
     }
+  };
+
+  /**
+   * Handles field blur events for validation
+   */
+  const handleFieldBlur = (fieldName: string, value: string) => {
+    validateField(fieldName, value);
   };
 
   /**
@@ -141,7 +157,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
    */
   const handleModeToggle = () => {
     setIsLogin(!isLogin);
-    setErrors({});
+    clearErrors();
     setFormData({
       name: '',
       email: '',
