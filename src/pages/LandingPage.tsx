@@ -16,21 +16,21 @@ const LandingPage: React.FC = () => {
       icon: Newspaper,
       title: 'Blog Jurídico',
       description: 'Mantenha-se atualizado com as últimas notícias e mudanças na legislação.',
-      color: 'text-primary-600',
+      color: 'text-primary-700',
       link: '/blog'
     },
     {
       icon: Brain,
       title: 'IA para Peças Processuais',
       description: 'Crie petições, contratos e documentos jurídicos com auxílio da inteligência artificial.',
-      color: 'text-primary-700',
+      color: 'text-secondary-900',
       link: '/ferramentas'
     },
     {
       icon: Calculator,
       title: 'Calculadoras Jurídicas',
       description: 'Calcule rescisões trabalhistas, simulações previdenciárias e muito mais.',
-      color: 'text-secondary-900',
+      color: 'text-primary-600',
       link: '/calculadoras'
     }
   ];
