@@ -2,18 +2,16 @@ import React, { useState, useCallback } from 'react';
 import { Menu, X, LogIn, User, Settings, LogOut } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import UserMenu from './UserMenu';
+import type { User as UserType } from '../types/auth';
 
 interface HeaderProps {
-  user?: {
-    id: string;
-    email: string;
-    name?: string;
-  } | null;
+  user?: UserType | null;
   onLoginClick: () => void;
   onLogout: () => void;
+  onUpdateProfile: (updatedUser: Partial<UserType>) => Promise<void>;
 }
 
-const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout }) => {
+const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout, onUpdateProfile }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -102,7 +100,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
           {/* Login Button / User Menu */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
-              <UserMenu user={user} onLogout={onLogout} />
+              <UserMenu user={user} onLogout={onLogout} onUpdateProfile={onUpdateProfile} />
             ) : (
               <button
                 onClick={handleLoginClick}

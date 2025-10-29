@@ -83,6 +83,39 @@ function App() {
     }
   };
 
+  /**
+   * Handles profile update by calling the API and updating local state
+   * @param {Partial<User>} updatedData - Updated user data
+   */
+  const handleUpdateProfile = async (updatedData: Partial<User>) => {
+    if (!user) return;
+    
+    try {
+      // Call API to update user profile
+      const response = await authService.updateProfile({
+        name: updatedData.name,
+        email: updatedData.email,
+        avatar: updatedData.avatar
+      });
+
+      // Update local state with the response from the API
+      const updatedUser: User = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name,
+        role: response.user.role as 'admin' | 'user',
+        avatar: response.user.avatar,
+        createdAt: response.user.createdAt,
+        emailVerified: response.user.emailVerified
+      };
+
+      setUser(updatedUser);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  };
+
   // Show loading state while checking authentication
   if (isLoading) {
     return (
@@ -114,6 +147,7 @@ function App() {
             user={user}
             onLoginClick={() => setIsLoginModalOpen(true)} 
             onLogout={handleLogout}
+            onUpdateProfile={handleUpdateProfile}
           />
           
           <main id="main-content" className="flex-grow" role="main">

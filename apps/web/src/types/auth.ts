@@ -67,6 +67,8 @@ export interface User {
   emailVerified: boolean;
   /** User's profile picture URL */
   avatar?: string;
+  /** User's phone number */
+  phone?: string | null;
 }
 
 /**

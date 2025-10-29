@@ -36,17 +36,53 @@ export interface AuthResponse {
 }
 
 export interface UserResponse {
-  user: {
-    id: string;
-    email: string;
-    role: string;
-  };
+  email: string;
+  confirmed_at: string | null;
+  phone: string | null;
+  name: string;
+  role: string;
 }
 
 export interface ApiError {
   error: string;
   code: string;
   details?: string;
+}
+
+export interface UpdateProfileData {
+  name?: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface UpdateProfileResponse {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    avatar?: string;
+    createdAt: string;
+    emailVerified: boolean;
+  };
+  message: string;
+}
+
+export interface UserDetailsResponse {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    avatar?: string;
+    createdAt: string;
+    emailVerified: boolean;
+    lastSignIn?: string;
+    // Metadados completos
+    userMetadata: Record<string, any>;
+    rawUserMetadata: Record<string, any>;
+    appMetadata: Record<string, any>;
+  };
 }
 
 /**
@@ -244,14 +280,20 @@ class AuthService {
 
     const userResponse: UserResponse = await response.json();
     
+    // Decode JWT to get user ID
+    const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
+    const userId = payload.sub || payload.user_id || '';
+    
     // Convert UserResponse to User format
     return {
-      id: userResponse.user.id,
-      email: userResponse.user.email,
-      name: userResponse.user.email.split('@')[0], // Use email prefix as name fallback
-      role: userResponse.user.role as UserRole,
-      createdAt: new Date().toISOString(), // Fallback value
-      emailVerified: true, // Assume verified if user can authenticate
+      id: userId,
+      email: userResponse.email,
+      name: userResponse.name || userResponse.email.split('@')[0], // Use name from user_metadata or email prefix as fallback
+      role: userResponse.role as UserRole,
+      avatar: undefined, // Avatar não está mais sendo retornado
+      createdAt: userResponse.confirmed_at || new Date().toISOString(),
+      emailVerified: userResponse.confirmed_at !== null,
+      phone: userResponse.phone
     };
   }
 
@@ -278,6 +320,112 @@ class AuthService {
 
     const result: AuthResponse = await response.json();
     this.setTokens(result.session.access_token, result.session.refresh_token);
+  }
+
+  /**
+   * Busca detalhes completos do usuário incluindo metadados
+   */
+  async getUserDetails(): Promise<UserDetailsResponse> {
+    if (!this.accessToken) {
+      throw new AuthError('Usuário não autenticado', 'UNAUTHORIZED');
+    }
+
+    try {
+      console.log('[AUTH] Buscando detalhes do usuário:', {
+        url: `${API_URL}/auth/get-user-details`
+      });
+
+      const response = await fetch(`${API_URL}/auth/get-user-details`, {
+        method: 'GET',
+        headers: this.createHeaders(true),
+      });
+
+      console.log('[AUTH] Resposta dos detalhes:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AUTH] Erro ao buscar detalhes:', errorText);
+
+        let error: ApiError;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { error: errorText || 'Erro ao buscar detalhes do usuário', code: 'UNKNOWN_ERROR' };
+        }
+
+        throw new AuthError(error.error || 'Erro ao buscar detalhes do usuário', error.code, error.details);
+      }
+
+      const result = await response.json();
+      console.log('[AUTH] Detalhes do usuário obtidos com sucesso');
+
+      return result;
+    } catch (error) {
+      console.error('[AUTH] Erro capturado ao buscar detalhes:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Erro de conexão com o servidor. Verifique sua internet ou se a API está online.');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza o perfil do usuário
+   */
+  async updateProfile(data: UpdateProfileData): Promise<UpdateProfileResponse> {
+    if (!this.accessToken) {
+      throw new AuthError('Usuário não autenticado', 'UNAUTHORIZED');
+    }
+
+    try {
+      console.log('[AUTH] Atualizando perfil:', {
+        hasName: !!data.name,
+        hasEmail: !!data.email,
+        hasAvatar: !!data.avatar,
+        url: `${API_URL}/auth/update-profile`
+      });
+
+      const response = await fetch(`${API_URL}/auth/update-profile`, {
+        method: 'PUT',
+        headers: this.createHeaders(true),
+        body: JSON.stringify(data),
+      });
+
+      console.log('[AUTH] Resposta da atualização:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AUTH] Erro na atualização:', errorText);
+
+        let error: ApiError;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { error: errorText || 'Erro ao atualizar perfil', code: 'UNKNOWN_ERROR' };
+        }
+
+        throw new AuthError(error.error || 'Erro ao atualizar perfil', error.code, error.details);
+      }
+
+      const result = await response.json();
+      console.log('[AUTH] Perfil atualizado com sucesso');
+
+      return result;
+    } catch (error) {
+      console.error('[AUTH] Erro capturado na atualização:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Erro de conexão com o servidor. Verifique sua internet ou se a API está online.');
+      }
+      throw error;
+    }
   }
 
   /**

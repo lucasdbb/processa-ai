@@ -1,21 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import ProfileModal from './ProfileModal';
+import type { User as UserType } from '../types/auth';
 
 interface UserMenuProps {
-  user: {
-    id: string;
-    email: string;
-    name?: string;
-  };
+  user: UserType;
   onLogout: () => void;
+  onUpdateProfile: (updatedUser: Partial<UserType>) => Promise<void>;
 }
 
 /**
  * User menu dropdown component that appears when user is logged in
  * Provides access to profile, settings, and logout functionality
  */
-const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
+const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -64,8 +64,19 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
     setIsOpen(false);
   };
 
+  // Use the user's full name if available, otherwise fallback to email prefix
   const displayName = user.name || user.email.split('@')[0];
   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+  const handleProfileClick = () => {
+    setIsOpen(false);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleProfileUpdate = async (updatedData: Partial<UserType>) => {
+    await onUpdateProfile(updatedData);
+    setIsProfileModalOpen(false);
+  };
 
   return (
     <div className="relative">
@@ -79,8 +90,16 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
         aria-label={`Menu do usuário ${displayName}`}
       >
         {/* User Avatar */}
-        <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
-          {initials}
+        <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-medium overflow-hidden">
+          {user.avatar ? (
+            <img 
+              src={user.avatar} 
+              alt={`Avatar de ${displayName}`} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            initials
+          )}
         </div>
         
         {/* User Name */}
@@ -119,10 +138,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
           {/* Menu Items */}
           <div className="py-1">
             <button
-              onClick={() => handleMenuItemClick(() => {
-                // TODO: Implementar navegação para perfil
-                console.log('Navegar para perfil');
-              })}
+              onClick={handleProfileClick}
               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 focus:outline-none focus:bg-gray-50"
               role="menuitem"
             >
@@ -155,6 +171,14 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
           </div>
         </div>
       )}
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        onUpdateProfile={handleProfileUpdate}
+      />
     </div>
   );
 };
