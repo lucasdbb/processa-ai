@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelResponse } from '@vercel/node';
 import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/auth.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { CommonErrors } from '../../lib/errors.js';
