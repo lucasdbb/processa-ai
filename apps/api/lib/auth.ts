@@ -59,7 +59,7 @@ export const withCors = (handler: Handler): Handler => {
   return async (req: VercelRequest, res: VercelResponse) => {
     // Permitir qualquer origem para desenvolvimento/testes
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     // Nota: Access-Control-Allow-Credentials não pode ser usado com '*'
     // res.setHeader('Access-Control-Allow-Credentials', 'true');

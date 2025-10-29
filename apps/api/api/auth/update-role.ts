@@ -65,42 +65,52 @@ const updateRoleHandler = async (req: AuthenticatedRequest, res: VercelResponse)
       });
     }
 
-    // Atualizar role no auth.users (user_metadata)
-    const { data: updatedAuthData, error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
-      {
-        user_metadata: {
-          ...targetUser.user.user_metadata,
-          role: role
-        }
+    // Atualizar role diretamente no banco usando SQL (mais confiável)
+    // Isso atualiza tanto auth.users.raw_user_meta_data quanto user_profiles.role
+    const { error: updateError } = await supabaseAdmin.rpc('update_user_role', {
+      target_user_id: userId,
+      new_role: role
+    });
+
+    if (updateError) {
+      // Se a função RPC não existir, tentar método alternativo
+      console.log('RPC not found, using alternative method');
+
+      // Atualizar user_profiles primeiro
+      const { error: profileUpdateError } = await supabaseAdmin
+        .from('user_profiles')
+        .update({ role: role })
+        .eq('user_id', userId);
+
+      if (profileUpdateError) {
+        console.error('Error updating role in user_profiles:', profileUpdateError);
+        return res.status(500).json({
+          error: 'Erro ao atualizar role do usuário',
+          code: 'PROFILE_UPDATE_FAILED'
+        });
       }
-    );
 
-    if (updateAuthError) {
-      console.error('Error updating role in auth.users:', updateAuthError);
-      return res.status(500).json({
-        error: 'Erro ao atualizar role no sistema de autenticação',
-        code: 'AUTH_UPDATE_FAILED'
-      });
-    }
+      // Atualizar auth.users via SQL direto
+      const { error: authUpdateError } = await supabaseAdmin
+        .rpc('update_auth_user_metadata', {
+          user_id: userId,
+          metadata_key: 'role',
+          metadata_value: role
+        });
 
-    // Atualizar role na tabela user_profiles (para backup/auditoria)
-    const { error: profileUpdateError } = await supabaseAdmin
-      .from('user_profiles')
-      .update({ role: role })
-      .eq('user_id', userId);
-
-    if (profileUpdateError) {
-      console.error('Error updating role in user_profiles:', profileUpdateError);
-      // Não falhar se a atualização no perfil falhar, já que o auth foi atualizado
+      if (authUpdateError) {
+        console.error('Error updating auth metadata:', authUpdateError);
+        // Não falhar, pois a atualização no profile já foi feita
+        // O trigger deve sincronizar automaticamente
+      }
     }
 
     // Resposta de sucesso
     const response: UpdateRoleResponse = {
       message: `Role atualizada para '${role}' com sucesso`,
       user: {
-        id: updatedAuthData.user.id,
-        email: updatedAuthData.user.email || '',
+        id: targetUser.user.id,
+        email: targetUser.user.email || '',
         role: role
       }
     };

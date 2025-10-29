@@ -15,6 +15,9 @@ import {
 import { adminService } from '../services/admin.service';
 import type { UserListItem } from '../services/admin.service';
 import type { User } from '../types/auth';
+import { ToastContainer } from '../components/Toast';
+import type { ToastType } from '../components/Toast';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 interface AdminPanelProps {
   user: User;
@@ -31,7 +34,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin' | 'premium'>('all');
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
+  const [pendingRoleUpdate, setPendingRoleUpdate] = useState<{ userId: string; role: 'user' | 'admin' | 'premium' } | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
   const [stats, setStats] = useState({
     total: 0,
     byRole: { user: 0, admin: 0, premium: 0 },
@@ -39,6 +44,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     unverified: 0,
     recentSignups: 0
   });
+
+  // Toast management
+  const showToast = (message: string, type: ToastType) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
 
   // Load users and stats
   useEffect(() => {
@@ -65,10 +80,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     }
   };
 
-  const handleUpdateRole = async (userId: string, newRole: 'user' | 'admin' | 'premium') => {
-    if (!window.confirm(`Tem certeza que deseja alterar a role deste usuário para "${newRole}"?`)) {
-      return;
-    }
+  const handleRoleChangeRequest = (userId: string, newRole: 'user' | 'admin' | 'premium') => {
+    setPendingRoleUpdate({ userId, role: newRole });
+  };
+
+  const handleConfirmRoleUpdate = async () => {
+    if (!pendingRoleUpdate) return;
+
+    const { userId, role: newRole } = pendingRoleUpdate;
 
     try {
       setIsUpdatingRole(true);
@@ -80,16 +99,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
       ));
 
       setSelectedUser(null);
-      alert('Role atualizada com sucesso!');
+      setPendingRoleUpdate(null);
+      showToast(`Role atualizada para "${newRole}" com sucesso!`, 'success');
 
       // Reload to update stats
       loadData();
     } catch (err) {
       console.error('Error updating role:', err);
-      alert(err instanceof Error ? err.message : 'Erro ao atualizar role');
+      showToast(err instanceof Error ? err.message : 'Erro ao atualizar role', 'error');
     } finally {
       setIsUpdatingRole(false);
     }
+  };
+
+  const handleCancelRoleUpdate = () => {
+    setPendingRoleUpdate(null);
   };
 
   // Filter users
@@ -131,7 +155,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-warm-bg py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -388,7 +412,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                   {(['user', 'premium', 'admin'] as const).map((role) => (
                     <button
                       key={role}
-                      onClick={() => handleUpdateRole(selectedUser.id, role)}
+                      onClick={() => handleRoleChangeRequest(selectedUser.id, role)}
                       disabled={isUpdatingRole || selectedUser.role === role}
                       className={`w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3 ${
                         selectedUser.role === role
@@ -418,6 +442,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
             </div>
           </div>
         )}
+
+        {/* Confirm Dialog */}
+        <ConfirmDialog
+          isOpen={!!pendingRoleUpdate}
+          title="Confirmar alteração de role"
+          message={`Tem certeza que deseja alterar a role deste usuário para "${pendingRoleUpdate?.role}"? O usuário precisará fazer logout e login para que as mudanças tenham efeito.`}
+          confirmText="Alterar Role"
+          cancelText="Cancelar"
+          onConfirm={handleConfirmRoleUpdate}
+          onCancel={handleCancelRoleUpdate}
+          type="warning"
+        />
+
+        {/* Toast Notifications */}
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       </div>
     </div>
   );

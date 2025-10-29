@@ -53,6 +53,52 @@ CREATE TRIGGER on_auth_user_updated
 -- Add helpful comment
 COMMENT ON COLUMN public.user_profiles.role IS 'User role: user (default), admin (full access), or premium (paid features)';
 
+-- Function to update user role (callable from API)
+CREATE OR REPLACE FUNCTION public.update_user_role(
+    target_user_id UUID,
+    new_role user_role
+)
+RETURNS VOID AS $$
+BEGIN
+    -- Update role in auth.users metadata
+    UPDATE auth.users
+    SET raw_user_meta_data = jsonb_set(
+        COALESCE(raw_user_meta_data, '{}'::jsonb),
+        '{role}',
+        to_jsonb(new_role::text)
+    )
+    WHERE id = target_user_id;
+
+    -- Update role in user_profiles (trigger will sync automatically, but doing it explicitly for safety)
+    UPDATE public.user_profiles
+    SET role = new_role,
+        updated_at = NOW()
+    WHERE user_id = target_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to update specific auth user metadata field
+CREATE OR REPLACE FUNCTION public.update_auth_user_metadata(
+    user_id UUID,
+    metadata_key TEXT,
+    metadata_value TEXT
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE auth.users
+    SET raw_user_meta_data = jsonb_set(
+        COALESCE(raw_user_meta_data, '{}'::jsonb),
+        ARRAY[metadata_key],
+        to_jsonb(metadata_value)
+    )
+    WHERE id = user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permissions to authenticated users (API will use service role)
+GRANT EXECUTE ON FUNCTION public.update_user_role TO service_role;
+GRANT EXECUTE ON FUNCTION public.update_auth_user_metadata TO service_role;
+
 -- Backfill existing users with their roles from auth.users
 DO $$
 DECLARE

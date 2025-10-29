@@ -44,7 +44,7 @@ const AboutPage: React.FC = React.memo(() => {
     {
       name: 'Dra. Alexia Machado',
       role: 'Fundadora & Head de Conteúdo',
-      description: 'Advogada autônoma com experiência em Direito Trabalhista, Previdenciário e do Consumidor.',
+      description: 'Advogada autônoma especializada em Direito Trabalhista, Previdenciário e do Consumidor.',
       image: 'https://SUPABASE_PROJECT_REF.supabase.co/storage/v1/object/public/avatars/team/alexia.jpg'
     },
     {
