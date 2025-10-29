@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import type { LoginModalProps, AuthFormData } from '../types/auth';
 import { useFormValidation } from '../hooks/useFormValidation';
+import { authService } from '../services/auth.service';
 
 /**
  * Modal component for user authentication (login/registration)
@@ -19,6 +20,9 @@ import { useFormValidation } from '../hooks/useFormValidation';
 const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onLogin }) => {
   const [isLogin, setIsLogin] = useState<boolean>(true);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [apiError, setApiError] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const [formData, setFormData] = useState<AuthFormData>({
     name: '',
     email: '',
@@ -49,10 +53,13 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     },
     password: {
       required: true,
-      minLength: 6,
+      minLength: 8,
       custom: (value: string) => {
         if (!value) return 'Senha é obrigatória';
-        if (value.length < 6) return 'Senha deve ter pelo menos 6 caracteres';
+        if (value.length < 8) return 'Senha deve ter pelo menos 8 caracteres';
+        if (!/[A-Z]/.test(value)) return 'Senha deve conter pelo menos uma letra maiúscula';
+        if (!/[a-z]/.test(value)) return 'Senha deve conter pelo menos uma letra minúscula';
+        if (!/[0-9]/.test(value)) return 'Senha deve conter pelo menos um número';
         return null;
       }
     },
@@ -100,12 +107,16 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
    * Handles form submission for both login and registration
    * @param {React.FormEvent} e - Form submission event
    */
-  const handleSubmit = useCallback((e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Limpar mensagens anteriores
+    setApiError('');
+    setSuccessMessage('');
+
     // Validate form using the new validation system
     const fieldsToValidate: Record<string, string> = {};
-    
+
     if (isLogin) {
       fieldsToValidate.email = formData.email || '';
       fieldsToValidate.password = formData.password || '';
@@ -115,18 +126,56 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
       fieldsToValidate.password = formData.password || '';
       fieldsToValidate.confirmPassword = formData.confirmPassword || '';
     }
-    
+
     if (!validateForm(fieldsToValidate)) {
       return;
     }
 
-    if (isLogin) {
-      onLogin(formData.email, formData.password);
-    } else {
-      // Registro - aqui você implementaria a lógica de registro
-      console.log('Registro:', formData);
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        // Login
+        const response = await authService.login({
+          email: formData.email,
+          password: formData.password
+        });
+
+        // Chamar callback de sucesso
+        onLogin(formData.email, formData.password);
+
+        // Fechar modal após sucesso
+        setTimeout(() => {
+          onClose();
+        }, 500);
+      } else {
+        // Registro
+        await authService.register({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name
+        });
+
+        // Mostrar mensagem de sucesso e trocar para modo login
+        setSuccessMessage('Conta criada com sucesso! Faça login para continuar.');
+
+        // Limpar senha e alternar para login após 2 segundos
+        setTimeout(() => {
+          setSuccessMessage('');
+          setIsLogin(true);
+          setFormData({
+            ...formData,
+            password: '',
+            confirmPassword: ''
+          });
+        }, 2000);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao processar requisição';
+      setApiError(message);
+    } finally {
+      setIsLoading(false);
     }
-    onClose();
   }, [isLogin, formData, validateForm, onLogin, onClose]);
 
   /**
@@ -212,6 +261,21 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
             }
           </p>
         </div>
+
+        {/* Mensagens de Erro e Sucesso */}
+        {apiError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2" role="alert">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-sm text-red-800">{apiError}</p>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2" role="alert">
+            <AlertCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-sm text-green-800">{successMessage}</p>
+          </div>
+        )}
 
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -308,7 +372,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
             )}
             {!errors.password && !isLogin && (
               <p id="password-help" className="mt-1 text-sm text-gray-500">
-                Mínimo de 6 caracteres
+                Mínimo 8 caracteres, incluindo maiúscula, minúscula e número
               </p>
             )}
           </div>
@@ -343,9 +407,11 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
 
           <button
             type="submit"
-            className="w-full btn-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            disabled={isLoading}
+            className="w-full btn-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {isLogin ? 'Entrar' : 'Criar Conta'}
+            {isLoading && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
+            {isLoading ? 'Processando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
           </button>
         </form>
 
