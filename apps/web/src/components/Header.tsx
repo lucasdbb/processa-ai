@@ -51,9 +51,9 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               aria-label="Processa AI - Página inicial"
             >
               <img 
-                src="/logo.svg" 
+                src="/logo.png" 
                 alt="Processa AI - Plataforma de soluções jurídicas com inteligência artificial" 
-                className="h-12 w-auto object-contain" 
+                className="h-20 w-auto object-contain" 
               />
             </Link>
           </div>

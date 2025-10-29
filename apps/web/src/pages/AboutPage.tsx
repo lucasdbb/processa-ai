@@ -44,22 +44,16 @@ const AboutPage: React.FC = React.memo(() => {
 
   const team = [
     {
-      name: 'Dr. João Silva',
-      role: 'CEO & Fundador',
-      description: 'Advogado com 15 anos de experiência em Direito Trabalhista.',
-      image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop'
+      name: 'Dra. Alexia Machado',
+      role: 'Fundadora & Head de Conteúdo',
+      description: 'Advogada autônoma com experiência em Direito Trabalhista, Previdenciário e do Consumidor.',
+      image: 'https://SUPABASE_PROJECT_REF.supabase.co/storage/v1/object/public/avatars/team/alexia.jpg'
     },
     {
-      name: 'Dra. Maria Santos',
-      role: 'CTO',
+      name: 'Marcelo Cardozo',
+      role: 'Fundador & CTO',
       description: 'Especialista em Tecnologia Jurídica e Inteligência Artificial.',
-      image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop'
-    },
-    {
-      name: 'Dr. Carlos Oliveira',
-      role: 'Head de Conteúdo',
-      description: 'Especialista em Direito Previdenciário e autor de diversos artigos.',
-      image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop'
+      image: 'https://SUPABASE_PROJECT_REF.supabase.co/storage/v1/object/public/avatars/team/marcelo.jpg'
     }
   ];
 
@@ -118,7 +112,7 @@ const AboutPage: React.FC = React.memo(() => {
               <div className="space-y-4 text-gray-600 leading-relaxed">
                 <p>
                   A <strong className="text-primary-700">Processa AI</strong> nasceu da necessidade
-                  de modernizar e otimizar o trabalho dos profissionais do direito. Fundada em 2023
+                  de modernizar e otimizar o trabalho dos profissionais do direito. Fundada em 2025
                   por advogados que enfrentavam diariamente os desafios da rotina jurídica, nossa
                   missão é trazer tecnologia de ponta para simplificar processos e aumentar a
                   produtividade.
@@ -143,7 +137,7 @@ const AboutPage: React.FC = React.memo(() => {
                 loading="lazy"
               />
               <div className="absolute -bottom-6 -left-6 bg-secondary-600 text-white p-6 rounded-xl shadow-lg">
-                <p className="text-3xl font-bold">2023</p>
+                <p className="text-3xl font-bold">2025</p>
                 <p className="text-sm">Ano de Fundação</p>
               </div>
             </div>
@@ -211,7 +205,7 @@ const AboutPage: React.FC = React.memo(() => {
         </section>
 
         {/* Conquistas */}
-        <section className="mb-16">
+        {/* <section className="mb-16">
           <div className="bg-gradient-to-br from-primary-800 to-primary-900 rounded-2xl p-12 text-white">
             <h2 className="text-3xl font-bold mb-8 text-center">Nossas Conquistas</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -226,12 +220,22 @@ const AboutPage: React.FC = React.memo(() => {
               ))}
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* Nossa Equipe */}
         <section className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Conheça Nossa Equipe</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div
+            className={`grid grid-cols-1 gap-8 ${
+              team.length === 1
+                ? 'md:grid-cols-1 max-w-md mx-auto'
+                : team.length === 2
+                ? 'md:grid-cols-2 max-w-4xl mx-auto'
+                : team.length === 3
+                ? 'md:grid-cols-3'
+                : 'md:grid-cols-2 lg:grid-cols-4'
+            }`}
+          >
             {team.map((member, index) => (
               <div key={index} className="card text-center hover:shadow-xl transition-shadow duration-300">
                 <img
