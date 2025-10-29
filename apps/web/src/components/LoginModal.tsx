@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
-import type { LoginModalProps, AuthFormData } from '../types/auth';
+import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2, FileText } from 'lucide-react';
+import type { LoginModalProps, AuthFormData, DocumentType } from '../types/auth';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { authService, AuthError } from '../services/auth.service';
+import { cpfMask, cnpjMask, isValidCpf, isValidCnpj } from '../utils/masks';
 
 /**
  * Modal component for user authentication (login/registration)
@@ -23,11 +24,14 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
+  const [documentType, setDocumentType] = useState<DocumentType>('cpf');
   const [formData, setFormData] = useState<AuthFormData>({
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    documentType: 'cpf',
+    documentNumber: ''
   });
 
   // Form validation setup
@@ -68,6 +72,19 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
       custom: (value: string) => {
         if (!isLogin && value !== formData.password) {
           return 'Senhas não coincidem';
+        }
+        return null;
+      }
+    },
+    documentNumber: {
+      required: !isLogin,
+      custom: (value: string) => {
+        if (isLogin) return null; // Não validar no login
+        if (!value || value.trim() === '') return 'Documento é obrigatório';
+
+        const isValid = documentType === 'cpf' ? isValidCpf(value) : isValidCnpj(value);
+        if (!isValid) {
+          return documentType === 'cpf' ? 'CPF inválido' : 'CNPJ inválido';
         }
         return null;
       }
@@ -125,6 +142,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
       fieldsToValidate.email = formData.email || '';
       fieldsToValidate.password = formData.password || '';
       fieldsToValidate.confirmPassword = formData.confirmPassword || '';
+      fieldsToValidate.documentNumber = formData.documentNumber || '';
     }
 
     if (!validateForm(fieldsToValidate)) {
@@ -156,7 +174,9 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
         await authService.register({
           email: formData.email,
           password: formData.password,
-          name: formData.name
+          name: formData.name,
+          documentType: formData.documentType,
+          documentNumber: formData.documentNumber
         });
 
         // Mostrar mensagem de sucesso e trocar para modo login
@@ -191,16 +211,33 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
    */
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    // Aplicar máscara se for campo de documento
+    let processedValue = value;
+    if (name === 'documentNumber') {
+      processedValue = documentType === 'cpf' ? cpfMask(value) : cnpjMask(value);
+    }
+
     setFormData({
       ...formData,
-      [name]: value
+      [name]: processedValue
     });
 
     // Clear field error when user starts typing
     if (errors[name as keyof typeof errors]) {
       clearFieldError(name);
     }
-  }, [formData, errors, clearFieldError]);
+  }, [formData, errors, clearFieldError, documentType]);
+
+  const handleDocumentTypeChange = useCallback((type: DocumentType) => {
+    setDocumentType(type);
+    setFormData({
+      ...formData,
+      documentType: type,
+      documentNumber: '' // Limpa o campo ao trocar tipo
+    });
+    clearFieldError('documentNumber');
+  }, [formData, clearFieldError]);
 
 
 
@@ -210,11 +247,14 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
   const handleModeToggle = useCallback(() => {
     setIsLogin(!isLogin);
     clearErrors();
+    setDocumentType('cpf');
     setFormData({
       name: '',
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      documentType: 'cpf',
+      documentNumber: ''
     });
   }, [isLogin, clearErrors]);
 
@@ -340,6 +380,64 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
               </p>
             )}
           </div>
+
+          {/* Campo de Documento (CPF/CNPJ) - Apenas no registro */}
+          {!isLogin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FileText className="h-4 w-4 inline mr-1" aria-hidden="true" />
+                Documento
+              </label>
+
+              <div className="flex gap-2">
+                {/* Toggle CPF/CNPJ */}
+                <div className="flex gap-2 w-1/3">
+                  <button
+                    type="button"
+                    onClick={() => handleDocumentTypeChange('cpf')}
+                    className={`flex-1 py-2 px-3 rounded-md font-medium text-sm transition-all duration-200 ${
+                      documentType === 'cpf'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    CPF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDocumentTypeChange('cnpj')}
+                    className={`flex-1 py-2 px-3 rounded-md font-medium text-sm transition-all duration-200 ${
+                      documentType === 'cnpj'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    CNPJ
+                  </button>
+                </div>
+
+                {/* Campo de documento */}
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    id="documentNumber"
+                    name="documentNumber"
+                    value={formData.documentNumber}
+                    onChange={handleInputChange}
+                    placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                    className={`input-field w-full ${errors.documentNumber ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    aria-describedby={errors.documentNumber ? 'document-error' : undefined}
+                    aria-invalid={!!errors.documentNumber}
+                  />
+                </div>
+              </div>
+              {errors.documentNumber && (
+                <p id="document-error" className="mt-1 text-sm text-red-600" role="alert">
+                  {errors.documentNumber}
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">

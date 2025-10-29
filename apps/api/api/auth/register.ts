@@ -8,6 +8,8 @@ interface RegisterRequest {
   email: string;
   password: string;
   name?: string;
+  documentType?: string;
+  documentNumber?: string;
 }
 
 interface RegisterResponse {
@@ -25,11 +27,19 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
   }
 
   try {
-    const { email, password, name }: RegisterRequest = req.body;
+    const { email, password, name, documentType, documentNumber }: RegisterRequest = req.body;
 
     // Validação de campos obrigatórios
     if (!email || !password) {
       return res.status(400).json(CommonErrors.MISSING_FIELDS(['email', 'password']));
+    }
+
+    // Validação de documento (obrigatório)
+    if (!documentNumber || !documentType) {
+      return res.status(400).json({
+        error: 'CPF ou CNPJ é obrigatório',
+        code: 'DOCUMENT_REQUIRED'
+      });
     }
 
     // Validação de email
@@ -47,6 +57,30 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
       return res.status(400).json({
         error: passwordValidation.error,
         code: passwordValidation.code
+      });
+    }
+
+    // Verificar se o documento já existe
+    const cleanDocument = documentNumber.replace(/\D/g, ''); // Remove máscaras
+    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('document_number')
+      .eq('document_number', cleanDocument)
+      .single();
+
+    if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+      // PGRST116 = not found, que é o que queremos
+      console.error('Error checking document:', profileCheckError);
+      return res.status(500).json({
+        error: 'Erro ao verificar documento',
+        code: 'DOCUMENT_CHECK_FAILED'
+      });
+    }
+
+    if (existingProfile) {
+      return res.status(400).json({
+        error: documentType === 'cpf' ? 'CPF já cadastrado' : 'CNPJ já cadastrado',
+        code: 'DOCUMENT_ALREADY_EXISTS'
       });
     }
 
@@ -71,6 +105,28 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
         error: 'Falha na criação do usuário',
         code: 'USER_CREATION_FAILED'
       });
+    }
+
+    // Salvar/atualizar documento na tabela user_profiles
+    // Usa UPSERT para atualizar se o trigger já criou o registro
+    try {
+      const { error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .upsert({
+          user_id: data.user.id,
+          full_name: name || email.split('@')[0],
+          document_type: documentType,
+          document_number: documentNumber.replace(/\D/g, '') // Remove máscaras
+        }, {
+          onConflict: 'user_id' // Atualiza se já existir baseado no user_id
+        });
+
+      if (profileError) {
+        console.error('Error creating/updating user profile:', profileError);
+        // Não falhar o registro se o perfil não for criado/atualizado
+      }
+    } catch (profileErr) {
+      console.error('Unexpected error creating/updating profile:', profileErr);
     }
 
     // Resposta de sucesso

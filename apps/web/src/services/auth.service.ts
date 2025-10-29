@@ -15,6 +15,8 @@ export interface RegisterData {
   email: string;
   password: string;
   name?: string;
+  documentType?: string;
+  documentNumber?: string;
 }
 
 export interface LoginData {
@@ -262,6 +264,12 @@ class AuthService {
     }
 
     const userResponse: UserResponse = await response.json();
+
+    // Validate that we received valid user data
+    if (!userResponse || !userResponse.id || !userResponse.email) {
+      console.error('Invalid user response:', userResponse);
+      throw new Error('Dados do usuário inválidos');
+    }
 
     // Convert UserResponse to User format
     return {

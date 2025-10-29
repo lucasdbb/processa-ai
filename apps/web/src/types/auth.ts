@@ -29,6 +29,10 @@ export interface AuthFormData {
   password: string;
   /** Password confirmation (required for registration) */
   confirmPassword: string;
+  /** Document type (CPF or CNPJ) - required for registration */
+  documentType?: DocumentType;
+  /** Document number - required for registration */
+  documentNumber?: string;
 }
 
 /**
@@ -43,6 +47,8 @@ export interface AuthFormErrors {
   password?: string;
   /** Confirm password field validation error */
   confirmPassword?: string;
+  /** Document number validation error */
+  documentNumber?: string;
   /** General form error (e.g., server errors) */
   general?: string;
 }
