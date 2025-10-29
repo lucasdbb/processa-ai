@@ -4,6 +4,7 @@
  */
 
 import type { User, UserRole } from '../types/auth';
+import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeDocument } from '../utils/sanitize';
 
 // Base URL da API (sem /api no final)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -167,12 +168,20 @@ class AuthService {
    */
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
+      // Sanitizar dados de entrada
+      const sanitizedData: RegisterData = {
+        email: sanitizeEmail(data.email),
+        password: data.password, // Senha não precisa de sanitização (apenas validação)
+        name: data.name ? sanitizeName(data.name) : undefined,
+        documentType: data.documentType,
+        documentNumber: data.documentNumber ? sanitizeDocument(data.documentNumber) : undefined,
+      };
 
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: this.createHeaders(false),
         credentials: 'include', // Incluir cookies automaticamente
-        body: JSON.stringify(data),
+        body: JSON.stringify(sanitizedData),
       });
 
       if (!response.ok) {
@@ -207,12 +216,17 @@ class AuthService {
    */
   async login(data: LoginData): Promise<AuthResponse> {
     try {
-      
+      // Sanitizar email
+      const sanitizedData: LoginData = {
+        email: sanitizeEmail(data.email),
+        password: data.password, // Senha não precisa de sanitização
+      };
+
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: this.createHeaders(false),
         credentials: 'include', // Incluir cookies automaticamente
-        body: JSON.stringify(data),
+        body: JSON.stringify(sanitizedData),
       });
 
       if (!response.ok) {
@@ -378,12 +392,21 @@ class AuthService {
     }
 
     try {
-      
+      // Sanitizar dados de entrada
+      const sanitizedData: UpdateProfileData = {
+        name: data.name ? sanitizeName(data.name) : undefined,
+        email: data.email ? sanitizeEmail(data.email) : undefined,
+        avatar_url: data.avatar_url, // URLs são validadas pelo backend
+        phone: data.phone ? sanitizePhone(data.phone) : undefined,
+        documentType: data.documentType,
+        documentNumber: data.documentNumber ? sanitizeDocument(data.documentNumber) : undefined,
+      };
+
       const response = await fetch(`${API_URL}/auth/update-profile`, {
         method: 'PUT',
         headers: this.createHeaders(true),
         credentials: 'include', // Incluir cookies automaticamente
-        body: JSON.stringify(data),
+        body: JSON.stringify(sanitizedData),
       });
 
       if (!response.ok) {

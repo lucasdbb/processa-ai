@@ -4,6 +4,7 @@ import type { LoginModalProps, AuthFormData, DocumentType } from '../types/auth'
 import { useFormValidation } from '../hooks/useFormValidation';
 import { authService, AuthError } from '../services/auth.service';
 import { cpfMask, cnpjMask, isValidCpf, isValidCnpj } from '../utils/masks';
+import { sanitizeName, sanitizeEmail, sanitizeDocument } from '../utils/sanitize';
 
 /**
  * Modal component for user authentication (login/registration)
@@ -212,10 +213,18 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    // Aplicar máscara se for campo de documento
+    // Sanitizar e processar valor
     let processedValue = value;
-    if (name === 'documentNumber') {
-      processedValue = documentType === 'cpf' ? cpfMask(value) : cnpjMask(value);
+
+    // Aplicar sanitização específica por tipo de campo
+    if (name === 'name') {
+      processedValue = sanitizeName(value);
+    } else if (name === 'email') {
+      processedValue = sanitizeEmail(value);
+    } else if (name === 'documentNumber') {
+      // Sanitizar antes de aplicar máscara
+      const sanitized = sanitizeDocument(value);
+      processedValue = documentType === 'cpf' ? cpfMask(sanitized) : cnpjMask(sanitized);
     }
 
     setFormData({
