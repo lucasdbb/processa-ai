@@ -96,7 +96,7 @@ function App() {
       const response = await authService.updateProfile({
         name: updatedData.name,
         email: updatedData.email,
-        avatar: updatedData.avatar,
+        avatar_url: updatedData.avatar_url,
         phone: updatedData.phone
       });
 
@@ -106,7 +106,7 @@ function App() {
         email: response.user.email,
         name: response.user.name,
         role: response.user.role as 'admin' | 'user',
-        avatar: response.user.avatar,
+        avatar_url: response.user.avatar_url,
         phone: response.user.phone,
         createdAt: response.user.createdAt,
         emailVerified: response.user.emailVerified

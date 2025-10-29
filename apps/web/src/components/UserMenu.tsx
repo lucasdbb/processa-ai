@@ -91,9 +91,9 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) 
       >
         {/* User Avatar */}
         <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-medium overflow-hidden">
-          {user.avatar ? (
+          {user.avatar_url || user.avatar ? (
             <img 
-              src={user.avatar} 
+              src={user.avatar_url || user.avatar} 
               alt={`Avatar de ${displayName}`} 
               className="w-full h-full object-cover"
             />

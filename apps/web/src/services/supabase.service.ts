@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { authService } from './auth.service';
 
 // Configuração do cliente Supabase para o frontend
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -18,49 +19,69 @@ export class SupabaseStorageService {
   private static readonly MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
   /**
-   * Uploads an avatar image to Supabase Storage
+   * Uploads an avatar image via API endpoint
    * @param file - The image file to upload
    * @param userId - The user ID to associate with the avatar
    * @returns Promise with the public URL of the uploaded image
    */
   static async uploadAvatar(file: File, userId: string): Promise<string> {
     try {
-      // Validate file size
-      if (file.size > this.MAX_FILE_SIZE) {
-        throw new Error('File size exceeds 5MB limit');
+      console.log('Starting avatar upload via API:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        apiUrl: import.meta.env.VITE_API_URL
+      });
+
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      // Get auth token from auth service
+      const accessToken = authService.getAccessToken();
+      console.log('Auth token status:', { hasToken: !!accessToken });
+      
+      if (!accessToken) {
+        throw new Error('Usuário não autenticado');
       }
 
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        throw new Error('File must be an image');
+      const apiUrl = `${import.meta.env.VITE_API_URL}/api/auth/upload-avatar`;
+      console.log('Making request to:', apiUrl);
+
+      // Upload via API endpoint
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: formData,
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.log('Error response data:', errorData);
+        } catch (parseError) {
+          console.log('Failed to parse error response:', parseError);
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        throw new Error(errorData.error || `Upload failed with status ${response.status}`);
       }
 
-      // Generate unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const result = await response.json();
+      console.log('Upload successful via API:', result);
 
-      // Upload file to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from(this.AVATAR_BUCKET)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (error) {
-        console.error('Upload error:', error);
-        throw new Error(`Upload failed: ${error.message}`);
-      }
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(this.AVATAR_BUCKET)
-        .getPublicUrl(filePath);
-
-      return urlData.publicUrl;
+      return result.avatar_url;
     } catch (error) {
       console.error('Avatar upload error:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
       throw error;
     }
   }

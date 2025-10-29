@@ -99,25 +99,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         phone: cleanPhone.trim() === '' ? null : cleanPhone,
       };
 
-      console.log('[ProfileModal] Dados sendo enviados:', {
-        formDataPhone: formData.phone,
-        cleanPhone: cleanPhone,
-        phoneLength: formData.phone.length,
-        cleanPhoneLength: cleanPhone.length,
-        phoneTrimmed: formData.phone.trim(),
-        finalPhoneValue: updateData.phone,
-        isValidPhone: isValidPhone(formData.phone),
-        updateData,
-        stringifiedData: JSON.stringify(updateData)
-      });
-
-      console.log('[ProfileModal] Chamando onUpdateProfile com:', updateData);
-
       // If there's a new avatar, upload it to Supabase Storage
       if (avatarFile) {
         try {
+          console.log("Uploading avatar file:", avatarFile);
+          console.log("User ID:", user.id);
           const avatarUrl = await SupabaseStorageService.uploadAvatar(avatarFile, user.id);
-          updateData.avatar = avatarUrl;
+          updateData.avatar_url = avatarUrl;
         } catch (uploadError) {
           console.error('Erro ao fazer upload do avatar:', uploadError);
           alert('Erro ao fazer upload da imagem. Tente novamente.');
@@ -142,7 +130,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     setFormData({
       name: user.name,
       email: user.email,
-      phone: user.phone || '',
+      phone: user.phone ? phoneMask(user.phone) : '',
     });
     setAvatarFile(null);
     setAvatarPreview(null);
@@ -191,9 +179,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     alt="Preview do avatar" 
                     className="w-full h-full object-cover"
                   />
-                ) : user.avatar ? (
+                ) : user.avatar_url || user.avatar ? (
                   <img 
-                    src={user.avatar} 
+                    src={user.avatar_url || user.avatar} 
                     alt="Avatar do usuário" 
                     className="w-full h-full object-cover"
                   />

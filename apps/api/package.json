@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
-    "@vercel/node": "^3.0.0"
+    "@types/formidable": "^3.4.6",
+    "@vercel/node": "^3.0.0",
+    "formidable": "^3.5.4"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -22,7 +24,13 @@
   "engines": {
     "node": "20.x"
   },
-  "keywords": ["vercel", "functions", "supabase", "auth", "api"],
+  "keywords": [
+    "vercel",
+    "functions",
+    "supabase",
+    "auth",
+    "api"
+  ],
   "author": "Processa AI Team",
   "license": "MIT"
 }

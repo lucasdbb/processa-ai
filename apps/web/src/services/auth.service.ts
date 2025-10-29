@@ -41,6 +41,7 @@ export interface UserResponse {
   phone: string | null;
   name: string;
   role: string;
+  avatar_url?: string | null;
 }
 
 export interface ApiError {
@@ -52,7 +53,7 @@ export interface ApiError {
 export interface UpdateProfileData {
   name?: string;
   email?: string;
-  avatar?: string;
+  avatar_url?: string;
   phone?: string | null;
 }
 
@@ -62,7 +63,7 @@ export interface UpdateProfileResponse {
     email: string;
     name: string;
     role: string;
-    avatar?: string;
+    avatar_url?: string;
     phone?: string | null;
     createdAt: string;
     emailVerified: boolean;
@@ -256,18 +257,18 @@ class AuthService {
     }
 
     const userResponse: UserResponse = await response.json();
-    
+
     // Decode JWT to get user ID
     const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
     const userId = payload.sub || payload.user_id || '';
-    
+
     // Convert UserResponse to User format
     return {
       id: userId,
       email: userResponse.email,
       name: userResponse.name || userResponse.email.split('@')[0], // Use name from user_metadata or email prefix as fallback
       role: userResponse.role as UserRole,
-      avatar: undefined, // Avatar não está mais sendo retornado
+      avatar_url: userResponse.avatar_url || null, // Avatar URL from Supabase Storage
       createdAt: userResponse.confirmed_at || new Date().toISOString(),
       emailVerified: userResponse.confirmed_at !== null,
       phone: userResponse.phone
