@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Shield, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ProfileModal from './ProfileModal';
+import LogoutMenu from './LogoutMenu';
 import type { User as UserType } from '../types/auth';
 
 interface UserMenuProps {
@@ -17,6 +18,7 @@ interface UserMenuProps {
 const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [showLogoutMenu, setShowLogoutMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
@@ -177,7 +179,10 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) 
             <div className="border-t border-gray-100 my-1"></div>
 
             <button
-              onClick={() => handleMenuItemClick(onLogout)}
+              onClick={() => {
+                setIsOpen(false);
+                setShowLogoutMenu(true);
+              }}
               className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors duration-150 focus:outline-none focus:bg-red-50"
               role="menuitem"
             >
@@ -186,6 +191,14 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) 
             </button>
           </div>
         </div>
+      )}
+
+      {/* Logout Menu */}
+      {showLogoutMenu && (
+        <LogoutMenu
+          onLogout={onLogout}
+          onClose={() => setShowLogoutMenu(false)}
+        />
       )}
 
       {/* Profile Modal */}

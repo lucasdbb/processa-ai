@@ -258,7 +258,7 @@ class AuthService {
   }
 
   /**
-   * Faz logout do usuário
+   * Faz logout do usuário no dispositivo atual
    */
   async logout(): Promise<void> {
     if (!this.accessToken) {
@@ -274,6 +274,36 @@ class AuthService {
       });
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+    } finally {
+      this.clearTokens();
+    }
+  }
+
+  /**
+   * Faz logout do usuário em TODOS os dispositivos
+   * Invalida todas as sessões ativas
+   */
+  async logoutAll(): Promise<void> {
+    if (!this.accessToken) {
+      this.clearTokens();
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/auth/logout-all`, {
+        method: 'POST',
+        headers: this.createHeaders(true),
+        credentials: 'include', // Incluir cookies automaticamente
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao fazer logout em todos os dispositivos');
+      }
+
+      console.log('Logout realizado em todos os dispositivos');
+    } catch (error) {
+      console.error('Erro ao fazer logout global:', error);
+      throw error;
     } finally {
       this.clearTokens();
     }
