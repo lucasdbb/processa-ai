@@ -1,13 +1,14 @@
 import { VercelResponse } from '@vercel/node';
 import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/auth.js';
+import { supabaseAdmin } from '../../lib/supabase.js';
 import { CommonErrors } from '../../lib/errors.js';
 
 interface UserResponse {
-  user: {
-    id: string;
-    email: string;
-    role: string;
-  };
+  email: string;
+  confirmed_at: string | null;
+  phone: string | null;
+  name: string;
+  role: string;
 }
 
 const meHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
@@ -21,13 +22,38 @@ const meHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
       return res.status(401).json(CommonErrors.UNAUTHORIZED());
     }
 
-    // Resposta com informações do usuário
-    const response: UserResponse = {
-      user: {
-        id: req.user.id,
+    // Buscar dados completos do usuário usando o admin client
+    const { data, error } = await supabaseAdmin.auth.admin.getUserById(req.user.id);
+
+    if (error) {
+      console.error('Error fetching user details in /me:', error);
+      // Fallback para dados básicos se houver erro
+      const response: UserResponse = {
         email: req.user.email,
+        confirmed_at: null,
+        phone: null,
+        name: '',
         role: req.user.role
-      }
+      };
+      return res.status(200).json(response);
+    }
+
+    if (!data.user) {
+      return res.status(404).json({
+        error: 'Usuário não encontrado',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    const user = data.user;
+
+    // Resposta com apenas os campos solicitados
+    const response: UserResponse = {
+      email: user.email || '',
+      confirmed_at: user.confirmed_at || null,
+      phone: user.phone || null,
+      name: user.user_metadata?.name || '',
+      role: user.user_metadata?.role || 'user'
     };
 
     return res.status(200).json(response);
