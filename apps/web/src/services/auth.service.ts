@@ -47,6 +47,21 @@ export interface ApiError {
   details?: string;
 }
 
+/**
+ * Classe de erro customizada que preserva o código do erro da API
+ */
+export class AuthError extends Error {
+  public readonly code: string;
+  public readonly details?: string;
+
+  constructor(message: string, code: string, details?: string) {
+    super(message);
+    this.name = 'AuthError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
 class AuthService {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
@@ -110,7 +125,7 @@ class AuthService {
           error = { error: errorText || 'Erro ao criar conta', code: 'UNKNOWN_ERROR' };
         }
 
-        throw new Error(error.error || 'Erro ao criar conta');
+        throw new AuthError(error.error || 'Erro ao criar conta', error.code, error.details);
       }
 
       const result = await response.json();
@@ -161,7 +176,7 @@ class AuthService {
           error = { error: errorText || 'Erro ao fazer login', code: 'UNKNOWN_ERROR' };
         }
 
-        throw new Error(error.error || 'Erro ao fazer login');
+        throw new AuthError(error.error || 'Erro ao fazer login', error.code, error.details);
       }
 
       const result: AuthResponse = await response.json();

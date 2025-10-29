@@ -29,6 +29,15 @@ export const createErrorResponse = (
  */
 export const mapSupabaseError = (error: any): ApiError => {
   const message = error?.message || '';
+  const code = error?.code || '';
+
+  // Verificar primeiro pelo código específico do erro
+  if (code === 'email_exists' || message.includes('A user with this email address has already been registered')) {
+    return createErrorResponse(
+      'Este email já está cadastrado. Tente fazer login ou use outro email.',
+      'EMAIL_EXISTS'
+    );
+  }
 
   // Erros de autenticação
   if (message.includes('Invalid login credentials')) {

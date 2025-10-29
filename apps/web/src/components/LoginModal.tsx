@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import type { LoginModalProps, AuthFormData } from '../types/auth';
 import { useFormValidation } from '../hooks/useFormValidation';
-import { authService } from '../services/auth.service';
+import { authService, AuthError } from '../services/auth.service';
 
 /**
  * Modal component for user authentication (login/registration)
@@ -136,7 +136,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     try {
       if (isLogin) {
         // Login
-        const response = await authService.login({
+        await authService.login({
           email: formData.email,
           password: formData.password
         });
@@ -157,21 +157,25 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
         });
 
         // Mostrar mensagem de sucesso e trocar para modo login
-        setSuccessMessage('Conta criada com sucesso! Faça login para continuar.');
+        setSuccessMessage('Solicitação enviada com sucesso! Confirme o seu e-mail.');
 
-        // Limpar senha e alternar para login após 2 segundos
-        setTimeout(() => {
-          setSuccessMessage('');
-          setIsLogin(true);
-          setFormData({
-            ...formData,
-            password: '',
-            confirmPassword: ''
-          });
-        }, 2000);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao processar requisição';
+      let message = 'Erro ao processar requisição';
+      
+      if (error instanceof AuthError) {
+        message = error.message;
+        
+        // Se for erro de email já existente durante registro, sugerir login
+        if (error.code === 'EMAIL_EXISTS' && !isLogin) {
+          setApiError(message);          
+          setIsLoading(false);
+          return;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      
       setApiError(message);
     } finally {
       setIsLoading(false);
