@@ -8,6 +8,7 @@ interface UpdateProfileRequest {
   name?: string;
   email?: string;
   avatar?: string;
+  phone?: string | null;
 }
 
 interface UpdateProfileResponse {
@@ -17,6 +18,7 @@ interface UpdateProfileResponse {
     name: string;
     role: string;
     avatar?: string;
+    phone?: string | null;
     createdAt: string;
     emailVerified: boolean;
   };
@@ -34,10 +36,10 @@ const updateProfileHandler = async (req: AuthenticatedRequest, res: VercelRespon
       return res.status(401).json(CommonErrors.UNAUTHORIZED());
     }
 
-    const { name, email, avatar }: UpdateProfileRequest = req.body;
+    const { name, email, avatar, phone }: UpdateProfileRequest = req.body;
 
     // Validate that at least one field is provided
-    if (!name && !email && !avatar) {
+    if (!name && !email && !avatar && phone === undefined) {
       return res.status(400).json({
         error: 'Pelo menos um campo deve ser fornecido para atualização',
         code: 'NO_FIELDS_PROVIDED'
@@ -71,6 +73,10 @@ const updateProfileHandler = async (req: AuthenticatedRequest, res: VercelRespon
       userMetadataUpdate.avatar = avatar;
     }
 
+    if (phone !== undefined) {
+      userMetadataUpdate.phone = phone;
+    }
+
     // Update user metadata if there are changes
     if (Object.keys(userMetadataUpdate).length > 0) {
       updateData.user_metadata = userMetadataUpdate;
@@ -102,6 +108,7 @@ const updateProfileHandler = async (req: AuthenticatedRequest, res: VercelRespon
         name: data.user.user_metadata?.name || '',
         role: data.user.user_metadata?.role || 'user',
         avatar: data.user.user_metadata?.avatar,
+        phone: data.user.user_metadata?.phone || null,
         createdAt: data.user.created_at || '',
         emailVerified: data.user.email_confirmed_at !== null
       },
