@@ -36,7 +36,7 @@ export const validateEnvironment = (): Environment => {
     SUPABASE_URL: process.env.SUPABASE_URL!,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY!,
-    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
     NODE_ENV: (process.env.NODE_ENV as any) || 'production',
   };
 };

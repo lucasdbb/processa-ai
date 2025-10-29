@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createSupabaseClient } from './supabase.js';
 import { CommonErrors } from './errors.js';
-import { env } from './env.js';
 
 export interface AuthenticatedRequest extends VercelRequest {
   user?: {
@@ -58,16 +57,12 @@ export const withAuth = (handler: Handler<AuthenticatedRequest>): Handler => {
  */
 export const withCors = (handler: Handler): Handler => {
   return async (req: VercelRequest, res: VercelResponse) => {
-    const allowedOrigins = env.FRONTEND_URL.split(',').map(url => url.trim());
-    const origin = req.headers.origin || '';
-
-    // Se o origin está na lista de permitidos, usa ele; senão, usa o primeiro
-    const allowOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-
-    res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+    // Permitir qualquer origem para desenvolvimento/testes
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Nota: Access-Control-Allow-Credentials não pode ser usado com '*'
+    // res.setHeader('Access-Control-Allow-Credentials', 'true');
 
     // Responder a requisições OPTIONS
     if (req.method === 'OPTIONS') {
