@@ -1,8 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../../lib/supabase.js';
-import { withCors } from '../../lib/auth.js';
+import { withCors, compose } from '../../lib/auth.js';
 import { validateEmail, validatePassword } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
+import { withRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
 
 interface RegisterRequest {
   email: string;
@@ -148,4 +149,8 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
   }
 };
 
-export default withCors(registerHandler);
+// Aplicar Rate Limiting específico para registro (mais restritivo)
+export default compose(
+  withCors,
+  withRateLimit(rateLimitConfigs.register)
+)(registerHandler);

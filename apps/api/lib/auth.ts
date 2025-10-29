@@ -10,7 +10,7 @@ export interface AuthenticatedRequest extends VercelRequest {
   };
 }
 
-type Handler<T extends VercelRequest = VercelRequest> = (
+export type Handler<T extends VercelRequest = VercelRequest> = (
   req: T,
   res: VercelResponse
 ) => Promise<VercelResponse | void>;

@@ -1,8 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../../lib/supabase.js';
-import { withCors } from '../../lib/auth.js';
+import { withCors, compose } from '../../lib/auth.js';
 import { validateRefreshToken } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
+import { withRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
 
 interface RefreshRequest {
   refresh_token: string;
@@ -77,4 +78,8 @@ const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
   }
 };
 
-export default withCors(refreshHandler);
+// Aplicar Rate Limiting geral para refresh tokens
+export default compose(
+  withCors,
+  withRateLimit(rateLimitConfigs.general)
+)(refreshHandler);

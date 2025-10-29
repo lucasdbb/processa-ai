@@ -2,6 +2,7 @@ import { VercelResponse } from '@vercel/node';
 import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/auth.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { CommonErrors } from '../../lib/errors.js';
+import { withRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
 import formidable from 'formidable';
 import fs from 'fs';
 
@@ -125,4 +126,9 @@ const uploadAvatarHandler = async (req: AuthenticatedRequest, res: VercelRespons
   }
 };
 
-export default compose(withCors, withAuth)(uploadAvatarHandler);
+// Aplicar Rate Limiting para uploads (restritivo)
+export default compose(
+  withCors,
+  withAuth,
+  withRateLimit(rateLimitConfigs.upload)
+)(uploadAvatarHandler);

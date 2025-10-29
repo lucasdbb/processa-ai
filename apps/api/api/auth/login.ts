@@ -1,8 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../../lib/supabase.js';
-import { withCors } from '../../lib/auth.js';
+import { withCors, compose } from '../../lib/auth.js';
 import { validateEmail } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
+import { withEmailRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
 
 interface LoginRequest {
   email: string;
@@ -84,4 +85,8 @@ const loginHandler = async (req: VercelRequest, res: VercelResponse) => {
   }
 };
 
-export default withCors(loginHandler);
+// Aplicar Rate Limiting específico para login (por email + IP)
+export default compose(
+  withCors,
+  withEmailRateLimit(rateLimitConfigs.auth)
+)(loginHandler);
