@@ -91,11 +91,13 @@ function App() {
     if (!user) return;
     
     try {
+      
       // Call API to update user profile
       const response = await authService.updateProfile({
         name: updatedData.name,
         email: updatedData.email,
-        avatar: updatedData.avatar
+        avatar: updatedData.avatar,
+        phone: updatedData.phone
       });
 
       // Update local state with the response from the API
@@ -105,6 +107,7 @@ function App() {
         name: response.user.name,
         role: response.user.role as 'admin' | 'user',
         avatar: response.user.avatar,
+        phone: response.user.phone,
         createdAt: response.user.createdAt,
         emailVerified: response.user.emailVerified
       };

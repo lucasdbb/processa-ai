@@ -53,6 +53,7 @@ export interface UpdateProfileData {
   name?: string;
   email?: string;
   avatar?: string;
+  phone?: string | null;
 }
 
 export interface UpdateProfileResponse {
@@ -62,6 +63,7 @@ export interface UpdateProfileResponse {
     name: string;
     role: string;
     avatar?: string;
+    phone?: string | null;
     createdAt: string;
     emailVerified: boolean;
   };
@@ -134,10 +136,6 @@ class AuthService {
    */
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      console.log('[AUTH] Iniciando registro:', {
-        email: data.email,
-        url: `${API_URL}/auth/register`
-      });
 
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
@@ -145,17 +143,9 @@ class AuthService {
         body: JSON.stringify(data),
       });
 
-      console.log('[AUTH] Resposta recebida:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[AUTH] Erro na resposta:', errorText);
-
+       
         let error: ApiError;
         try {
           error = JSON.parse(errorText);
@@ -167,13 +157,12 @@ class AuthService {
       }
 
       const result = await response.json();
-      console.log('[AUTH] Registro bem-sucedido');
-
+      
       // Note: O endpoint de registro não retorna tokens automaticamente
       // O usuário precisa fazer login após o registro
       return result;
     } catch (error) {
-      console.error('[AUTH] Erro capturado:', error);
+      
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Erro de conexão com o servidor. Verifique sua internet ou se a API está online.');
       }
@@ -186,27 +175,16 @@ class AuthService {
    */
   async login(data: LoginData): Promise<AuthResponse> {
     try {
-      console.log('[AUTH] Iniciando login:', {
-        email: data.email,
-        url: `${API_URL}/auth/login`
-      });
-
+      
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: this.createHeaders(false),
         body: JSON.stringify(data),
       });
 
-      console.log('[AUTH] Resposta recebida:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[AUTH] Erro na resposta:', errorText);
-
+        
         let error: ApiError;
         try {
           error = JSON.parse(errorText);
@@ -218,14 +196,13 @@ class AuthService {
       }
 
       const result: AuthResponse = await response.json();
-      console.log('[AUTH] Login bem-sucedido');
-
+     
       // Salvar tokens
       this.setTokens(result.session.access_token, result.session.refresh_token);
 
       return result;
     } catch (error) {
-      console.error('[AUTH] Erro capturado:', error);
+     
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Erro de conexão com o servidor. Verifique sua internet ou se a API está online.');
       }
@@ -331,25 +308,14 @@ class AuthService {
     }
 
     try {
-      console.log('[AUTH] Buscando detalhes do usuário:', {
-        url: `${API_URL}/auth/get-user-details`
-      });
-
       const response = await fetch(`${API_URL}/auth/get-user-details`, {
         method: 'GET',
         headers: this.createHeaders(true),
       });
 
-      console.log('[AUTH] Resposta dos detalhes:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[AUTH] Erro ao buscar detalhes:', errorText);
-
+        
         let error: ApiError;
         try {
           error = JSON.parse(errorText);
@@ -361,11 +327,10 @@ class AuthService {
       }
 
       const result = await response.json();
-      console.log('[AUTH] Detalhes do usuário obtidos com sucesso');
-
+      
       return result;
     } catch (error) {
-      console.error('[AUTH] Erro capturado ao buscar detalhes:', error);
+      
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Erro de conexão com o servidor. Verifique sua internet ou se a API está online.');
       }
@@ -382,29 +347,16 @@ class AuthService {
     }
 
     try {
-      console.log('[AUTH] Atualizando perfil:', {
-        hasName: !!data.name,
-        hasEmail: !!data.email,
-        hasAvatar: !!data.avatar,
-        url: `${API_URL}/auth/update-profile`
-      });
-
+      
       const response = await fetch(`${API_URL}/auth/update-profile`, {
         method: 'PUT',
         headers: this.createHeaders(true),
         body: JSON.stringify(data),
       });
 
-      console.log('[AUTH] Resposta da atualização:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[AUTH] Erro na atualização:', errorText);
-
+        
         let error: ApiError;
         try {
           error = JSON.parse(errorText);
@@ -416,11 +368,10 @@ class AuthService {
       }
 
       const result = await response.json();
-      console.log('[AUTH] Perfil atualizado com sucesso');
-
+     
       return result;
     } catch (error) {
-      console.error('[AUTH] Erro capturado na atualização:', error);
+
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Erro de conexão com o servidor. Verifique sua internet ou se a API está online.');
       }

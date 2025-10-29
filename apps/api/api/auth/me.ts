@@ -51,7 +51,7 @@ const meHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
     const response: UserResponse = {
       email: user.email || '',
       confirmed_at: user.confirmed_at || null,
-      phone: user.phone || null,
+      phone: user.user_metadata?.phone || null,
       name: user.user_metadata?.name || '',
       role: user.user_metadata?.role || 'user'
     };

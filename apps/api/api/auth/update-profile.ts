@@ -82,7 +82,6 @@ const updateProfileHandler = async (req: AuthenticatedRequest, res: VercelRespon
       updateData.user_metadata = userMetadataUpdate;
     }
 
-    // Update user in Supabase
     const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
       updateData

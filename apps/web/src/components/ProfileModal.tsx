@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { X, Camera, User as UserIcon, Mail, Calendar, Shield, Phone } from 'lucide-react';
 import type { User } from '../types/auth';
 import { SupabaseStorageService } from '../services/supabase.service';
+import { phoneMask, removePhoneMask, isValidPhone } from '../utils/masks';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const [formData, setFormData] = useState({
     name: user.name,
     email: user.email,
-    phone: user.phone || '',
+    phone: user.phone ? phoneMask(user.phone) : '',
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -49,9 +50,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    // Aplica máscara de telefone se o campo for phone
+    const processedValue = name === 'phone' ? phoneMask(value) : value;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
   }, []);
 
@@ -86,11 +91,28 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     setIsLoading(true);
 
     try {
+      // Remove a máscara do telefone antes de enviar
+      const cleanPhone = removePhoneMask(formData.phone);
+      
       const updateData: Partial<User> = {
         name: formData.name,
         email: formData.email,
-        phone: formData.phone || null,
+        phone: cleanPhone.trim() === '' ? null : cleanPhone,
       };
+
+      console.log('[ProfileModal] Dados sendo enviados:', {
+        formDataPhone: formData.phone,
+        cleanPhone: cleanPhone,
+        phoneLength: formData.phone.length,
+        cleanPhoneLength: cleanPhone.length,
+        phoneTrimmed: formData.phone.trim(),
+        finalPhoneValue: updateData.phone,
+        isValidPhone: isValidPhone(formData.phone),
+        updateData,
+        stringifiedData: JSON.stringify(updateData)
+      });
+
+      console.log('[ProfileModal] Chamando onUpdateProfile com:', updateData);
 
       // If there's a new avatar, upload it to Supabase Storage
       if (avatarFile) {
@@ -103,7 +125,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           return;
         }
       }
-
+      
       await onUpdateProfile(updateData);
       setIsEditing(false);
       setAvatarFile(null);
@@ -258,10 +280,21 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 onChange={handleInputChange}
                 disabled={!isEditing}
                 placeholder="(11) 99999-9999"
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  !isEditing ? 'bg-gray-50 text-gray-600' : ''
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent ${
+                  !isEditing 
+                    ? 'bg-gray-50 text-gray-600 border-gray-300' 
+                    : formData.phone && !isValidPhone(formData.phone)
+                      ? 'border-red-300 focus:ring-red-500'
+                      : formData.phone && isValidPhone(formData.phone)
+                        ? 'border-green-300 focus:ring-green-500'
+                        : 'border-gray-300 focus:ring-primary-500'
                 }`}
               />
+              {isEditing && formData.phone && !isValidPhone(formData.phone) && (
+                <p className="mt-1 text-sm text-red-600">
+                  Telefone deve ter 11 dígitos no formato (XX) XXXXX-XXXX
+                </p>
+              )}
             </div>
 
             {/* Role Field (Read-only) */}
