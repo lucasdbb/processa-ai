@@ -2,6 +2,7 @@ import { VercelResponse } from '@vercel/node';
 import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/auth.js';
 import { createSupabaseClient } from '../../lib/supabase.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
+import { logger, createRequestContext } from '../../lib/logger.js';
 
 const logoutHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
   if (req.method !== 'POST') {
@@ -22,7 +23,8 @@ const logoutHandler = async (req: AuthenticatedRequest, res: VercelResponse) => 
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      console.error('Logout error:', error);
+      const context = createRequestContext(req);
+      logger.error('Logout error', context, error as Error);
       return res.status(400).json(mapSupabaseError(error));
     }
 
@@ -31,7 +33,8 @@ const logoutHandler = async (req: AuthenticatedRequest, res: VercelResponse) => 
     });
 
   } catch (error) {
-    console.error('Unexpected logout error:', error);
+    const context = createRequestContext(req);
+    logger.error('Unexpected logout error', context, error as Error);
     return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };

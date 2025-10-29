@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createSupabaseClient } from './supabase.js';
 import { CommonErrors } from './errors.js';
+import { logger, createRequestContext } from './logger.js';
 
 export interface AuthenticatedRequest extends VercelRequest {
   user?: {
@@ -45,7 +46,8 @@ export const withAuth = (handler: Handler<AuthenticatedRequest>): Handler => {
 
       return handler(req, res);
     } catch (error) {
-      console.error('Auth middleware error:', error);
+      const context = createRequestContext(req);
+      logger.error('Auth middleware error', context, error as Error);
       return res.status(500).json(CommonErrors.INTERNAL_ERROR());
     }
   };

@@ -4,6 +4,7 @@ import { withCors, compose } from '../../lib/auth.js';
 import { validateEmail } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 import { withEmailRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
+import { logger, createRequestContext } from '../../lib/logger.js';
 
 interface LoginRequest {
   email: string;
@@ -52,7 +53,8 @@ const loginHandler = async (req: VercelRequest, res: VercelResponse) => {
     });
 
     if (error) {
-      console.error('Login error:', error);
+      const context = createRequestContext(req);
+      logger.security('Login failed', { ...context, email }, { error: error.message });
       return res.status(401).json(mapSupabaseError(error));
     }
 
@@ -80,7 +82,8 @@ const loginHandler = async (req: VercelRequest, res: VercelResponse) => {
     return res.status(200).json(response);
 
   } catch (error) {
-    console.error('Unexpected login error:', error);
+    const context = createRequestContext(req);
+    logger.error('Unexpected login error', context, error as Error);
     return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };

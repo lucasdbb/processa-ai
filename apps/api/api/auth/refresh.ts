@@ -4,6 +4,7 @@ import { withCors, compose } from '../../lib/auth.js';
 import { validateRefreshToken } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 import { withRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
+import { logger, createRequestContext } from '../../lib/logger.js';
 
 interface RefreshRequest {
   refresh_token: string;
@@ -45,7 +46,8 @@ const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
     });
 
     if (error) {
-      console.error('Refresh token error:', error);
+      const context = createRequestContext(req);
+      logger.security('Refresh token failed', context, { error: error.message });
       return res.status(401).json(mapSupabaseError(error));
     }
 
@@ -73,7 +75,8 @@ const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
     return res.status(200).json(response);
 
   } catch (error) {
-    console.error('Unexpected refresh error:', error);
+    const context = createRequestContext(req);
+    logger.error('Unexpected refresh error', context, error as Error);
     return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };

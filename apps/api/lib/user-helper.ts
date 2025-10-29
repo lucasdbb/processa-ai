@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase.js';
+import { logger } from './logger.js';
 
 /**
  * Complete user data response interface
@@ -26,7 +27,7 @@ export async function getUserData(userId: string): Promise<UserData | null> {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
 
     if (authError || !authData.user) {
-      console.error('[getUserData] Error fetching auth data:', authError);
+      logger.error('Error fetching auth data', { userId }, authError as Error);
       return null;
     }
 
@@ -51,11 +52,11 @@ export async function getUserData(userId: string): Promise<UserData | null> {
             .getPublicUrl(avatarFile.name);
 
           avatarUrl = urlData.publicUrl;
-          console.log('[getUserData] Avatar found:', avatarFile.name);
+          logger.info('Avatar found', { userId }, { avatarName: avatarFile.name });
         }
       }
     } catch (error) {
-      console.error('[getUserData] Error fetching avatar:', error);
+      logger.error('Error fetching avatar', { userId }, error as Error);
     }
 
     // Fetch user profile data (document_type, document_number, role, etc.)
@@ -74,10 +75,14 @@ export async function getUserData(userId: string): Promise<UserData | null> {
         documentType = profileData.document_type;
         documentNumber = profileData.document_number;
         profileRole = profileData.role;
-        console.log('[getUserData] Profile data found:', { documentType, documentNumber: documentNumber ? '***' : null, role: profileRole });
+        logger.info('Profile data found', { userId }, { 
+          documentType, 
+          documentNumber: documentNumber ? '***' : null, 
+          role: profileRole 
+        });
       }
     } catch (error) {
-      console.error('[getUserData] Error fetching profile data:', error);
+      logger.error('Error fetching profile data', { userId }, error as Error);
     }
 
     // Build complete user data response
@@ -97,7 +102,7 @@ export async function getUserData(userId: string): Promise<UserData | null> {
     return userData;
 
   } catch (error) {
-    console.error('[getUserData] Unexpected error:', error);
+    logger.error('Unexpected error in getUserData', { userId }, error as Error);
     return null;
   }
 }

@@ -3,6 +3,7 @@ import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/aut
 import { supabaseAdmin } from '../../lib/supabase.js';
 import { CommonErrors } from '../../lib/errors.js';
 import { withRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
+import { logger, createRequestContext } from '../../lib/logger.js';
 import formidable from 'formidable';
 import fs from 'fs';
 
@@ -74,11 +75,15 @@ const uploadAvatarHandler = async (req: AuthenticatedRequest, res: VercelRespons
           await supabaseAdmin.storage
             .from('avatars')
             .remove([existingAvatar.name]);
-          console.log('Removed existing avatar:', existingAvatar.name);
+          const context = createRequestContext(req);
+          logger.info('Removed existing avatar', context, { avatarName: existingAvatar.name });
         }
       }
     } catch (error) {
-      console.warn('Could not remove existing avatar:', error);
+      const context = createRequestContext(req);
+      logger.warn('Could not remove existing avatar', context, { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
 
     // Upload file to Supabase Storage using admin client
@@ -91,7 +96,8 @@ const uploadAvatarHandler = async (req: AuthenticatedRequest, res: VercelRespons
       });
 
     if (error) {
-      console.error('Upload error:', error);
+      const context = createRequestContext(req);
+      logger.error('Upload error', context, error as Error);
       return res.status(400).json({
         error: `Upload failed: ${error.message}`,
         code: 'UPLOAD_FAILED'
@@ -121,7 +127,8 @@ const uploadAvatarHandler = async (req: AuthenticatedRequest, res: VercelRespons
     return res.status(200).json(response);
 
   } catch (error) {
-    console.error('Avatar upload error:', error);
+    const context = createRequestContext(req);
+    logger.error('Avatar upload error', context, error as Error);
     return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };

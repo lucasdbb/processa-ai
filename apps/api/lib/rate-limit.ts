@@ -5,6 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { Handler } from './auth';
+import { logger, createRequestContext } from './logger.js';
 
 interface RateLimitEntry {
   count: number;
@@ -123,13 +124,12 @@ export const withRateLimit = (config: RateLimitConfig) => {
         const remainingTime = Math.ceil((entry.resetTime - now) / 1000);
         
         // Log de segurança
-        console.warn(`Rate limit exceeded for ${key}:`, {
-          ip: getClientIP(req),
-          endpoint: req.url,
+        const context = createRequestContext(req);
+        logger.security('Rate limit exceeded', context, {
+          key,
           count: entry.count,
           limit: config.maxRequests,
-          userAgent: req.headers['user-agent'],
-          timestamp: new Date().toISOString()
+          endpoint: req.url
         });
         
         res.status(429).json({

@@ -2,6 +2,7 @@ import { VercelResponse } from '@vercel/node';
 import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/auth.js';
 import { CommonErrors } from '../../lib/errors.js';
 import { getUserData } from '../../lib/user-helper.js';
+import { logger, createRequestContext } from '../../lib/logger.js';
 
 const meHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
   if (req.method !== 'GET') {
@@ -19,7 +20,8 @@ const meHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
 
     // If unable to fetch user data, return error
     if (!userData) {
-      console.error('[/me] Failed to fetch user data for:', req.user.id);
+      const context = createRequestContext(req);
+      logger.error('Failed to fetch user data', context, undefined, { userId: req.user.id });
       return res.status(500).json({
         error: 'Erro ao carregar dados do usuário',
         code: 'USER_DATA_FETCH_FAILED'
@@ -29,7 +31,8 @@ const meHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
     return res.status(200).json(userData);
 
   } catch (error) {
-    console.error('Unexpected me error:', error);
+    const context = createRequestContext(req);
+    logger.error('Unexpected me error', context, error as Error);
     return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };

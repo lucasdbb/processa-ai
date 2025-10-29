@@ -4,6 +4,7 @@ import { withCors, compose } from '../../lib/auth.js';
 import { validateEmail, validatePassword } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 import { withRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
+import { logger, createRequestContext } from '../../lib/logger.js';
 
 interface RegisterRequest {
   email: string;
@@ -71,7 +72,8 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
 
     if (profileCheckError && profileCheckError.code !== 'PGRST116') {
       // PGRST116 = not found, que é o que queremos
-      console.error('Error checking document:', profileCheckError);
+      const context = createRequestContext(req);
+      logger.error('Error checking document', context, profileCheckError as Error);
       return res.status(500).json({
         error: 'Erro ao verificar documento',
         code: 'DOCUMENT_CHECK_FAILED'
@@ -97,7 +99,8 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
     });
 
     if (error) {
-      console.error('Registration error:', error);
+      const context = createRequestContext(req);
+      logger.security('Registration failed', { ...context, email }, { error: error.message });
       return res.status(400).json(mapSupabaseError(error));
     }
 
@@ -124,11 +127,13 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
         });
 
       if (profileError) {
-        console.error('Error creating/updating user profile:', profileError);
+        const context = createRequestContext(req);
+        logger.error('Error creating/updating user profile', context, profileError as Error);
         // Não falhar o registro se o perfil não for criado/atualizado
       }
     } catch (profileErr) {
-      console.error('Unexpected error creating/updating profile:', profileErr);
+      const context = createRequestContext(req);
+      logger.error('Unexpected error creating/updating profile', context, profileErr as Error);
     }
 
     // Resposta de sucesso
@@ -144,7 +149,8 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
     return res.status(201).json(response);
 
   } catch (error) {
-    console.error('Unexpected registration error:', error);
+    const context = createRequestContext(req);
+    logger.error('Unexpected registration error', context, error as Error);
     return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };
