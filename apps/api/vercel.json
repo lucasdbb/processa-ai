@@ -8,6 +8,52 @@
       "memory": 1024
     }
   },
+  "rewrites": [
+    {
+      "source": "/auth/login",
+      "destination": "/api/auth/session?action=login"
+    },
+    {
+      "source": "/auth/register",
+      "destination": "/api/auth/session?action=register"
+    },
+    {
+      "source": "/auth/refresh",
+      "destination": "/api/auth/session?action=refresh"
+    },
+    {
+      "source": "/auth/logout",
+      "destination": "/api/auth/session?action=logout"
+    },
+    {
+      "source": "/auth/logout-all",
+      "destination": "/api/auth/session?action=logout-all"
+    },
+    {
+      "source": "/auth/me",
+      "destination": "/api/auth/profile"
+    },
+    {
+      "source": "/auth/get-user-details",
+      "destination": "/api/auth/profile?details=true"
+    },
+    {
+      "source": "/auth/update-profile",
+      "destination": "/api/auth/profile"
+    },
+    {
+      "source": "/auth/upload-avatar",
+      "destination": "/api/auth/profile?action=upload-avatar"
+    },
+    {
+      "source": "/auth/list-users",
+      "destination": "/api/auth/admin?action=list-users"
+    },
+    {
+      "source": "/auth/update-role",
+      "destination": "/api/auth/admin?action=update-role"
+    }
+  ],
   "env": {
     "NODE_ENV": "production"
   },
