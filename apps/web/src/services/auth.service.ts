@@ -115,20 +115,43 @@ class AuthService {
   private refreshToken: string | null = null;
 
   constructor() {
-    // Recuperar tokens do localStorage ao inicializar
+    // Migração: ainda verificar localStorage para compatibilidade durante transição
+    // mas priorizar cookies que são gerenciados automaticamente pelo navegador
     this.accessToken = localStorage.getItem('access_token');
     this.refreshToken = localStorage.getItem('refresh_token');
+    
+    // Se encontrou tokens no localStorage, fazer migração para cookies
+    if (this.accessToken || this.refreshToken) {
+      this.migrateToSecureCookies();
+    }
+  }
+
+  /**
+   * Migra tokens do localStorage para cookies seguros (executado uma vez)
+   */
+  private migrateToSecureCookies(): void {
+    // Limpar localStorage após migração
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    
+    // Os tokens agora serão gerenciados via cookies httpOnly pela API
+    // Não precisamos mais armazenar localmente
+    this.accessToken = null;
+    this.refreshToken = null;
   }
 
   /**
    * Cria headers padrão para requisições
+   * Nota: Authorization header não é mais necessário pois usamos cookies httpOnly
    */
   private createHeaders(includeAuth: boolean = false): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    // Adicionar token de autenticação se necessário
+    // Cookies são enviados automaticamente pelo navegador
+    // Não precisamos mais do Authorization header
+    // Mantido para compatibilidade durante transição
     if (includeAuth && this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`;
     }
@@ -148,6 +171,7 @@ class AuthService {
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: this.createHeaders(false),
+        credentials: 'include', // Incluir cookies automaticamente
         body: JSON.stringify(data),
       });
 
@@ -187,6 +211,7 @@ class AuthService {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: this.createHeaders(false),
+        credentials: 'include', // Incluir cookies automaticamente
         body: JSON.stringify(data),
       });
 
@@ -231,6 +256,7 @@ class AuthService {
       await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
         headers: this.createHeaders(true),
+        credentials: 'include', // Incluir cookies automaticamente
       });
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
@@ -240,27 +266,18 @@ class AuthService {
   }
 
   /**
-   * Obtém os dados do usuário autenticado
+   * Obtém informações do usuário atual
    */
   async getCurrentUser(): Promise<User> {
-    if (!this.accessToken) {
-      throw new Error('Usuário não autenticado');
-    }
-
     const response = await fetch(`${API_URL}/auth/me`, {
       method: 'GET',
-      headers: this.createHeaders(true),
+      credentials: 'include', // Incluir cookies automaticamente
+      headers: this.createHeaders(false), // Não incluir Authorization header, usar apenas cookies
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        // Token expirado, tentar renovar
-        await this.refreshAccessToken();
-        return this.getCurrentUser(); // Tentar novamente
-      }
-
       const error: ApiError = await response.json();
-      throw new Error(error.error || 'Erro ao obter dados do usuário');
+      throw new Error(error.error || 'Usuário não autenticado');
     }
 
     const userResponse: UserResponse = await response.json();
@@ -299,6 +316,7 @@ class AuthService {
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: this.createHeaders(false),
+      credentials: 'include', // Incluir cookies automaticamente
       body: JSON.stringify(data),
     });
 
@@ -323,6 +341,7 @@ class AuthService {
       const response = await fetch(`${API_URL}/auth/get-user-details`, {
         method: 'GET',
         headers: this.createHeaders(true),
+        credentials: 'include', // Incluir cookies automaticamente
       });
 
       if (!response.ok) {
@@ -363,6 +382,7 @@ class AuthService {
       const response = await fetch(`${API_URL}/auth/update-profile`, {
         method: 'PUT',
         headers: this.createHeaders(true),
+        credentials: 'include', // Incluir cookies automaticamente
         body: JSON.stringify(data),
       });
 
@@ -393,8 +413,22 @@ class AuthService {
 
   /**
    * Verifica se o usuário está autenticado
+   * Com cookies seguros, fazemos uma verificação assíncrona
    */
-  isAuthenticated(): boolean {
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      await this.getCurrentUser();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Versão síncrona para compatibilidade (deprecated)
+   * @deprecated Use isAuthenticated() async version instead
+   */
+  isAuthenticatedSync(): boolean {
     return !!this.accessToken;
   }
 

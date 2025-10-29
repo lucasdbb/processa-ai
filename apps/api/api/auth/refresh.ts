@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../../lib/supabase.js';
-import { withCors, compose } from '../../lib/auth.js';
+import { withCors, compose, setSecureCookies, extractRefreshToken } from '../../lib/auth.js';
 import { validateRefreshToken } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 import { withRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
@@ -29,7 +29,12 @@ const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
   }
 
   try {
-    const { refresh_token }: RefreshRequest = req.body;
+    // Tentar obter refresh token do cookie primeiro, depois do body
+    let refresh_token = extractRefreshToken(req);
+    if (!refresh_token) {
+      const body: RefreshRequest = req.body;
+      refresh_token = body.refresh_token;
+    }
 
     // Validação de refresh token
     const tokenValidation = validateRefreshToken(refresh_token);
@@ -57,6 +62,9 @@ const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
         code: 'REFRESH_FAILED'
       });
     }
+
+    // Definir cookies seguros
+    setSecureCookies(res, data.session.access_token, data.session.refresh_token);
 
     // Resposta de sucesso
     const response: RefreshResponse = {

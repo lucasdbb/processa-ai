@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../../lib/supabase.js';
-import { withCors, compose } from '../../lib/auth.js';
+import { withCors, compose, setSecureCookies } from '../../lib/auth.js';
 import { validateEmail } from '../../lib/validators.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 import { withEmailRateLimit, rateLimitConfigs } from '../../lib/rate-limit.js';
@@ -64,6 +64,9 @@ const loginHandler = async (req: VercelRequest, res: VercelResponse) => {
         code: 'AUTH_FAILED'
       });
     }
+
+    // Definir cookies seguros
+    setSecureCookies(res, data.session.access_token, data.session.refresh_token);
 
     // Resposta de sucesso
     const response: LoginResponse = {

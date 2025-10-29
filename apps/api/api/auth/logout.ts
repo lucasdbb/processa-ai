@@ -1,5 +1,5 @@
 import { VercelResponse } from '@vercel/node';
-import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/auth.js';
+import { AuthenticatedRequest, compose, withAuth, withCors, clearSecureCookies } from '../../lib/auth.js';
 import { createSupabaseClient } from '../../lib/supabase.js';
 import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 import { logger, createRequestContext } from '../../lib/logger.js';
@@ -27,6 +27,9 @@ const logoutHandler = async (req: AuthenticatedRequest, res: VercelResponse) => 
       logger.error('Logout error', context, error as Error);
       return res.status(400).json(mapSupabaseError(error));
     }
+
+    // Limpar cookies seguros
+    clearSecureCookies(res);
 
     return res.status(200).json({
       message: 'Logout realizado com sucesso'

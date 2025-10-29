@@ -87,6 +87,7 @@ class AdminService {
     const response = await fetch(`${API_URL}/api/auth/list-users?${params}`, {
       method: 'GET',
       headers: this.createHeaders(true),
+      credentials: 'include', // Incluir cookies automaticamente
     });
 
     if (!response.ok) {
@@ -109,6 +110,7 @@ class AdminService {
     const response = await fetch(`${API_URL}/api/auth/update-role`, {
       method: 'PATCH',
       headers: this.createHeaders(true),
+      credentials: 'include', // Incluir cookies automaticamente
       body: JSON.stringify({ userId, role }),
     });
 
