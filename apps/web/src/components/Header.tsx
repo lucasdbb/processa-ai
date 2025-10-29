@@ -89,6 +89,13 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               Calculadoras
             </Link>
             <Link 
+              to="/planos" 
+              className={`${getLinkClasses('/planos')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              aria-current={isActive('/planos') ? 'page' : undefined}
+            >
+              Planos
+            </Link>
+            <Link 
               to="/sobre" 
               className={`${getLinkClasses('/sobre')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
               aria-current={isActive('/sobre') ? 'page' : undefined}
@@ -170,6 +177,14 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
                 aria-current={isActive('/calculadoras') ? 'page' : undefined}
               >
                 Calculadoras
+              </Link>
+              <Link
+                to="/planos"
+                className={`${getMobileLinkClasses('/planos')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                onClick={() => setIsMenuOpen(false)}
+                aria-current={isActive('/planos') ? 'page' : undefined}
+              >
+                Planos
               </Link>
               <Link
                 to="/sobre"

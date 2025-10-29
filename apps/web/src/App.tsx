@@ -11,6 +11,7 @@ import ToolsPage from './pages/ToolsPage';
 import CalculatorsPage from './pages/CalculatorsPage';
 import AboutPage from './pages/AboutPage';
 import AdminPanel from './pages/AdminPanel';
+import PlanosPage from './pages/PlanosPage';
 import { authService } from './services/auth.service';
 import type { User } from './types/auth';
 
@@ -199,6 +200,7 @@ function App() {
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/ferramentas" element={<ToolsPage />} />
               <Route path="/calculadoras" element={<CalculatorsPage />} />
+              <Route path="/planos" element={<PlanosPage />} />
               <Route path="/sobre" element={<AboutPage />} />
               {/* Rotas alternativas (aliases) para compatibilidade futura */}
               <Route path="/tools" element={<ToolsPage />} />
