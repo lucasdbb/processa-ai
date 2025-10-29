@@ -57,12 +57,37 @@ export const withAuth = (handler: Handler<AuthenticatedRequest>): Handler => {
  */
 export const withCors = (handler: Handler): Handler => {
   return async (req: VercelRequest, res: VercelResponse) => {
-    // Permitir qualquer origem para desenvolvimento/testes
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    
+    // Lista de origens permitidas baseada na variável de ambiente
+    const envUrls = process.env.FRONTEND_URL 
+      ? process.env.FRONTEND_URL.split(',').map(url => url.trim()).filter(Boolean)
+      : [];
+    
+    const allowedOrigins = [
+      ...envUrls,
+      'http://localhost:3000',
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:4173', // Vite preview
+      'https://processa-ai.vercel.app', // Produção principal
+      'https://processa-4fb61znt9-marcelogcardozos-projects.vercel.app', // Deploy atual
+    ].filter(Boolean);
+
+    // Verificar se a origem está na lista permitida
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    } else if (process.env.NODE_ENV === 'development') {
+      // Em desenvolvimento, permitir qualquer origem local
+      if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+      }
+    }
+
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    // Nota: Access-Control-Allow-Credentials não pode ser usado com '*'
-    // res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
 
     // Responder a requisições OPTIONS
     if (req.method === 'OPTIONS') {

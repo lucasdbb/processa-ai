@@ -5,6 +5,7 @@ interface Environment {
   SUPABASE_SERVICE_ROLE_KEY: string;
   SUPABASE_ANON_KEY: string;
   FRONTEND_URL: string;
+  FRONTEND_URLS: string[]; // Array de URLs permitidas
   NODE_ENV: 'development' | 'production' | 'test';
 }
 
@@ -32,11 +33,15 @@ export const validateEnvironment = (): Environment => {
     );
   }
 
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrls = frontendUrl.split(',').map(url => url.trim()).filter(Boolean);
+
   return {
     SUPABASE_URL: process.env.SUPABASE_URL!,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY!,
-    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+    FRONTEND_URL: frontendUrl,
+    FRONTEND_URLS: frontendUrls,
     NODE_ENV: (process.env.NODE_ENV as any) || 'production',
   };
 };
