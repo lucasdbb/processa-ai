@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import LoginModal from './components/LoginModal';
+import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import ErrorBoundary from './components/ErrorBoundary';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
@@ -13,6 +14,7 @@ import AboutPage from './pages/AboutPage';
 import AdminPanel from './pages/AdminPanel';
 import PlanosPage from './pages/PlanosPage';
 import { authService } from './services/auth.service';
+import { getSessionTimeoutManager } from './utils/sessionTimeout';
 import type { User } from './types/auth';
 
 /**
@@ -23,6 +25,8 @@ function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTimeoutWarningOpen, setIsTimeoutWarningOpen] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(120);
 
   // Check if user is already authenticated on app load
   useEffect(() => {
@@ -41,6 +45,35 @@ function App() {
 
     checkAuthStatus();
   }, []);
+
+  // Gerenciador de timeout de sessão
+  useEffect(() => {
+    // Só iniciar timeout se usuário estiver autenticado
+    if (!user) return;
+
+    const timeoutManager = getSessionTimeoutManager();
+
+    // Callback quando timeout ocorre (fazer logout)
+    const handleTimeout = () => {
+      console.log('[App] Sessão expirou por inatividade');
+      setIsTimeoutWarningOpen(false);
+      handleLogout();
+    };
+
+    // Callback quando aviso de timeout é ativado
+    const handleWarning = (seconds: number) => {
+      setRemainingSeconds(seconds);
+      setIsTimeoutWarningOpen(true);
+    };
+
+    // Iniciar gerenciador
+    timeoutManager.start(handleTimeout, handleWarning);
+
+    // Cleanup ao desmontar ou quando usuário faz logout
+    return () => {
+      timeoutManager.stop();
+    };
+  }, [user]); // Reiniciar quando user mudar
 
   /**
    * Protected route component that redirects unauthenticated users to home page
@@ -97,16 +130,27 @@ function App() {
   /**
    * Handles user logout by clearing user state and calling logout service
    */
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await authService.logout();
       setUser(null);
+      setIsTimeoutWarningOpen(false);
     } catch (error) {
       console.error('Error during logout:', error);
       // Even if logout fails, clear local state
       setUser(null);
+      setIsTimeoutWarningOpen(false);
     }
-  };
+  }, []);
+
+  /**
+   * Estende a sessão quando usuário clica em "Continuar Conectado"
+   */
+  const handleExtendSession = useCallback(() => {
+    const timeoutManager = getSessionTimeoutManager();
+    timeoutManager.extendSession();
+    setIsTimeoutWarningOpen(false);
+  }, []);
 
   /**
    * Handles profile update by calling the API and updating local state
@@ -214,6 +258,13 @@ function App() {
             isOpen={isLoginModalOpen}
             onClose={() => setIsLoginModalOpen(false)}
             onLoginSuccess={handleLoginSuccess}
+          />
+
+          <SessionTimeoutWarning
+            isOpen={isTimeoutWarningOpen}
+            remainingSeconds={remainingSeconds}
+            onExtend={handleExtendSession}
+            onLogout={handleLogout}
           />
         </div>
       </Router>
