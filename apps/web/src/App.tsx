@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -10,6 +10,8 @@ import BlogPage from './pages/BlogPage';
 import ToolsPage from './pages/ToolsPage';
 import CalculatorsPage from './pages/CalculatorsPage';
 import AboutPage from './pages/AboutPage';
+import { authService } from './services/auth.service';
+import type { User } from './types/auth';
 
 /**
  * Main application component that handles routing, authentication, and global state
@@ -17,7 +19,26 @@ import AboutPage from './pages/AboutPage';
  */
 function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if user is already authenticated on app load
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
 
   /**
    * Protected route component that redirects unauthenticated users to home page
@@ -40,25 +61,36 @@ function App() {
   };
 
   /**
-   * Handles user login authentication
-   * @param {string} email - User email address
-   * @param {string} password - User password
+   * Handles successful login by updating user state
+   * @param {User} userData - User data from successful login
    */
-  const handleLogin = (email: string, password: string) => {
-    // Aqui você implementaria a lógica real de autenticação
-    console.log('Login:', { email, password });
-    
-    // Simulando login bem-sucedido
-    setUser({ email, name: email.split('@')[0] });
+  const handleLoginSuccess = (userData: User) => {
+    setUser(userData);
     setIsLoginModalOpen(false);
   };
 
   /**
-   * Handles user logout by clearing user state
+   * Handles user logout by clearing user state and calling logout service
    */
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      setUser(null);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Even if logout fails, clear local state
+      setUser(null);
+    }
   };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-700"></div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -78,7 +110,11 @@ function App() {
             Pular para a navegação
           </a>
 
-          <Header onLoginClick={() => setIsLoginModalOpen(true)} />
+          <Header 
+            user={user}
+            onLoginClick={() => setIsLoginModalOpen(true)} 
+            onLogout={handleLogout}
+          />
           
           <main id="main-content" className="flex-grow" role="main">
             <Routes>
@@ -106,7 +142,7 @@ function App() {
           <LoginModal
             isOpen={isLoginModalOpen}
             onClose={() => setIsLoginModalOpen(false)}
-            onLogin={handleLogin}
+            onLoginSuccess={handleLoginSuccess}
           />
         </div>
       </Router>

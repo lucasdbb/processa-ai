@@ -3,6 +3,8 @@
  * Handles all authentication-related API calls
  */
 
+import type { User, UserRole } from '../types/auth';
+
 // Base URL da API (sem /api no final)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -219,7 +221,7 @@ class AuthService {
   /**
    * Obtém os dados do usuário autenticado
    */
-  async getCurrentUser(): Promise<UserResponse> {
+  async getCurrentUser(): Promise<User> {
     if (!this.accessToken) {
       throw new Error('Usuário não autenticado');
     }
@@ -240,7 +242,17 @@ class AuthService {
       throw new Error(error.error || 'Erro ao obter dados do usuário');
     }
 
-    return response.json();
+    const userResponse: UserResponse = await response.json();
+    
+    // Convert UserResponse to User format
+    return {
+      id: userResponse.user.id,
+      email: userResponse.user.email,
+      name: userResponse.user.email.split('@')[0], // Use email prefix as name fallback
+      role: userResponse.user.role as UserRole,
+      createdAt: new Date().toISOString(), // Fallback value
+      emailVerified: true, // Assume verified if user can authenticate
+    };
   }
 
   /**

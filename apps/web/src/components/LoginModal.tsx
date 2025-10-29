@@ -17,7 +17,7 @@ import { authService, AuthError } from '../services/auth.service';
  * />
  * ```
  */
-const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onLogin }) => {
+const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState<boolean>(true);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -136,13 +136,20 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     try {
       if (isLogin) {
         // Login
-        await authService.login({
+        const response = await authService.login({
           email: formData.email,
           password: formData.password
         });
 
-        // Chamar callback de sucesso
-        onLogin(formData.email, formData.password);
+        // Chamar callback de sucesso com dados do usuário
+        onLoginSuccess({
+          id: response.user.id,
+          email: response.user.email,
+          name: formData.name || response.user.email.split('@')[0],
+          role: response.user.role as any, // Type assertion for role
+          createdAt: new Date().toISOString(),
+          emailVerified: true
+        });
 
         // Fechar modal após sucesso
         setTimeout(() => {
@@ -180,7 +187,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     } finally {
       setIsLoading(false);
     }
-  }, [isLogin, formData, validateForm, onLogin, onClose]);
+  }, [isLogin, formData, validateForm, onLoginSuccess, onClose]);
 
   /**
    * Handles input field changes with real-time validation

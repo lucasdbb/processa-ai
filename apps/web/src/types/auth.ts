@@ -113,7 +113,7 @@ export interface LoginModalProps {
   /** Function to close the modal */
   onClose: () => void;
   /** Function called when login is successful */
-  onLogin: (email: string, password: string) => void;
+  onLoginSuccess: (userData: User) => void;
   /** Initial authentication mode */
   initialMode?: AuthMode;
 }

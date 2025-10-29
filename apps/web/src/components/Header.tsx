@@ -1,12 +1,19 @@
 import React, { useState, useCallback } from 'react';
-import { Menu, X, LogIn } from 'lucide-react';
+import { Menu, X, LogIn, User, Settings, LogOut } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import UserMenu from './UserMenu';
 
 interface HeaderProps {
+  user?: {
+    id: string;
+    email: string;
+    name?: string;
+  } | null;
   onLoginClick: () => void;
+  onLogout: () => void;
 }
 
-const Header: React.FC<HeaderProps> = React.memo(({ onLoginClick }) => {
+const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -92,16 +99,20 @@ const Header: React.FC<HeaderProps> = React.memo(({ onLoginClick }) => {
             </Link>
           </nav>
 
-          {/* Login Button */}
+          {/* Login Button / User Menu */}
           <div className="hidden md:flex items-center space-x-4">
-            <button
-              onClick={handleLoginClick}
-              className="flex items-center space-x-2 btn-primary hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-              aria-label="Fazer login na plataforma"
-            >
-              <LogIn className="h-4 w-4" aria-hidden="true" />
-              <span>Entrar</span>
-            </button>
+            {user ? (
+              <UserMenu user={user} onLogout={onLogout} />
+            ) : (
+              <button
+                onClick={handleLoginClick}
+                className="flex items-center space-x-2 btn-primary hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                aria-label="Fazer login na plataforma"
+              >
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                <span>Entrar</span>
+              </button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -170,19 +181,82 @@ const Header: React.FC<HeaderProps> = React.memo(({ onLoginClick }) => {
               >
                 Sobre
               </Link>
-              <button
-                onClick={() => {
-                  onLoginClick();
-                  setIsMenuOpen(false);
-                }}
-                className="w-full text-left px-3 py-2 text-white bg-primary-700 hover:bg-primary-800 font-medium rounded-lg transition-colors duration-200 mt-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                aria-label="Fazer login na plataforma"
-              >
-                <div className="flex items-center space-x-2">
-                  <LogIn className="h-4 w-4" aria-hidden="true" />
-                  <span>Entrar</span>
-                </div>
-              </button>
+              {user ? (
+                <>
+                  {/* User info in mobile menu */}
+                  <div className="px-3 py-2 border-t border-gray-200 mt-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                        {(user.name || user.email.split('@')[0]).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {user.name || user.email.split('@')[0]}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* User menu options */}
+                  <button
+                    onClick={() => {
+                      // TODO: Implementar navegação para perfil
+                      console.log('Navegar para perfil');
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4" aria-hidden="true" />
+                      <span>Perfil</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      // TODO: Implementar navegação para configurações
+                      console.log('Navegar para configurações');
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Settings className="h-4 w-4" aria-hidden="true" />
+                      <span>Configurações</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      onLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <LogOut className="h-4 w-4" aria-hidden="true" />
+                      <span>Sair</span>
+                    </div>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    onLoginClick();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-white bg-primary-700 hover:bg-primary-800 font-medium rounded-lg transition-colors duration-200 mt-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  aria-label="Fazer login na plataforma"
+                >
+                  <div className="flex items-center space-x-2">
+                    <LogIn className="h-4 w-4" aria-hidden="true" />
+                    <span>Entrar</span>
+                  </div>
+                </button>
+              )}
             </nav>
           </div>
         )}

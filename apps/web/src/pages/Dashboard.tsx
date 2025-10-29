@@ -6,11 +6,12 @@ import {
   FileText, 
   Clock,
   LogOut,
-  User
+  User as UserIcon
 } from 'lucide-react';
+import type { User } from '../types/auth';
 
 interface DashboardProps {
-  user: { email: string; name: string } | null;
+  user: User | null;
   onLogout: () => void;
 }
 
@@ -116,7 +117,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ user, onLogout }) => {
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-gray-700">
-                <User className="h-5 w-5" />
+                <UserIcon className="h-5 w-5" />
                 <span>{user.email}</span>
               </div>
               <button
