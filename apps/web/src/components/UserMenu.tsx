@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import ProfileModal from './ProfileModal';
 import type { User as UserType } from '../types/auth';
 
@@ -18,6 +19,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const navigate = useNavigate();
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -145,6 +147,20 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) 
               <User className="w-4 h-4 mr-3 text-gray-400" aria-hidden="true" />
               Perfil
             </button>
+
+            {user.role === 'admin' && (
+              <button
+                onClick={() => handleMenuItemClick(() => navigate('/admin'))}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 focus:outline-none focus:bg-gray-50"
+                role="menuitem"
+              >
+                <Shield className="w-4 h-4 mr-3 text-red-400" aria-hidden="true" />
+                <span className="flex items-center gap-2">
+                  Painel Admin
+                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Admin</span>
+                </span>
+              </button>
+            )}
 
             <button
               onClick={() => handleMenuItemClick(() => {

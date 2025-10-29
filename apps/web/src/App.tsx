@@ -10,6 +10,7 @@ import BlogPage from './pages/BlogPage';
 import ToolsPage from './pages/ToolsPage';
 import CalculatorsPage from './pages/CalculatorsPage';
 import AboutPage from './pages/AboutPage';
+import AdminPanel from './pages/AdminPanel';
 import { authService } from './services/auth.service';
 import type { User } from './types/auth';
 
@@ -61,6 +62,29 @@ function App() {
   };
 
   /**
+   * Admin route component that redirects non-admin users to dashboard
+   * @param {Object} props - Component props
+   * @param {User | null} props.user - Current user
+   * @param {JSX.Element} props.children - Child components to render if admin
+   * @returns {JSX.Element} Protected content or redirect
+   */
+  const AdminRoute = ({
+    user,
+    children,
+  }: {
+    user: User | null;
+    children: React.ReactElement;
+  }) => {
+    if (!user) {
+      return <Navigate to="/" replace />;
+    }
+    if (user.role !== 'admin') {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return children;
+  };
+
+  /**
    * Handles successful login by updating user state
    * @param {User} userData - User data from successful login
    */
@@ -96,7 +120,7 @@ function App() {
       const response = await authService.updateProfile({
         name: updatedData.name,
         email: updatedData.email,
-        avatar_url: updatedData.avatar_url,
+        avatar_url: updatedData.avatar_url || undefined,
         phone: updatedData.phone
       });
 
@@ -106,7 +130,7 @@ function App() {
         email: response.user.email,
         name: response.user.name,
         role: response.user.role as 'admin' | 'user',
-        avatar_url: response.user.avatar_url,
+        avatar_url: response.user.avatar_url || undefined,
         phone: response.user.phone,
         createdAt: response.user.createdAt,
         emailVerified: response.user.emailVerified
@@ -162,6 +186,14 @@ function App() {
                   <ProtectedRoute isAuthenticated={!!user}>
                     <Dashboard user={user} onLogout={handleLogout} />
                   </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute user={user}>
+                    <AdminPanel user={user!} />
+                  </AdminRoute>
                 }
               />
               <Route path="/blog" element={<BlogPage />} />

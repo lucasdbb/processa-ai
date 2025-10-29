@@ -4,10 +4,8 @@ import {
   Eye,
   Heart,
   Users,
-  Award,
   Zap,
   Shield,
-  TrendingUp,
   CheckCircle,
   Mail,
   Linkedin,
@@ -57,23 +55,23 @@ const AboutPage: React.FC = React.memo(() => {
     }
   ];
 
-  const achievements = [
-    {
-      number: '10.000+',
-      label: 'Advogados Atendidos',
-      icon: Users
-    },
-    {
-      number: '50.000+',
-      label: 'Documentos Gerados',
-      icon: Award
-    },
-    {
-      number: '98%',
-      label: 'Satisfação dos Clientes',
-      icon: TrendingUp
-    }
-  ];
+  // const achievements = [
+  //   {
+  //     number: '10.000+',
+  //     label: 'Advogados Atendidos',
+  //     icon: Users
+  //   },
+  //   {
+  //     number: '50.000+',
+  //     label: 'Documentos Gerados',
+  //     icon: Award
+  //   },
+  //   {
+  //     number: '98%',
+  //     label: 'Satisfação dos Clientes',
+  //     icon: TrendingUp
+  //   }
+  // ];
 
   const features = [
     'Ferramentas de IA para criação de documentos jurídicos',

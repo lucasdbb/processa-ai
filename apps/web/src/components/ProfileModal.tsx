@@ -134,7 +134,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         try {
           console.log("Uploading avatar file:", avatarFile);
           console.log("User ID:", user.id);
-          const avatarUrl = await SupabaseStorageService.uploadAvatar(avatarFile, user.id);
+          const avatarUrl = await SupabaseStorageService.uploadAvatar(avatarFile);
           updateData.avatar_url = avatarUrl;
         } catch (uploadError) {
           console.error('Erro ao fazer upload do avatar:', uploadError);

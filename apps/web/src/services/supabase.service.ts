@@ -16,15 +16,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  */
 export class SupabaseStorageService {
   private static readonly AVATAR_BUCKET = 'avatars';
-  private static readonly MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
   /**
    * Uploads an avatar image via API endpoint
    * @param file - The image file to upload
-   * @param userId - The user ID to associate with the avatar
    * @returns Promise with the public URL of the uploaded image
    */
-  static async uploadAvatar(file: File, userId: string): Promise<string> {
+  static async uploadAvatar(file: File): Promise<string> {
     try {
       console.log('Starting avatar upload via API:', {
         fileName: file.name,
