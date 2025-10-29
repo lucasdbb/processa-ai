@@ -116,7 +116,8 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
           user_id: data.user.id,
           full_name: name || email.split('@')[0],
           document_type: documentType,
-          document_number: documentNumber.replace(/\D/g, '') // Remove máscaras
+          document_number: documentNumber.replace(/\D/g, ''), // Remove máscaras
+          role: 'user' // Todos os novos registros começam como 'user'
         }, {
           onConflict: 'user_id' // Atualiza se já existir baseado no user_id
         });

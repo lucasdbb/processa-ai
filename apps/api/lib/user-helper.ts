@@ -58,34 +58,37 @@ export async function getUserData(userId: string): Promise<UserData | null> {
       console.error('[getUserData] Error fetching avatar:', error);
     }
 
-    // Fetch user profile data (document_type, document_number, etc.)
+    // Fetch user profile data (document_type, document_number, role, etc.)
     let documentType: string | null = null;
     let documentNumber: string | null = null;
+    let profileRole: string | null = null;
 
     try {
       const { data: profileData, error: profileError } = await supabaseAdmin
         .from('user_profiles')
-        .select('document_type, document_number')
+        .select('document_type, document_number, role')
         .eq('user_id', user.id)
         .single();
 
       if (!profileError && profileData) {
         documentType = profileData.document_type;
         documentNumber = profileData.document_number;
-        console.log('[getUserData] Profile data found:', { documentType, documentNumber: documentNumber ? '***' : null });
+        profileRole = profileData.role;
+        console.log('[getUserData] Profile data found:', { documentType, documentNumber: documentNumber ? '***' : null, role: profileRole });
       }
     } catch (error) {
       console.error('[getUserData] Error fetching profile data:', error);
     }
 
     // Build complete user data response
+    // Priority: use role from user_metadata (source of truth), fallback to profile, then default
     const userData: UserData = {
       id: user.id,
       email: user.email || '',
       confirmed_at: user.confirmed_at || null,
       phone: user.user_metadata?.phone || null,
       name: user.user_metadata?.name || user.email?.split('@')[0] || '',
-      role: user.user_metadata?.role || 'user',
+      role: user.user_metadata?.role || profileRole || 'user',
       avatar_url: avatarUrl,
       document_type: documentType,
       document_number: documentNumber
