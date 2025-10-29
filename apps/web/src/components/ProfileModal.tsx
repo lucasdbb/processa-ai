@@ -1,8 +1,17 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { X, Camera, User as UserIcon, Mail, Calendar, Phone } from 'lucide-react';
-import type { User } from '../types/auth';
+import { X, Camera, User as UserIcon, Mail, Calendar, Phone, FileText } from 'lucide-react';
+import type { User, DocumentType } from '../types/auth';
 import { SupabaseStorageService } from '../services/supabase.service';
-import { phoneMask, removePhoneMask, isValidPhone } from '../utils/masks';
+import {
+  phoneMask,
+  removePhoneMask,
+  isValidPhone,
+  cpfMask,
+  cnpjMask,
+  removeDocumentMask,
+  isValidCpf,
+  isValidCnpj
+} from '../utils/masks';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -23,10 +32,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [documentType, setDocumentType] = useState<DocumentType>(user.documentType || 'cpf');
   const [formData, setFormData] = useState({
     name: user.name,
     email: user.email,
     phone: user.phone ? phoneMask(user.phone) : '',
+    documentNumber: user.documentNumber
+      ? (user.documentType === 'cnpj' ? cnpjMask(user.documentNumber) : cpfMask(user.documentNumber))
+      : '',
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -50,13 +63,27 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    // Aplica máscara de telefone se o campo for phone
-    const processedValue = name === 'phone' ? phoneMask(value) : value;
-    
+
+    // Aplica máscara apropriada dependendo do campo
+    let processedValue = value;
+    if (name === 'phone') {
+      processedValue = phoneMask(value);
+    } else if (name === 'documentNumber') {
+      processedValue = documentType === 'cpf' ? cpfMask(value) : cnpjMask(value);
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: processedValue
+    }));
+  }, [documentType]);
+
+  const handleDocumentTypeChange = useCallback((type: DocumentType) => {
+    setDocumentType(type);
+    // Limpa o campo de documento ao trocar o tipo
+    setFormData(prev => ({
+      ...prev,
+      documentNumber: ''
     }));
   }, []);
 
@@ -91,12 +118,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Remove a máscara do telefone antes de enviar
+      // Remove as máscaras antes de enviar
       const cleanPhone = removePhoneMask(formData.phone);
-      
+      const cleanDocument = removeDocumentMask(formData.documentNumber);
+
       const updateData: Partial<User> = {
         name: formData.name,
         phone: cleanPhone.trim() === '' ? null : cleanPhone,
+        documentType: documentType,
+        documentNumber: cleanDocument.trim() === '' ? null : cleanDocument,
       };
 
       // If there's a new avatar, upload it to Supabase Storage
@@ -123,14 +153,18 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [formData, avatarFile, onUpdateProfile, user.id]);
+  }, [formData, avatarFile, onUpdateProfile, user.id, documentType]);
 
   const handleCancel = useCallback(() => {
     setIsEditing(false);
+    setDocumentType(user.documentType || 'cpf');
     setFormData({
       name: user.name,
       email: user.email,
       phone: user.phone ? phoneMask(user.phone) : '',
+      documentNumber: user.documentNumber
+        ? (user.documentType === 'cnpj' ? cnpjMask(user.documentNumber) : cpfMask(user.documentNumber))
+        : '',
     });
     setAvatarFile(null);
     setAvatarPreview(null);
@@ -265,8 +299,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 disabled={!isEditing}
                 placeholder="(11) 99999-9999"
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent ${
-                  !isEditing 
-                    ? 'bg-gray-50 text-gray-600 border-gray-300' 
+                  !isEditing
+                    ? 'bg-gray-50 text-gray-600 border-gray-300'
                     : formData.phone && !isValidPhone(formData.phone)
                       ? 'border-red-300 focus:ring-red-500'
                       : formData.phone && isValidPhone(formData.phone)
@@ -281,7 +315,88 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
               )}
             </div>
 
+            {/* Document Type Toggle and Document Number Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FileText className="w-4 h-4 inline mr-2" />
+                Documento
+              </label>
 
+              {/* Toggle CPF/CNPJ */}
+              {isEditing && (
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => handleDocumentTypeChange('cpf')}
+                    className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 ${
+                      documentType === 'cpf'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    CPF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDocumentTypeChange('cnpj')}
+                    className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 ${
+                      documentType === 'cnpj'
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    CNPJ
+                  </button>
+                </div>
+              )}
+
+              {/* Document Number Input */}
+              <input
+                type="text"
+                id="documentNumber"
+                name="documentNumber"
+                value={formData.documentNumber}
+                onChange={handleInputChange}
+                disabled={!isEditing}
+                placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent ${
+                  !isEditing
+                    ? 'bg-gray-50 text-gray-600 border-gray-300'
+                    : formData.documentNumber && (
+                        documentType === 'cpf'
+                          ? !isValidCpf(formData.documentNumber)
+                          : !isValidCnpj(formData.documentNumber)
+                      )
+                      ? 'border-red-300 focus:ring-red-500'
+                      : formData.documentNumber && (
+                          documentType === 'cpf'
+                            ? isValidCpf(formData.documentNumber)
+                            : isValidCnpj(formData.documentNumber)
+                        )
+                        ? 'border-green-300 focus:ring-green-500'
+                        : 'border-gray-300 focus:ring-primary-500'
+                }`}
+              />
+              {isEditing && formData.documentNumber && (
+                documentType === 'cpf'
+                  ? !isValidCpf(formData.documentNumber)
+                  : !isValidCnpj(formData.documentNumber)
+              ) && (
+                <p className="mt-1 text-sm text-red-600">
+                  {documentType === 'cpf' ? 'CPF inválido' : 'CNPJ inválido'}
+                </p>
+              )}
+              {isEditing && formData.documentNumber && (
+                documentType === 'cpf'
+                  ? isValidCpf(formData.documentNumber)
+                  : isValidCnpj(formData.documentNumber)
+              ) && (
+                <p className="mt-1 text-sm text-green-600 flex items-center">
+                  <span className="mr-1">✓</span>
+                  {documentType === 'cpf' ? 'CPF válido' : 'CNPJ válido'}
+                </p>
+              )}
+            </div>
 
             {/* Created At Field (Read-only) */}
             <div>

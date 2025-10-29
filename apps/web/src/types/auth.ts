@@ -48,6 +48,11 @@ export interface AuthFormErrors {
 }
 
 /**
+ * Document type for CPF or CNPJ
+ */
+export type DocumentType = 'cpf' | 'cnpj';
+
+/**
  * User profile information
  */
 export interface User {
@@ -71,6 +76,10 @@ export interface User {
   avatar_url?: string | null;
   /** User's phone number */
   phone?: string | null;
+  /** Type of document (CPF for individuals, CNPJ for companies) */
+  documentType?: DocumentType;
+  /** CPF or CNPJ number */
+  documentNumber?: string | null;
 }
 
 /**

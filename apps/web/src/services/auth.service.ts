@@ -36,12 +36,15 @@ export interface AuthResponse {
 }
 
 export interface UserResponse {
+  id: string;
   email: string;
   confirmed_at: string | null;
   phone: string | null;
   name: string;
   role: string;
   avatar_url?: string | null;
+  document_type?: string | null;
+  document_number?: string | null;
 }
 
 export interface ApiError {
@@ -55,6 +58,8 @@ export interface UpdateProfileData {
   email?: string;
   avatar_url?: string;
   phone?: string | null;
+  documentType?: string;
+  documentNumber?: string | null;
 }
 
 export interface UpdateProfileResponse {
@@ -258,20 +263,18 @@ class AuthService {
 
     const userResponse: UserResponse = await response.json();
 
-    // Decode JWT to get user ID
-    const payload = JSON.parse(atob(this.accessToken.split('.')[1]));
-    const userId = payload.sub || payload.user_id || '';
-
     // Convert UserResponse to User format
     return {
-      id: userId,
+      id: userResponse.id,
       email: userResponse.email,
-      name: userResponse.name || userResponse.email.split('@')[0], // Use name from user_metadata or email prefix as fallback
+      name: userResponse.name || userResponse.email.split('@')[0],
       role: userResponse.role as UserRole,
-      avatar_url: userResponse.avatar_url || null, // Avatar URL from Supabase Storage
+      avatar_url: userResponse.avatar_url || null,
       createdAt: userResponse.confirmed_at || new Date().toISOString(),
       emailVerified: userResponse.confirmed_at !== null,
-      phone: userResponse.phone
+      phone: userResponse.phone,
+      documentType: userResponse.document_type as 'cpf' | 'cnpj' | undefined,
+      documentNumber: userResponse.document_number
     };
   }
 

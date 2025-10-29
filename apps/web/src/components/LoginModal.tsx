@@ -136,20 +136,16 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     try {
       if (isLogin) {
         // Login
-        const response = await authService.login({
+        await authService.login({
           email: formData.email,
           password: formData.password
         });
 
-        // Chamar callback de sucesso com dados do usuário
-        onLoginSuccess({
-          id: response.user.id,
-          email: response.user.email,
-          name: formData.name || response.user.email.split('@')[0],
-          role: response.user.role as any, // Type assertion for role
-          createdAt: new Date().toISOString(),
-          emailVerified: true
-        });
+        // Buscar dados completos do usuário via /me
+        const userData = await authService.getCurrentUser();
+
+        // Chamar callback de sucesso com dados completos do usuário
+        onLoginSuccess(userData);
 
         // Fechar modal após sucesso
         setTimeout(() => {
