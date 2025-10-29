@@ -3,6 +3,10 @@ import { Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer: React.FC = React.memo(() => {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <footer className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -29,27 +33,27 @@ const Footer: React.FC = React.memo(() => {
             <h3 className="text-lg font-semibold mb-4">Links Rápidos</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/" className="text-gray-300 hover:text-secondary-900 transition-colors">
+                <Link to="/" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Início
                 </Link>
               </li>
               <li>
-                <Link to="/blog" className="text-gray-300 hover:text-secondary-900 transition-colors">
+                <Link to="/blog" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link to="/ferramentas" className="text-gray-300 hover:text-secondary-900 transition-colors">
+                <Link to="/ferramentas" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Ferramentas IA
                 </Link>
               </li>
               <li>
-                <Link to="/calculadoras" className="text-gray-300 hover:text-secondary-900 transition-colors">
+                <Link to="/calculadoras" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Calculadoras
                 </Link>
               </li>
               <li>
-                <Link to="/sobre" className="text-gray-300 hover:text-secondary-900 transition-colors">
+                <Link to="/sobre" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
                   Sobre
                 </Link>
               </li>
@@ -66,11 +70,11 @@ const Footer: React.FC = React.memo(() => {
               </li>
               <li className="flex items-center space-x-2 text-gray-300">
                 <Phone className="h-4 w-4" />
-                <span>(11) 9999-9999</span>
+                <span>(21) 99999-9999</span>
               </li>
               <li className="flex items-center space-x-2 text-gray-300">
                 <MapPin className="h-4 w-4" />
-                <span>São Paulo, SP</span>
+                <span>Rio de Janeiro, RJ</span>
               </li>
             </ul>
           </div>
@@ -78,7 +82,7 @@ const Footer: React.FC = React.memo(() => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
           <p className="text-gray-400">
-            © 2024 Processa AI. Todos os direitos reservados.
+            © 2025 Processa AI. Todos os direitos reservados.
           </p>
         </div>
       </div>
