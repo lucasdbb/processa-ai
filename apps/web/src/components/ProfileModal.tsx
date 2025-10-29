@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { X, Camera, User as UserIcon, Mail, Calendar, Shield, Phone } from 'lucide-react';
+import { X, Camera, User as UserIcon, Mail, Calendar, Phone } from 'lucide-react';
 import type { User } from '../types/auth';
 import { SupabaseStorageService } from '../services/supabase.service';
 import { phoneMask, removePhoneMask, isValidPhone } from '../utils/masks';
@@ -96,7 +96,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       
       const updateData: Partial<User> = {
         name: formData.name,
-        email: formData.email,
         phone: cleanPhone.trim() === '' ? null : cleanPhone,
       };
 
@@ -246,7 +245,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
               />
             </div>
 
-            {/* Email Field */}
+            {/* Email Field (Read-only) */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 <Mail className="w-4 h-4 inline mr-2" />
@@ -257,12 +256,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 id="email"
                 name="email"
                 value={formData.email}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  !isEditing ? 'bg-gray-50 text-gray-600' : ''
-                }`}
-                required
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                readOnly
               />
             </div>
 
@@ -297,19 +293,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
               )}
             </div>
 
-            {/* Role Field (Read-only) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Shield className="w-4 h-4 inline mr-2" />
-                Função
-              </label>
-              <input
-                type="text"
-                value={user.role === 'admin' ? 'Administrador' : user.role === 'premium' ? 'Premium' : 'Usuário'}
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-              />
-            </div>
+
 
             {/* Created At Field (Read-only) */}
             <div>
