@@ -1,6 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../../lib/supabase';
-import { withCors } from '../../middleware/auth';
+import { supabaseAdmin } from '../../lib/supabase.js';
+import { withCors } from '../../lib/auth.js';
+import { validateRefreshToken } from '../../lib/validators.js';
+import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 
 interface RefreshRequest {
   refresh_token: string;
@@ -21,20 +23,18 @@ interface RefreshResponse {
 
 const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      error: 'Método não permitido',
-      code: 'METHOD_NOT_ALLOWED'
-    });
+    return res.status(405).json(CommonErrors.METHOD_NOT_ALLOWED(['POST']));
   }
 
   try {
     const { refresh_token }: RefreshRequest = req.body;
 
-    // Validação básica
-    if (!refresh_token) {
+    // Validação de refresh token
+    const tokenValidation = validateRefreshToken(refresh_token);
+    if (!tokenValidation.valid) {
       return res.status(400).json({
-        error: 'Refresh token é obrigatório',
-        code: 'MISSING_REFRESH_TOKEN'
+        error: tokenValidation.error,
+        code: tokenValidation.code
       });
     }
 
@@ -45,19 +45,7 @@ const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
 
     if (error) {
       console.error('Refresh token error:', error);
-      
-      if (error.message.includes('Invalid refresh token')) {
-        return res.status(401).json({
-          error: 'Refresh token inválido ou expirado',
-          code: 'INVALID_REFRESH_TOKEN'
-        });
-      }
-
-      return res.status(400).json({
-        error: 'Erro ao renovar token',
-        code: 'REFRESH_ERROR',
-        details: error.message
-      });
+      return res.status(401).json(mapSupabaseError(error));
     }
 
     if (!data.session || !data.user) {
@@ -85,10 +73,7 @@ const refreshHandler = async (req: VercelRequest, res: VercelResponse) => {
 
   } catch (error) {
     console.error('Unexpected refresh error:', error);
-    return res.status(500).json({
-      error: 'Erro interno do servidor',
-      code: 'INTERNAL_ERROR'
-    });
+    return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };
 

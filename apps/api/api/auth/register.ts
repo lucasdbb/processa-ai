@@ -1,6 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../../lib/supabase';
-import { withCors } from '../../middleware/auth';
+import { supabaseAdmin } from '../../lib/supabase.js';
+import { withCors } from '../../lib/auth.js';
+import { validateEmail, validatePassword } from '../../lib/validators.js';
+import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 
 interface RegisterRequest {
   email: string;
@@ -19,51 +21,32 @@ interface RegisterResponse {
 
 const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      error: 'Método não permitido',
-      code: 'METHOD_NOT_ALLOWED'
-    });
+    return res.status(405).json(CommonErrors.METHOD_NOT_ALLOWED(['POST']));
   }
 
   try {
     const { email, password, name }: RegisterRequest = req.body;
 
-    // Validação básica
+    // Validação de campos obrigatórios
     if (!email || !password) {
-      return res.status(400).json({
-        error: 'Email e senha são obrigatórios',
-        code: 'MISSING_FIELDS'
-      });
+      return res.status(400).json(CommonErrors.MISSING_FIELDS(['email', 'password']));
     }
 
     // Validação de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
       return res.status(400).json({
-        error: 'Formato de email inválido',
-        code: 'INVALID_EMAIL'
+        error: emailValidation.error,
+        code: emailValidation.code
       });
     }
 
     // Validação de senha
-    if (password.length < 8) {
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
       return res.status(400).json({
-        error: 'A senha deve ter pelo menos 8 caracteres',
-        code: 'WEAK_PASSWORD'
-      });
-    }
-
-    // Verificar se o usuário já existe
-    const { data: existingUser } = await supabaseAdmin
-      .from('auth.users')
-      .select('email')
-      .eq('email', email)
-      .single();
-
-    if (existingUser) {
-      return res.status(409).json({
-        error: 'Usuário já existe com este email',
-        code: 'USER_EXISTS'
+        error: passwordValidation.error,
+        code: passwordValidation.code
       });
     }
 
@@ -80,19 +63,7 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
 
     if (error) {
       console.error('Registration error:', error);
-      
-      if (error.message.includes('User already registered')) {
-        return res.status(409).json({
-          error: 'Usuário já existe com este email',
-          code: 'USER_EXISTS'
-        });
-      }
-
-      return res.status(400).json({
-        error: 'Erro no registro',
-        code: 'REGISTRATION_ERROR',
-        details: error.message
-      });
+      return res.status(400).json(mapSupabaseError(error));
     }
 
     if (!data.user) {
@@ -116,10 +87,7 @@ const registerHandler = async (req: VercelRequest, res: VercelResponse) => {
 
   } catch (error) {
     console.error('Unexpected registration error:', error);
-    return res.status(500).json({
-      error: 'Erro interno do servidor',
-      code: 'INTERNAL_ERROR'
-    });
+    return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };
 

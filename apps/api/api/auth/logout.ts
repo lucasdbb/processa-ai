@@ -1,23 +1,18 @@
 import { VercelResponse } from '@vercel/node';
-import { withAuth, withCors, AuthenticatedRequest } from '../../middleware/auth';
-import { createSupabaseClient } from '../../lib/supabase';
+import { AuthenticatedRequest, compose, withAuth, withCors } from '../../lib/auth.js';
+import { createSupabaseClient } from '../../lib/supabase.js';
+import { CommonErrors, mapSupabaseError } from '../../lib/errors.js';
 
 const logoutHandler = async (req: AuthenticatedRequest, res: VercelResponse) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      error: 'Método não permitido',
-      code: 'METHOD_NOT_ALLOWED'
-    });
+    return res.status(405).json(CommonErrors.METHOD_NOT_ALLOWED(['POST']));
   }
 
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        error: 'Token de acesso não fornecido',
-        code: 'UNAUTHORIZED'
-      });
+      return res.status(401).json(CommonErrors.UNAUTHORIZED());
     }
 
     const token = authHeader.split(' ')[1];
@@ -28,11 +23,7 @@ const logoutHandler = async (req: AuthenticatedRequest, res: VercelResponse) => 
 
     if (error) {
       console.error('Logout error:', error);
-      return res.status(400).json({
-        error: 'Erro ao fazer logout',
-        code: 'LOGOUT_ERROR',
-        details: error.message
-      });
+      return res.status(400).json(mapSupabaseError(error));
     }
 
     return res.status(200).json({
@@ -41,11 +32,9 @@ const logoutHandler = async (req: AuthenticatedRequest, res: VercelResponse) => 
 
   } catch (error) {
     console.error('Unexpected logout error:', error);
-    return res.status(500).json({
-      error: 'Erro interno do servidor',
-      code: 'INTERNAL_ERROR'
-    });
+    return res.status(500).json(CommonErrors.INTERNAL_ERROR());
   }
 };
 
-export default withCors(withAuth(logoutHandler));
+// Usando a função compose para melhor legibilidade
+export default compose(withCors, withAuth)(logoutHandler);

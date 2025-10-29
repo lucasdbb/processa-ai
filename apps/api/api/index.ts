@@ -1,4 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { withCors } from '../lib/auth.js';
+import { CommonErrors } from '../lib/errors.js';
+import { env } from '../lib/env.js';
 
 interface HealthCheckResponse {
   status: 'healthy' | 'unhealthy';
@@ -14,30 +17,15 @@ interface HealthCheckResponse {
 }
 
 const healthCheckHandler = async (req: VercelRequest, res: VercelResponse) => {
-  // Configurar CORS
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-  // Responder a requisições OPTIONS
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   if (req.method !== 'GET') {
-    return res.status(405).json({
-      error: 'Método não permitido',
-      code: 'METHOD_NOT_ALLOWED',
-      allowed_methods: ['GET']
-    });
+    return res.status(405).json(CommonErrors.METHOD_NOT_ALLOWED(['GET']));
   }
 
   try {
     // Informações básicas do sistema
     const timestamp = new Date().toISOString();
     const uptime = process.uptime();
-    const environment = process.env.NODE_ENV || 'production';
+    const environment = env.NODE_ENV;
     
     // Lista de endpoints disponíveis
     const endpoints = [
@@ -56,10 +44,10 @@ const healthCheckHandler = async (req: VercelRequest, res: VercelResponse) => {
     // Tentativa simples de verificar se o Supabase está acessível
     try {
       // Importação dinâmica para evitar problemas de inicialização
-      const { supabaseAdmin } = await import('../../lib/supabase');
-      
-      // Teste simples de conexão
-      const { error } = await supabaseAdmin.from('auth.users').select('count').limit(1);
+      const { supabaseAdmin } = await import('../lib/supabase.js');
+
+      // Teste simples de conexão usando a API de administração
+      const { error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 });
       databaseStatus = error ? 'disconnected' : 'connected';
     } catch (error) {
       console.warn('Health check - Database connection test failed:', error);
@@ -93,13 +81,13 @@ const healthCheckHandler = async (req: VercelRequest, res: VercelResponse) => {
 
   } catch (error) {
     console.error('Health check error:', error);
-    
+
     const errorResponse: HealthCheckResponse = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       version: '1.0.0',
       uptime: Math.round(process.uptime()),
-      environment: process.env.NODE_ENV || 'production',
+      environment: env.NODE_ENV,
       services: {
         database: 'unknown',
         api: 'down'
@@ -111,4 +99,4 @@ const healthCheckHandler = async (req: VercelRequest, res: VercelResponse) => {
   }
 };
 
-export default healthCheckHandler;
+export default withCors(healthCheckHandler);

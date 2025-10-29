@@ -1,14 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+import { env } from './env.js';
 
 // Cliente para operações administrativas (server-side)
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+export const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -17,20 +11,17 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 // Cliente para operações do usuário
 export const createSupabaseClient = (accessToken?: string) => {
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-  
-  if (!supabaseAnonKey) {
-    throw new Error('Missing Supabase anon key');
-  }
+  const client = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    },
+    global: {
+      headers: accessToken ? {
+        Authorization: `Bearer ${accessToken}`
+      } : {}
+    }
+  });
 
-  const client = createClient(supabaseUrl, supabaseAnonKey);
-  
-  if (accessToken) {
-    client.auth.setSession({
-      access_token: accessToken,
-      refresh_token: '',
-    });
-  }
-  
   return client;
 };

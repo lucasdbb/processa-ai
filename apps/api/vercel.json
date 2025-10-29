@@ -1,9 +1,38 @@
 {
-  "buildCommand": "",
+  "buildCommand": "npm run type-check",
   "outputDirectory": ".",
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@3.1.0"
+      "runtime": "@vercel/node@3.1.0",
+      "maxDuration": 10,
+      "memory": 1024
     }
-  }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "regions": ["gru1"],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
 }
