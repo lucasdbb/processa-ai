@@ -5,11 +5,14 @@ import { authService } from './auth.service';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+// Em produção (Railway), variáveis VITE_ são substituídas em build-time.
+// Para evitar "blank page" caso não estejam configuradas, não vamos lançar erro aqui.
+// Em vez disso, desabilitamos recursos dependentes do Supabase e emitimos avisos claros.
+const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : null;
 
 /**
  * Service for handling file uploads to Supabase Storage
@@ -90,6 +93,9 @@ export class SupabaseStorageService {
    */
   static async deleteAvatar(filePath: string): Promise<void> {
     try {
+      if (!supabase) {
+        throw new Error('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+      }
       const { error } = await supabase.storage
         .from(this.AVATAR_BUCKET)
         .remove([filePath]);
@@ -110,10 +116,12 @@ export class SupabaseStorageService {
    * @returns The public URL
    */
   static getAvatarUrl(filePath: string): string {
+    if (!supabase) {
+      throw new Error('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+    }
     const { data } = supabase.storage
       .from(this.AVATAR_BUCKET)
       .getPublicUrl(filePath);
-    
     return data.publicUrl;
   }
 }

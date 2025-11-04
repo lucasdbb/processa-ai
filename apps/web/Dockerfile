@@ -12,6 +12,15 @@ COPY apps ./apps
 # Instalar dependências (respeita npm workspaces)
 RUN npm ci
 
+# --- Build-time env (Vite lê apenas variáveis com prefixo VITE_ durante o build) ---
+# Recebe valores via --build-arg e expõe como ENV para o processo de build
+ARG VITE_API_URL
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
 # Build do frontend (SPA) localizado em apps/web
 RUN npm run build -w apps/web
 
