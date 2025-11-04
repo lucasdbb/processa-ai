@@ -15,6 +15,8 @@ const envSchema = z.object({
 
   // Frontend
   FRONTEND_URL: z.string().default('http://localhost:5173'),
+  // Lista adicional de origens permitidas para CORS (separadas por vírgula)
+  ALLOWED_ORIGINS: z.string().optional(),
 
   // Optional: Redis, services URLs
   REDIS_URL: z.string().optional(),

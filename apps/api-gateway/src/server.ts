@@ -14,6 +14,8 @@ app.use(helmet());
 
 // CORS
 app.use(corsMiddleware);
+// Responder automaticamente preflight requests
+app.options('*', corsMiddleware);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

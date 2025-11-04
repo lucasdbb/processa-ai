@@ -4,12 +4,18 @@ import { env } from '../../config/env.js';
 /**
  * Configuração de CORS
  */
+const extraOrigins = (env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter((o) => o.length > 0);
+
 const allowedOrigins = [
   env.FRONTEND_URL,
   'http://localhost:3000',
   'http://localhost:5173', // Vite dev server
   'http://localhost:4173', // Vite preview
-  ...(env.NODE_ENV === 'production' ? ['https://processa-ai.vercel.app'] : [])
+  ...(env.NODE_ENV === 'production' ? ['https://processa-ai.vercel.app', 'https://processa-ai.up.railway.app'] : []),
+  ...extraOrigins,
 ].filter(Boolean);
 
 export const corsMiddleware = cors({
