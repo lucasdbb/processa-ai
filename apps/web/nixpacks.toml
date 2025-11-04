@@ -1,0 +1,14 @@
+# Nixpacks config para Railway (SEM NGINX)
+# Railway vai automaticamente servir os arquivos estáticos
+
+[phases.setup]
+nixPkgs = ["nodejs-20_x"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npx serve dist -s -p $PORT"
