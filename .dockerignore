@@ -1,0 +1,19 @@
+# Ignorar dependências e artefatos de build para reduzir o contexto do Docker
+node_modules
+apps/**/node_modules
+packages/**/node_modules
+
+dist
+apps/web/dist
+
+# Controle de versão e configs locais
+.git
+.gitignore
+.vercel
+.vercelignore
+.env*
+**/*.log
+
+# Tests e caches
+coverage
+.cache

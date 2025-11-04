@@ -5,8 +5,7 @@ import {
   Newspaper,
   Shield,
   ArrowRight,
-  CheckCircle,
-  Star
+  CheckCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -44,20 +43,7 @@ const LandingPage: React.FC = React.memo(() => {
     'Suporte especializado'
   ];
 
-  const testimonials = [
-    {
-      name: 'Dr. João Silva',
-      role: 'Advogado Trabalhista',
-      content: 'A Processa AI revolucionou minha prática jurídica. As ferramentas de IA me ajudam a criar peças mais eficientes.',
-      rating: 5
-    },
-    {
-      name: 'Dra. Maria Santos',
-      role: 'Advogada Previdenciária',
-      content: 'As calculadoras são extremamente precisas e me poupam horas de trabalho manual.',
-      rating: 5
-    }
-  ];
+  // Testimonials foram desativados na LandingPage; removidos para evitar erros de build (TS6133: variáveis não utilizadas)
 
   return (
     <div className="min-h-screen">
