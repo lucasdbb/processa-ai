@@ -463,7 +463,7 @@ const CalculatorsPage: React.FC = React.memo(() => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
-              <Calculator className="h-8 w-8" />
+              <Calculator className="h-7 w-7" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Calculadoras Jurídicas
@@ -481,24 +481,24 @@ const CalculatorsPage: React.FC = React.memo(() => {
           {/* Sidebar com Calculadoras */}
           <div className="lg:col-span-1">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Escolha a Calculadora</h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {calculators.map(calc => (
                 <button
                   key={calc.id}
                   onClick={() => handleCalculatorSelect(calc.id)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 transform hover:scale-105 ${
+                  className={`w-full text-left p-4 h-24 rounded-xl border-2 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
                     selectedCalculator === calc.id
-                      ? 'border-primary-500 bg-primary-50 shadow-lg'
-                      : 'border-gray-200 bg-white hover:border-primary-300 hover:shadow-md'
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`${calc.color} p-3 rounded-lg shadow-md`}>
+                    <div className={`${calc.color} p-2.5 rounded-lg`}>
                       <calc.icon className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 text-sm">{calc.name}</h3>
-                      <p className="text-xs text-gray-600 mt-1">{calc.description}</p>
+                      <p className="text-sm text-gray-600 mt-1">{calc.description}</p>
                     </div>
                   </div>
                 </button>
@@ -525,14 +525,14 @@ const CalculatorsPage: React.FC = React.memo(() => {
               <div className="flex items-center space-x-4 mb-8 pb-6 border-b border-gray-200">
                 <div className={`${calculators.find(c => c.id === selectedCalculator)?.color} p-4 rounded-xl shadow-lg`}>
                   {calculators.find(c => c.id === selectedCalculator)?.icon &&
-                    React.createElement(calculators.find(c => c.id === selectedCalculator)!.icon, { className: "h-8 w-8 text-white" })
+                    React.createElement(calculators.find(c => c.id === selectedCalculator)!.icon, { className: "h-7 w-7 text-white" })
                   }
                 </div>
                 <div>
                   <h2 className="text-3xl font-bold text-gray-900">
                     {calculators.find(c => c.id === selectedCalculator)?.name}
                   </h2>
-                  <p className="text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 mt-1">
                     {calculators.find(c => c.id === selectedCalculator)?.description}
                   </p>
                 </div>
@@ -546,7 +546,7 @@ const CalculatorsPage: React.FC = React.memo(() => {
                 <div className="mt-8 pt-6 border-t border-gray-200">
                   <button
                     onClick={handleCalculate}
-                    className="btn-primary flex items-center space-x-2 px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-shadow"
+                    className="btn-primary flex items-center space-x-2 px-8 py-3 text-base shadow-lg hover:shadow-xl transition-shadow"
                   >
                     <Calculator className="h-5 w-5" />
                     <span>Calcular Agora</span>
@@ -561,11 +561,11 @@ const CalculatorsPage: React.FC = React.memo(() => {
                 {renderResultado()}
                 <div className="mt-6 flex flex-wrap gap-3">
                   <button className="btn-secondary flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow">
-                    <Download className="h-4 w-4" />
+                    <Download className="h-5 w-5" />
                     <span>Baixar Relatório PDF</span>
                   </button>
                   <button className="btn-secondary flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow">
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-5 w-5" />
                     <span>Salvar Cálculo</span>
                   </button>
                 </div>

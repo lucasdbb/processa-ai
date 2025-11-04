@@ -252,7 +252,7 @@ OAB/SP nº [número]
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
-              <Brain className="h-8 w-8" />
+              <Brain className="h-7 w-7" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Ferramentas de IA Jurídica
@@ -282,21 +282,21 @@ OAB/SP nº [número]
                   role="radio"
                   aria-checked={selectedTool === tool.id}
                   aria-describedby={`tool-${tool.id}-description`}
-                  className={`w-full text-left p-4 rounded-lg border transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                  className={`w-full text-left p-4 h-24 rounded-xl border-2 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
                     selectedTool === tool.id
                       ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`${tool.color} p-2 rounded-lg`} aria-hidden="true">
-                      <tool.icon className="h-5 w-5 text-white" />
+                    <div className={`${tool.color} p-2.5 rounded-lg`} aria-hidden="true">
+                      <tool.icon className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{tool.name}</h3>
+                      <h3 className="font-semibold text-gray-900 text-sm">{tool.name}</h3>
                       <p 
                         id={`tool-${tool.id}-description`}
-                        className="text-sm text-gray-600"
+                        className="text-sm text-gray-600 mt-1"
                       >
                         {tool.description}
                       </p>
@@ -332,15 +332,15 @@ OAB/SP nº [número]
           {/* Área Principal */}
           <div className="lg:col-span-3">
             <div className="card">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className={`${tools.find(t => t.id === selectedTool)?.color} p-3 rounded-lg`}>
-                  <Brain className="h-6 w-6 text-white" />
+              <div className="flex items-center space-x-4 mb-6">
+                <div className={`${tools.find(t => t.id === selectedTool)?.color} p-4 rounded-xl`}>
+                  <Brain className="h-7 w-7 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-3xl font-bold text-gray-900">
                     {tools.find(t => t.id === selectedTool)?.name}
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-sm text-gray-600 mt-1">
                     {tools.find(t => t.id === selectedTool)?.description}
                   </p>
                 </div>
@@ -363,7 +363,7 @@ OAB/SP nº [número]
                   aria-describedby={`prompt-help ${errors.prompt ? 'prompt-error' : ''}`}
                   aria-required="true"
                   aria-invalid={!!errors.prompt}
-                  className={`w-full h-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none transition-colors duration-200 ${
+                  className={`w-full h-32 px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none transition-colors duration-200 ${
                     errors.prompt 
                       ? 'border-red-300 focus:ring-red-500' 
                       : 'border-gray-300'
@@ -383,7 +383,7 @@ OAB/SP nº [número]
                   onClick={handleGenerate}
                   disabled={!prompt.trim() || loading === 'loading' || !!errors.prompt}
                   aria-describedby="generate-button-help"
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                 >
                   {loading === 'loading' ? (
                     <>
@@ -392,7 +392,7 @@ OAB/SP nº [número]
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-5 w-5" />
                       <span>Gerar com IA</span>
                     </>
                   )}
@@ -419,24 +419,24 @@ OAB/SP nº [número]
                       <button
                         onClick={handleCopy}
                         aria-label="Copiar documento para a área de transferência"
-                        className="btn-secondary flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                        className="btn-secondary flex items-center space-x-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                       >
-                        <Copy className="h-4 w-4" aria-hidden="true" />
+                <Copy className="h-5 w-5" aria-hidden="true" />
                         <span>Copiar</span>
                       </button>
                       <button
                         onClick={handleDownload}
                         aria-label="Baixar documento como arquivo de texto"
-                        className="btn-secondary flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                        className="btn-secondary flex items-center space-x-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                       >
-                        <Download className="h-4 w-4" aria-hidden="true" />
+                <Download className="h-5 w-5" aria-hidden="true" />
                         <span>Baixar</span>
                       </button>
                       <button 
                         aria-label="Salvar documento no sistema"
-                        className="btn-secondary flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                        className="btn-secondary flex items-center space-x-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                       >
-                        <Save className="h-4 w-4" aria-hidden="true" />
+                <Save className="h-5 w-5" aria-hidden="true" />
                         <span>Salvar</span>
                       </button>
                     </div>
