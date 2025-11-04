@@ -29,7 +29,7 @@ export type {
   PasswordRequirements,
   EmailValidation,
   PasswordValidation
-} from './auth';
+} from '@/features/auth/types/auth';
 
 // Blog types
 export type {
@@ -39,7 +39,7 @@ export type {
   BlogPost,
   BlogFilterProps,
   BlogPostCardProps
-} from './blog';
+} from '@/features/blog/types/blog';
 
 // Calculator types
 export type {
@@ -56,7 +56,7 @@ export type {
   CalculatorConfig,
   CalculatorInputProps,
   CalculatorResultProps
-} from './calculator';
+} from '@/features/calculators/types/calculator';
 
 // Common utility types
 export type {

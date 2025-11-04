@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown, Shield, Smartphone } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ProfileModal from './ProfileModal';
 import LogoutMenu from './LogoutMenu';

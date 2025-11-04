@@ -8,7 +8,7 @@ import {
   LogOut,
   User as UserIcon
 } from 'lucide-react';
-import type { User } from './features/auth';
+import type { User } from '@/features/auth';
 
 interface DashboardProps {
   user: User | null;

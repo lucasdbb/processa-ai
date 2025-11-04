@@ -4,11 +4,12 @@
  */
 
 import DOMPurify from 'dompurify';
+import type { Config } from 'dompurify';
 
 /**
  * Configuração padrão para sanitização
  */
-const DEFAULT_CONFIG: DOMPurify.Config = {
+const DEFAULT_CONFIG: Config = {
   ALLOWED_TAGS: [], // Remove todas as tags HTML por padrão
   ALLOWED_ATTR: [], // Remove todos os atributos
   KEEP_CONTENT: true, // Mantém o conteúdo de texto, apenas remove as tags
@@ -17,7 +18,7 @@ const DEFAULT_CONFIG: DOMPurify.Config = {
 /**
  * Configuração permissiva para rich text (usado em blog posts, etc.)
  */
-const RICH_TEXT_CONFIG: DOMPurify.Config = {
+const RICH_TEXT_CONFIG: Config = {
   ALLOWED_TAGS: [
     'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr'
@@ -40,7 +41,8 @@ const RICH_TEXT_CONFIG: DOMPurify.Config = {
 export function sanitizeText(input: string | null | undefined): string {
   if (!input) return '';
 
-  return DOMPurify.sanitize(input.trim(), DEFAULT_CONFIG);
+  // Forçar retorno como string para compatibilidade com tipos
+  return DOMPurify.sanitize(input.trim(), DEFAULT_CONFIG) as string;
 }
 
 /**
@@ -57,7 +59,8 @@ export function sanitizeText(input: string | null | undefined): string {
 export function sanitizeRichText(input: string | null | undefined): string {
   if (!input) return '';
 
-  return DOMPurify.sanitize(input.trim(), RICH_TEXT_CONFIG);
+  // Forçar retorno como string para compatibilidade com tipos
+  return DOMPurify.sanitize(input.trim(), RICH_TEXT_CONFIG) as string;
 }
 
 /**
@@ -197,9 +200,9 @@ export function sanitizeObject<T extends Record<string, any>>(
     }
     // Se é array, sanitiza cada elemento
     else if (Array.isArray(value)) {
-      sanitized[key] = value.map(item =>
+      sanitized[key] = (value as any[]).map((item: any) =>
         typeof item === 'string' ? sanitizeText(item) :
-        typeof item === 'object' ? sanitizeObject(item) :
+        typeof item === 'object' ? sanitizeObject(item as Record<string, any>) :
         item
       ) as any;
     }

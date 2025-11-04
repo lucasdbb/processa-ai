@@ -25,7 +25,7 @@ export interface LoginData {
   password: string;
 }
 
-export interface AuthResponse {
+export interface AuthApiResponse {
   user: {
     id: string;
     email: string;
@@ -166,7 +166,7 @@ class AuthService {
   /**
    * Registra um novo usuário
    */
-  async register(data: RegisterData): Promise<AuthResponse> {
+  async register(data: RegisterData): Promise<AuthApiResponse> {
     try {
       // Sanitizar dados de entrada
       const sanitizedData: RegisterData = {
@@ -201,7 +201,7 @@ class AuthService {
       
       // Note: O endpoint de registro não retorna tokens automaticamente
       // O usuário precisa fazer login após o registro
-      return result;
+      return result as AuthApiResponse;
     } catch (error) {
       
       if (error instanceof TypeError && error.message.includes('fetch')) {
@@ -214,7 +214,7 @@ class AuthService {
   /**
    * Faz login do usuário
    */
-  async login(data: LoginData): Promise<AuthResponse> {
+  async login(data: LoginData): Promise<AuthApiResponse> {
     try {
       // Sanitizar email
       const sanitizedData: LoginData = {
@@ -242,7 +242,7 @@ class AuthService {
         throw new AuthError(error.error || 'Erro ao fazer login', error.code, error.details);
       }
 
-      const result: AuthResponse = await response.json();
+      const result: AuthApiResponse = await response.json();
      
       // Salvar tokens
       this.setTokens(result.session.access_token, result.session.refresh_token);
@@ -369,7 +369,7 @@ class AuthService {
       throw new Error('Sessão expirada. Faça login novamente.');
     }
 
-    const result: AuthResponse = await response.json();
+      const result: AuthApiResponse = await response.json();
     this.setTokens(result.session.access_token, result.session.refresh_token);
   }
 
