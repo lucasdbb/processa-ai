@@ -85,11 +85,11 @@ const AboutPage: React.FC = React.memo(() => {
   return (
     <div className="min-h-screen bg-warm-bg">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white py-16">
+      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white h-[260px] md:h-[300px] flex items-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
-              <Users className="h-8 w-8" />
+              <Users className="h-7 w-7" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Sobre a Processa AI

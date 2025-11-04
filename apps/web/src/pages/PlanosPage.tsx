@@ -108,12 +108,15 @@ const PlanosPage: React.FC = React.memo(() => {
   return (
     <div className="min-h-screen bg-warm-bg">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">
+      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white h-[260px] md:h-[300px] flex items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center w-full">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
+            <Crown className="h-7 w-7" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Escolha o Plano Ideal para Você
           </h1>
-          <p className="text-xl md:text-2xl text-primary-100 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-primary-100 mb-8 max-w-3xl mx-auto">
             Ferramentas jurídicas inteligentes para impulsionar sua prática profissional
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
