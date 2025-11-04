@@ -12,11 +12,12 @@ interface RefreshRequest {
 export async function refreshHandler(req: Request, res: Response): Promise<void> {
   try {
     // Tentar obter refresh token do cookie primeiro, depois do body
-    let refresh_token = extractRefreshToken(req);
+    let refresh_token: string | null = extractRefreshToken(req);
 
     if (!refresh_token) {
       const body: RefreshRequest = req.body;
-      refresh_token = body.refresh_token;
+      // body.refresh_token pode ser undefined; manter tipo string | null
+      refresh_token = body.refresh_token ?? null;
     }
 
     // Validação de refresh token
