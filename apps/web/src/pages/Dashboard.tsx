@@ -37,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ user, onLogout }) => {
       title: 'Criar Peça Processual',
       description: 'Use IA para criar petições e documentos',
       color: 'bg-blue-500',
-      href: '/ferramentas'
+      href: '/ia-juridica'
     },
     {
       icon: Calculator,

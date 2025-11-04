@@ -24,7 +24,7 @@ const LandingPage: React.FC = React.memo(() => {
       title: 'IA para Peças Processuais',
       description: 'Crie petições, contratos e documentos jurídicos com auxílio da inteligência artificial.',
       color: 'text-secondary-900',
-      link: '/ferramentas'
+      link: '/ia-juridica'
     },
     {
       icon: Calculator,

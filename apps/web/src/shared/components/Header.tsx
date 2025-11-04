@@ -75,11 +75,11 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               Blog
             </Link>
             <Link 
-              to="/ferramentas" 
-              className={`${getLinkClasses('/ferramentas')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
-              aria-current={isActive('/ferramentas') ? 'page' : undefined}
+              to="/ia-juridica" 
+              className={`${getLinkClasses('/ia-juridica')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              aria-current={isActive('/ia-juridica') ? 'page' : undefined}
             >
-              Ferramentas
+              IA Jurídica
             </Link>
             <Link 
               to="/calculadoras" 
@@ -163,12 +163,12 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
                 Blog
               </Link>
               <Link
-                to="/ferramentas"
-                className={`${getMobileLinkClasses('/ferramentas')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                to="/ia-juridica"
+                className={`${getMobileLinkClasses('/ia-juridica')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
                 onClick={() => setIsMenuOpen(false)}
-                aria-current={isActive('/ferramentas') ? 'page' : undefined}
+                aria-current={isActive('/ia-juridica') ? 'page' : undefined}
               >
-                Ferramentas
+                IA Jurídica
               </Link>
               <Link
                 to="/calculadoras"

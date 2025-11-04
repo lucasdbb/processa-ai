@@ -5,7 +5,7 @@
  */
 
 // Components
-export { default as ToolsPage } from './components/ToolsPage';
+export { default as IAJuridicaPage } from './components/IAJuridicaPage';
 
 // Types (from shared package)
 export type { ChatSession, ChatMessage, StreamingMessage } from '@processa-ai/types/chat';

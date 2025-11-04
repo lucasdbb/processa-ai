@@ -6,7 +6,7 @@ import type { User } from './features/auth';
 import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/Dashboard';
 import { BlogPage, AdminPanel } from '@/features/blog';
-import { ToolsPage } from '@/features/ai-chat';
+import { IAJuridicaPage } from '@/features/ai-chat';
 import { CalculatorsPage } from '@/features/calculators';
 import AboutPage from '@/pages/AboutPage';
 import PlanosPage from '@/pages/PlanosPage';
@@ -237,12 +237,11 @@ function App() {
                 }
               />
               <Route path="/blog" element={<BlogPage />} />
-              <Route path="/ferramentas" element={<ToolsPage />} />
+              <Route path="/ia-juridica" element={<IAJuridicaPage />} />
               <Route path="/calculadoras" element={<CalculatorsPage />} />
               <Route path="/planos" element={<PlanosPage />} />
               <Route path="/sobre" element={<AboutPage />} />
               {/* Rotas alternativas (aliases) para compatibilidade futura */}
-              <Route path="/tools" element={<ToolsPage />} />
               <Route path="/calculators" element={<CalculatorsPage />} />
             </Routes>
           </main>

@@ -22,10 +22,10 @@ import ValidationError from '../../../shared/components/ValidationError';
  * 
  * @example
  * ```tsx
- * <ToolsPage />
+ * <IAJuridicaPage />
  * ```
  */
-const ToolsPageComponent: React.FC = () => {
+const IAJuridicaPageComponent: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState('petition');
   const [prompt, setPrompt] = useState('');
 
@@ -255,7 +255,7 @@ OAB/SP nº [número]
               <Brain className="h-7 w-7" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Ferramentas de IA Jurídica
+              IA Jurídica
             </h1>
             <p className="text-xl text-primary-100 max-w-2xl mx-auto">
               Crie documentos jurídicos profissionais com auxílio da inteligência artificial.
@@ -269,7 +269,7 @@ OAB/SP nº [número]
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar com Ferramentas */}
           <div className="lg:col-span-1">
-            <h2 id="tools-heading" className="text-xl font-bold text-gray-900 mb-6">Ferramentas Disponíveis</h2>
+            <h2 id="tools-heading" className="text-xl font-bold text-gray-900 mb-6">Ferramentas de IA Jurídica</h2>
             <div 
               className="space-y-4"
               role="radiogroup"
@@ -474,7 +474,7 @@ OAB/SP nº [número]
   );
 };
 
-const ToolsPage = React.memo(ToolsPageComponent);
-ToolsPage.displayName = 'ToolsPage';
+const IAJuridicaPage = React.memo(IAJuridicaPageComponent);
+IAJuridicaPage.displayName = 'IAJuridicaPage';
 
-export default ToolsPage;
+export default IAJuridicaPage;

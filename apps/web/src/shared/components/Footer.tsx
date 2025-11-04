@@ -43,8 +43,8 @@ const Footer: React.FC = React.memo(() => {
                 </Link>
               </li>
               <li>
-                <Link to="/ferramentas" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
-                  Ferramentas IA
+                <Link to="/ia-juridica" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
+                  IA Jurídica
                 </Link>
               </li>
               <li>
