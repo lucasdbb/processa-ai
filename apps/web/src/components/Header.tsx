@@ -53,7 +53,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               <img 
                 src="/logo.png" 
                 alt="Processa AI - Plataforma de soluções jurídicas com inteligência artificial" 
-                className="h-20 w-auto object-contain" 
+                className="h-16 w-auto object-contain" 
               />
             </Link>
           </div>
