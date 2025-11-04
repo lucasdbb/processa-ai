@@ -11,7 +11,7 @@ import {
   removeDocumentMask,
   isValidCpf,
   isValidCnpj
-} from '../utils/masks';
+} from '../../../shared/utils/masks';
 
 interface ProfileModalProps {
   isOpen: boolean;

@@ -10,11 +10,11 @@ import {
   Settings,
   Save
 } from 'lucide-react';
-import { useAsync } from '../hooks/useAsync';
-import { useFormValidation } from '../hooks/useFormValidation';
-import LoadingSpinner from '../components/LoadingSpinner';
-import ErrorMessage from '../components/ErrorMessage';
-import ValidationError from '../components/ValidationError';
+import { useAsync } from '../../../shared/hooks/useAsync';
+import { useFormValidation } from '../../../shared/hooks/useFormValidation';
+import LoadingSpinner from '../../../shared/components/LoadingSpinner';
+import ErrorMessage from '../../../shared/components/ErrorMessage';
+import ValidationError from '../../../shared/components/ValidationError';
 
 /**
  * Página de ferramentas de IA para geração de documentos jurídicos

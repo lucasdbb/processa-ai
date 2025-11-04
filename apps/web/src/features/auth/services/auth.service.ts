@@ -4,7 +4,7 @@
  */
 
 import type { User, UserRole } from '../types/auth';
-import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeDocument } from '../utils/sanitize';
+import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeDocument } from '../../../shared/utils/sanitize';
 
 // Base URL da API (sem /api no final)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';

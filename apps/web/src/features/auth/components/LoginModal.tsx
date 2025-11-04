@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2, FileText } from 'lucide-react';
 import type { LoginModalProps, AuthFormData, DocumentType } from '../types/auth';
-import { useFormValidation } from '../hooks/useFormValidation';
+import { useFormValidation } from '../../../shared/hooks/useFormValidation';
 import { authService, AuthError } from '../services/auth.service';
-import { cpfMask, cnpjMask, isValidCpf, isValidCnpj } from '../utils/masks';
-import { sanitizeName, sanitizeEmail, sanitizeDocument } from '../utils/sanitize';
+import { cpfMask, cnpjMask, isValidCpf, isValidCnpj } from '../../../shared/utils/masks';
+import { sanitizeName, sanitizeEmail, sanitizeDocument } from '../../../shared/utils/sanitize';
 
 /**
  * Modal component for user authentication (login/registration)

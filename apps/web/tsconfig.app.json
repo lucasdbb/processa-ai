@@ -27,12 +27,18 @@
     /* Monorepo paths */
     "baseUrl": ".",
     "paths": {
-      "@processa-ai/types": ["../../packages/types"],
-      "@processa-ai/types/*": ["../../packages/types/*"],
-      "@processa-ai/ui": ["../../packages/ui"],
-      "@processa-ai/ui/*": ["../../packages/ui/*"],
-      "@processa-ai/utils": ["../../packages/utils"],
-      "@processa-ai/utils/*": ["../../packages/utils/*"]
+      "@/*": ["./src/*"],
+      "@/features/*": ["./src/features/*"],
+      "@/pages/*": ["./src/pages/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@/core/*": ["./src/core/*"],
+      "@processa-ai/types": ["../../packages/types/src"],
+      "@processa-ai/types/*": ["../../packages/types/src/*"],
+      "@processa-ai/validators": ["../../packages/validators/src"],
+      "@processa-ai/validators/*": ["../../packages/validators/src/*"],
+      "@processa-ai/config": ["../../packages/config/src"],
+      "@processa-ai/utils": ["../../packages/utils/src"],
+      "@processa-ai/utils/*": ["../../packages/utils/src/*"]
     }
   },
   "include": ["src"]

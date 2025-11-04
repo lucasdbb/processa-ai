@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Menu, X, LogIn, User, Settings, LogOut } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import UserMenu from './UserMenu';
-import type { User as UserType } from '../types/auth';
+import UserMenu from '../../features/auth/components/UserMenu';
+import type { User as UserType } from '../../features/auth';
 
 interface HeaderProps {
   user?: UserType | null;

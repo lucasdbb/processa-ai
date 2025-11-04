@@ -1,25 +1,25 @@
 {
   "name": "@processa-ai/types",
   "version": "1.0.0",
+  "type": "module",
   "description": "Tipos TypeScript compartilhados para o Processa AI",
-  "main": "index.ts",
-  "types": "index.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
+    "type-check": "tsc --noEmit"
   },
   "keywords": ["typescript", "types", "processa-ai"],
   "author": "Processa AI Team",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.2.2",
-    "@types/react": "^19.1.16",
-    "react": "^19.1.1"
+    "typescript": "^5.7.2"
   },
   "exports": {
-    ".": "./index.ts",
-    "./common": "./common.ts",
-    "./auth": "./auth.ts",
-    "./calculator": "./calculator.ts"
+    ".": "./src/index.ts",
+    "./auth": "./src/auth.ts",
+    "./blog": "./src/blog.ts",
+    "./chat": "./src/chat.ts",
+    "./calculator": "./src/calculator.ts",
+    "./common": "./src/common.ts"
   }
 }

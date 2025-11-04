@@ -58,6 +58,15 @@ export type {
   CalculatorResultProps
 } from './calculator';
 
+// Chat & AI types
+export type {
+  ChatSession,
+  ChatMessage,
+  StreamingMessage,
+  ChatRequest,
+  ChatResponse
+} from './chat';
+
 // Common utility types
 export type {
   ApiResponse,

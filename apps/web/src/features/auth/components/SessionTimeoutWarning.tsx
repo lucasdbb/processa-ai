@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
-import { formatTimeRemaining } from '../utils/sessionTimeout';
+import { formatTimeRemaining } from '../../../shared/utils/sessionTimeout';
 
 interface SessionTimeoutWarningProps {
   isOpen: boolean;

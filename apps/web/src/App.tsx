@@ -1,21 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import LoginModal from './components/LoginModal';
-import SessionTimeoutWarning from './components/SessionTimeoutWarning';
-import ErrorBoundary from './components/ErrorBoundary';
-import LandingPage from './pages/LandingPage';
-import Dashboard from './pages/Dashboard';
-import BlogPage from './pages/BlogPage';
-import ToolsPage from './pages/ToolsPage';
-import CalculatorsPage from './pages/CalculatorsPage';
-import AboutPage from './pages/AboutPage';
-import AdminPanel from './pages/AdminPanel';
-import PlanosPage from './pages/PlanosPage';
-import { authService } from './services/auth.service';
-import { getSessionTimeoutManager } from './utils/sessionTimeout';
-import type { User } from './types/auth';
+import { Header, Footer, ErrorBoundary } from './shared';
+import { LoginModal, SessionTimeoutWarning, authService } from './features/auth';
+import type { User } from './features/auth';
+import LandingPage from '@/pages/LandingPage';
+import Dashboard from '@/pages/Dashboard';
+import { BlogPage, AdminPanel } from '@/features/blog';
+import { ToolsPage } from '@/features/ai-chat';
+import { CalculatorsPage } from '@/features/calculators';
+import AboutPage from '@/pages/AboutPage';
+import PlanosPage from '@/pages/PlanosPage';
+import { getSessionTimeoutManager } from './shared/utils/sessionTimeout';
 
 /**
  * Main application component that handles routing, authentication, and global state

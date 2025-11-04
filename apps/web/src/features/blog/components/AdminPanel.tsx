@@ -14,10 +14,10 @@ import {
 } from 'lucide-react';
 import { adminService } from '../services/admin.service';
 import type { UserListItem } from '../services/admin.service';
-import type { User } from '../types/auth';
-import { ToastContainer } from '../components/Toast';
-import type { ToastType } from '../components/Toast';
-import ConfirmDialog from '../components/ConfirmDialog';
+import type { User } from '../../auth/types/auth';
+import { ToastContainer } from '../../../shared/components/Toast';
+import type { ToastType } from '../../../shared/components/Toast';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 
 interface AdminPanelProps {
   user: User;
