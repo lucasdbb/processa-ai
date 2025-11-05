@@ -23,6 +23,15 @@ export default defineConfig({
     port: 3000,
     host: true,
   },
+  preview: {
+    // Permite acesso pelo domínio do Railway e por hosts comuns
+    allowedHosts: [
+      'processa-ai.up.railway.app',
+      'localhost',
+      '127.0.0.1',
+    ],
+    host: true,
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
