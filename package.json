@@ -16,6 +16,8 @@
     "install-all": "npm install --workspaces",
     "web:dev": "npm run dev --workspace=@processa-ai/web",
     "web:build": "npm run build --workspace=@processa-ai/web",
+    "web:start": "npm run start --workspace=@processa-ai/web",
+    "start": "npm run start --workspace=@processa-ai/web",
     "api:dev": "npm run dev --workspace=@processa-ai/api",
     "api:build": "npm run build --workspace=@processa-ai/api",
     "types:build": "npm run build --workspace=@processa-ai/types",
