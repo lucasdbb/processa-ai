@@ -17,6 +17,21 @@ export const supabaseAdmin: SupabaseClient = createClient(
 );
 
 /**
+ * Supabase Public Client (anon key)
+ * Use para operações padrão como signUp, que disparam e-mails de confirmação
+ */
+export const supabasePublic: SupabaseClient = createClient(
+  env.SUPABASE_URL,
+  env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+/**
  * Cria cliente Supabase com access token do usuário
  * Use para operações que devem respeitar RLS policies
  */

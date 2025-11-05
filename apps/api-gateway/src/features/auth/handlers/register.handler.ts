@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { supabaseAdmin } from '../../../infrastructure/supabase/client.js';
+import { supabaseAdmin, supabasePublic } from '../../../infrastructure/supabase/client.js';
 import { ValidationError } from '../../../shared/errors/AppError.js';
 import { mapSupabaseError } from '../../../shared/errors/AppError.js';
 import { logger, createRequestContext } from '../../../infrastructure/monitoring/logger.js';
+import { env } from '../../../config/env.js';
 
 interface RegisterRequest {
   email: string;
@@ -45,15 +46,13 @@ export async function registerHandler(req: Request, res: Response): Promise<void
       return;
     }
 
-    // Criar usuário
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    // Criar usuário via signUp (dispara e-mail de confirmação automaticamente)
+    const { data, error } = await supabasePublic.auth.signUp({
       email,
       password,
-      user_metadata: {
-        name: name || email.split('@')[0],
-        role: 'user'
-      },
-      email_confirm: false
+      options: {
+        emailRedirectTo: env.FRONTEND_URL
+      }
     });
 
     if (error) {
