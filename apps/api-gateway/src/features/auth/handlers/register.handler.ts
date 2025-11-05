@@ -51,7 +51,7 @@ export async function registerHandler(req: Request, res: Response): Promise<void
       email,
       password,
       options: {
-        emailRedirectTo: env.FRONTEND_URL
+        emailRedirectTo: `${env.FRONTEND_URL}/auth/callback`
       }
     });
 

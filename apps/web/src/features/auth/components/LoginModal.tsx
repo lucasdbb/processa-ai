@@ -5,6 +5,7 @@ import { useFormValidation } from '../../../shared/hooks/useFormValidation';
 import { authService, AuthError } from '../services/auth.service';
 import { cpfMask, cnpjMask, isValidCpf, isValidCnpj } from '../../../shared/utils/masks';
 import { sanitizeName, sanitizeEmail, sanitizeDocument } from '../../../shared/utils/sanitize';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
 /**
  * Modal component for user authentication (login/registration)
@@ -26,6 +27,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
   const [apiError, setApiError] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [documentType, setDocumentType] = useState<DocumentType>('cpf');
+  const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
   const [formData, setFormData] = useState<AuthFormData>({
     name: '',
     email: '',
@@ -529,6 +531,18 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
           </button>
         </form>
 
+        {/* Forgot Password - Only show in login mode */}
+        {isLogin && (
+          <div className="text-center mt-3">
+            <button
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-1"
+            >
+              Esqueceu sua senha?
+            </button>
+          </div>
+        )}
+
         {/* Toggle Login/Registro */}
         <div className="text-center mt-4">
           <p className="text-gray-600">
@@ -542,6 +556,12 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </div>
   );
 });

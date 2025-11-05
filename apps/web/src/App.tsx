@@ -5,6 +5,8 @@ import { LoginModal, SessionTimeoutWarning, authService } from './features/auth'
 import type { User } from './features/auth';
 import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/Dashboard';
+import AuthCallback from '@/pages/AuthCallback';
+import ResetPassword from '@/pages/ResetPassword';
 import { BlogPage, AdminPanel } from '@/features/blog';
 import { IAJuridicaPage } from '@/features/ai-chat';
 import { CalculatorsPage } from '@/features/calculators';
@@ -220,6 +222,8 @@ function App() {
           <main id="main-content" className="flex-grow" role="main">
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route
                 path="/dashboard"
                 element={

@@ -1,15 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Brain,
   Calculator,
   Newspaper,
   Shield,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  AlertCircle,
+  X
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 const LandingPage: React.FC = React.memo(() => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showErrorBanner, setShowErrorBanner] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Check for URL errors from Supabase
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const errorCode = searchParams.get('error_code');
+    const errorDescription = searchParams.get('error_description');
+
+    if (error || errorCode || errorDescription) {
+      let message = 'Ocorreu um erro durante a autenticação.';
+
+      if (errorCode === 'otp_expired' || error === 'link_expired') {
+        message = 'O link de recuperação expirou. Por favor, solicite um novo link através da opção "Esqueceu sua senha?".';
+      } else if (error === 'access_denied') {
+        message = 'O link de autenticação é inválido ou já foi usado.';
+      } else if (error === 'no_token') {
+        message = 'Token de recuperação não encontrado. Solicite um novo link.';
+      } else if (errorDescription) {
+        message = decodeURIComponent(errorDescription);
+      }
+
+      setErrorMessage(message);
+      setShowErrorBanner(true);
+
+      // Remove error params from URL
+      searchParams.delete('error');
+      searchParams.delete('error_code');
+      searchParams.delete('error_description');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const features = [
     {
       icon: Newspaper,
@@ -47,6 +83,36 @@ const LandingPage: React.FC = React.memo(() => {
 
   return (
     <div className="min-h-screen">
+      {/* Error Banner */}
+      {showErrorBanner && (
+        <div className="fixed top-20 left-0 right-0 z-40 animate-slide-down">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-red-50 border-l-4 border-red-500 rounded-lg shadow-lg p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-red-800">
+                      Link de Recuperação Expirado
+                    </h3>
+                    <p className="text-sm text-red-700 mt-1">
+                      {errorMessage}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowErrorBanner(false)}
+                  className="flex-shrink-0 text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1"
+                  aria-label="Fechar aviso"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
