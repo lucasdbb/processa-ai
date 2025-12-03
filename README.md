@@ -1,22 +1,15 @@
 # Processa AI - Monorepo
 
-Uma plataforma moderna para cálculos trabalhistas e assistência com IA, desenvolvida com React, TypeScript, Tailwind CSS e Supabase em arquitetura de monorepo.
+Uma plataforma moderna para cálculos trabalhistas e assistência com IA, desenvolvida com React (frontend) e Python + FastAPI (backend), utilizando Supabase em arquitetura de monorepo.
 
 ## 🏗️ Estrutura do Monorepo
 
 ```
 processa-ai/
 ├── apps/
-│   ├── web/           # Frontend React + Vite
-│   └── api/           # Backend Vercel Functions
-├── packages/
-│   ├── types/         # Tipos TypeScript compartilhados
-│   ├── ui/            # Componentes UI reutilizáveis
-│   └── utils/         # Utilitários compartilhados
-├── tools/
-│   ├── eslint-config/ # Configuração ESLint compartilhada
-│   └── tsconfig/      # Configurações TypeScript base
-└── package.json       # Workspace raiz
+│   ├── frontend/      # Frontend React + Vite + TypeScript
+│   └── backend/       # Backend Python + FastAPI
+└── package.json       # Workspace raiz (npm para frontend)
 ```
 
 ## 🚀 Funcionalidades
@@ -26,22 +19,24 @@ processa-ai/
 - **Interface Moderna**: Design responsivo e intuitivo
 - **Autenticação Segura**: Sistema completo de login e registro via API
 - **Blog Integrado**: Artigos e conteúdo educativo
-- **API Backend**: Vercel Functions para autenticação e lógica de negócio
+- **API Backend**: Python + FastAPI para alta performance
 
 ## 🛠️ Tecnologias
 
-### Frontend (apps/web)
-- **Framework**: React 18 + TypeScript
+### Frontend (apps/frontend)
+- **Framework**: React 19 + TypeScript
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS
 - **Roteamento**: React Router DOM
 - **Ícones**: Lucide React
 
-### Backend (apps/api)
-- **Runtime**: Vercel Functions
-- **Database**: Supabase
+### Backend (apps/backend)
+- **Language**: Python 3.11+
+- **Framework**: FastAPI
+- **Server**: Uvicorn (ASGI)
+- **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
-- **Language**: TypeScript
+- **Validation**: Pydantic
 
 ### Packages
 - **types**: Tipos TypeScript compartilhados
@@ -56,25 +51,44 @@ git clone https://github.com/seu-usuario/processa-ai.git
 cd processa-ai
 ```
 
-2. Instale as dependências de todos os workspaces:
+2. Instale as dependências:
+
+**Frontend:**
 ```bash
 npm install
 ```
 
-3. Configure as variáveis de ambiente:
+**Backend:**
 ```bash
+npm run backend:install
+# ou diretamente
+cd apps/backend
+pip install -r requirements.txt
+```
+
+3. Configure as variáveis de ambiente:
+
+**Frontend:**
+```bash
+cd apps/frontend
+cp .env.example .env
+```
+
+**Backend:**
+```bash
+cd apps/backend
 cp .env.example .env
 ```
 
 4. Inicie o desenvolvimento:
 ```bash
-# Frontend
-npm run web:dev
+# Frontend (terminal 1)
+npm run frontend:dev
 
-# API (em outro terminal)
-npm run api:dev
+# Backend (terminal 2)
+npm run backend:dev
 
-# Ou ambos
+# Ou apenas frontend
 npm run dev
 ```
 
@@ -88,41 +102,56 @@ npm run dev
 - `npm run clean` - Limpa builds
 
 ### Scripts Específicos
-- `npm run web:dev` - Frontend em modo desenvolvimento
-- `npm run web:build` - Build do frontend
-- `npm run api:dev` - API em modo desenvolvimento
-- `npm run api:build` - Build da API
+- `npm run frontend:dev` - Frontend em modo desenvolvimento
+- `npm run frontend:build` - Build do frontend
+- `npm run backend:dev` - Backend em modo desenvolvimento
+- `npm run backend:install` - Instalar dependências Python
+- `npm run backend:test` - Executar testes do backend
 - `npm run types:build` - Build dos tipos
 
 ## 🌐 Desenvolvimento
 
-### Frontend (localhost:3000)
+### Frontend (localhost:5173)
 ```bash
-cd apps/web
+cd apps/frontend
 npm run dev
 ```
 
-### API (Vercel Dev)
+### Backend (localhost:8000)
 ```bash
-cd apps/api
-npm run dev
+cd apps/backend
+uvicorn src.main:app --reload
+# ou
+python -m src.main
 ```
+
+Documentação da API: `http://localhost:8000/docs`
 
 ## 📱 Aplicações
 
-### Frontend (apps/web)
+### Frontend (apps/frontend)
 - **Home**: Página inicial com apresentação da plataforma
 - **Calculadoras**: Ferramentas de cálculo trabalhista
 - **Ferramentas**: Assistente IA para geração de textos
 - **Blog**: Artigos e conteúdo educativo
 - **Sobre**: Informações sobre a plataforma
 
-### API (apps/api)
-- **POST /api/auth/login** - Autenticação de usuário
-- **POST /api/auth/register** - Registro de novo usuário
-- **POST /api/auth/logout** - Logout do usuário
-- **POST /api/auth/refresh** - Renovação de token
-- **GET /api/auth/me** - Informações do usuário
+### Backend API (apps/backend)
+
+**Autenticação (`/api/auth`)**
+- `POST /api/auth/register` - Registrar novo usuário
+- `POST /api/auth/login` - Login
+- `POST /api/auth/refresh` - Refresh token
+- `POST /api/auth/forgot-password` - Recuperar senha
+- `POST /api/auth/reset-password` - Redefinir senha
+- `POST /api/auth/logout` - Logout
+
+**Usuários (`/api/users`)**
+- `GET /api/users/profile` - Ver perfil do usuário
+- `PUT /api/users/profile` - Atualizar perfil
+- `GET /api/users` - Listar usuários (admin)
+
+**Documentação completa:** `http://localhost:8000/docs`
 
 ## 📦 Packages
 
@@ -148,31 +177,44 @@ Funções utilitárias compartilhadas:
 ## 🔐 Autenticação
 
 Sistema completo de autenticação com Supabase:
-- **Login/Registro**: Via API Vercel Functions
-- **JWT Tokens**: Access e refresh tokens
-- **Middleware**: Proteção de rotas da API
+- **Login/Registro**: Via API FastAPI
+- **JWT Tokens**: Access e refresh tokens gerenciados pelo Supabase
+- **Validação**: Pydantic schemas para validação de dados
 - **CORS**: Configurado para frontend
 
 ## 🚀 Deploy
 
 ### Frontend (Vercel)
 ```bash
-cd apps/web
+cd apps/frontend
 vercel --prod
 ```
 
-### API (Vercel Functions)
+### Backend (Railway/Render)
+
+**Railway:**
 ```bash
-cd apps/api
-vercel --prod
+railway init
+railway up
 ```
+
+**Render:**
+- Conecte o repositório
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `uvicorn src.main:app --host 0.0.0.0 --port $PORT`
 
 ### Variáveis de Ambiente
-Configure no Vercel:
+
+**Frontend (Vercel):**
+- `VITE_API_URL` - URL da API backend
+
+**Backend (Railway/Render):**
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `SECRET_KEY`
 - `FRONTEND_URL`
+- `ENVIRONMENT=production`
 
 ## 🔧 Configuração do Workspace
 
