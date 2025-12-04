@@ -8,7 +8,7 @@ export interface UserListItem {
   id: string;
   email: string;
   name: string;
-  role: 'user' | 'admin' | 'premium';
+  role: 'user' | 'author' | 'admin' | 'premium';
   avatar_url: string | null;
   document_type: string | null;
   document_number: string | null;
@@ -32,7 +32,7 @@ type RawProfile = {
   id: string;
   email: string;
   full_name?: string;
-  role?: 'user' | 'admin' | 'premium';
+  role?: 'user' | 'author' | 'admin' | 'premium';
   avatar_url?: string | null;
   document_type?: string | null;
   document_number?: string | null;
@@ -174,7 +174,7 @@ class AdminService {
    */
   async updateUserRole(
     userId: string,
-    role: 'user' | 'admin' | 'premium'
+    role: 'user' | 'author' | 'admin' | 'premium'
   ): Promise<UpdateRoleResponse> {
     const response = await fetch(`${API_URL}/users/update-role`, {
       method: 'PATCH',
@@ -196,7 +196,7 @@ class AdminService {
    */
   async getUserStats(): Promise<{
     total: number;
-    byRole: { user: number; admin: number; premium: number };
+    byRole: { user: number; author: number; admin: number; premium: number };
     verified: number;
     unverified: number;
     recentSignups: number; // Last 7 days
@@ -216,6 +216,7 @@ class AdminService {
       total: users.length,
       byRole: {
         user: 0,
+        author: 0,
         admin: 0,
         premium: 0,
       },

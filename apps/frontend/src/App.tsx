@@ -374,8 +374,6 @@ function ResetPasswordHandler({
 }: {
   onResetPassword: (token: string) => void
 }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-
   useEffect(() => {
     // Verificar se estamos na rota /reset-password
     const isResetPasswordRoute = window.location.pathname === '/reset-password';

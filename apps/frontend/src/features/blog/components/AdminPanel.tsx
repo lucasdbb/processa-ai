@@ -10,17 +10,19 @@ import {
   XCircle,
   Calendar,
   TrendingUp,
-  Filter
+  Filter,
+  User,
+  Settings
 } from 'lucide-react';
 import { adminService } from '../services/admin.service';
 import type { UserListItem } from '../services/admin.service';
-import type { User } from '../../auth/types/auth';
+import type { User as AuthUser } from '../../auth/types/auth';
 import { ToastContainer } from '../../../shared/components/Toast';
 import type { ToastType } from '../../../shared/components/Toast';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 
 interface AdminPanelProps {
-  user: User;
+  user: AuthUser;
 }
 
 /**
@@ -32,9 +34,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin' | 'premium'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'author' | 'admin' | 'premium'>('all');
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
-  const [pendingRoleUpdate, setPendingRoleUpdate] = useState<{ userId: string; role: 'user' | 'admin' | 'premium' } | null>(null);
+  const [pendingRoleUpdate, setPendingRoleUpdate] = useState<{ userId: string; role: 'user' | 'author' | 'admin' | 'premium' } | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
   const [stats, setStats] = useState({
@@ -97,7 +99,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     }
   };
 
-  const handleRoleChangeRequest = (userId: string, newRole: 'user' | 'admin' | 'premium') => {
+  const handleRoleChangeRequest = (userId: string, newRole: 'user' | 'author' | 'admin' | 'premium') => {
     setPendingRoleUpdate({ userId, role: newRole });
   };
 
@@ -147,6 +149,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'admin': return <Shield className="w-4 h-4 text-red-600" />;
+      case 'author': return <User className="w-4 h-4 text-blue-600" />;
       case 'premium': return <Crown className="w-4 h-4 text-yellow-600" />;
       default: return <Users className="w-4 h-4 text-gray-600" />;
     }
@@ -155,6 +158,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   const getRoleBadgeClass = (role: string) => {
     switch (role) {
       case 'admin': return 'bg-red-100 text-red-800 border-red-200';
+      case 'author': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'premium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -277,11 +281,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <select
                     value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value as any)}
+                    onChange={(e) => setRoleFilter(e.target.value as 'all' | 'user' | 'author' | 'admin' | 'premium')}
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
                   >
                     <option value="all">Todas as roles</option>
                     <option value="user">Usuários</option>
+                    <option value="author">Autores</option>
                     <option value="premium">Premium</option>
                     <option value="admin">Admins</option>
                   </select>
@@ -389,8 +394,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                       {u.id !== user.id && (
                         <button
                           onClick={() => setSelectedUser(u)}
-                          className="text-primary-600 hover:text-primary-900"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 border border-primary-200 text-primary-700 rounded-lg hover:bg-primary-50 hover:border-primary-300 transition-colors"
                         >
+                          <Settings className="w-4 h-4" />
                           Alterar Role
                         </button>
                       )}
@@ -426,7 +432,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
               <div className="mb-6">
                 <p className="text-sm text-gray-600 mb-3">Selecione a nova role:</p>
                 <div className="space-y-2">
-                  {(['user', 'premium', 'admin'] as const).map((role) => (
+                  {(['user', 'author', 'premium', 'admin'] as const).map((role) => (
                     <button
                       key={role}
                       onClick={() => handleRoleChangeRequest(selectedUser.id, role)}
