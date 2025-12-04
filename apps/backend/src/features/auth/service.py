@@ -21,7 +21,9 @@ class AuthService:
         """
         try:
             # Sign up user with Supabase Auth
-            response = self.supabase.auth.sign_up({
+            from supabase import create_client
+            client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            response = client.auth.sign_up({
                 "email": user_data.email,
                 "password": user_data.password,
                 "options": {
@@ -83,7 +85,9 @@ class AuthService:
     async def login(self, user_data: UserLogin):
         """Login user with Supabase Auth"""
         try:
-            response = self.supabase.auth.sign_in_with_password({
+            from supabase import create_client
+            client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            response = client.auth.sign_in_with_password({
                 "email": user_data.email,
                 "password": user_data.password,
             })
@@ -114,7 +118,9 @@ class AuthService:
     async def refresh_token(self, refresh_token: str):
         """Refresh access token"""
         try:
-            response = self.supabase.auth.refresh_session(refresh_token)
+            from supabase import create_client
+            client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            response = client.auth.refresh_session(refresh_token)
 
             if not response.session:
                 raise HTTPException(
@@ -141,7 +147,9 @@ class AuthService:
     async def forgot_password(self, email: str):
         """Send password reset email"""
         try:
-            self.supabase.auth.reset_password_email(email)
+            from supabase import create_client
+            client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            client.auth.reset_password_email(email)
             return {"message": "E-mail de recuperação enviado com sucesso"}
         except Exception:
             # Don't reveal if email exists or not

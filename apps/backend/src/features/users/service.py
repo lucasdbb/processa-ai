@@ -32,7 +32,11 @@ class UserService:
             # Buscar dados do auth.users para pegar confirmed_at
             try:
                 auth_response = self.supabase.auth.admin.get_user_by_id(user_id)
-                confirmed_at = auth_response.user.confirmed_at if auth_response.user else None
+                if auth_response.user and getattr(auth_response.user, "confirmed_at", None):
+                    val = auth_response.user.confirmed_at
+                    confirmed_at = val.isoformat() if hasattr(val, "isoformat") else str(val)
+                else:
+                    confirmed_at = None
             except Exception:
                 confirmed_at = None
 
@@ -160,4 +164,39 @@ class UserService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao listar usuários",
+            )
+
+    async def update_role(self, target_user_id: str, role: str):
+        try:
+            if role not in {"user", "author", "admin", "premium"}:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Role inválida",
+                )
+            res = (
+                self.supabase.table("profiles")
+                .update({"role": role})
+                .eq("id", target_user_id)
+                .execute()
+            )
+            if not res.data:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuário não encontrado",
+                )
+            user = res.data[0]
+            return {
+                "message": "Role atualizada",
+                "user": {
+                    "id": user["id"],
+                    "email": user["email"],
+                    "role": user.get("role", role),
+                },
+            }
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao atualizar role",
             )

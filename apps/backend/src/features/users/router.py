@@ -4,7 +4,7 @@ Users routes
 from fastapi import APIRouter, Depends, Query
 
 from src.core.dependencies import get_current_admin, get_current_user
-from src.features.users.schemas import UpdateProfile, UserProfile
+from src.features.users.schemas import UpdateProfile, UpdateRoleRequest, UserProfile
 from src.features.users.service import UserService
 
 router = APIRouter()
@@ -31,3 +31,8 @@ async def list_users(
 ):
     """List all users (admin only)"""
     return await user_service.list_users(limit=limit, offset=offset)
+
+
+@router.patch("/update-role")
+async def update_role(data: UpdateRoleRequest, _admin=Depends(get_current_admin)):
+    return await user_service.update_role(data.userId, data.role)

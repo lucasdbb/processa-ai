@@ -32,3 +32,8 @@ class UpdateProfile(BaseModel):
     phone: str | None = None
     documentType: str | None = None
     documentNumber: str | None = None
+
+
+class UpdateRoleRequest(BaseModel):
+    userId: str
+    role: str
