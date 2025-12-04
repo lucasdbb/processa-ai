@@ -20,11 +20,11 @@ const BlogPage: React.FC = React.memo(() => {
 
   const categories: BlogCategory[] = [
     { id: 'all', name: 'Todas' },
-    { id: 'trabalhista', name: 'Direito Trabalhista' },
-    { id: 'previdenciario', name: 'Direito Previdenciário' },
-    { id: 'civil', name: 'Direito Civil' },
-    { id: 'penal', name: 'Direito Penal' },
-    { id: 'tributario', name: 'Direito Tributário' }
+    { id: 'direito-trabalho', name: 'Direito do Trabalho' },
+    { id: 'previdenciario', name: 'Previdenciário' },
+    { id: 'calculos', name: 'Cálculos' },
+    { id: 'jurisprudencia', name: 'Jurisprudência' },
+    { id: 'legislacao', name: 'Legislação' }
   ];
 
   const fetchPosts = useCallback(async () => {
