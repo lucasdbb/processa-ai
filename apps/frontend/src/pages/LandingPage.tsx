@@ -10,6 +10,7 @@ import {
   X
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import ContactSupportModal from '@/shared/components/ContactSupportModal';
 
 interface LandingPageProps {
   onLoginClick?: () => void;
@@ -19,6 +20,7 @@ const LandingPage: React.FC<LandingPageProps> = React.memo(({ onLoginClick }) =>
   const [searchParams, setSearchParams] = useSearchParams();
   const [showErrorBanner, setShowErrorBanner] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isContactOpen, setIsContactOpen] = useState(false);
 
   // Check for URL errors from Supabase
   useEffect(() => {
@@ -301,12 +303,13 @@ const LandingPage: React.FC<LandingPageProps> = React.memo(({ onLoginClick }) =>
             >
               Começar Agora - Grátis
             </button>
-            <button className="border-2 border-white text-white hover:bg-white hover:text-primary-800 font-semibold py-3 px-8 rounded-lg transition-colors duration-200">
+            <button onClick={() => setIsContactOpen(true)} className="border-2 border-white text-white hover:bg-white hover:text-primary-800 font-semibold py-3 px-8 rounded-lg transition-colors duration-200">
               Falar com Especialista
             </button>
           </div>
         </div>
       </section>
+      <ContactSupportModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
     </div>
   );
 });

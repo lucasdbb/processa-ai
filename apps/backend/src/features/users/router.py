@@ -3,9 +3,9 @@ Users routes
 """
 from fastapi import APIRouter, Depends, Query
 
-from src.features.users.schemas import UserProfile, UpdateProfile
+from src.core.dependencies import get_current_admin, get_current_user
+from src.features.users.schemas import UpdateProfile, UserProfile
 from src.features.users.service import UserService
-from src.core.dependencies import get_current_user, get_current_admin
 
 router = APIRouter()
 user_service = UserService()

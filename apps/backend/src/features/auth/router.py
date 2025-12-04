@@ -1,22 +1,22 @@
 """
 Authentication routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-
 from typing import Union
+
+from fastapi import APIRouter, Depends, status
+
+from src.core.dependencies import get_current_user
 from src.features.auth.schemas import (
-    UserRegister,
-    UserLogin,
-    TokenResponse,
     EmailConfirmationResponse,
     ForgotPassword,
     ResetPassword,
+    TokenResponse,
+    UserLogin,
+    UserRegister,
 )
 from src.features.auth.service import AuthService
 from src.features.users.schemas import UserProfile
 from src.features.users.service import UserService
-from src.core.dependencies import get_current_user
 
 router = APIRouter()
 auth_service = AuthService()

@@ -1,9 +1,10 @@
 """
 Application configuration using Pydantic Settings
 """
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
 from typing import Union
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -29,6 +30,11 @@ class Settings(BaseSettings):
     # CORS Configuration
     FRONTEND_URL: str = "http://localhost:5173"
     ALLOWED_ORIGINS: Union[str, list[str]] = "http://localhost:5173,http://localhost:3000"
+
+    # SendGrid Configuration
+    ADMIN_EMAIL: str | None = None
+    SENDGRID_API_KEY: str | None = None
+    SENDGRID_FROM: str | None = None
 
     @field_validator("ALLOWED_ORIGINS", mode="after")
     @classmethod

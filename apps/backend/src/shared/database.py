@@ -1,7 +1,8 @@
 """
 Supabase client configuration
 """
-from supabase import create_client, Client
+from supabase import Client, create_client
+
 from src.core.config import settings
 
 # Initialize Supabase client with service role key
