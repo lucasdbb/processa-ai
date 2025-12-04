@@ -1,16 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { Header, Footer, ErrorBoundary } from './shared';
 import { LoginModal, SessionTimeoutWarning, EmailConfirmedModal, AuthErrorModal, ResetPasswordModal, authService } from './features/auth';
 import type { User } from './features/auth';
-import LandingPage from '@/pages/LandingPage';
-import Dashboard from '@/pages/Dashboard';
-import AuthCallback from '@/pages/AuthCallback';
-import { BlogPage, AdminPanel } from '@/features/blog';
-import { IAJuridicaPage } from '@/features/ai-chat';
-import { CalculatorsPage } from '@/features/calculators';
-import AboutPage from '@/pages/AboutPage';
-import PlanosPage from '@/pages/PlanosPage';
+const LandingPage = lazy(() => import('@/pages/LandingPage'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
+const BlogPage = lazy(() => import('@/features/blog/components/BlogPage'));
+const AdminPanel = lazy(() => import('@/features/blog/components/AdminPanel'));
+const IAJuridicaPage = lazy(() => import('@/features/ai-chat/components/IAJuridicaPage'));
+const CalculatorsPage = lazy(() => import('@/features/calculators/components/CalculatorsPage'));
+const AboutPage = lazy(() => import('@/pages/AboutPage'));
+const PlanosPage = lazy(() => import('@/pages/PlanosPage'));
 import { getSessionTimeoutManager } from './shared/utils/sessionTimeout';
 
 /**
@@ -238,6 +239,11 @@ function App() {
           />
 
           <main id="main-content" className="flex-grow" role="main">
+            <Suspense fallback={
+              <div className="min-h-[40vh] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-24 w-24 border-b-2 border-primary-700"></div>
+              </div>
+            }>
             <Routes>
               <Route path="/" element={<LandingPage onLoginClick={() => setIsLoginModalOpen(true)} />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
@@ -266,6 +272,7 @@ function App() {
               {/* Rotas alternativas (aliases) para compatibilidade futura */}
               <Route path="/calculators" element={<CalculatorsPage />} />
             </Routes>
+            </Suspense>
           </main>
 
           <Footer />

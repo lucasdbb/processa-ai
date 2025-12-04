@@ -39,6 +39,28 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
     onLoginClick();
   }, [onLoginClick]);
 
+  const prefetchRoute = useCallback((path: string) => {
+    switch (path) {
+      case '/blog':
+        import('@/features/blog/components/BlogPage');
+        break;
+      case '/ia-juridica':
+        import('@/features/ai-chat/components/IAJuridicaPage');
+        break;
+      case '/calculadoras':
+        import('@/features/calculators/components/CalculatorsPage');
+        break;
+      case '/planos':
+        import('@/pages/PlanosPage');
+        break;
+      case '/sobre':
+        import('@/pages/AboutPage');
+        break;
+      default:
+        import('@/pages/LandingPage');
+    }
+  }, []);
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200" role="banner">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -64,6 +86,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               to="/" 
               className={`${getLinkClasses('/')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
               aria-current={isActive('/') ? 'page' : undefined}
+              onMouseEnter={() => prefetchRoute('/')}
             >
               Início
             </Link>
@@ -71,6 +94,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               to="/blog" 
               className={`${getLinkClasses('/blog')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
               aria-current={isActive('/blog') ? 'page' : undefined}
+              onMouseEnter={() => prefetchRoute('/blog')}
             >
               Blog
             </Link>
@@ -78,6 +102,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               to="/ia-juridica" 
               className={`${getLinkClasses('/ia-juridica')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
               aria-current={isActive('/ia-juridica') ? 'page' : undefined}
+              onMouseEnter={() => prefetchRoute('/ia-juridica')}
             >
               IA Jurídica
             </Link>
@@ -85,6 +110,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               to="/calculadoras" 
               className={`${getLinkClasses('/calculadoras')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
               aria-current={isActive('/calculadoras') ? 'page' : undefined}
+              onMouseEnter={() => prefetchRoute('/calculadoras')}
             >
               Calculadoras
             </Link>
@@ -92,6 +118,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               to="/planos" 
               className={`${getLinkClasses('/planos')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
               aria-current={isActive('/planos') ? 'page' : undefined}
+              onMouseEnter={() => prefetchRoute('/planos')}
             >
               Planos
             </Link>
@@ -99,6 +126,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               to="/sobre" 
               className={`${getLinkClasses('/sobre')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
               aria-current={isActive('/sobre') ? 'page' : undefined}
+              onMouseEnter={() => prefetchRoute('/sobre')}
             >
               Sobre
             </Link>
