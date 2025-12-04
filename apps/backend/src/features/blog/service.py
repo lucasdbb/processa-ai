@@ -76,6 +76,146 @@ class BlogService:
             )
         return {"items": items, "page": page, "page_size": page_size}
 
+    async def list_all(
+        self,
+        admin_user,
+        page: int,
+        page_size: int,
+        search: str | None,
+        status_filter: str | None,
+    ):
+        prof = (
+            self.supabase
+            .table("profiles")
+            .select("role")
+            .eq("id", admin_user.id)
+            .limit(1)
+            .execute()
+        )
+        if not prof.data or prof.data[0].get("role") != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+
+        start = (page - 1) * page_size
+        end = start + page_size - 1
+        q = self.supabase.table("blog_posts").select(
+            "id,title,slug,excerpt,cover_image_url,category_id,author_id,published_at,status,created_at",
+        ).order("created_at", desc=True).range(start, end)
+        
+        if status_filter and status_filter != "all":
+            q = q.eq("status", status_filter)
+        if search:
+            q = q.ilike("title", f"%{search}%")
+            
+        res = q.execute()
+        data = res.data or []
+        author_ids = list({row["author_id"] for row in data if row.get("author_id")})
+        profiles = {}
+        if author_ids:
+            pr = (
+                self.supabase
+                .table("profiles")
+                .select("id,full_name")
+                .in_("id", author_ids)
+                .execute()
+            )
+            for p in pr.data or []:
+                profiles[p["id"]] = p.get("full_name")
+        items = []
+        for row in data:
+            items.append(
+                {
+                    "id": str(row.get("id")),
+                    "title": row.get("title"),
+                    "slug": row.get("slug"),
+                    "excerpt": row.get("excerpt"),
+                    "cover_image_url": row.get("cover_image_url"),
+                    "category_id": row.get("category_id"),
+                    "author": {
+                        "id": str(row.get("author_id")),
+                        "name": profiles.get(row.get("author_id")),
+                    },
+                    "status": row.get("status"),
+                    "published_at": row.get("published_at"),
+                }
+            )
+        return {"items": items, "page": page, "page_size": page_size}
+
+    async def get_admin_post(self, admin_user, post_id: str):
+        prof = (
+            self.supabase
+            .table("profiles")
+            .select("role")
+            .eq("id", admin_user.id)
+            .limit(1)
+            .execute()
+        )
+        if not prof.data or prof.data[0].get("role") != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+
+        res = self.supabase.table("blog_posts").select(
+            "id,title,slug,excerpt,content,cover_image_url,category_id,author_id,published_at,status,created_at",
+        ).eq("id", post_id).limit(1).execute()
+        
+        data = res.data or []
+        if not data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
+        
+        post = data[0]
+        
+        # Get category slug
+        cat_slug = ""
+        if post.get("category_id"):
+            cres = self.supabase.table("blog_categories").select("slug").eq("id", post.get("category_id")).limit(1).execute()
+            if cres.data:
+                cat_slug = cres.data[0]["slug"]
+
+        # Get tags
+        tags = []
+        tres = self.supabase.table("blog_post_tags").select("tag_id").eq("post_id", post["id"]).execute()
+        if tres.data:
+            tag_ids = [t["tag_id"] for t in tres.data]
+            if tag_ids:
+                tags_res = self.supabase.table("blog_tags").select("name").in_("id", tag_ids).execute()
+                tags = [t["name"] for t in tags_res.data or []]
+
+        authors_ids = {post.get("author_id")}
+        co = (
+            self.supabase
+            .table("blog_post_authors")
+            .select("user_id,role")
+            .eq("post_id", post["id"])
+            .execute()
+        )
+        for a in co.data or []:
+            authors_ids.add(a["user_id"])
+        profiles = []
+        if authors_ids:
+            pr = (
+                self.supabase
+                .table("profiles")
+                .select("id,full_name")
+                .in_("id", list(authors_ids))
+                .execute()
+            )
+            profiles = pr.data or []
+        authors = [{"id": str(p["id"]), "name": p.get("full_name")} for p in profiles]
+        
+        return {
+            "id": str(post.get("id")),
+            "title": post.get("title"),
+            "slug": post.get("slug"),
+            "excerpt": post.get("excerpt"),
+            "content": post.get("content"),
+            "cover_image_url": post.get("cover_image_url"),
+            "category_id": post.get("category_id"),
+            "category_slug": cat_slug,
+            "tags": tags,
+            "status": post.get("status"),
+            "published_at": post.get("published_at"),
+            "created_at": post.get("created_at"),
+            "authors": authors,
+        }
+
     async def get_published_by_slug(self, slug: str):
         res = self.supabase.table("blog_posts").select(
             "id,title,slug,excerpt,content,cover_image_url,category_id,author_id,published_at,status",
@@ -333,3 +473,32 @@ class BlogService:
                 detail="Falha ao publicar",
             )
         return {"id": str(post_id), "status": "published"}
+
+    async def delete_post(self, admin_user, post_id: str):
+        prof = (
+            self.supabase
+            .table("profiles")
+            .select("role")
+            .eq("id", admin_user.id)
+            .limit(1)
+            .execute()
+        )
+        if not prof.data or prof.data[0].get("role") != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas admin pode arquivar posts",
+            )
+        
+        # Check if post exists
+        chk = self.supabase.table("blog_posts").select("id").eq("id", post_id).limit(1).execute()
+        if not chk.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
+
+        # Soft delete (archive) instead of hard delete
+        res = self.supabase.table("blog_posts").update({"status": "archived"}).eq("id", post_id).execute()
+        if not res.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao arquivar post",
+            )
+        return {"id": post_id, "deleted": True, "status": "archived"}

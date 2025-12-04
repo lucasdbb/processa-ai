@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Save, CheckCircle } from 'lucide-react';
 import { sanitizeText } from '@/shared/utils/sanitize';
 import type { BlogCategoryId } from '../types/blog';
@@ -19,8 +19,9 @@ import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode } from '@lexical/list';
 import { LinkNode, AutoLinkNode } from '@lexical/link';
-import { $convertToMarkdownString, TRANSFORMERS } from '@lexical/markdown';
+import { $convertToMarkdownString, $convertFromMarkdownString, TRANSFORMERS } from '@lexical/markdown';
 import 'prismjs/themes/prism.css';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 import { Input, TextArea, Select } from './ui/FormComponents';
 import { ImageUpload } from './ui/ImageUpload';
@@ -45,8 +46,26 @@ function toSlug(input: string): string {
     .replace(/-+/g, '-');
 }
 
+// Helper component to update editor content
+const UpdatePlugin = ({ content }: { content: string }) => {
+  const [editor] = useLexicalComposerContext();
+  
+  useEffect(() => {
+    if (content) {
+      editor.update(() => {
+        $convertFromMarkdownString(content, TRANSFORMERS);
+      });
+    }
+  }, [content, editor]);
+
+  return null;
+};
+
 const CreatePostPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editPostId = searchParams.get('id');
+
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [excerpt, setExcerpt] = useState('');
@@ -57,7 +76,9 @@ const CreatePostPage: React.FC = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [contentMd, setContentMd] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+  const [initialContent, setInitialContent] = useState('');
 
   const showToast = (message: string, type: ToastType) => {
     const id = Date.now().toString();
@@ -67,9 +88,82 @@ const CreatePostPage: React.FC = () => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
+  // Load post data if editing
+  useEffect(() => {
+    if (editPostId) {
+      loadPost(editPostId);
+    }
+  }, [editPostId]);
+
+  const loadPost = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('access_token');
+      
+      // Try admin endpoint first (handles drafts and published)
+      const res = await fetch(`/api/blog/admin/posts/${id}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      
+      if (res.ok) {
+        const post = await res.json();
+        fillForm(post);
+        return;
+      }
+
+      // Fallback to public endpoint (only published)
+      const publicRes = await fetch(`/api/blog/posts/${id}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      
+      if (!publicRes.ok) {
+        throw new Error('Post não encontrado');
+      }
+      
+      const post = await publicRes.json();
+      fillForm(post);
+    } catch (e) {
+      showToast('Erro ao carregar post para edição', 'error');
+      navigate('/admin');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-700"></div>
+      </div>
+    );
+  }
+
+  const fillForm = (post: any) => {
+    setTitle(post.title);
+    setSlug(post.slug);
+    setExcerpt(post.excerpt || '');
+    setContentMd(post.content || '');
+    setInitialContent(post.content || '');
+    setCategory(post.category_slug || post.category_id || 'direito-trabalho'); // Adjust based on what backend returns
+    // Tags handling might need adjustment based on backend response format
+    if (post.tags && Array.isArray(post.tags)) {
+      setTagsInput(post.tags.join(', '));
+    }
+    setImageBase64(post.cover_image_url || null);
+    setCreatedPostId(post.id);
+  };
+
   const handleTitleChange = (v: string) => {
     setTitle(v);
-    setSlug(toSlug(v));
+    // Only auto-update slug if it matches the old title slugified (new post behavior)
+    // Or if user hasn't manually edited the slug yet
+    if (!editPostId) {
+      setSlug(toSlug(v));
+    }
   };
 
   const handleSaveDraft = async () => {
@@ -82,15 +176,27 @@ const CreatePostPage: React.FC = () => {
       tags: sanitizeText(tagsInput).split(',').map(t => t.trim()).filter(Boolean),
       cover_image_url: imageBase64 || undefined,
     };
+
     if (!payload.title || !payload.slug || !payload.content) {
       showToast('Preencha título e conteúdo.', 'error');
       return;
     }
+
     try {
       setIsSubmitting(true);
       const token = localStorage.getItem('access_token');
-      const res = await fetch('/api/blog/posts', {
-        method: 'POST',
+      
+      // If we have an ID, it's an update (PATCH), otherwise create (POST)
+      let url = '/api/blog/posts';
+      let method = 'POST';
+      
+      if (createdPostId) {
+         url = `/api/blog/posts/${createdPostId}`;
+         method = 'PATCH';
+      }
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -98,16 +204,20 @@ const CreatePostPage: React.FC = () => {
         credentials: 'include',
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
+        // Fallback: if PUT/PATCH not implemented, maybe POST handles it? 
+        // Or show error
         const text = await res.text();
-        showToast(text || 'Erro ao criar post', 'error');
+        showToast(text || 'Erro ao salvar post', 'error');
         return;
       }
-      const created = await res.json();
-      setCreatedPostId(created?.id || null);
-      showToast('Rascunho salvo!', 'success');
+
+      const saved = await res.json();
+      setCreatedPostId(saved?.id || createdPostId);
+      showToast(createdPostId ? 'Post atualizado!' : 'Rascunho salvo!', 'success');
     } catch (e) {
-      showToast('API não disponível. Post não foi salvo.', 'error');
+      showToast('Erro ao salvar post.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -260,6 +370,7 @@ const CreatePostPage: React.FC = () => {
                     <ListPlugin />
                     <LinkPlugin />
                     <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+                    <UpdatePlugin content={initialContent} />
                     <OnChangePlugin onChange={(editorState) => {
                       const md = editorState.read(() => $convertToMarkdownString(TRANSFORMERS));
                       setContentMd(md);

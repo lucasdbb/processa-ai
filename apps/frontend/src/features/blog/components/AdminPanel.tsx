@@ -4,43 +4,57 @@ import {
   Users,
   Shield,
   Crown,
-  Mail,
   Search,
   RefreshCw,
   CheckCircle,
   XCircle,
-  Calendar,
   TrendingUp,
-  Filter,
   User,
-  Settings
+  FileText,
+  LayoutDashboard,
+  Edit,
+  Trash2,
+  Send,
+  MoreVertical
 } from 'lucide-react';
 import { adminService } from '../services/admin.service';
-import type { UserListItem } from '../services/admin.service';
+import type { UserListItem, AdminPostListItem } from '../services/admin.service';
 import type { User as AuthUser } from '../../auth/types/auth';
 import { ToastContainer } from '../../../shared/components/Toast';
 import type { ToastType } from '../../../shared/components/Toast';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { cn } from '@/shared/utils/cn';
 
 interface AdminPanelProps {
   user: AuthUser;
 }
 
-/**
- * Admin Panel component for managing users and system
- * Only accessible by users with admin role
- */
+type Tab = 'overview' | 'users' | 'posts';
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+  
+  // Users State
+  const [users, setUsers] = useState<UserListItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'author' | 'admin' | 'premium'>('all');
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
   const [pendingRoleUpdate, setPendingRoleUpdate] = useState<{ userId: string; role: 'user' | 'author' | 'admin' | 'premium' } | null>(null);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
-  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+
+  // Posts State
+  const [posts, setPosts] = useState<AdminPostListItem[]>([]);
+  const [postSearch, setPostSearch] = useState('');
+  const [postStatusFilter, setPostStatusFilter] = useState<string>('all');
+  const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
+  const [pendingPostAction, setPendingPostAction] = useState<{ id: string; action: 'publish' | 'archive'; title: string } | null>(null);
+  const [isProcessingPost, setIsProcessingPost] = useState(false);
+
+  // Stats State
   const [stats, setStats] = useState({
     total: 0,
     byRole: { user: 0, admin: 0, premium: 0 },
@@ -49,7 +63,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     recentSignups: 0
   });
 
-  // Toast management
   const showToast = (message: string, type: ToastType) => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -59,7 +72,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  // Load users and stats (guard against double-invocation in StrictMode)
   const hasLoadedRef = useRef(false);
   useEffect(() => {
     if (hasLoadedRef.current) return;
@@ -72,16 +84,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
       setIsLoading(true);
       setError(null);
 
-      // Load users (single request)
+      // Load users
       const usersData = await adminService.listUsers(1, 100);
       setUsers(usersData.users);
 
-      // Compute stats locally from the loaded users to avoid extra requests
+      // Load posts
+      try {
+        const postsData = await adminService.listPosts(1, 50, undefined, 'all');
+        setPosts(postsData.items);
+      } catch (e) {
+        console.error('Failed to load posts:', e);
+      }
+
+      // Compute stats
       const usersArr = usersData.users;
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      const computedStats = {
+      setStats({
         total: usersArr.length,
         byRole: {
           user: usersArr.filter(u => u.role === 'user').length,
@@ -91,8 +111,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
         verified: usersArr.filter(u => u.email_verified).length,
         unverified: usersArr.filter(u => !u.email_verified).length,
         recentSignups: usersArr.filter(u => new Date(u.created_at) > sevenDaysAgo).length,
-      };
-      setStats(computedStats);
+      });
     } catch (err) {
       console.error('Error loading admin data:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
@@ -107,45 +126,78 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
 
   const handleConfirmRoleUpdate = async () => {
     if (!pendingRoleUpdate) return;
-
     const { userId, role: newRole } = pendingRoleUpdate;
 
     try {
       setIsUpdatingRole(true);
       await adminService.updateUserRole(userId, newRole);
-
-      // Update local state
-      setUsers(users.map(u =>
-        u.id === userId ? { ...u, role: newRole } : u
-      ));
-
+      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
       setSelectedUser(null);
       setPendingRoleUpdate(null);
       showToast(`Role atualizada para "${newRole}" com sucesso!`, 'success');
-
-      // Reload to update stats
       loadData();
     } catch (err) {
-      console.error('Error updating role:', err);
       showToast(err instanceof Error ? err.message : 'Erro ao atualizar role', 'error');
     } finally {
       setIsUpdatingRole(false);
     }
   };
 
-  const handleCancelRoleUpdate = () => {
-    setPendingRoleUpdate(null);
+  const handlePostAction = (id: string, action: 'publish' | 'archive', title: string) => {
+    setPendingPostAction({ id, action, title });
+    setActiveActionMenu(null);
   };
 
-  // Filter users
+  const handleConfirmPostAction = async () => {
+    if (!pendingPostAction) return;
+    const { id, action } = pendingPostAction;
+
+    try {
+      setIsProcessingPost(true);
+      if (action === 'publish') {
+        await adminService.publishPost(id);
+        setPosts(posts.map(p => p.id === id ? { ...p, status: 'published', published_at: new Date().toISOString() } : p));
+        showToast('Post publicado com sucesso!', 'success');
+      } else if (action === 'archive') {
+        await adminService.deletePost(id); // Backend now handles soft delete (archive)
+        setPosts(posts.map(p => p.id === id ? { ...p, status: 'archived' } : p));
+        showToast('Post arquivado com sucesso!', 'success');
+      }
+      setPendingPostAction(null);
+      // Reload stats
+      loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Erro ao ${action === 'publish' ? 'publicar' : 'arquivar'} post`, 'error');
+    } finally {
+      setIsProcessingPost(false);
+    }
+  };
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (activeActionMenu && !(event.target as Element).closest('.action-menu-container')) {
+        setActiveActionMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeActionMenu]);
+
+  // Filtering
   const filteredUsers = users.filter(u => {
     const matchesSearch = searchQuery === '' ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.name.toLowerCase().includes(searchQuery.toLowerCase());
-
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
-
     return matchesSearch && matchesRole;
+  });
+
+  const filteredPosts = posts.filter(p => {
+    const matchesSearch = postSearch === '' ||
+      p.title.toLowerCase().includes(postSearch.toLowerCase());
+    const matchesStatus = postStatusFilter === 'all' || p.status === postStatusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const getRoleIcon = (role: string) => {
@@ -166,6 +218,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     }
   };
 
+  const getUserStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'inactive': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'suspended': return 'bg-red-100 text-red-800 border-red-200';
+      case 'overdue': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getUserStatusLabel = (status: string) => {
+    switch (status) {
+      case 'active': return 'Ativo';
+      case 'inactive': return 'Inativo';
+      case 'suspended': return 'Suspenso';
+      case 'overdue': return 'Inadimplente';
+      default: return status || 'Desconhecido';
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'published': return 'bg-green-100 text-green-800 border-green-200';
+      case 'draft': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'archived': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -178,319 +259,484 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   }
 
   return (
-    <div className="min-h-screen bg-warm-bg py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="w-8 h-8 text-primary-700" />
-            Painel de Administração
+    <div className="min-h-screen bg-gray-50/50 flex">
+      {/* Sidebar / Navigation */}
+      <div className="w-64 bg-white border-r border-gray-200 hidden lg:flex flex-col fixed h-full">
+        <div className="p-6 border-b border-gray-100">
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Shield className="w-6 h-6 text-primary-700" />
+            Admin
           </h1>
-          <p className="mt-2 text-gray-600">
-            Gerencie usuários, roles e visualize estatísticas do sistema
-          </p>
         </div>
-
-        {/* Error Alert */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-red-900">Erro ao carregar dados</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
+        <nav className="flex-1 p-4 space-y-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+              activeTab === 'overview' ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            Visão Geral
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+              activeTab === 'users' ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            <Users className="w-5 h-5" />
+            Usuários
+          </button>
+          <button
+            onClick={() => setActiveTab('posts')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+              activeTab === 'posts' ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            <FileText className="w-5 h-5" />
+            Artigos do Blog
+          </button>
+        </nav>
+        <div className="p-4 border-t border-gray-100">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm">
+              {user.email.charAt(0).toUpperCase()}
             </div>
-          </div>
-        )}
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total de Usuários</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
-              </div>
-              <Users className="w-10 h-10 text-primary-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Usuários</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.byRole.user}</p>
-              </div>
-              <Users className="w-10 h-10 text-gray-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Premium</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.byRole.premium}</p>
-              </div>
-              <Crown className="w-10 h-10 text-yellow-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Admins</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">{stats.byRole.admin}</p>
-              </div>
-              <Shield className="w-10 h-10 text-red-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Novos (7 dias)</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{stats.recentSignups}</p>
-              </div>
-              <TrendingUp className="w-10 h-10 text-green-600" />
+            <div className="overflow-hidden">
+              <p className="text-sm font-medium text-gray-900 truncate">{user.name || 'Admin'}</p>
+              <p className="text-xs text-gray-500 truncate">{user.email}</p>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Users Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          {/* Table Header */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Usuários ({filteredUsers.length})
-              </h2>
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-64">
+        <div className="p-8 max-w-7xl mx-auto">
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-red-900">Erro ao carregar dados</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+              </div>
+            </div>
+          )}
 
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                {/* Search */}
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por email ou nome..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-
-                {/* Role Filter */}
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <select
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value as 'all' | 'user' | 'author' | 'admin' | 'premium')}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white"
-                  >
-                    <option value="all">Todas as roles</option>
-                    <option value="user">Usuários</option>
-                    <option value="author">Autores</option>
-                    <option value="premium">Premium</option>
-                    <option value="admin">Admins</option>
-                  </select>
-                </div>
-
-                {/* Refresh Button */}
-                <button
-                  onClick={loadData}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-                >
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-h-[40px]">
+                <h2 className="text-2xl font-bold text-gray-900">Visão Geral do Sistema</h2>
+                <button onClick={loadData} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 shadow-sm h-10" title="Atualizar">
                   <RefreshCw className="w-4 h-4" />
                   Atualizar
                 </button>
+              </div>
+              <div className="grid grid-cols-1 gap-8">
+                {/* Seção de Usuários */}
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4">Métricas de Usuários</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-blue-50 rounded-lg">
+                          <Users className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Total</span>
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                      <p className="text-sm text-gray-600 mt-1">Usuários cadastrados</p>
+                    </div>
 
-                {/* Create Post Button */}
-                <button
-                  onClick={() => navigate('/admin/posts/new')}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  Criar Post
-                </button>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-yellow-50 rounded-lg">
+                          <Crown className="w-6 h-6 text-yellow-600" />
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Premium</span>
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.byRole.premium}</p>
+                      <p className="text-sm text-gray-600 mt-1">Assinantes ativos</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-green-50 rounded-lg">
+                          <TrendingUp className="w-6 h-6 text-green-600" />
+                        </div>
+                        <span className="text-xs font-medium text-green-600">+7 dias</span>
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{stats.recentSignups}</p>
+                      <p className="text-sm text-gray-600 mt-1">Novos usuários</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Seção de Conteúdo */}
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4">Métricas de Conteúdo</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-purple-50 rounded-lg">
+                          <FileText className="w-6 h-6 text-purple-600" />
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Total</span>
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">{posts.length}</p>
+                      <p className="text-sm text-gray-600 mt-1">Artigos criados</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-green-50 rounded-lg">
+                          <CheckCircle className="w-6 h-6 text-green-600" />
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Publicados</span>
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {posts.filter(p => p.status === 'published').length}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">Visíveis no blog</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-yellow-50 rounded-lg">
+                          <Edit className="w-6 h-6 text-yellow-600" />
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Rascunhos</span>
+                      </div>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {posts.filter(p => p.status === 'draft').length}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">Em edição</p>
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Table Content */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Usuário
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Documento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cadastro
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          {u.avatar_url ? (
-                            <img
-                              src={u.avatar_url}
-                              alt={u.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-medium">
-                              {u.name.substring(0, 2).toUpperCase()}
+          {/* Users Tab */}
+          {activeTab === 'users' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-h-[40px]">
+                <h2 className="text-2xl font-bold text-gray-900">Gerenciar Usuários</h2>
+                <button onClick={loadData} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 shadow-sm h-10" title="Atualizar">
+                  <RefreshCw className="w-4 h-4" />
+                  Atualizar
+                </button>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar usuários..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value as any)}
+                    className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white min-w-[200px]"
+                  >
+                    <option value="all">Todas as roles</option>
+                    <option value="user">Usuário</option>
+                    <option value="author">Autor</option>
+                    <option value="premium">Premium</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-3 font-medium text-gray-500">Usuário</th>
+                        <th className="px-6 py-3 font-medium text-gray-500">Role</th>
+                        <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+                        <th className="px-6 py-3 font-medium text-gray-500">Data Cadastro</th>
+                        <th className="px-6 py-3 text-right font-medium text-gray-500">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium overflow-hidden">
+                                {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : (u.name ? u.name.substring(0, 2).toUpperCase() : u.email.substring(0, 2).toUpperCase())}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{u.name || 'Sem nome'}</p>
+                                <div className="flex items-center gap-1">
+                                  <p className="text-gray-500">{u.email}</p>
+                                  {u.email_verified ? (
+                                    <span title="Email verificado">
+                                      <CheckCircle className="w-3 h-3 text-green-600" />
+                                    </span>
+                                  ) : (
+                                    <span title="Email não verificado">
+                                      <XCircle className="w-3 h-3 text-gray-400" />
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{u.name}</div>
-                          <div className="text-sm text-gray-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {u.email}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeClass(u.role)}`}>
-                        {getRoleIcon(u.role)}
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {u.document_type && u.document_number ? (
-                        <span className="font-mono">
-                          {u.document_type.toUpperCase()}: {u.document_number.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {u.email_verified ? (
-                        <span className="inline-flex items-center gap-1 text-sm text-green-700">
-                          <CheckCircle className="w-4 h-4" />
-                          Verificado
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-sm text-gray-500">
-                          <XCircle className="w-4 h-4" />
-                          Não verificado
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(u.created_at).toLocaleDateString('pt-BR')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {u.id !== user.id && (
-                        <button
-                          onClick={() => setSelectedUser(u)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 border border-primary-200 text-primary-700 rounded-lg hover:bg-primary-50 hover:border-primary-300 transition-colors"
-                        >
-                          <Settings className="w-4 h-4" />
-                          Alterar Role
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhum usuário encontrado</p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeClass(u.role)}`}>
+                              {getRoleIcon(u.role)}
+                              {u.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUserStatusBadge(u.status || 'active')}`}>
+                              {getUserStatusLabel(u.status || 'active')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-gray-500">
+                            {new Date(u.created_at).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {u.id !== user.id && (
+                              <button
+                                onClick={() => setSelectedUser(u)}
+                                className="text-primary-600 hover:text-primary-800 font-medium text-xs px-3 py-1 rounded-md border border-primary-200 hover:bg-primary-50 transition-colors"
+                              >
+                                Editar Role
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredUsers.length === 0 && (
+                    <div className="text-center py-12 text-gray-500">Nenhum usuário encontrado.</div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* Update Role Modal */}
-        {selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Alterar Role
-              </h3>
-
-              <div className="mb-6">
-                <p className="text-sm text-gray-600 mb-2">Usuário:</p>
-                <p className="font-medium text-gray-900">{selectedUser.name}</p>
-                <p className="text-sm text-gray-500">{selectedUser.email}</p>
+          {/* Posts Tab */}
+          {activeTab === 'posts' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-h-[40px]">
+                <h2 className="text-2xl font-bold text-gray-900">Gerenciar Artigos</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={loadData} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 shadow-sm h-10" title="Atualizar">
+                    <RefreshCw className="w-4 h-4" />
+                    Atualizar
+                  </button>
+                  <button
+                    onClick={() => navigate('/admin/posts/new')}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 shadow-sm h-10"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Novo Artigo
+                  </button>
+                </div>
               </div>
 
-              <div className="mb-6">
-                <p className="text-sm text-gray-600 mb-3">Selecione a nova role:</p>
-                <div className="space-y-2">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar artigos..."
+                      value={postSearch}
+                      onChange={(e) => setPostSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <select
+                    value={postStatusFilter}
+                    onChange={(e) => setPostStatusFilter(e.target.value)}
+                    className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white min-w-[200px]"
+                  >
+                    <option value="all">Todos os status</option>
+                    <option value="published">Publicados</option>
+                    <option value="draft">Rascunhos</option>
+                    <option value="archived">Arquivados</option>
+                  </select>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-3 font-medium text-gray-500">Título</th>
+                        <th className="px-6 py-3 font-medium text-gray-500">Autor</th>
+                        <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+                        <th className="px-6 py-3 font-medium text-gray-500">Data</th>
+                        <th className="px-6 py-3 text-right font-medium text-gray-500">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredPosts.map((p) => (
+                        <tr key={p.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <p className="font-medium text-gray-900 truncate max-w-xs" title={p.title}>{p.title}</p>
+                            <p className="text-xs text-gray-500 truncate max-w-xs">/{p.slug}</p>
+                          </td>
+                          <td className="px-6 py-4 text-gray-600">
+                            {p.author?.name || 'Desconhecido'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(p.status)}`}>
+                              {p.status === 'draft' ? 'Rascunho' : p.status === 'published' ? 'Publicado' : 'Arquivado'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-gray-500">
+                            {p.published_at 
+                              ? new Date(p.published_at).toLocaleDateString('pt-BR')
+                              : (p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-')}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="relative action-menu-container">
+                              <button
+                                onClick={() => setActiveActionMenu(activeActionMenu === p.id ? null : p.id)}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+
+                              {activeActionMenu === p.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-10 py-1 animate-in fade-in zoom-in duration-200">
+                                  {/* Edit - Link to create page with state */}
+                                  <button
+                                    onClick={() => navigate(`/admin/posts/new?id=${p.id}`)} 
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                    Editar
+                                  </button>
+                                  
+                                  {p.status === 'draft' && (
+                                    <>
+                                      <button
+                                        onClick={() => handlePostAction(p.id, 'publish', p.title)}
+                                        className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                                      >
+                                        <Send className="w-4 h-4" />
+                                        Publicar
+                                      </button>
+                                      <button
+                                        onClick={() => handlePostAction(p.id, 'archive', p.title)}
+                                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                        Arquivar
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {p.status !== 'draft' && p.status !== 'archived' && (
+                                    <button
+                                      onClick={() => handlePostAction(p.id, 'archive', p.title)}
+                                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Arquivar
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredPosts.length === 0 && (
+                    <div className="text-center py-12 text-gray-500">Nenhum artigo encontrado.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modals & Dialogs */}
+          {selectedUser && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Alterar Role</h3>
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500 mb-1">Usuário selecionado</p>
+                  <p className="font-medium text-gray-900">{selectedUser.name}</p>
+                  <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                </div>
+                <div className="space-y-2 mb-6">
                   {(['user', 'author', 'premium', 'admin'] as const).map((role) => (
                     <button
                       key={role}
                       onClick={() => handleRoleChangeRequest(selectedUser.id, role)}
                       disabled={isUpdatingRole || selectedUser.role === role}
-                      className={`w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                      className={cn(
+                        "w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3",
                         selectedUser.role === role
-                          ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                          : 'border-gray-200 hover:border-primary-500 hover:bg-primary-50'
-                      } ${isUpdatingRole ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          ? "border-primary-100 bg-primary-50 text-primary-800"
+                          : "border-gray-100 hover:border-primary-200 hover:bg-white"
+                      )}
                     >
                       {getRoleIcon(role)}
-                      <span className="font-medium capitalize">{role}</span>
-                      {selectedUser.role === role && (
-                        <span className="ml-auto text-xs text-gray-500">(atual)</span>
-                      )}
+                      <span className="capitalize flex-1 text-left">{role}</span>
+                      {selectedUser.role === role && <CheckCircle className="w-4 h-4 text-primary-600" />}
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <div className="flex gap-3">
                 <button
                   onClick={() => setSelectedUser(null)}
-                  disabled={isUpdatingRole}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="w-full py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Cancelar
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Confirm Dialog */}
-        <ConfirmDialog
-          isOpen={!!pendingRoleUpdate}
-          title="Confirmar alteração de role"
-          message={`Tem certeza que deseja alterar a role deste usuário para "${pendingRoleUpdate?.role}"? O usuário precisará fazer logout e login para que as mudanças tenham efeito.`}
-          confirmText="Alterar Role"
-          cancelText="Cancelar"
-          onConfirm={handleConfirmRoleUpdate}
-          onCancel={handleCancelRoleUpdate}
-          type="warning"
-        />
+          <ConfirmDialog
+            isOpen={!!pendingRoleUpdate}
+            title="Confirmar alteração"
+            message={`Deseja alterar a role para "${pendingRoleUpdate?.role}"?`}
+            confirmText="Confirmar"
+            cancelText="Cancelar"
+            onConfirm={handleConfirmRoleUpdate}
+            onCancel={() => setPendingRoleUpdate(null)}
+            type="warning"
+          />
 
-        {/* Toast Notifications */}
-        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+          <ConfirmDialog
+            isOpen={!!pendingPostAction}
+            title={pendingPostAction?.action === 'archive' ? 'Arquivar Post' : 'Publicar Post'}
+            message={
+              pendingPostAction?.action === 'archive' 
+                ? `Tem certeza que deseja arquivar o post "${pendingPostAction?.title}"? Ele deixará de ser visível publicamente.`
+                : `Deseja publicar o post "${pendingPostAction?.title}" agora? Ele ficará visível para todos os usuários.`
+            }
+            confirmText={pendingPostAction?.action === 'archive' ? 'Arquivar' : 'Publicar'}
+            cancelText="Cancelar"
+            onConfirm={handleConfirmPostAction}
+            onCancel={() => setPendingPostAction(null)}
+            type={pendingPostAction?.action === 'archive' ? 'danger' : 'info'}
+            isLoading={isProcessingPost}
+          />
+
+          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        </div>
       </div>
     </div>
   );

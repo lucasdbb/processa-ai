@@ -36,6 +36,7 @@ class BlogPostItem(BaseModel):
     cover_image_url: Optional[str] = None
     category_id: Optional[str] = None
     author: AuthorInfo
+    status: Optional[str] = None
     published_at: Optional[str] = None
 
 

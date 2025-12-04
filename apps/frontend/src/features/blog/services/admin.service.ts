@@ -9,6 +9,7 @@ export interface UserListItem {
   email: string;
   name: string;
   role: 'user' | 'author' | 'admin' | 'premium';
+  status: string;
   avatar_url: string | null;
   document_type: string | null;
   document_number: string | null;
@@ -31,8 +32,10 @@ export interface ListUsersResponse {
 type RawProfile = {
   id: string;
   email: string;
-  full_name?: string;
+  name?: string;
+  full_name?: string; // Backward compatibility if backend sends full_name
   role?: 'user' | 'author' | 'admin' | 'premium';
+  status?: string;
   avatar_url?: string | null;
   document_type?: string | null;
   document_number?: string | null;
@@ -52,6 +55,28 @@ export interface UpdateRoleResponse {
     email: string;
     role: string;
   };
+}
+
+export interface AdminPostListItem {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  cover_image_url?: string;
+  category_id?: string;
+  author: {
+    id: string;
+    name?: string;
+  };
+  status: 'draft' | 'published' | 'archived';
+  published_at?: string;
+  created_at?: string;
+}
+
+export interface ListAdminPostsResponse {
+  items: AdminPostListItem[];
+  page: number;
+  page_size: number;
 }
 
 /**
@@ -77,6 +102,72 @@ class AdminService {
     }
 
     return headers;
+  }
+
+  /**
+   * List all posts (admin only, includes drafts)
+   */
+  async listPosts(
+    page = 1,
+    pageSize = 10,
+    search?: string,
+    status?: string
+  ): Promise<ListAdminPostsResponse> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+    if (search) params.append('search', search);
+    if (status && status !== 'all') params.append('status', status);
+
+    const response = await fetch(`${API_URL}/blog/admin/posts?${params.toString()}`, {
+      method: 'GET',
+      headers: this.createHeaders(true),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Erro ao listar posts');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Publish post (admin only)
+   */
+  async publishPost(postId: string): Promise<{ id: string; status: string }> {
+    const response = await fetch(`${API_URL}/blog/posts/${postId}/publish`, {
+      method: 'PATCH',
+      headers: this.createHeaders(true),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Erro ao publicar post');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete post (admin only)
+   */
+  async deletePost(postId: string): Promise<{ id: string; deleted: boolean }> {
+    const response = await fetch(`${API_URL}/blog/posts/${postId}`, {
+      method: 'DELETE',
+      headers: this.createHeaders(true),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Erro ao excluir post');
+    }
+
+    return response.json();
   }
 
   /**
@@ -122,8 +213,9 @@ class AdminService {
         const users: UserListItem[] = (Array.isArray(raw) ? raw : []).map((p: RawProfile) => ({
           id: p.id,
           email: p.email,
-          name: p.full_name ? p.full_name : (p.email ? p.email.split('@')[0] : ''),
+          name: p.name || p.full_name || '',
           role: p.role ?? 'user',
+          status: p.status || 'active',
           avatar_url: p.avatar_url ?? null,
           document_type: p.document_type ?? null,
           document_number: p.document_number ?? null,
@@ -148,8 +240,9 @@ class AdminService {
     const users: UserListItem[] = (Array.isArray(raw) ? raw : []).map((p: RawProfile) => ({
       id: p.id,
       email: p.email,
-      name: p.full_name ? p.full_name : (p.email ? p.email.split('@')[0] : ''),
+      name: p.name || p.full_name || '',
       role: p.role ?? 'user',
+      status: p.status || 'active',
       avatar_url: p.avatar_url ?? null,
       document_type: p.document_type ?? null,
       document_number: p.document_number ?? null,

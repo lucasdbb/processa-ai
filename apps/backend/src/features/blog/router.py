@@ -14,6 +14,22 @@ router = APIRouter()
 service = BlogService()
 
 
+@router.get("/admin/posts", response_model=BlogPostListResponse)
+async def list_admin_posts(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    search: str | None = None,
+    status: str | None = None,
+    admin=Depends(get_current_admin),
+):
+    return await service.list_all(admin, page, page_size, search, status)
+
+
+@router.get("/admin/posts/{post_id}", response_model=BlogPostDetailResponse)
+async def get_admin_post(post_id: str, admin=Depends(get_current_admin)):
+    return await service.get_admin_post(admin, post_id)
+
+
 @router.get("/posts", response_model=BlogPostListResponse)
 async def list_posts(
     page: int = Query(1, ge=1),
@@ -47,3 +63,8 @@ async def add_coauthor(post_id: str, data: AddCoauthorRequest, user=Depends(get_
 @router.patch("/posts/{post_id}/publish")
 async def publish_post(post_id: str, admin=Depends(get_current_admin)):
     return await service.publish(admin, post_id)
+
+
+@router.delete("/posts/{post_id}")
+async def delete_post(post_id: str, admin=Depends(get_current_admin)):
+    return await service.delete_post(admin, post_id)

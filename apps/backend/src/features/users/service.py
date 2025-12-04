@@ -130,7 +130,7 @@ class UserService:
         try:
             fields = (
                 "id, email, full_name, role, avatar_url, phone, "
-                "document_type, document_number, created_at"
+                "document_type, document_number, status, created_at"
             )
             response = (
                 self.supabase.table("profiles")
@@ -146,12 +146,13 @@ class UserService:
                 {
                     "id": p["id"],
                     "email": p["email"],
-                    "name": p.get("full_name") or p["email"].split("@")[0],
+                    "name": p.get("full_name") or "",
                     "role": p.get("role", "user"),
                     "avatar_url": p.get("avatar_url"),
                     "phone": p.get("phone"),
                     "document_type": p.get("document_type"),
                     "document_number": p.get("document_number"),
+                    "status": p.get("status", "active"),
                     "created_at": p["created_at"],
                     # Campos adicionais não presentes por padrão
                     "confirmed_at": None,
