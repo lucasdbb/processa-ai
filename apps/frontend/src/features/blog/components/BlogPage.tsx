@@ -1,18 +1,17 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Calendar, User, Clock, Search, Tag, Newspaper, X } from 'lucide-react';
+import { Calendar, User, Clock, Search, Tag, Newspaper } from 'lucide-react';
 import type { BlogCategory, BlogCategoryId } from '../types/blog';
 import { useSearchParams } from 'react-router-dom';
-import MarkdownPreview from '@uiw/react-markdown-preview';
-import 'prismjs/themes/prism.css';
+import PostViewModal from './PostViewModal';
 
 const BlogPage: React.FC = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<BlogCategoryId>('all');
-  const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; excerpt?: string; cover_image_url?: string; category_id?: string; author: { id: string; name?: string }; published_at?: string }>>([]);
+  const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; excerpt?: string; cover_image_url?: string; category?: { id: string; name: string; slug: string }; author: { id: string; name?: string }; published_at?: string }>>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [postsError, setPostsError] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activePost, setActivePost] = useState<{ id: string; title: string; slug: string; excerpt?: string; content: string; cover_image_url?: string; category_id?: string; published_at?: string; authors: Array<{ id: string; name?: string }> } | null>(null);
+  const [activePost, setActivePost] = useState<{ id: string; title: string; slug: string; excerpt?: string; content: string; cover_image_url?: string; category?: { id: string; name: string; slug: string }; published_at?: string; authors: Array<{ id: string; name?: string }> } | null>(null);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [newsletterError, setNewsletterError] = useState('');
@@ -91,6 +90,7 @@ const BlogPage: React.FC = React.memo(() => {
     setIsModalOpen(false);
     setActivePost(null);
   }, []);
+
 
   useEffect(() => {
     const token = searchParams.get('newsletter_token');
@@ -222,10 +222,10 @@ const BlogPage: React.FC = React.memo(() => {
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-2">
-                    {featuredPost?.category_id && (
+                    {featuredPost?.category && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                         <Tag className="h-3 w-3 mr-1" aria-hidden="true" />
-                        Categoria
+                        {featuredPost.category.name}
                       </span>
                     )}
                   </div>
@@ -327,27 +327,14 @@ const BlogPage: React.FC = React.memo(() => {
           </div>
         </div>
       </div>
-      {isModalOpen && activePost && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[85vh] overflow-auto">
-            <div className="flex items-center justify-between p-4 border-b">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">{activePost.title}</h3>
-                <div className="text-sm text-gray-600 mt-1">
-                  {activePost.published_at ? new Date(activePost.published_at).toLocaleDateString('pt-BR') : ''}
-                  {activePost.authors?.length ? ` • ${activePost.authors.map(a => a.name).filter(Boolean).join(', ')}` : ''}
-                </div>
-              </div>
-              <button className="p-2 rounded-lg hover:bg-gray-100" onClick={closeModal} aria-label="Fechar">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <MarkdownPreview source={activePost.content || ''} />
-            </div>
-          </div>
-        </div>
-      )}
+
+      {/* Post View Modal */}
+      <PostViewModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        post={activePost}
+        categoryName={activePost?.category?.name}
+      />
     </div>
   );
 });

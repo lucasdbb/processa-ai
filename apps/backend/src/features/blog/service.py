@@ -45,6 +45,8 @@ class BlogService:
                 return {"items": [], "page": page, "page_size": page_size}
         res = q.execute()
         data = res.data or []
+
+        # Fetch authors
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
@@ -57,8 +59,28 @@ class BlogService:
             )
             for p in pr.data or []:
                 profiles[p["id"]] = p.get("full_name")
+
+        # Fetch categories
+        category_ids = list({row["category_id"] for row in data if row.get("category_id")})
+        categories_map = {}
+        if category_ids:
+            cat_res = (
+                self.supabase
+                .table("blog_categories")
+                .select("id,name,slug")
+                .in_("id", category_ids)
+                .execute()
+            )
+            for cat in cat_res.data or []:
+                categories_map[cat["id"]] = {
+                    "id": str(cat["id"]),
+                    "name": cat.get("name"),
+                    "slug": cat.get("slug")
+                }
+
         items = []
         for row in data:
+            category_id = row.get("category_id")
             items.append(
                 {
                     "id": str(row.get("id")),
@@ -66,7 +88,7 @@ class BlogService:
                     "slug": row.get("slug"),
                     "excerpt": row.get("excerpt"),
                     "cover_image_url": row.get("cover_image_url"),
-                    "category_id": row.get("category_id"),
+                    "category": categories_map.get(category_id) if category_id else None,
                     "author": {
                         "id": str(row.get("author_id")),
                         "name": profiles.get(row.get("author_id")),
@@ -224,6 +246,27 @@ class BlogService:
         if not data or data[0].get("status") != "published":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
         post = data[0]
+
+        # Fetch category
+        category = None
+        if post.get("category_id"):
+            cat_res = (
+                self.supabase
+                .table("blog_categories")
+                .select("id,name,slug")
+                .eq("id", post.get("category_id"))
+                .limit(1)
+                .execute()
+            )
+            if cat_res.data:
+                cat = cat_res.data[0]
+                category = {
+                    "id": str(cat["id"]),
+                    "name": cat.get("name"),
+                    "slug": cat.get("slug")
+                }
+
+        # Fetch authors
         authors_ids = {post.get("author_id")}
         co = (
             self.supabase
@@ -245,6 +288,7 @@ class BlogService:
             )
             profiles = pr.data or []
         authors = [{"id": str(p["id"]), "name": p.get("full_name")} for p in profiles]
+
         return {
             "id": str(post.get("id")),
             "title": post.get("title"),
@@ -252,7 +296,7 @@ class BlogService:
             "excerpt": post.get("excerpt"),
             "content": post.get("content"),
             "cover_image_url": post.get("cover_image_url"),
-            "category_id": post.get("category_id"),
+            "category": category,
             "published_at": post.get("published_at"),
             "authors": authors,
         }
