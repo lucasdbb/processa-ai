@@ -1,6 +1,7 @@
 """
 User service
 """
+from datetime import datetime, timezone
 from fastapi import HTTPException, status
 
 from src.features.users.schemas import UpdateProfile
@@ -40,6 +41,20 @@ class UserService:
             except Exception:
                 confirmed_at = None
 
+            # Verificar status da newsletter
+            newsletter_opt_in = False
+            try:
+                newsletter_res = (
+                    self.supabase.table("newsletter_subscriptions")
+                    .select("status")
+                    .eq("user_id", user_id)
+                    .eq("status", "subscribed")
+                    .execute()
+                )
+                newsletter_opt_in = bool(newsletter_res.data)
+            except Exception:
+                pass  # Falha silenciosa na newsletter não deve quebrar o profile
+
             # Mapear full_name para name e adicionar confirmed_at
             # Campos phone, document_type, document_number serão None até migration ser aplicada
             return {
@@ -51,6 +66,7 @@ class UserService:
                 "phone": None,  # Será preenchido após migration
                 "document_type": None,  # Será preenchido após migration
                 "document_number": None,  # Será preenchido após migration
+                "newsletter_opt_in": newsletter_opt_in,
                 "confirmed_at": confirmed_at,
                 "created_at": profile["created_at"],
             }
@@ -67,11 +83,14 @@ class UserService:
         try:
             update_data = profile_data.model_dump(exclude_none=True)
 
-            if not update_data:
+            if not update_data and not profile_data.newsletter_opt_in is not None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Nenhum dado para atualizar",
                 )
+
+            # Extrair newsletter_opt_in pois não é coluna da tabela profiles
+            newsletter_opt_in = update_data.pop("newsletter_opt_in", None)
 
             # Mapear campos do frontend para o banco
             db_update = {}
@@ -86,21 +105,73 @@ class UserService:
             if "documentNumber" in update_data:
                 db_update["document_number"] = update_data["documentNumber"]
 
-            response = (
-                self.supabase.table("profiles")
-                .update(db_update)
-                .eq("id", user_id)
-                .execute()
-            )
-
-            if not response.data:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Perfil não encontrado",
+            # Se houver dados de perfil para atualizar
+            if db_update:
+                response = (
+                    self.supabase.table("profiles")
+                    .update(db_update)
+                    .eq("id", user_id)
+                    .execute()
                 )
 
+                if not response.data:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Perfil não encontrado",
+                    )
+                profile = response.data[0]
+            else:
+                # Se não houve update no profile (só newsletter), busca o atual
+                prof_res = self.supabase.table("profiles").select("*").eq("id", user_id).execute()
+                if not prof_res.data:
+                    raise HTTPException(status_code=404, detail="Perfil não encontrado")
+                profile = prof_res.data[0]
+
+            # Atualizar newsletter se solicitado
+            if newsletter_opt_in is not None:
+                try:
+                    if newsletter_opt_in:
+                        # Verificar se já existe registro
+                        existing = self.supabase.table("newsletter_subscriptions").select("id").eq("user_id", user_id).execute()
+                        if existing.data:
+                            self.supabase.table("newsletter_subscriptions").update({
+                                "status": "subscribed",
+                                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+                                "consent": True
+                            }).eq("id", existing.data[0]["id"]).execute()
+                        else:
+                            self.supabase.table("newsletter_subscriptions").insert({
+                                "user_id": user_id,
+                                "email": profile["email"],
+                                "status": "subscribed",
+                                "confirmed_at": datetime.now(timezone.utc).isoformat(),
+                                "consent": True,
+                                "channel": "email"
+                            }).execute()
+                    else:
+                        self.supabase.table("newsletter_subscriptions").update({
+                            "status": "unsubscribed",
+                            "unsubscribed_at": datetime.now(timezone.utc).isoformat()
+                        }).eq("user_id", user_id).execute()
+                except Exception as e:
+                    # Log erro mas não falha a request principal
+                    print(f"Erro ao atualizar newsletter: {e}")
+
             # Retornar no formato esperado (com name ao invés de full_name)
-            profile = response.data[0]
+            # Recarregar o status atual da newsletter para retornar corretamente
+            current_newsletter_opt_in = False
+            try:
+                newsletter_res = (
+                    self.supabase.table("newsletter_subscriptions")
+                    .select("status")
+                    .eq("user_id", user_id)
+                    .eq("status", "subscribed")
+                    .execute()
+                )
+                current_newsletter_opt_in = bool(newsletter_res.data)
+            except Exception:
+                pass
+
             return {
                 "id": profile["id"],
                 "email": profile["email"],
@@ -110,6 +181,7 @@ class UserService:
                 "phone": profile.get("phone"),
                 "document_type": profile.get("document_type"),
                 "document_number": profile.get("document_number"),
+                "newsletter_opt_in": current_newsletter_opt_in,
                 "created_at": profile["created_at"],
             }
         except HTTPException:

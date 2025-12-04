@@ -45,6 +45,7 @@ export interface UserResponse {
   avatar_url?: string | null;
   document_type?: string | null;
   document_number?: string | null;
+  newsletter_opt_in?: boolean;
 }
 
 export interface ApiError {
@@ -60,6 +61,7 @@ export interface UpdateProfileData {
   phone?: string | null;
   documentType?: string;
   documentNumber?: string | null;
+  newsletter_opt_in?: boolean;
 }
 
 export interface UpdateProfileResponse {
@@ -71,6 +73,7 @@ export interface UpdateProfileResponse {
   phone?: string | null;
   document_type?: string | null;
   document_number?: string | null;
+  newsletter_opt_in?: boolean;
   created_at: string;
 }
 
@@ -294,7 +297,8 @@ class AuthService {
         emailVerified: userResponse.confirmed_at !== null,
         phone: userResponse.phone,
         documentType: userResponse.document_type as 'cpf' | 'cnpj' | undefined,
-        documentNumber: userResponse.document_number
+        documentNumber: userResponse.document_number,
+        newsletter_opt_in: userResponse.newsletter_opt_in
       };
     })();
     try {
@@ -388,6 +392,7 @@ class AuthService {
         phone: data.phone ? sanitizePhone(data.phone) : undefined,
         documentType: data.documentType,
         documentNumber: data.documentNumber ? sanitizeDocument(data.documentNumber) : undefined,
+        newsletter_opt_in: data.newsletter_opt_in,
       };
 
       const response = await fetch(`${API_URL}/users/profile`, {

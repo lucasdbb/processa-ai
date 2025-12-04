@@ -25,6 +25,17 @@ class NewsletterService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Consentimento necessário",
             )
+        
+        # Tentar encontrar usuário existente pelo email se user_id não for fornecido
+        if not user_id:
+            try:
+                # Buscar na tabela de perfis pública primeiro
+                profile_res = self.supabase.table("profiles").select("id").eq("email", email).execute()
+                if profile_res.data:
+                    user_id = profile_res.data[0]["id"]
+            except Exception:
+                pass
+
         token = secrets.token_urlsafe(32)
         payload = {
             "user_id": user_id,

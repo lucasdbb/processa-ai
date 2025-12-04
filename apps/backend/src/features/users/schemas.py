@@ -17,6 +17,7 @@ class UserProfile(BaseModel):
     phone: str | None = None
     document_type: str | None = None
     document_number: str | None = None
+    newsletter_opt_in: bool = False  # Status da assinatura da newsletter
     confirmed_at: str | None = None  # Data de confirmação do email
     created_at: datetime
 
@@ -32,6 +33,8 @@ class UpdateProfile(BaseModel):
     phone: str | None = None
     documentType: str | None = None
     documentNumber: str | None = None
+    newsletter_opt_in: bool | None = None
+
 
 
 class UpdateRoleRequest(BaseModel):

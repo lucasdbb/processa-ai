@@ -44,6 +44,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const newsletterCheckboxRef = useRef<HTMLInputElement>(null);
+
+  // Update checkbox when modal opens or user data changes
+  React.useEffect(() => {
+    if (newsletterCheckboxRef.current && isOpen) {
+      newsletterCheckboxRef.current.checked = user.newsletter_opt_in || false;
+    }
+  }, [isOpen, user.newsletter_opt_in]);
 
   // Close modal on escape key
   React.useEffect(() => {
@@ -128,6 +136,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         phone: cleanPhone.trim() === '' ? null : cleanPhone,
         documentType: documentType,
         documentNumber: cleanDocument.trim() === '' ? null : cleanDocument,
+        newsletter_opt_in: newsletterCheckboxRef.current?.checked || false,
       };
 
       // If there's a new avatar, use the base64 from preview (already converted)
@@ -145,7 +154,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [formData, avatarFile, onUpdateProfile, user.id, documentType]);
+  }, [formData, avatarPreview, onUpdateProfile, documentType]);
 
   const handleCancel = useCallback(() => {
     setIsEditing(false);
@@ -160,6 +169,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     });
     setAvatarFile(null);
     setAvatarPreview(null);
+    // Reset checkbox value
+    if (newsletterCheckboxRef.current) {
+      newsletterCheckboxRef.current.checked = user.newsletter_opt_in || false;
+    }
   }, [user]);
 
   const getInitials = (name: string) => {
@@ -402,6 +415,29 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 disabled
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
               />
+            </div>
+
+            {/* Newsletter Checkbox */}
+            <div className="flex items-start space-x-3 pt-2">
+              <div className="flex items-center h-5">
+                <input
+                  type="checkbox"
+                  id="newsletter"
+                  name="newsletter"
+                  ref={newsletterCheckboxRef}
+                  defaultChecked={user.newsletter_opt_in || false}
+                  disabled={!isEditing}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+              <div className="text-sm">
+                <label htmlFor="newsletter" className={`font-medium ${!isEditing ? 'text-gray-500' : 'text-gray-700'} cursor-pointer`}>
+                  Desejo receber a newsletter
+                </label>
+                <p className="text-gray-500 text-xs mt-1">
+                  Receba novidades, atualizações e artigos jurídicos exclusivos diretamente no seu e-mail.
+                </p>
+              </div>
             </div>
 
             {/* Action Buttons */}

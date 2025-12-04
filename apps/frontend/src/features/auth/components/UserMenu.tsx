@@ -79,7 +79,8 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onUpdateProfile }) 
 
   const handleProfileUpdate = async (updatedData: Partial<UserType>) => {
     await onUpdateProfile(updatedData);
-    setIsProfileModalOpen(false);
+    // Não fechar o modal após update, pois o usuário pode querer ver os dados atualizados
+    // setIsProfileModalOpen(false); 
   };
 
   return (

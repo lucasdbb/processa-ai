@@ -4,7 +4,6 @@ import { Header, ErrorBoundary, FooterWrapper } from './shared';
 import { LoginModal, SessionTimeoutWarning, EmailConfirmedModal, AuthErrorModal, ResetPasswordModal, authService } from './features/auth';
 import type { User } from './features/auth';
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
 const BlogPage = lazy(() => import('@/features/blog/components/BlogPage'));
 const AdminPanel = lazy(() => import('@/features/blog/components/AdminPanel'));
@@ -119,7 +118,7 @@ function App() {
       return <Navigate to="/" replace />;
     }
     if (user.role !== 'admin') {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/" replace />;
     }
     return children;
   };
@@ -135,7 +134,7 @@ function App() {
       return <Navigate to="/" replace />;
     }
     if (user.role !== 'admin' && user.role !== 'author') {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/" replace />;
     }
     return children;
   };
@@ -190,7 +189,8 @@ function App() {
         avatar_url: updatedData.avatar_url || undefined,
         phone: updatedData.phone,
         documentType: updatedData.documentType,
-        documentNumber: updatedData.documentNumber
+        documentNumber: updatedData.documentNumber,
+        newsletter_opt_in: updatedData.newsletter_opt_in
       });
 
       // Update local state with the response from the API
@@ -201,7 +201,8 @@ function App() {
         avatar_url: response.avatar_url || undefined,
         phone: response.phone || undefined,
         documentType: response.document_type as 'cpf' | 'cnpj' | undefined,
-        documentNumber: response.document_number || undefined
+        documentNumber: response.document_number || undefined,
+        newsletter_opt_in: response.newsletter_opt_in
       };
 
       setUser(updatedUser);
@@ -265,14 +266,6 @@ function App() {
               <Route path="/" element={<LandingPage onLoginClick={() => setIsLoginModalOpen(true)} />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/reset-password" element={<Navigate to="/" replace />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute isAuthenticated={!!user}>
-                    <Dashboard user={user} onLogout={handleLogout} />
-                  </ProtectedRoute>
-                }
-              />
               <Route
                 path="/admin"
                 element={

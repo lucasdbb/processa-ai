@@ -86,6 +86,8 @@ export interface User {
   documentType?: DocumentType;
   /** CPF or CNPJ number */
   documentNumber?: string | null;
+  /** Whether the user has opted in for the newsletter */
+  newsletter_opt_in?: boolean;
 }
 
 /**
