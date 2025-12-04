@@ -65,6 +65,11 @@ async def publish_post(post_id: str, admin=Depends(get_current_admin)):
     return await service.publish(admin, post_id)
 
 
+@router.patch("/posts/{post_id}/restore")
+async def restore_post(post_id: str, admin=Depends(get_current_admin)):
+    return await service.restore(admin, post_id)
+
+
 @router.delete("/posts/{post_id}")
 async def delete_post(post_id: str, admin=Depends(get_current_admin)):
     return await service.delete_post(admin, post_id)

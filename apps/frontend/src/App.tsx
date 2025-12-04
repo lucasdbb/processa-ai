@@ -87,18 +87,7 @@ function App() {
    * @param {JSX.Element} props.children - Child components to render if authenticated
    * @returns {JSX.Element} Protected content or redirect
    */
-  const ProtectedRoute = ({
-    isAuthenticated,
-    children,
-  }: {
-    isAuthenticated: boolean;
-    children: React.ReactElement;
-  }) => {
-    if (!isAuthenticated) {
-      return <Navigate to="/" replace />;
-    }
-    return children;
-  };
+  
 
   /**
    * Admin route component that redirects non-admin users to dashboard
@@ -275,7 +264,15 @@ function App() {
                 }
               />
               <Route
-                path="/admin/posts/new"
+                path="/admin/posts/edit"
+                element={
+                  <AuthorOrAdminRoute user={user}>
+                    <CreatePostPage />
+                  </AuthorOrAdminRoute>
+                }
+              />
+              <Route
+                path="/admin/posts/edit/:id"
                 element={
                   <AuthorOrAdminRoute user={user}>
                     <CreatePostPage />

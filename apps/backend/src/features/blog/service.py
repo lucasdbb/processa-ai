@@ -408,11 +408,6 @@ class BlogService:
         if not rows:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
         post = rows[0]
-        if post.get("status") != "draft":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Somente rascunhos podem ser editados",
-            )
         is_author = post.get("author_id") == user.id
         if not is_author:
             co = (
@@ -517,6 +512,40 @@ class BlogService:
                 detail="Falha ao publicar",
             )
         return {"id": str(post_id), "status": "published"}
+
+    async def restore(self, admin_user, post_id: str):
+        prof = (
+            self.supabase
+            .table("profiles")
+            .select("role")
+            .eq("id", admin_user.id)
+            .limit(1)
+            .execute()
+        )
+        role = None
+        if prof.data:
+            role = prof.data[0].get("role")
+        if role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas admin restaura",
+            )
+        upd = (
+            self.supabase
+            .table("blog_posts")
+            .update({
+                "status": "draft",
+                "published_at": None,
+            })
+            .eq("id", post_id)
+            .execute()
+        )
+        if not upd.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao restaurar",
+            )
+        return {"id": str(post_id), "status": "draft"}
 
     async def delete_post(self, admin_user, post_id: str):
         prof = (

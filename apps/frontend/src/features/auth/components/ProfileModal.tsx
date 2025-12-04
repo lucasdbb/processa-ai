@@ -41,7 +41,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       ? (user.documentType === 'cnpj' ? cnpjMask(user.documentNumber) : cpfMask(user.documentNumber))
       : '',
   });
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const newsletterCheckboxRef = useRef<HTMLInputElement>(null);
@@ -114,7 +113,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         // Convert to optimized base64 (400x400, quality 0.8)
         const base64 = await fileToBase64(file, 400, 400, 0.8);
         setAvatarPreview(base64);
-        setAvatarFile(file);
       } catch (error) {
         console.error('Erro ao processar imagem:', error);
         alert('Erro ao processar imagem. Tente novamente.');
@@ -146,7 +144,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       
       await onUpdateProfile(updateData);
       setIsEditing(false);
-      setAvatarFile(null);
       setAvatarPreview(null);
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
@@ -167,7 +164,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
         ? (user.documentType === 'cnpj' ? cnpjMask(user.documentNumber) : cpfMask(user.documentNumber))
         : '',
     });
-    setAvatarFile(null);
     setAvatarPreview(null);
     // Reset checkbox value
     if (newsletterCheckboxRef.current) {

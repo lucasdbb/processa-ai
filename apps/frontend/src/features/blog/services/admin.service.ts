@@ -152,6 +152,21 @@ class AdminService {
     return response.json();
   }
 
+  async restorePostToDraft(postId: string): Promise<{ id: string; status: string }> {
+    const response = await fetch(`${API_URL}/blog/posts/${postId}/restore`, {
+      method: 'PATCH',
+      headers: this.createHeaders(true),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Erro ao restaurar post');
+    }
+
+    return response.json();
+  }
+
   /**
    * Delete post (admin only)
    */

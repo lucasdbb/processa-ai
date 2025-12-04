@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Users,
   Shield,
@@ -15,6 +16,7 @@ import {
   Edit,
   Trash2,
   Send,
+  Save,
   MoreVertical
 } from 'lucide-react';
 import { adminService } from '../services/admin.service';
@@ -33,6 +35,7 @@ type Tab = 'overview' | 'users' | 'posts';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +54,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
   const [postSearch, setPostSearch] = useState('');
   const [postStatusFilter, setPostStatusFilter] = useState<string>('all');
   const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
-  const [pendingPostAction, setPendingPostAction] = useState<{ id: string; action: 'publish' | 'archive'; title: string } | null>(null);
+  const [pendingPostAction, setPendingPostAction] = useState<{ id: string; action: 'publish' | 'archive' | 'restore'; title: string } | null>(null);
   const [isProcessingPost, setIsProcessingPost] = useState(false);
 
   // Stats State
@@ -78,6 +81,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     hasLoadedRef.current = true;
     loadData();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'overview' || tab === 'users' || tab === 'posts') {
+      setActiveTab(tab as Tab);
+    }
+  }, [location.search]);
 
   const loadData = async () => {
     try {
@@ -143,9 +154,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
     }
   };
 
-  const handlePostAction = (id: string, action: 'publish' | 'archive', title: string) => {
-    setPendingPostAction({ id, action, title });
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (activeActionMenu) {
+        setActiveActionMenu(null);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [activeActionMenu]);
+
+  const toggleActionMenu = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeActionMenu === id) {
+      setActiveActionMenu(null);
+      setMenuPosition(null);
+    } else {
+      const button = menuButtonRefs.current[id];
+      if (button) {
+        const rect = button.getBoundingClientRect();
+        setMenuPosition({
+          top: rect.bottom + 4, // Não adicionar scrollY para position fixed
+          left: rect.right - 192, // 192px (w-48)
+        });
+        setActiveActionMenu(id);
+      }
+    }
+  };
+
+  // Fechar menu ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (activeActionMenu) {
+        setActiveActionMenu(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeActionMenu]);
+
+  const handleActionClick = (callback: () => void) => {
+    callback();
     setActiveActionMenu(null);
+  };
+
+  const handlePostAction = (id: string, action: 'archive' | 'publish' | 'restore', title: string) => {
+    setPendingPostAction({ id, action, title });
+    setActiveActionMenu(null); // Fechar menu após ação
   };
 
   const handleConfirmPostAction = async () => {
@@ -162,12 +221,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
         await adminService.deletePost(id); // Backend now handles soft delete (archive)
         setPosts(posts.map(p => p.id === id ? { ...p, status: 'archived' } : p));
         showToast('Post arquivado com sucesso!', 'success');
+      } else if (action === 'restore') {
+        await adminService.restorePostToDraft(id);
+        setPosts(posts.map(p => p.id === id ? { ...p, status: 'draft', published_at: undefined } : p));
+        showToast('Post salvo como rascunho!', 'success');
       }
       setPendingPostAction(null);
       // Reload stats
       loadData();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : `Erro ao ${action === 'publish' ? 'publicar' : 'arquivar'} post`, 'error');
+      showToast(
+        err instanceof Error
+          ? err.message
+          : `Erro ao ${action === 'publish' ? 'publicar' : action === 'archive' ? 'arquivar' : 'salvar como rascunho'} post`,
+        'error'
+      );
     } finally {
       setIsProcessingPost(false);
     }
@@ -541,7 +609,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                     Atualizar
                   </button>
                   <button
-                    onClick={() => navigate('/admin/posts/new')}
+                    onClick={() => navigate('/admin/posts/edit')}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 shadow-sm h-10"
                   >
                     <FileText className="w-4 h-4" />
@@ -608,17 +676,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                           <td className="px-6 py-4 text-right">
                             <div className="relative action-menu-container">
                               <button
-                                onClick={() => setActiveActionMenu(activeActionMenu === p.id ? null : p.id)}
+                                ref={(el) => { menuButtonRefs.current[p.id] = el; }}
+                                onClick={(e) => toggleActionMenu(p.id, e)}
                                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                               >
                                 <MoreVertical className="w-4 h-4" />
                               </button>
 
-                              {activeActionMenu === p.id && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-10 py-1 animate-in fade-in zoom-in duration-200">
+                              {activeActionMenu === p.id && menuPosition && createPortal(
+                                <div 
+                                  className="fixed bg-white rounded-lg shadow-lg border border-gray-100 z-[9999] py-1 animate-in fade-in zoom-in duration-200 w-48"
+                                  style={{ top: menuPosition.top, left: menuPosition.left }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
                                   {/* Edit - Link to create page with state */}
                                   <button
-                                    onClick={() => navigate(`/admin/posts/new?id=${p.id}`)} 
+                                    onClick={() => handleActionClick(() => navigate(`/admin/posts/edit/${p.id}`))} 
                                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                   >
                                     <Edit className="w-4 h-4" />
@@ -626,25 +700,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                                   </button>
                                   
                                   {p.status === 'draft' && (
-                                    <>
-                                      <button
-                                        onClick={() => handlePostAction(p.id, 'publish', p.title)}
-                                        className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
-                                      >
-                                        <Send className="w-4 h-4" />
-                                        Publicar
-                                      </button>
-                                      <button
-                                        onClick={() => handlePostAction(p.id, 'archive', p.title)}
-                                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                        Arquivar
-                                      </button>
-                                    </>
+                                    <button
+                                      onClick={() => handlePostAction(p.id, 'publish', p.title)}
+                                      className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                                    >
+                                      <Send className="w-4 h-4" />
+                                      Publicar
+                                    </button>
                                   )}
 
-                                  {p.status !== 'draft' && p.status !== 'archived' && (
+                                  {p.status === 'archived' && (
+                                    <button
+                                      onClick={() => handlePostAction(p.id, 'restore', p.title)}
+                                      className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                                    >
+                                      <Save className="w-4 h-4" />
+                                      Salvar rascunho
+                                    </button>
+                                  )}
+
+                                  {p.status !== 'archived' && (
                                     <button
                                       onClick={() => handlePostAction(p.id, 'archive', p.title)}
                                       className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
@@ -653,7 +728,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                                       Arquivar
                                     </button>
                                   )}
-                                </div>
+                                </div>,
+                                document.body
                               )}
                             </div>
                           </td>
@@ -721,17 +797,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
 
           <ConfirmDialog
             isOpen={!!pendingPostAction}
-            title={pendingPostAction?.action === 'archive' ? 'Arquivar Post' : 'Publicar Post'}
+            title={
+              pendingPostAction?.action === 'archive'
+                ? 'Arquivar Post'
+                : pendingPostAction?.action === 'restore'
+                ? 'Salvar como Rascunho'
+                : 'Publicar Post'
+            }
             message={
-              pendingPostAction?.action === 'archive' 
+              pendingPostAction?.action === 'archive'
                 ? `Tem certeza que deseja arquivar o post "${pendingPostAction?.title}"? Ele deixará de ser visível publicamente.`
+                : pendingPostAction?.action === 'restore'
+                ? `Deseja salvar o post "${pendingPostAction?.title}" como rascunho?`
                 : `Deseja publicar o post "${pendingPostAction?.title}" agora? Ele ficará visível para todos os usuários.`
             }
-            confirmText={pendingPostAction?.action === 'archive' ? 'Arquivar' : 'Publicar'}
+            confirmText={
+              pendingPostAction?.action === 'archive'
+                ? 'Arquivar'
+                : pendingPostAction?.action === 'restore'
+                ? 'Salvar rascunho'
+                : 'Publicar'
+            }
             cancelText="Cancelar"
             onConfirm={handleConfirmPostAction}
             onCancel={() => setPendingPostAction(null)}
-            type={pendingPostAction?.action === 'archive' ? 'danger' : 'info'}
+            type={
+              pendingPostAction?.action === 'archive'
+                ? 'danger'
+                : pendingPostAction?.action === 'restore'
+                ? 'info'
+                : 'info'
+            }
             isLoading={isProcessingPost}
           />
 

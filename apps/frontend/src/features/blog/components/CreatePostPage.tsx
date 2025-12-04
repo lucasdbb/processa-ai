@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Save, CheckCircle, X } from 'lucide-react';
 import { sanitizeText } from '@/shared/utils/sanitize';
 import type { BlogCategoryId } from '../types/blog';
 import { ToastContainer } from '@/shared/components/Toast';
@@ -63,8 +63,8 @@ const UpdatePlugin = ({ content }: { content: string }) => {
 
 const CreatePostPage: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const editPostId = searchParams.get('id');
+  const { id: routeId } = useParams();
+  const editPostId = routeId || null;
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -73,9 +73,11 @@ const CreatePostPage: React.FC = () => {
   const [tagsInput, setTagsInput] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [createdPostId, setCreatedPostId] = useState<string | null>(null);
+  const [postStatus, setPostStatus] = useState<'draft' | 'published' | 'archived'>('draft');
   const [isPublishing, setIsPublishing] = useState(false);
   const [contentMd, setContentMd] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isLoading, setIsLoading] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
   const [initialContent, setInitialContent] = useState('');
@@ -88,25 +90,33 @@ const CreatePostPage: React.FC = () => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Load post data if editing
-  useEffect(() => {
-    if (editPostId) {
-      loadPost(editPostId);
+  const fillForm = useCallback((post: any) => {
+    setTitle(post.title);
+    setSlug(post.slug);
+    setExcerpt(post.excerpt || '');
+    setContentMd(post.content || '');
+    setInitialContent(post.content || '');
+    setCategory(post.category_slug || post.category_id || 'direito-trabalho');
+    if (post.tags && Array.isArray(post.tags)) {
+      setTagsInput(post.tags.join(', '));
     }
-  }, [editPostId]);
+    setImageBase64(post.cover_image_url || null);
+    setCreatedPostId(post.id);
+    setPostStatus(post.status || 'draft');
+  }, []);
 
-  const loadPost = async (id: string) => {
+  const loadPost = useCallback(async (id: string) => {
     try {
       setIsLoading(true);
       const token = localStorage.getItem('access_token');
-      
+
       // Try admin endpoint first (handles drafts and published)
       const res = await fetch(`/api/blog/admin/posts/${id}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
-      
+
       if (res.ok) {
         const post = await res.json();
         fillForm(post);
@@ -119,11 +129,11 @@ const CreatePostPage: React.FC = () => {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
-      
+
       if (!publicRes.ok) {
         throw new Error('Post não encontrado');
       }
-      
+
       const post = await publicRes.json();
       fillForm(post);
     } catch (e) {
@@ -132,30 +142,14 @@ const CreatePostPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fillForm, navigate]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-700"></div>
-      </div>
-    );
-  }
-
-  const fillForm = (post: any) => {
-    setTitle(post.title);
-    setSlug(post.slug);
-    setExcerpt(post.excerpt || '');
-    setContentMd(post.content || '');
-    setInitialContent(post.content || '');
-    setCategory(post.category_slug || post.category_id || 'direito-trabalho'); // Adjust based on what backend returns
-    // Tags handling might need adjustment based on backend response format
-    if (post.tags && Array.isArray(post.tags)) {
-      setTagsInput(post.tags.join(', '));
+  // Load post data if editing
+  useEffect(() => {
+    if (editPostId) {
+      loadPost(editPostId);
     }
-    setImageBase64(post.cover_image_url || null);
-    setCreatedPostId(post.id);
-  };
+  }, [editPostId, loadPost]);
 
   const handleTitleChange = (v: string) => {
     setTitle(v);
@@ -166,7 +160,16 @@ const CreatePostPage: React.FC = () => {
     }
   };
 
-  const handleSaveDraft = async () => {
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-700"></div>
+      </div>
+    );
+  }
+
+  const saveDraft = async () => {
     const payload = {
       title: sanitizeText(title),
       slug: slug || toSlug(title),
@@ -177,19 +180,18 @@ const CreatePostPage: React.FC = () => {
       cover_image_url: imageBase64 || undefined,
     };
 
-    if (!payload.title || !payload.slug || !payload.content) {
-      showToast('Preencha título e conteúdo.', 'error');
-      return;
+    if (!payload.title || !payload.content) {
+      return; // Silently skip if not enough content
     }
 
     try {
-      setIsSubmitting(true);
+      setSaveStatus('saving');
+      setIsSaving(true);
       const token = localStorage.getItem('access_token');
-      
-      // If we have an ID, it's an update (PATCH), otherwise create (POST)
+
       let url = '/api/blog/posts';
       let method = 'POST';
-      
+
       if (createdPostId) {
          url = `/api/blog/posts/${createdPostId}`;
          method = 'PATCH';
@@ -206,34 +208,94 @@ const CreatePostPage: React.FC = () => {
       });
 
       if (!res.ok) {
-        // Fallback: if PUT/PATCH not implemented, maybe POST handles it? 
-        // Or show error
-        const text = await res.text();
-        showToast(text || 'Erro ao salvar post', 'error');
+        setSaveStatus('error');
         return;
       }
 
       const saved = await res.json();
-      setCreatedPostId(saved?.id || createdPostId);
-      showToast(createdPostId ? 'Post atualizado!' : 'Rascunho salvo!', 'success');
+      if (!createdPostId && saved?.id) {
+        setCreatedPostId(saved.id);
+      }
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (e) {
-      showToast('Erro ao salvar post.', 'error');
+      setSaveStatus('error');
     } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
     }
   };
 
-  const handlePublish = async () => {
-    if (!createdPostId) {
-      await handleSaveDraft();
-    }
-    if (!createdPostId) {
+  const handlePublishOrUpdate = async () => {
+    const payload = {
+      title: sanitizeText(title),
+      slug: slug || toSlug(title),
+      excerpt: sanitizeText(excerpt),
+      content: contentMd,
+      category,
+      tags: sanitizeText(tagsInput).split(',').map(t => t.trim()).filter(Boolean),
+      cover_image_url: imageBase64 || undefined,
+    };
+
+    if (!payload.title || !payload.slug || !payload.content) {
+      showToast('Preencha título e conteúdo.', 'error');
       return;
     }
-    const token = localStorage.getItem('access_token');
+
     try {
       setIsPublishing(true);
-      const publishRes = await fetch(`/api/blog/posts/${createdPostId}/publish`, {
+      const token = localStorage.getItem('access_token');
+
+      // First, save the content
+      let postId = createdPostId;
+      if (!postId) {
+        // Create draft first
+        const createRes = await fetch('/api/blog/posts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+
+        if (!createRes.ok) {
+          const text = await createRes.text();
+          showToast(text || 'Erro ao salvar post', 'error');
+          return;
+        }
+
+        const created = await createRes.json();
+        postId = created.id;
+        setCreatedPostId(postId);
+      } else {
+        // Update existing post
+        const updateRes = await fetch(`/api/blog/posts/${postId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+
+        if (!updateRes.ok) {
+          const text = await updateRes.text();
+          showToast(text || 'Erro ao atualizar post', 'error');
+          return;
+        }
+      }
+
+      // If already published, we're done (just updated)
+      if (postStatus === 'published') {
+        setPostStatus('published');
+        showToast('Post atualizado!', 'success');
+        return;
+      }
+
+      // Otherwise, publish it
+      const publishRes = await fetch(`/api/blog/posts/${postId}/publish`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -241,16 +303,48 @@ const CreatePostPage: React.FC = () => {
         },
         credentials: 'include',
       });
+
       if (!publishRes.ok) {
         const txt = await publishRes.text();
-        showToast(txt || 'Você não tem permissão para publicar.', 'error');
+        showToast(txt || 'Erro ao publicar.', 'error');
         return;
       }
+
+      setPostStatus('published');
       showToast('Post publicado!', 'success');
     } catch (e) {
-      showToast('Falha ao publicar.', 'error');
+      showToast('Falha ao processar.', 'error');
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleSaveDraftOrRestore = async () => {
+    await saveDraft();
+    if (createdPostId && postStatus === 'archived') {
+      try {
+        setIsSaving(true);
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(`/api/blog/posts/${createdPostId}/restore`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          showToast(txt || 'Erro ao restaurar rascunho', 'error');
+          return;
+        }
+        setPostStatus('draft');
+        showToast('Rascunho restaurado!', 'success');
+      } catch (e) {
+        showToast('Falha ao salvar rascunho', 'error');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -261,37 +355,67 @@ const CreatePostPage: React.FC = () => {
         <div className="mb-4 flex items-center justify-between sticky top-0 z-10 bg-gray-50/50 backdrop-blur-sm py-4">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/admin')}
+              onClick={() => navigate('/admin?tab=posts')}
               className="p-2 hover:bg-white rounded-full transition-colors text-gray-500 hover:text-gray-900 hover:shadow-sm"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Novo Artigo</h1>
-              <p className="text-sm text-gray-500">Crie conteúdo relevante para sua audiência</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {editPostId ? 'Editar Artigo' : 'Novo Artigo'}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {editPostId ? 'Atualize seu conteúdo' : 'Crie conteúdo relevante para sua audiência'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleSaveDraft}
-              disabled={isSubmitting}
-              className="px-4 h-10 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200"
-            >
-              <Save className="w-4 h-4" />
-              {isSubmitting ? 'Salvando...' : 'Salvar rascunho'}
-            </button>
-            <button
-              onClick={handlePublish}
-              disabled={isPublishing}
-              className="btn-primary h-10 flex items-center justify-center gap-2 shadow-lg shadow-primary-900/20"
-            >
-              {isPublishing ? 'Publicando...' : 'Publicar post'}
-            </button>
-            {createdPostId && (
-              <span className="inline-flex items-center gap-2 text-sm text-green-700">
-                <CheckCircle className="w-4 h-4" /> Rascunho salvo
-              </span>
+            {/* Save Status Indicator */}
+            {saveStatus === 'saving' && (
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 font-medium">
+                <div className="w-4 h-4 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
+                Salvando...
+              </div>
             )}
+            {saveStatus === 'saved' && (
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium">
+                <CheckCircle className="w-4 h-4" />
+                {postStatus === 'published' ? 'Publicado' : 'Rascunho salvo'}
+              </div>
+            )}
+            {saveStatus === 'error' && (
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+                <X className="w-4 h-4" />
+                Erro ao salvar
+              </div>
+            )}
+
+            <div className="flex-1"></div>
+
+            {/* Single Action Button */}
+            <button
+              onClick={() => {
+                if (!createdPostId || postStatus === 'archived') {
+                  handleSaveDraftOrRestore();
+                } else {
+                  handlePublishOrUpdate();
+                }
+              }}
+              disabled={isPublishing || isSaving}
+              className="btn-primary h-10 flex items-center justify-center gap-2 shadow-lg shadow-primary-900/20 disabled:opacity-50"
+            >
+              {isPublishing || isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {!createdPostId || postStatus === 'archived' ? 'Salvando...' : postStatus === 'published' ? 'Atualizando...' : 'Publicando...'}
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  {!createdPostId || postStatus === 'archived' ? 'Salvar rascunho' : postStatus === 'published' ? 'Atualizar' : 'Publicar'}
+                </>
+              )}
+            </button>
           </div>
         </div>
 

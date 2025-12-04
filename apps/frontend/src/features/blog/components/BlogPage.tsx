@@ -199,7 +199,7 @@ const BlogPage: React.FC = React.memo(() => {
                   loading="lazy"
                 />
               </div>
-              <div className="md:w-2/3 p-6">
+              <div className="md:w-2/3 p-6 flex flex-col">
                 <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                   <span className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -217,10 +217,10 @@ const BlogPage: React.FC = React.memo(() => {
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">
                   {featuredPost?.title || ''}
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 mb-4 flex-grow">
                   {featuredPost?.excerpt || ''}
                 </p>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mt-auto">
                   <div className="flex space-x-2">
                     {featuredPost?.category && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
