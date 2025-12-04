@@ -2,8 +2,8 @@ import httpx
 from fastapi import HTTPException, status
 
 from src.core.config import settings
-from src.shared.database import get_supabase
 from src.features.support.schemas import SupportContactRequest
+from src.shared.database import get_supabase
 
 
 class SupportService:

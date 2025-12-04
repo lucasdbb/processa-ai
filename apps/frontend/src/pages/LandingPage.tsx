@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Brain,
   Calculator,
@@ -21,11 +21,6 @@ const LandingPage: React.FC<LandingPageProps> = React.memo(({ onLoginClick }) =>
   const [showErrorBanner, setShowErrorBanner] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isContactOpen, setIsContactOpen] = useState(false);
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [newsletterFreq, setNewsletterFreq] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-  const [newsletterConsent, setNewsletterConsent] = useState(false);
-  const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [newsletterError, setNewsletterError] = useState('');
 
   // Check for URL errors from Supabase
   useEffect(() => {
@@ -57,58 +52,6 @@ const LandingPage: React.FC<LandingPageProps> = React.memo(({ onLoginClick }) =>
     }
   }, [searchParams, setSearchParams]);
 
-  // Newsletter confirmation
-  useEffect(() => {
-    const token = searchParams.get('newsletter_token');
-    if (!token) return;
-    const confirm = async () => {
-      try {
-        setNewsletterStatus('loading');
-        const res = await fetch(`/api/newsletter/confirm?token=${encodeURIComponent(token)}`, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (!res.ok) throw new Error('Falha ao confirmar assinatura');
-        setNewsletterStatus('success');
-      } catch {
-        setNewsletterError('Não foi possível confirmar sua assinatura.');
-        setNewsletterStatus('error');
-      } finally {
-        searchParams.delete('newsletter_token');
-        setSearchParams(searchParams, { replace: true });
-      }
-    };
-    confirm();
-  }, [searchParams, setSearchParams]);
-
-  const handleSubscribe = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setNewsletterError('');
-    if (!newsletterConsent) {
-      setNewsletterError('É necessário consentir para receber notícias.');
-      return;
-    }
-    if (!newsletterEmail || !newsletterEmail.includes('@')) {
-      setNewsletterError('Informe um e-mail válido.');
-      return;
-    }
-    setNewsletterStatus('loading');
-    try {
-      const res = await fetch('/api/newsletter/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: newsletterEmail, frequency: newsletterFreq, consent: newsletterConsent }),
-      });
-      if (!res.ok) throw new Error('Falha ao assinar');
-      setNewsletterStatus('success');
-      setNewsletterEmail('');
-      setNewsletterConsent(false);
-    } catch {
-      setNewsletterStatus('error');
-      setNewsletterError('Erro ao enviar. Tente novamente.');
-    }
-  }, [newsletterEmail, newsletterFreq, newsletterConsent]);
 
   const features = [
     {
@@ -224,56 +167,6 @@ const LandingPage: React.FC<LandingPageProps> = React.memo(({ onLoginClick }) =>
         </div>
       </section>
 
-      {/* Newsletter Section */}
-      <section className="py-16 bg-warm-bg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Receba as últimas notícias jurídicas</h3>
-              <p className="text-gray-600">Assine e receba atualizações diretamente no seu e‑mail.</p>
-            </div>
-            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-              <input
-                type="email"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                className="input-field w-full sm:w-auto flex-1"
-                placeholder="seu@email.com"
-              />
-              <select
-                value={newsletterFreq}
-                onChange={(e) => setNewsletterFreq(e.target.value as 'daily' | 'weekly' | 'monthly')}
-                className="input-field"
-              >
-                <option value="daily">Diária</option>
-                <option value="weekly">Semanal</option>
-                <option value="monthly">Mensal</option>
-              </select>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={newsletterConsent}
-                  onChange={(e) => setNewsletterConsent(e.target.checked)}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                Aceito receber e‑mails e o tratamento dos meus dados
-              </label>
-              <button type="submit" disabled={newsletterStatus === 'loading'} className="btn-primary flex items-center gap-2">
-                {newsletterStatus === 'loading' && (
-                  <span className="inline-block h-4 w-4 border-b-2 border-white rounded-full animate-spin" />
-                )}
-                Assinar
-              </button>
-            </form>
-          </div>
-          {newsletterStatus === 'success' && (
-            <p className="mt-3 text-sm text-green-700">Assinatura enviada. Verifique seu e‑mail para confirmar.</p>
-          )}
-          {newsletterStatus === 'error' && (
-            <p className="mt-3 text-sm text-red-700">{newsletterError}</p>
-          )}
-        </div>
-      </section>
 
       {/* Features Section */}
       <section className="py-20 bg-warm-bg">

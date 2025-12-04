@@ -3,7 +3,6 @@ from fastapi import APIRouter, status
 from src.features.support.schemas import SupportContactRequest, SupportContactResponse
 from src.features.support.service import SupportService
 
-
 router = APIRouter()
 service = SupportService()
 

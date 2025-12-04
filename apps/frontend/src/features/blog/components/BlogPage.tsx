@@ -1,10 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Calendar, User, Clock, Search, Tag, Newspaper } from 'lucide-react';
 import type { BlogPost, BlogCategory, BlogCategoryId } from '../types/blog';
+import { useSearchParams } from 'react-router-dom';
 
 const BlogPage: React.FC = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<BlogCategoryId>('all');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [newsletterError, setNewsletterError] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const categories: BlogCategory[] = [
     { id: 'all', name: 'Todas' },
@@ -100,6 +105,52 @@ const BlogPage: React.FC = React.memo(() => {
   });
 
   const featuredPost = blogPosts[0];
+
+  useEffect(() => {
+    const token = searchParams.get('newsletter_token');
+    if (!token) return;
+    const confirm = async () => {
+      try {
+        setNewsletterStatus('loading');
+        const res = await fetch(`/api/newsletter/confirm?token=${encodeURIComponent(token)}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (!res.ok) throw new Error('Falha ao confirmar assinatura');
+        setNewsletterStatus('success');
+      } catch {
+        setNewsletterError('Não foi possível confirmar sua assinatura.');
+        setNewsletterStatus('error');
+      } finally {
+        searchParams.delete('newsletter_token');
+        setSearchParams(searchParams, { replace: true });
+      }
+    };
+    confirm();
+  }, [searchParams, setSearchParams]);
+
+  const handleSubscribe = useCallback(async () => {
+    setNewsletterError('');
+    if (!newsletterEmail || !newsletterEmail.includes('@')) {
+      setNewsletterError('Informe um e-mail válido.');
+      return;
+    }
+    setNewsletterStatus('loading');
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: newsletterEmail, consent: true }),
+      });
+      if (!res.ok) throw new Error('Falha ao assinar');
+      setNewsletterStatus('success');
+      setNewsletterEmail('');
+    } catch {
+      setNewsletterStatus('error');
+      setNewsletterError('Erro ao enviar. Tente novamente.');
+    }
+  }, [newsletterEmail]);
 
   return (
     <div className="min-h-screen bg-warm-bg">
@@ -271,13 +322,28 @@ const BlogPage: React.FC = React.memo(() => {
             <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
               <input
                 type="email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
                 placeholder="Seu e-mail"
                 className="flex-1 px-4 py-2 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-secondary-300"
               />
-              <button className="bg-white text-primary-800 hover:bg-gray-100 font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
+              <button
+                onClick={handleSubscribe}
+                disabled={newsletterStatus === 'loading'}
+                className="bg-white text-primary-800 hover:bg-gray-100 font-semibold py-2 px-6 rounded-lg transition-colors duration-200 flex items-center gap-2"
+              >
+                {newsletterStatus === 'loading' && (
+                  <span className="inline-block h-4 w-4 border-b-2 border-primary-800 rounded-full animate-spin" />
+                )}
                 Assinar
               </button>
             </div>
+            {newsletterStatus === 'success' && (
+              <p className="mt-3 text-sm text-secondary-200">Assinatura enviada. Verifique seu e‑mail para confirmar.</p>
+            )}
+            {newsletterStatus === 'error' && (
+              <p className="mt-3 text-sm text-red-200">{newsletterError}</p>
+            )}
           </div>
         </div>
       </div>
