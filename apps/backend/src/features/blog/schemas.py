@@ -9,6 +9,8 @@ class BlogPostCreate(BaseModel):
     content: str
     cover_image_url: Optional[str] = None
     category_id: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[list[str]] = None
 
 
 class BlogPostUpdate(BaseModel):
@@ -17,6 +19,8 @@ class BlogPostUpdate(BaseModel):
     content: Optional[str] = None
     cover_image_url: Optional[str] = None
     category_id: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[list[str]] = None
 
 
 class AuthorInfo(BaseModel):

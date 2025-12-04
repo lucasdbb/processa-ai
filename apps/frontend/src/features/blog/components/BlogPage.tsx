@@ -1,11 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Calendar, User, Clock, Search, Tag, Newspaper } from 'lucide-react';
-import type { BlogPost, BlogCategory, BlogCategoryId } from '../types/blog';
+import { Calendar, User, Clock, Search, Tag, Newspaper, X } from 'lucide-react';
+import type { BlogCategory, BlogCategoryId } from '../types/blog';
 import { useSearchParams } from 'react-router-dom';
+import MarkdownPreview from '@uiw/react-markdown-preview';
+import 'prismjs/themes/prism.css';
 
 const BlogPage: React.FC = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<BlogCategoryId>('all');
+  const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; excerpt?: string; cover_image_url?: string; category_id?: string; author: { id: string; name?: string }; published_at?: string }>>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [postsError, setPostsError] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activePost, setActivePost] = useState<{ id: string; title: string; slug: string; excerpt?: string; content: string; cover_image_url?: string; category_id?: string; published_at?: string; authors: Array<{ id: string; name?: string }> } | null>(null);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [newsletterError, setNewsletterError] = useState('');
@@ -20,74 +27,29 @@ const BlogPage: React.FC = React.memo(() => {
     { id: 'tributario', name: 'Direito Tributário' }
   ];
 
-  const blogPosts: BlogPost[] = [
-    {
-      id: 1,
-      title: 'Nova Lei Trabalhista: Principais Mudanças para 2024',
-      excerpt: 'Entenda as principais alterações na legislação trabalhista que entram em vigor este ano e como elas afetam empregadores e empregados.',
-      author: 'Dr. João Silva',
-      date: '2024-01-15',
-      readTime: '5 min',
-      category: 'trabalhista',
-      image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=250&fit=crop',
-      tags: ['Lei', 'Trabalhista', '2024']
-    },
-    {
-      id: 2,
-      title: 'Reforma da Previdência: Guia Completo para Advogados',
-      excerpt: 'Um guia detalhado sobre as mudanças na previdência social e como orientar seus clientes sobre os novos requisitos para aposentadoria.',
-      author: 'Dra. Maria Santos',
-      date: '2024-01-12',
-      readTime: '8 min',
-      category: 'previdenciario',
-      image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=250&fit=crop',
-      tags: ['Previdência', 'Aposentadoria', 'Reforma']
-    },
-    {
-      id: 3,
-      title: 'Inteligência Artificial no Direito: Oportunidades e Desafios',
-      excerpt: 'Como a IA está transformando a prática jurídica e quais são as principais ferramentas disponíveis para advogados modernos.',
-      author: 'Dr. Carlos Oliveira',
-      date: '2024-01-10',
-      readTime: '6 min',
-      category: 'civil',
-      image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=250&fit=crop',
-      tags: ['IA', 'Tecnologia', 'Inovação']
-    },
-    {
-      id: 4,
-      title: 'Cálculo de Rescisão: Passo a Passo Atualizado',
-      excerpt: 'Tutorial completo sobre como calcular rescisões trabalhistas considerando todas as verbas e atualizações legais recentes.',
-      author: 'Dra. Ana Costa',
-      date: '2024-01-08',
-      readTime: '10 min',
-      category: 'trabalhista',
-      image: 'https://images.unsplash.com/photo-1554224154-26032fced8bd?w=400&h=250&fit=crop',
-      tags: ['Rescisão', 'Cálculo', 'Trabalhista']
-    },
-    {
-      id: 5,
-      title: 'Marco Civil da Internet: Atualizações e Implicações',
-      excerpt: 'As recentes mudanças no Marco Civil da Internet e seus impactos na proteção de dados e privacidade digital.',
-      author: 'Dr. Pedro Almeida',
-      date: '2024-01-05',
-      readTime: '7 min',
-      category: 'civil',
-      image: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=400&h=250&fit=crop',
-      tags: ['Internet', 'Privacidade', 'LGPD']
-    },
-    {
-      id: 6,
-      title: 'Tributação de Criptomoedas: Guia para Advogados',
-      excerpt: 'Entenda as regras tributárias para criptomoedas no Brasil e como orientar clientes sobre declaração e pagamento de impostos.',
-      author: 'Dra. Lucia Ferreira',
-      date: '2024-01-03',
-      readTime: '9 min',
-      category: 'tributario',
-      image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=250&fit=crop',
-      tags: ['Criptomoedas', 'Tributação', 'Bitcoin']
+  const fetchPosts = useCallback(async () => {
+    setIsLoadingPosts(true);
+    setPostsError('');
+    try {
+      const params = new URLSearchParams();
+      params.set('page', '1');
+      params.set('page_size', '12');
+      if (searchTerm.trim()) params.set('search', searchTerm.trim());
+      if (selectedCategory !== 'all') params.set('category_slug', selectedCategory);
+      const res = await fetch(`/api/blog/posts?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Falha ao carregar artigos');
+      const json = await res.json();
+      setPosts(Array.isArray(json.items) ? json.items : []);
+    } catch (e) {
+      setPostsError('Erro ao carregar artigos.');
+      setPosts([]);
+    } finally {
+      setIsLoadingPosts(false);
     }
-  ];
+  }, [searchTerm, selectedCategory]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -97,14 +59,38 @@ const BlogPage: React.FC = React.memo(() => {
     setSelectedCategory(e.target.value as BlogCategoryId);
   }, []);
 
-  const filteredPosts = blogPosts.filter(post => {
-    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
-  const featuredPost = blogPosts[0];
+  const estimateReadTime = (text?: string) => {
+    const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
+    const minutes = Math.max(1, Math.round(words / 200) || 3);
+    return `${minutes} min`;
+  };
+
+  const featuredPost = posts[0];
+
+  const openPost = useCallback(async (slug: string) => {
+    try {
+      const res = await fetch(`/api/blog/posts/${encodeURIComponent(slug)}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Falha ao carregar artigo');
+      const json = await res.json();
+      setActivePost(json);
+      setIsModalOpen(true);
+    } catch (e) {
+      setActivePost(null);
+      setIsModalOpen(false);
+    }
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setActivePost(null);
+  }, []);
 
   useEffect(() => {
     const token = searchParams.get('newsletter_token');
@@ -207,8 +193,8 @@ const BlogPage: React.FC = React.memo(() => {
             <div className="md:flex">
               <div className="md:w-1/3">
                 <img
-                  src={featuredPost.image}
-                  alt={`Imagem ilustrativa do artigo: ${featuredPost.title}`}
+                  src={featuredPost?.cover_image_url || 'https://images.unsplash.com/photo-1554224154-26032fced8bd?w=400&h=250&fit=crop'}
+                  alt={`Imagem ilustrativa do artigo: ${featuredPost?.title || ''}`}
                   className="w-full h-48 md:h-full object-cover"
                   loading="lazy"
                 />
@@ -217,36 +203,33 @@ const BlogPage: React.FC = React.memo(() => {
                 <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                   <span className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
-                    {new Date(featuredPost.date).toLocaleDateString('pt-BR')}
+                    {featuredPost?.published_at ? new Date(featuredPost.published_at).toLocaleDateString('pt-BR') : ''}
                   </span>
                   <span className="flex items-center">
                     <Clock className="h-4 w-4 mr-1" aria-hidden="true" />
-                    {featuredPost.readTime}
+                    {estimateReadTime(featuredPost?.excerpt)}
                   </span>
                   <span className="flex items-center">
                     <User className="h-4 w-4 mr-1" aria-hidden="true" />
-                    {featuredPost.author}
+                    {featuredPost?.author?.name || ''}
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                  {featuredPost.title}
+                  {featuredPost?.title || ''}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {featuredPost.excerpt}
+                  {featuredPost?.excerpt || ''}
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-2">
-                    {featuredPost.tags.map(tag => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
-                      >
+                    {featuredPost?.category_id && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                         <Tag className="h-3 w-3 mr-1" aria-hidden="true" />
-                        {tag}
+                        Categoria
                       </span>
-                    ))}
+                    )}
                   </div>
-                  <button className="btn-primary">
+                  <button className="btn-primary" onClick={() => featuredPost && openPost(featuredPost.slug)}>
                     Ler Artigo
                   </button>
                 </div>
@@ -258,13 +241,19 @@ const BlogPage: React.FC = React.memo(() => {
         {/* Lista de Posts */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Todos os Artigos ({filteredPosts.length})
+            Todos os Artigos ({posts.length})
           </h2>
+          {isLoadingPosts && (
+            <div className="text-gray-600 mb-6">Carregando artigos...</div>
+          )}
+          {!!postsError && (
+            <div className="text-red-600 mb-6">{postsError}</div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPosts.map(post => (
+            {posts.map(post => (
               <article key={post.id} className="card hover:shadow-lg transition-shadow duration-300">
                 <img
-                  src={post.image}
+                  src={post.cover_image_url || 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=250&fit=crop'}
                   alt={`Imagem ilustrativa do artigo: ${post.title}`}
                   className="w-full h-48 object-cover rounded-t-lg -mt-6 -mx-6 mb-4"
                   loading="lazy"
@@ -272,11 +261,11 @@ const BlogPage: React.FC = React.memo(() => {
                 <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                   <span className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
-                    {new Date(post.date).toLocaleDateString('pt-BR')}
+                    {post.published_at ? new Date(post.published_at).toLocaleDateString('pt-BR') : ''}
                   </span>
                   <span className="flex items-center">
                     <Clock className="h-4 w-4 mr-1" aria-hidden="true" />
-                    {post.readTime}
+                    {estimateReadTime(post.excerpt)}
                   </span>
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2 hover:text-primary-700 transition-colors">
@@ -288,22 +277,13 @@ const BlogPage: React.FC = React.memo(() => {
                 <div className="flex items-center justify-between">
                   <span className="flex items-center text-sm text-gray-600">
                     <User className="h-4 w-4 mr-1" aria-hidden="true" />
-                    {post.author}
+                    {post.author?.name || ''}
                   </span>
-                  <button className="text-primary-700 hover:text-primary-800 font-medium text-sm">
+                  <button className="text-primary-700 hover:text-primary-800 font-medium text-sm" onClick={() => openPost(post.slug)}>
                     Ler mais
                   </button>
                 </div>
-                <div className="flex space-x-2 mt-3">
-                  {post.tags.slice(0, 2).map(tag => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                <div className="flex space-x-2 mt-3"></div>
               </article>
             ))}
           </div>
@@ -347,6 +327,27 @@ const BlogPage: React.FC = React.memo(() => {
           </div>
         </div>
       </div>
+      {isModalOpen && activePost && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[85vh] overflow-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{activePost.title}</h3>
+                <div className="text-sm text-gray-600 mt-1">
+                  {activePost.published_at ? new Date(activePost.published_at).toLocaleDateString('pt-BR') : ''}
+                  {activePost.authors?.length ? ` • ${activePost.authors.map(a => a.name).filter(Boolean).join(', ')}` : ''}
+                </div>
+              </div>
+              <button className="p-2 rounded-lg hover:bg-gray-100" onClick={closeModal} aria-label="Fechar">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <MarkdownPreview source={activePost.content || ''} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

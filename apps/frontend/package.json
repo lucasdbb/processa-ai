@@ -11,16 +11,30 @@
     "start": "vite preview --port ${PORT:-3000} --strictPort"
   },
   "dependencies": {
+    "@lexical/code": "^0.38.2",
+    "@lexical/link": "^0.38.2",
+    "@lexical/list": "^0.38.2",
+    "@lexical/markdown": "^0.38.2",
+    "@lexical/react": "^0.38.2",
+    "@lexical/rich-text": "^0.38.2",
     "@supabase/supabase-js": "^2.76.1",
     "@tailwindcss/forms": "^0.5.10",
+    "@types/marked": "^5.0.2",
     "@types/react-router-dom": "^5.3.3",
+    "@uiw/react-markdown-preview": "^5.1.5",
+    "@uiw/react-md-editor": "^4.0.10",
     "autoprefixer": "^10.4.21",
+    "clsx": "^2.1.1",
     "dompurify": "^3.3.0",
+    "lexical": "^0.38.2",
     "lucide-react": "^0.545.0",
+    "marked": "^17.0.1",
     "postcss": "^8.5.6",
+    "prismjs": "^1.30.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.3"
+    "react-router-dom": "^7.9.3",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

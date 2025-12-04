@@ -2,10 +2,22 @@ import React from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const Footer: React.FC = React.memo(() => {
+const Footer: React.FC<{ variant?: 'default' | 'simple' }> = React.memo(({ variant = 'default' }) => {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (variant === 'simple') {
+    return (
+      <footer className="bg-gray-900 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-gray-400">
+            © 2025 Processa AI. Todos os direitos reservados.
+          </p>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="bg-gray-900 text-white">

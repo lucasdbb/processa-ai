@@ -10,7 +10,7 @@ export type AuthMode = 'login' | 'register';
 /**
  * User role types in the system
  */
-export type UserRole = 'user' | 'admin' | 'premium';
+export type UserRole = 'user' | 'author' | 'admin' | 'premium';
 
 /**
  * User authentication status

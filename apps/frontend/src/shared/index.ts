@@ -7,6 +7,7 @@
 // Components
 export { default as Header } from './components/Header';
 export { default as Footer } from './components/Footer';
+export { FooterWrapper } from './components/FooterWrapper';
 export { default as LoadingSpinner } from './components/LoadingSpinner';
 export { default as ErrorMessage } from './components/ErrorMessage';
 export { default as Toast } from './components/Toast';

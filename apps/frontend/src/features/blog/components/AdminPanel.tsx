@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Shield,
@@ -30,6 +31,7 @@ interface AdminPanelProps {
  * Only accessible by users with admin role
  */
 const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -299,6 +301,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user }) => {
                 >
                   <RefreshCw className="w-4 h-4" />
                   Atualizar
+                </button>
+
+                {/* Create Post Button */}
+                <button
+                  onClick={() => navigate('/admin/posts/new')}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Criar Post
                 </button>
               </div>
             </div>

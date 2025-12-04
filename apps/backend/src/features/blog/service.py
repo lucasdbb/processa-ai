@@ -133,13 +133,26 @@ class BlogService:
                 break
             slug = f"{slug_base}-{i}"
             i += 1
+        # Map category from slug when provided
+        category_id = data.category_id
+        if not category_id and getattr(data, "category", None):
+            cats = (
+                self.supabase
+                .table("blog_categories")
+                .select("id,slug")
+                .eq("slug", data.category)
+                .limit(1)
+                .execute()
+            )
+            if cats.data:
+                category_id = cats.data[0]["id"]
         payload = {
             "title": data.title,
             "slug": slug,
             "excerpt": data.excerpt,
             "content": data.content,
             "cover_image_url": data.cover_image_url,
-            "category_id": data.category_id,
+            "category_id": category_id,
             "author_id": user.id,
             "status": "draft",
         }
@@ -150,6 +163,44 @@ class BlogService:
                 detail="Falha ao criar",
             )
         post = ins.data[0]
+        # Save tags if provided
+        try:
+            for raw in (getattr(data, "tags", None) or []):
+                name = (raw or "").strip()
+                if not name:
+                    continue
+                slug_tag = self._slugify(name)
+                existing = (
+                    self.supabase
+                    .table("blog_tags")
+                    .select("id")
+                    .eq("slug", slug_tag)
+                    .limit(1)
+                    .execute()
+                )
+                tag_id = None
+                if existing.data:
+                    tag_id = existing.data[0]["id"]
+                else:
+                    newtag = (
+                        self.supabase
+                        .table("blog_tags")
+                        .insert({"name": name, "slug": slug_tag})
+                        .execute()
+                    )
+                    if newtag.data:
+                        tag_id = newtag.data[0]["id"]
+                if tag_id:
+                    try:
+                        self.supabase.table("blog_post_tags").insert({
+                            "post_id": post["id"],
+                            "tag_id": tag_id,
+                        }).execute()
+                    except Exception:
+                        pass
+        except Exception:
+            # Ignore tag failures; post is created
+            pass
         try:
             self.supabase.table("blog_post_authors").insert({
                 "post_id": post["id"],
@@ -203,6 +254,17 @@ class BlogService:
             updates["cover_image_url"] = data.cover_image_url
         if data.category_id is not None:
             updates["category_id"] = data.category_id
+        if getattr(data, "category", None):
+            cats = (
+                self.supabase
+                .table("blog_categories")
+                .select("id,slug")
+                .eq("slug", data.category)
+                .limit(1)
+                .execute()
+            )
+            if cats.data:
+                updates["category_id"] = cats.data[0]["id"]
         if not updates:
             return {"updated": False}
         upd = self.supabase.table("blog_posts").update(updates).eq("id", post_id).execute()

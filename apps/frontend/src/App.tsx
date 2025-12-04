@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
-import { Header, Footer, ErrorBoundary } from './shared';
+import { Header, ErrorBoundary, FooterWrapper } from './shared';
 import { LoginModal, SessionTimeoutWarning, EmailConfirmedModal, AuthErrorModal, ResetPasswordModal, authService } from './features/auth';
 import type { User } from './features/auth';
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
@@ -8,6 +8,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'));
 const BlogPage = lazy(() => import('@/features/blog/components/BlogPage'));
 const AdminPanel = lazy(() => import('@/features/blog/components/AdminPanel'));
+const CreatePostPage = lazy(() => import('@/features/blog/components/CreatePostPage'));
 const IAJuridicaPage = lazy(() => import('@/features/ai-chat/components/IAJuridicaPage'));
 const CalculatorsPage = lazy(() => import('@/features/calculators/components/CalculatorsPage'));
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
@@ -118,6 +119,22 @@ function App() {
       return <Navigate to="/" replace />;
     }
     if (user.role !== 'admin') {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return children;
+  };
+
+  const AuthorOrAdminRoute = ({
+    user,
+    children,
+  }: {
+    user: User | null;
+    children: React.ReactElement;
+  }) => {
+    if (!user) {
+      return <Navigate to="/" replace />;
+    }
+    if (user.role !== 'admin' && user.role !== 'author') {
       return <Navigate to="/dashboard" replace />;
     }
     return children;
@@ -264,6 +281,14 @@ function App() {
                   </AdminRoute>
                 }
               />
+              <Route
+                path="/admin/posts/new"
+                element={
+                  <AuthorOrAdminRoute user={user}>
+                    <CreatePostPage />
+                  </AuthorOrAdminRoute>
+                }
+              />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/ia-juridica" element={<IAJuridicaPage />} />
               <Route path="/calculadoras" element={<CalculatorsPage />} />
@@ -275,7 +300,7 @@ function App() {
             </Suspense>
           </main>
 
-          <Footer />
+          <FooterWrapper />
 
           <LoginModal
             isOpen={isLoginModalOpen}

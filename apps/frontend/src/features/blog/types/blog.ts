@@ -22,11 +22,11 @@ export type BlogTag = string;
  */
 export type BlogCategoryId = 
   | 'all'
-  | 'trabalhista'
+  | 'direito-trabalho'
   | 'previdenciario'
-  | 'civil'
-  | 'penal'
-  | 'tributario';
+  | 'calculos'
+  | 'jurisprudencia'
+  | 'legislacao';
 
 /**
  * Represents a complete blog post
