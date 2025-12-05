@@ -11,8 +11,11 @@ ENV PATH="/root/.local/bin:$PATH"
 COPY pyproject.toml ./
 COPY src ./src
 
-# Install dependencies
+# Install dependencies and activate venv
 RUN uv sync --no-dev
 
-# Run application (Railway will set PORT env var)
-CMD ["uv", "run", "python", "src/main.py"]
+# Add venv to PATH so Python can find installed packages
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Run application directly using venv Python
+CMD ["python", "src/main.py"]
