@@ -3,7 +3,7 @@ name = "processa-ai-backend"
 version = "1.0.0"
 description = "Backend API para Processa AI - Plataforma de cálculos trabalhistas e IA"
 authors = [{name = "Processa AI Team"}]
-readme = { text = "Processa AI - Backend API" }
+readme = { text = "Processa AI - Backend API", content-type = "text/markdown" }
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115.6",
