@@ -1,50 +1,49 @@
 """
-Application configuration using Pydantic Settings
+Application configuration using environment variables
 """
 import os
-from typing import Union
 
-from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+
+# Load .env file if it exists (for local development)
+load_dotenv()
 
 
-class Settings(BaseSettings):
-    """Application settings"""
+class Settings:
+    """Application settings loaded from environment variables"""
 
-    model_config = SettingsConfigDict(
-        # Only load .env in development (when file exists)
-        env_file=".env" if os.path.exists(".env") else None,
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore",
-    )
+    def __init__(self):
+        # Server Configuration
+        self.HOST: str = os.getenv("HOST", "0.0.0.0")
+        self.PORT: int = int(os.getenv("PORT", "8000"))
+        self.ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 
-    # Server Configuration
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-    ENVIRONMENT: str = "development"
+        # Supabase Configuration
+        self.SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+        self.SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
+        self.SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
-    # Supabase Configuration
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SERVICE_ROLE_KEY: str
+        # CORS Configuration
+        self.FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        allowed_origins_str = os.getenv(
+            "ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000"
+        )
+        self.ALLOWED_ORIGINS: list[str] = [
+            origin.strip() for origin in allowed_origins_str.split(",")
+        ]
 
-    # CORS Configuration
-    FRONTEND_URL: str = "http://localhost:5173"
-    ALLOWED_ORIGINS: Union[str, list[str]] = "http://localhost:5173,http://localhost:3000"
+        # SendGrid Configuration
+        self.ADMIN_EMAIL: str | None = os.getenv("ADMIN_EMAIL")
+        self.SENDGRID_API_KEY: str | None = os.getenv("SENDGRID_API_KEY")
+        self.SENDGRID_FROM: str | None = os.getenv("SENDGRID_FROM")
 
-    # SendGrid Configuration
-    ADMIN_EMAIL: str | None = None
-    SENDGRID_API_KEY: str | None = None
-    SENDGRID_FROM: str | None = None
-
-    @field_validator("ALLOWED_ORIGINS", mode="after")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        """Parse ALLOWED_ORIGINS from comma-separated string to list"""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+        # Validate required fields
+        if not self.SUPABASE_URL:
+            raise ValueError("SUPABASE_URL environment variable is required")
+        if not self.SUPABASE_ANON_KEY:
+            raise ValueError("SUPABASE_ANON_KEY environment variable is required")
+        if not self.SUPABASE_SERVICE_ROLE_KEY:
+            raise ValueError("SUPABASE_SERVICE_ROLE_KEY environment variable is required")
 
 
 settings = Settings()
