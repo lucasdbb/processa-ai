@@ -1,6 +1,7 @@
 """
 Application configuration using Pydantic Settings
 """
+import os
 from typing import Union
 
 from pydantic import field_validator
@@ -11,7 +12,8 @@ class Settings(BaseSettings):
     """Application settings"""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Only load .env in development (when file exists)
+        env_file=".env" if os.path.exists(".env") else None,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
