@@ -27,6 +27,8 @@ import { Input, TextArea, Select } from './ui/FormComponents';
 import { ImageUpload } from './ui/ImageUpload';
 import { ToolbarPlugin } from './plugins/ToolbarPlugin';
 
+const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || '').trim();
+
 const categories: Array<{ id: BlogCategoryId; name: string; value: string; label: string }> = [
   { id: 'direito-trabalho', name: 'Direito do Trabalho', value: 'direito-trabalho', label: 'Direito do Trabalho' },
   { id: 'previdenciario', name: 'Previdenciário', value: 'previdenciario', label: 'Previdenciário' },
@@ -124,7 +126,7 @@ const CreatePostPage: React.FC = () => {
       }
 
       // Fallback to public endpoint (only published)
-      const publicRes = await fetch(`/api/blog/posts/${id}`, {
+      const publicRes = await fetch(`${API_BASE_URL}/api/blog/posts/${id}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -189,11 +191,11 @@ const CreatePostPage: React.FC = () => {
       setIsSaving(true);
       const token = localStorage.getItem('access_token');
 
-      let url = '/api/blog/posts';
+      let url = `${API_BASE_URL}/api/blog/posts`;
       let method = 'POST';
 
       if (createdPostId) {
-         url = `/api/blog/posts/${createdPostId}`;
+         url = `${API_BASE_URL}/api/blog/posts/${createdPostId}`;
          method = 'PATCH';
       }
 
@@ -249,7 +251,7 @@ const CreatePostPage: React.FC = () => {
       let postId = createdPostId;
       if (!postId) {
         // Create draft first
-        const createRes = await fetch('/api/blog/posts', {
+        const createRes = await fetch(`${API_BASE_URL}/api/blog/posts`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -270,7 +272,7 @@ const CreatePostPage: React.FC = () => {
         setCreatedPostId(postId);
       } else {
         // Update existing post
-        const updateRes = await fetch(`/api/blog/posts/${postId}`, {
+        const updateRes = await fetch(`${API_BASE_URL}/api/blog/posts/${postId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -295,7 +297,7 @@ const CreatePostPage: React.FC = () => {
       }
 
       // Otherwise, publish it
-      const publishRes = await fetch(`/api/blog/posts/${postId}/publish`, {
+      const publishRes = await fetch(`${API_BASE_URL}/api/blog/posts/${postId}/publish`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -325,7 +327,7 @@ const CreatePostPage: React.FC = () => {
       try {
         setIsSaving(true);
         const token = localStorage.getItem('access_token');
-        const res = await fetch(`/api/blog/posts/${createdPostId}/restore`, {
+        const res = await fetch(`${API_BASE_URL}/api/blog/posts/${createdPostId}/restore`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',

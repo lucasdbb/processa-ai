@@ -4,6 +4,8 @@ import type { BlogCategory, BlogCategoryId } from '../types/blog';
 import { useSearchParams } from 'react-router-dom';
 import PostViewModal from './PostViewModal';
 
+const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL || '').trim();
+
 const BlogPage: React.FC = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<BlogCategoryId>('all');
@@ -35,7 +37,7 @@ const BlogPage: React.FC = React.memo(() => {
       params.set('page_size', '12');
       if (searchTerm.trim()) params.set('search', searchTerm.trim());
       if (selectedCategory !== 'all') params.set('category_slug', selectedCategory);
-      const res = await fetch(`/api/blog/posts?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/blog/posts?${params.toString()}`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -72,7 +74,7 @@ const BlogPage: React.FC = React.memo(() => {
 
   const openPost = useCallback(async (slug: string) => {
     try {
-      const res = await fetch(`/api/blog/posts/${encodeURIComponent(slug)}`, {
+      const res = await fetch(`${API_BASE_URL}/api/blog/posts/${encodeURIComponent(slug)}`, {
         method: 'GET',
         credentials: 'include',
       });
