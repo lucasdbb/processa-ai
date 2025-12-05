@@ -15,4 +15,4 @@ COPY src ./src
 RUN uv sync --no-dev
 
 # Run application (Railway will set PORT env var)
-CMD ["sh", "-c", "uv run uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["uv", "run", "python", "src/main.py"]
