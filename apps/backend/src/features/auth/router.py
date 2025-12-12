@@ -3,7 +3,7 @@ Authentication routes
 """
 from typing import Union
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 
 from src.core.dependencies import get_current_user
 from src.features.auth.schemas import (
@@ -23,25 +23,79 @@ auth_service = AuthService()
 user_service = UserService()
 
 
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str, expires_in: int = 3600):
+    """Set httpOnly cookies for authentication tokens"""
+    # Access token cookie (shorter expiration)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=expires_in,  # Expires with the token
+        path="/",
+    )
+
+    # Refresh token cookie (longer expiration - 7 days)
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7,  # 7 days
+        path="/",
+    )
+
+
+def clear_auth_cookies(response: Response):
+    """Clear authentication cookies"""
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+
+
 @router.post(
     "/register",
     response_model=Union[TokenResponse, EmailConfirmationResponse],
     status_code=status.HTTP_201_CREATED,
 )
-async def register(user_data: UserRegister):
+async def register(user_data: UserRegister, response: Response):
     """Register a new user
 
     Returns:
         - TokenResponse: If email confirmation is disabled (auto-confirmed)
         - EmailConfirmationResponse: If email confirmation is enabled
+
+    Sets httpOnly cookies for authentication tokens when auto-confirmed
     """
-    return await auth_service.register(user_data)
+    result = await auth_service.register(user_data)
+
+    # If registration returned tokens (auto-confirmed), set cookies
+    if isinstance(result, dict) and "access_token" in result:
+        set_auth_cookies(
+            response,
+            result["access_token"],
+            result["refresh_token"],
+            result.get("expires_in", 3600)
+        )
+
+    return result
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(user_data: UserLogin):
-    """Login user"""
-    return await auth_service.login(user_data)
+async def login(user_data: UserLogin, response: Response):
+    """Login user and set httpOnly cookies"""
+    result = await auth_service.login(user_data)
+
+    # Set authentication cookies
+    set_auth_cookies(
+        response,
+        result["access_token"],
+        result["refresh_token"],
+        result.get("expires_in", 3600)
+    )
+
+    return result
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -63,8 +117,9 @@ async def reset_password(data: ResetPassword):
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout():
-    """Logout user (client-side token removal)"""
+async def logout(response: Response):
+    """Logout user and clear authentication cookies"""
+    clear_auth_cookies(response)
     return {"message": "Logout realizado com sucesso"}
 
 

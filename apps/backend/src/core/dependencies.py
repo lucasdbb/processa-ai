@@ -1,19 +1,27 @@
 """
 FastAPI dependencies for authentication and authorization
 """
-from fastapi import Depends, HTTPException, status
+from typing import Optional
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.shared.database import get_supabase
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    access_token: Optional[str] = Cookie(None),
 ):
     """
     Dependency to get current authenticated user from JWT token
+    Supports both Authorization header and httpOnly cookie
+
+    Priority:
+    1. Authorization header (for API clients)
+    2. httpOnly cookie (for browser clients)
 
     Usage:
         @router.get("/profile")
@@ -28,9 +36,23 @@ async def get_current_user(
     """
     supabase = get_supabase()
 
+    # Try to get token from Authorization header first
+    token = None
+    if credentials:
+        token = credentials.credentials
+    # Otherwise try to get from cookie
+    elif access_token:
+        token = access_token
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de autenticação não fornecido",
+        )
+
     try:
         # Get user from token
-        user = supabase.auth.get_user(credentials.credentials)
+        user = supabase.auth.get_user(token)
 
         if not user:
             raise HTTPException(
