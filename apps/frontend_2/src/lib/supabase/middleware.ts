@@ -1,6 +1,6 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 /**
  * Middleware for session management and route protection
@@ -8,66 +8,58 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
  */
 export async function updateSession(request: NextRequest) {
   // Protected routes that require authentication
-  const protectedRoutes = ['/admin', '/ia-juridica', '/calculadoras']
-  const isProtectedRoute = protectedRoutes.some(route =>
+  const protectedRoutes = ["/admin", "/ia-juridica", "/calculadoras"];
+  const isProtectedRoute = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
-  )
+  );
 
   // Admin-only routes
-  const adminRoutes = ['/admin']
-  const isAdminRoute = adminRoutes.some(route =>
+  const adminRoutes = ["/admin"];
+  const isAdminRoute = adminRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
-  )
+  );
 
   // If not a protected route, allow access
   if (!isProtectedRoute) {
-    return NextResponse.next()
+    return NextResponse.next();
   }
 
   // Try to verify user session with backend using httpOnly cookies
   try {
     // Call /auth/me endpoint - backend will read httpOnly cookie automatically
     const response = await fetch(`${API_URL}/auth/me`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Cookie': request.headers.get('cookie') || '',
+        Cookie: request.headers.get("cookie") || "",
       },
-      credentials: 'include',
-    })
+      credentials: "include",
+    });
 
     // If user is not authenticated, redirect to home
     if (!response.ok) {
-      console.log('[Middleware] User not authenticated, redirecting to home')
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      url.searchParams.set('auth_required', 'true')
-      return NextResponse.redirect(url)
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.searchParams.set("auth_required", "true");
+      return NextResponse.redirect(url);
     }
 
-    const user = await response.json()
+    const user = await response.json();
 
     // Check if user is admin for admin routes
-    if (isAdminRoute && user.role !== 'admin' && user.role !== 'author') {
-      console.log('[Middleware] User not authorized for admin route')
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
+    if (isAdminRoute && user.role !== "admin" && user.role !== "author") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
     }
 
-    console.log('[Middleware] User authenticated:', {
-      path: request.nextUrl.pathname,
-      userId: user.id,
-      role: user.role
-    })
-
     // User is authenticated, allow access
-    return NextResponse.next()
+    return NextResponse.next();
   } catch (error) {
-    console.error('[Middleware] Error verifying user:', error)
+    console.error("[Middleware] Error verifying user:", error);
     // On error, redirect to home
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    url.searchParams.set('auth_required', 'true')
-    return NextResponse.redirect(url)
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.searchParams.set("auth_required", "true");
+    return NextResponse.redirect(url);
   }
 }
