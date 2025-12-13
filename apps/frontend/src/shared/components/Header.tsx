@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Menu, X, LogIn, User, Settings, LogOut } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Menu, X, LogIn, User, Settings, LogOut, ChevronRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import UserMenu from '../../features/auth/components/UserMenu';
 import type { User as UserType } from '../../features/auth';
@@ -13,22 +13,34 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout, onUpdateProfile }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
   const getLinkClasses = (path: string) => {
-    return isActive(path)
-      ? 'relative text-primary-700 font-semibold transition-colors after:absolute after:bottom-[-8px] after:left-0 after:right-0 after:h-0.5 after:bg-primary-700'
-      : 'text-gray-700 hover:text-primary-700 hover:font-medium transition-all duration-200';
+    const active = isActive(path);
+    return `text-sm font-medium transition-colors duration-200 ${
+      active 
+        ? 'text-primary-700' 
+        : 'text-gray-600 hover:text-primary-600'
+    }`;
   };
 
   const getMobileLinkClasses = (path: string) => {
     return isActive(path)
-      ? 'block px-3 py-2 text-primary-700 font-semibold bg-primary-50 rounded-lg transition-colors'
-      : 'block px-3 py-2 text-gray-700 hover:text-primary-700 hover:bg-warm-bg rounded-lg transition-all duration-200';
+      ? 'block px-4 py-3 text-primary-700 font-semibold bg-primary-50 rounded-xl transition-colors'
+      : 'block px-4 py-3 text-gray-600 hover:text-primary-700 hover:bg-gray-50 rounded-xl transition-all duration-200';
   };
 
   const handleMenuToggle = useCallback(() => {
@@ -62,20 +74,27 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
   }, []);
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200" role="banner">
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
+        isScrolled || isMenuOpen 
+          ? 'bg-white/80 backdrop-blur-md border-gray-200 shadow-sm' 
+          : 'bg-white/0 border-transparent'
+      }`}
+      role="banner"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <div className="flex items-center">
             <Link 
               to="/" 
-              className="flex items-center hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg"
+              className="flex items-center hover:opacity-80 transition-opacity focus:outline-none rounded-lg"
               aria-label="Processa AI - Página inicial"
             >
               <img 
                 src="/logo.png" 
-                alt="Processa AI - Plataforma de soluções jurídicas com inteligência artificial" 
-                className="h-16 w-auto object-contain" 
+                alt="Processa AI" 
+                className="h-10 w-auto object-contain" 
               />
             </Link>
           </div>
@@ -84,7 +103,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
           <nav id="main-navigation" className="hidden md:flex items-center space-x-8" role="navigation" aria-label="Navegação principal">
             <Link 
               to="/" 
-              className={`${getLinkClasses('/')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              className={getLinkClasses('/')}
               aria-current={isActive('/') ? 'page' : undefined}
               onMouseEnter={() => prefetchRoute('/')}
             >
@@ -92,7 +111,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
             </Link>
             <Link 
               to="/blog" 
-              className={`${getLinkClasses('/blog')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              className={getLinkClasses('/blog')}
               aria-current={isActive('/blog') ? 'page' : undefined}
               onMouseEnter={() => prefetchRoute('/blog')}
             >
@@ -100,7 +119,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
             </Link>
             <Link 
               to="/ia-juridica" 
-              className={`${getLinkClasses('/ia-juridica')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              className={getLinkClasses('/ia-juridica')}
               aria-current={isActive('/ia-juridica') ? 'page' : undefined}
               onMouseEnter={() => prefetchRoute('/ia-juridica')}
             >
@@ -108,7 +127,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
             </Link>
             <Link 
               to="/calculadoras" 
-              className={`${getLinkClasses('/calculadoras')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              className={getLinkClasses('/calculadoras')}
               aria-current={isActive('/calculadoras') ? 'page' : undefined}
               onMouseEnter={() => prefetchRoute('/calculadoras')}
             >
@@ -116,7 +135,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
             </Link>
             <Link 
               to="/planos" 
-              className={`${getLinkClasses('/planos')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              className={getLinkClasses('/planos')}
               aria-current={isActive('/planos') ? 'page' : undefined}
               onMouseEnter={() => prefetchRoute('/planos')}
             >
@@ -124,7 +143,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
             </Link>
             <Link 
               to="/sobre" 
-              className={`${getLinkClasses('/sobre')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-2 py-1`}
+              className={getLinkClasses('/sobre')}
               aria-current={isActive('/sobre') ? 'page' : undefined}
               onMouseEnter={() => prefetchRoute('/sobre')}
             >
@@ -139,11 +158,11 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
             ) : (
               <button
                 onClick={handleLoginClick}
-                className="flex items-center space-x-2 btn-primary hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="group relative inline-flex items-center justify-center px-6 py-2 text-sm font-semibold text-white transition-all duration-200 bg-gray-900 font-pj rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
                 aria-label="Fazer login na plataforma"
               >
-                <LogIn className="h-4 w-4" aria-hidden="true" />
-                <span>Entrar</span>
+                Entrar
+                <div className="absolute inset-0 -z-10 rounded-full ring-1 ring-white/20 group-hover:ring-white/40 transition-all" />
               </button>
             )}
           </div>
@@ -152,7 +171,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
           <div className="md:hidden">
             <button
               onClick={handleMenuToggle}
-              className="text-gray-700 hover:text-primary-700 hover:bg-gray-100 p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              className="text-gray-700 hover:text-gray-900 p-2 rounded-lg transition-all duration-200 focus:outline-none"
               aria-expanded={isMenuOpen}
               aria-controls="mobile-menu"
               aria-label={isMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
@@ -168,15 +187,15 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden" id="mobile-menu">
+          <div className="md:hidden absolute top-20 left-0 right-0 bg-white border-b border-gray-100 shadow-xl animate-in slide-in-from-top-5 duration-200" id="mobile-menu">
             <nav 
-              className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200" 
+              className="px-4 pt-4 pb-6 space-y-2 max-h-[calc(100vh-5rem)] overflow-y-auto" 
               role="navigation" 
               aria-label="Navegação móvel"
             >
               <Link
                 to="/"
-                className={`${getMobileLinkClasses('/')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                className={getMobileLinkClasses('/')}
                 onClick={() => setIsMenuOpen(false)}
                 aria-current={isActive('/') ? 'page' : undefined}
               >
@@ -184,7 +203,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               </Link>
               <Link
                 to="/blog"
-                className={`${getMobileLinkClasses('/blog')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                className={getMobileLinkClasses('/blog')}
                 onClick={() => setIsMenuOpen(false)}
                 aria-current={isActive('/blog') ? 'page' : undefined}
               >
@@ -192,7 +211,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               </Link>
               <Link
                 to="/ia-juridica"
-                className={`${getMobileLinkClasses('/ia-juridica')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                className={getMobileLinkClasses('/ia-juridica')}
                 onClick={() => setIsMenuOpen(false)}
                 aria-current={isActive('/ia-juridica') ? 'page' : undefined}
               >
@@ -200,7 +219,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               </Link>
               <Link
                 to="/calculadoras"
-                className={`${getMobileLinkClasses('/calculadoras')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                className={getMobileLinkClasses('/calculadoras')}
                 onClick={() => setIsMenuOpen(false)}
                 aria-current={isActive('/calculadoras') ? 'page' : undefined}
               >
@@ -208,7 +227,7 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               </Link>
               <Link
                 to="/planos"
-                className={`${getMobileLinkClasses('/planos')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                className={getMobileLinkClasses('/planos')}
                 onClick={() => setIsMenuOpen(false)}
                 aria-current={isActive('/planos') ? 'page' : undefined}
               >
@@ -216,22 +235,22 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
               </Link>
               <Link
                 to="/sobre"
-                className={`${getMobileLinkClasses('/sobre')} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                className={getMobileLinkClasses('/sobre')}
                 onClick={() => setIsMenuOpen(false)}
                 aria-current={isActive('/sobre') ? 'page' : undefined}
               >
                 Sobre
               </Link>
-              {user ? (
-                <>
-                  {/* User info in mobile menu */}
-                  <div className="px-3 py-2 border-t border-gray-200 mt-2">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
+
+              <div className="pt-4 mt-4 border-t border-gray-100">
+                {user ? (
+                  <>
+                    <div className="px-4 py-3 flex items-center space-x-3 mb-2">
+                      <div className="w-10 h-10 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-medium shadow-sm">
                         {(user.name || user.email.split('@')[0]).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-semibold text-gray-900">
                           {user.name || user.email.split('@')[0]}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
@@ -239,65 +258,61 @@ const Header: React.FC<HeaderProps> = React.memo(({ user, onLoginClick, onLogout
                         </p>
                       </div>
                     </div>
+                    
+                    <button
+                      onClick={() => {
+                        console.log('Navegar para perfil');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors duration-200 flex items-center justify-between group"
+                    >
+                      <span className="flex items-center gap-3">
+                        <User className="h-5 w-5 text-gray-400 group-hover:text-primary-600" />
+                        Perfil
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-gray-300" />
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        console.log('Navegar para configurações');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors duration-200 flex items-center justify-between group"
+                    >
+                      <span className="flex items-center gap-3">
+                        <Settings className="h-5 w-5 text-gray-400 group-hover:text-primary-600" />
+                        Configurações
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-gray-300" />
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        onLogout();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors duration-200 flex items-center gap-3 mt-2"
+                    >
+                      <LogOut className="h-5 w-5" />
+                      Sair
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-4 pb-2">
+                    <button
+                      onClick={() => {
+                        onLoginClick();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full py-3 text-white bg-gray-900 hover:bg-gray-800 font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg shadow-gray-900/10"
+                    >
+                      <LogIn className="h-5 w-5" />
+                      Entrar na Plataforma
+                    </button>
                   </div>
-                  
-                  {/* User menu options */}
-                  <button
-                    onClick={() => {
-                      // TODO: Implementar navegação para perfil
-                      console.log('Navegar para perfil');
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4" aria-hidden="true" />
-                      <span>Perfil</span>
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      // TODO: Implementar navegação para configurações
-                      console.log('Navegar para configurações');
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Settings className="h-4 w-4" aria-hidden="true" />
-                      <span>Configurações</span>
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      onLogout();
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <LogOut className="h-4 w-4" aria-hidden="true" />
-                      <span>Sair</span>
-                    </div>
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => {
-                    onLoginClick();
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 text-white bg-primary-700 hover:bg-primary-800 font-medium rounded-lg transition-colors duration-200 mt-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  aria-label="Fazer login na plataforma"
-                >
-                  <div className="flex items-center space-x-2">
-                    <LogIn className="h-4 w-4" aria-hidden="true" />
-                    <span>Entrar</span>
-                  </div>
-                </button>
-              )}
+                )}
+              </div>
             </nav>
           </div>
         )}

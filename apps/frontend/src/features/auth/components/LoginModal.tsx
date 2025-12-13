@@ -20,8 +20,8 @@ import ForgotPasswordModal from './ForgotPasswordModal';
  * />
  * ```
  */
-const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onLoginSuccess }) => {
-  const [isLogin, setIsLogin] = useState<boolean>(true);
+const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onLoginSuccess, initialView = 'login' }) => {
+  const [isLogin, setIsLogin] = useState<boolean>(initialView === 'login');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string>('');
@@ -96,6 +96,37 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
 
   const modalRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset form when modal opens or closes, or when switching modes
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      // If initialView prop changes while open, we might want to respect it, 
+      // but usually we want to respect the user's toggle.
+      // For now, let's only reset if it was closed and is now opening.
+      // However, the `isLogin` state is initialized from `initialView` prop.
+      // If we want to support dynamic changing of initialView while mounted but closed:
+      setIsLogin(initialView === 'login');
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    setFormData({
+      email: '',
+      password: '',
+      name: '',
+      confirmPassword: '',
+      documentType: 'cpf',
+      documentNumber: ''
+    });
+    setApiError('');
+    setSuccessMessage('');
+    clearErrors();
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, clearErrors, initialView]);
 
   // Focus management
   useEffect(() => {
@@ -287,7 +318,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -295,43 +326,46 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
     >
       <div 
         ref={modalRef}
-        className="bg-white rounded-lg max-w-md w-full p-6 relative"
+        className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Botão Fechar */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg p-1"
+          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
           aria-label="Fechar modal de login"
         >
-          <X className="h-6 w-6" aria-hidden="true" />
+          <X className="h-5 w-5" aria-hidden="true" />
         </button>
 
         {/* Título */}
         <div className="text-center mb-6">
-          <h2 id="modal-title" className="text-2xl font-bold text-gray-900">
-            {isLogin ? 'Entrar' : 'Criar Conta'}
+          <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-900 rounded-xl mb-3 text-white">
+            <User className="h-5 w-5" />
+          </div>
+          <h2 id="modal-title" className="text-2xl font-bold text-gray-900 tracking-tight">
+            {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
           </h2>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-500 mt-1 text-base">
             {isLogin 
-              ? 'Acesse sua conta na Processa AI' 
-              : 'Crie sua conta e comece a usar nossas ferramentas'
+              ? 'Acesse seu painel jurídico' 
+              : 'Comece a transformar sua advocacia'
             }
           </p>
         </div>
 
         {/* Mensagens de Erro e Sucesso */}
         {apiError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2" role="alert">
+          <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3 mb-6" role="alert">
             <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <p className="text-sm text-red-800">{apiError}</p>
+            <p className="text-sm text-red-700 font-medium">{apiError}</p>
           </div>
         )}
 
         {successMessage && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2" role="alert">
+          <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-start gap-3 mb-6" role="alert">
             <AlertCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <p className="text-sm text-green-800">{successMessage}</p>
+            <p className="text-sm text-green-700 font-medium">{successMessage}</p>
           </div>
         )}
 
@@ -339,11 +373,11 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {!isLogin && (
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Nome Completo
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
+                <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
                 <input
                   ref={!isLogin ? firstInputRef : undefined}
                   type="text"
@@ -351,14 +385,14 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`input-field pl-10 ${errors.name ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block pl-10 p-2.5 transition-colors ${errors.name ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
                   placeholder="Seu nome completo"
                   aria-describedby={errors.name ? 'name-error' : undefined}
                   aria-invalid={!!errors.name}
                 />
               </div>
               {errors.name && (
-                <p id="name-error" className="mt-1 text-sm text-red-600" role="alert">
+                <p id="name-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                   {errors.name}
                 </p>
               )}
@@ -366,11 +400,11 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
               E-mail
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
+              <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
               <input
                 ref={isLogin ? firstInputRef : undefined}
                 type="email"
@@ -378,7 +412,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`input-field pl-10 ${errors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
+                className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block pl-10 p-2.5 transition-colors ${errors.email ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
                 placeholder="seu@email.com"
                 aria-describedby={errors.email ? 'email-error' : undefined}
                 aria-invalid={!!errors.email}
@@ -386,7 +420,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
               />
             </div>
             {errors.email && (
-              <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
+              <p id="email-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                 {errors.email}
               </p>
             )}
@@ -395,21 +429,20 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
           {/* Campo de Documento (CPF/CNPJ) - Apenas no registro */}
           {!isLogin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FileText className="h-4 w-4 inline mr-1" aria-hidden="true" />
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Documento
               </label>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 {/* Toggle CPF/CNPJ */}
-                <div className="flex gap-2 w-1/3">
+                <div className="flex bg-gray-100 p-1 rounded-xl w-1/3">
                   <button
                     type="button"
                     onClick={() => handleDocumentTypeChange('cpf')}
-                    className={`flex-1 py-2 px-3 rounded-md font-medium text-sm transition-all duration-200 ${
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-medium text-xs transition-all duration-200 ${
                       documentType === 'cpf'
-                        ? 'bg-primary-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     CPF
@@ -417,10 +450,10 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
                   <button
                     type="button"
                     onClick={() => handleDocumentTypeChange('cnpj')}
-                    className={`flex-1 py-2 px-3 rounded-md font-medium text-sm transition-all duration-200 ${
+                    className={`flex-1 py-1.5 px-2 rounded-lg font-medium text-xs transition-all duration-200 ${
                       documentType === 'cnpj'
-                        ? 'bg-primary-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     CNPJ
@@ -436,14 +469,14 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
                     value={formData.documentNumber}
                     onChange={handleInputChange}
                     placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-                    className={`input-field w-full ${errors.documentNumber ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block p-2.5 transition-colors ${errors.documentNumber ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
                     aria-describedby={errors.documentNumber ? 'document-error' : undefined}
                     aria-invalid={!!errors.documentNumber}
                   />
                 </div>
               </div>
               {errors.documentNumber && (
-                <p id="document-error" className="mt-1 text-sm text-red-600" role="alert">
+                <p id="document-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                   {errors.documentNumber}
                 </p>
               )}
@@ -451,19 +484,19 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
           )}
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
               Senha
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
+              <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={`input-field pl-10 pr-10 ${errors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
-                placeholder="Sua senha"
+                className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block pl-10 pr-10 p-2.5 transition-colors ${errors.password ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
+                placeholder="••••••••"
                 aria-describedby={errors.password ? 'password-error' : 'password-help'}
                 aria-invalid={!!errors.password}
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
@@ -471,7 +504,7 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
               <button
                 type="button"
                 onClick={handleTogglePassword}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded p-1"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               >
                 {showPassword ? (
@@ -482,39 +515,39 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
               </button>
             </div>
             {errors.password && (
-              <p id="password-error" className="mt-1 text-sm text-red-600" role="alert">
+              <p id="password-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                 {errors.password}
               </p>
             )}
             {!errors.password && !isLogin && (
-              <p id="password-help" className="mt-1 text-sm text-gray-500">
-                Mínimo 8 caracteres, incluindo maiúscula, minúscula e número
+              <p id="password-help" className="mt-1 text-xs text-gray-500">
+                Mínimo 8 caracteres, maiúscula, minúscula e número
               </p>
             )}
           </div>
 
           {!isLogin && (
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Confirmar Senha
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
+                <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="confirmPassword"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className={`input-field pl-10 ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="Confirme sua senha"
+                  className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block pl-10 p-2.5 transition-colors ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
+                  placeholder="••••••••"
                   aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
                   aria-invalid={!!errors.confirmPassword}
                   autoComplete="new-password"
                 />
               </div>
               {errors.confirmPassword && (
-                <p id="confirm-password-error" className="mt-1 text-sm text-red-600" role="alert">
+                <p id="confirm-password-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                   {errors.confirmPassword}
                 </p>
               )}
@@ -524,36 +557,39 @@ const LoginModal: React.FC<LoginModalProps> = React.memo(({ isOpen, onClose, onL
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full btn-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-2.5 px-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-gray-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg shadow-gray-900/20 !mt-6"
           >
             {isLoading && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
-            {isLoading ? 'Processando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
+            {isLoading ? 'Processando...' : (isLogin ? 'Entrar na Plataforma' : 'Criar Conta Gratuita')}
           </button>
         </form>
 
-        {/* Forgot Password - Only show in login mode */}
-        {isLogin && (
-          <div className="text-center mt-3">
-            <button
-              onClick={() => setShowForgotPassword(true)}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-1"
-            >
-              Esqueceu sua senha?
-            </button>
-          </div>
-        )}
+        {/* Footer Actions */}
+        <div className="mt-4 space-y-4">
+          {/* Forgot Password */}
+          {isLogin && (
+            <div className="text-center">
+              <button
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-gray-500 hover:text-gray-900 font-medium transition-colors"
+              >
+                Esqueceu sua senha?
+              </button>
+            </div>
+          )}
 
-        {/* Toggle Login/Registro */}
-        <div className="text-center mt-4">
-          <p className="text-gray-600">
-            {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
-            <button
-              onClick={handleModeToggle}
-              className="text-primary-600 hover:text-primary-700 font-medium ml-1 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-1"
-            >
-              {isLogin ? 'Criar conta' : 'Entrar'}
-            </button>
-          </p>
+          {/* Toggle Login/Registro */}
+          <div className="text-center pt-4 border-t border-gray-100">
+            <p className="text-gray-600 text-sm">
+              {isLogin ? 'Ainda não tem uma conta?' : 'Já possui cadastro?'}
+              <button
+                onClick={handleModeToggle}
+                className="text-gray-900 hover:text-black font-bold ml-1.5 transition-colors"
+              >
+                {isLogin ? 'Cadastre-se gratuitamente' : 'Fazer login'}
+              </button>
+            </p>
+          </div>
         </div>
       </div>
 

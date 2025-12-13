@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Linkedin, Instagram, Facebook } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer: React.FC<{ variant?: 'default' | 'simple' }> = React.memo(({ variant = 'default' }) => {
@@ -7,95 +7,43 @@ const Footer: React.FC<{ variant?: 'default' | 'simple' }> = React.memo(({ varia
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (variant === 'simple') {
-    return (
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-gray-400">
-            © 2025 Processa AI. Todos os direitos reservados.
-          </p>
-        </div>
-      </footer>
-    );
-  }
-
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Descrição */}
-          <div className="col-span-1 md:col-span-2">
-            <h3 className="text-xl font-bold mb-4">Processa AI</h3>
-            <p className="text-gray-300 mb-4 max-w-md">
-              Plataforma completa para advogados com inteligência artificial,
-              calculadoras jurídicas e as últimas notícias do meio jurídico.
+    <footer className="bg-white border-t border-gray-100 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          
+          {/* Brand & Copyright */}
+          <div className="flex items-center gap-4">
+            <Link to="/" onClick={scrollToTop} className="flex items-center gap-2 group">
+              <img src="/logo.png" alt="" className="h-6 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" />
+              <span className="text-lg font-bold text-gray-400 group-hover:text-gray-900 transition-colors">Processa AI</span>
+            </Link>
+            <span className="hidden md:block w-px h-4 bg-gray-300"></span>
+            <p className="text-sm text-gray-400">
+              © 2025. Todos os direitos reservados.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-secondary-900 transition-colors">
-                <Mail className="h-5 w-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-secondary-900 transition-colors">
-                <Phone className="h-5 w-5" />
-              </a>
-            </div>
           </div>
 
-          {/* Links Rápidos */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Links Rápidos</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
-                  Início
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link to="/ia-juridica" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
-                  IA Jurídica
-                </Link>
-              </li>
-              <li>
-                <Link to="/calculadoras" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
-                  Calculadoras
-                </Link>
-              </li>
-              <li>
-                <Link to="/sobre" onClick={scrollToTop} className="text-gray-300 hover:text-secondary-900 transition-colors">
-                  Sobre
-                </Link>
-              </li>
-            </ul>
+          {/* Minimal Links */}
+          <div className="flex items-center gap-6 text-sm text-gray-500">
+            <Link to="/termos" onClick={scrollToTop} className="hover:text-primary-600 transition-colors">Termos</Link>
+            <Link to="/privacidade" onClick={scrollToTop} className="hover:text-primary-600 transition-colors">Privacidade</Link>
+            <Link to="/contato" onClick={scrollToTop} className="hover:text-primary-600 transition-colors">Contato</Link>
           </div>
 
-          {/* Contato */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Contato</h3>
-            <ul className="space-y-2">
-              <li className="flex items-center space-x-2 text-gray-300">
-                <Mail className="h-4 w-4" />
-                <span>contato@processaai.com</span>
-              </li>
-              <li className="flex items-center space-x-2 text-gray-300">
-                <Phone className="h-4 w-4" />
-                <span>(21) 99999-9999</span>
-              </li>
-              <li className="flex items-center space-x-2 text-gray-300">
-                <MapPin className="h-4 w-4" />
-                <span>Rio de Janeiro, RJ</span>
-              </li>
-            </ul>
+          {/* Social Icons Minimal */}
+          <div className="flex gap-4">
+            <a href="#" className="text-gray-400 hover:text-primary-600 transition-colors">
+              <Linkedin className="w-5 h-5" />
+            </a>
+            <a href="#" className="text-gray-400 hover:text-pink-600 transition-colors">
+              <Instagram className="w-5 h-5" />
+            </a>
+            <a href="#" className="text-gray-400 hover:text-blue-600 transition-colors">
+              <Facebook className="w-5 h-5" />
+            </a>
           </div>
-        </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-gray-400">
-            © 2025 Processa AI. Todos os direitos reservados.
-          </p>
         </div>
       </div>
     </footer>

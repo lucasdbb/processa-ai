@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X, Loader2 } from 'lucide-react';
 
 interface LogoutMenuProps {
   onLogout: () => void;
@@ -12,7 +12,7 @@ interface LogoutMenuProps {
 const LogoutMenu: React.FC<LogoutMenuProps> = ({ onLogout, onClose }) => {
   const [isLoading, setIsLoading] = React.useState(false);
 
-  // Fechar com ESC
+  // Fechar com ESC e bloquear scroll
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -21,7 +21,12 @@ const LogoutMenu: React.FC<LogoutMenuProps> = ({ onLogout, onClose }) => {
     };
 
     document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
   }, [onClose]);
 
   const handleConfirmLogout = async () => {
@@ -36,54 +41,52 @@ const LogoutMenu: React.FC<LogoutMenuProps> = ({ onLogout, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+        className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-amber-100 p-2 rounded-full">
-              <AlertCircle className="w-6 h-6 text-amber-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900">Confirmar Logout</h3>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-amber-100 rounded-xl mb-4 text-amber-600">
+            <AlertCircle className="h-6 w-6" />
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Fechar"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <h3 className="text-xl font-bold text-gray-900 tracking-tight">Confirmar Logout</h3>
+          <p className="text-gray-500 mt-2 text-base">
+            Tem certeza que deseja sair da sua conta?
+          </p>
         </div>
 
-        {/* Mensagem */}
-        <p className="text-gray-600 mb-6">
-          Tem certeza que deseja sair da sua conta?
-        </p>
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
+          aria-label="Fechar"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         {/* Botões */}
         <div className="flex gap-3">
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirmLogout}
             disabled={isLoading}
-            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 focus:outline-none focus:ring-4 focus:ring-gray-200 shadow-lg shadow-gray-900/20"
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Saindo...
               </>
             ) : (

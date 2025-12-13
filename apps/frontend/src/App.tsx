@@ -20,6 +20,7 @@ import { getSessionTimeoutManager } from './shared/utils/sessionTimeout';
  */
 function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalInitialView, setLoginModalInitialView] = useState<'login' | 'register'>('login');
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTimeoutWarningOpen, setIsTimeoutWarningOpen] = useState(false);
@@ -240,7 +241,10 @@ function App() {
 
           <Header
             user={user}
-            onLoginClick={() => setIsLoginModalOpen(true)}
+            onLoginClick={() => {
+              setLoginModalInitialView('login');
+              setIsLoginModalOpen(true);
+            }}
             onLogout={handleLogout}
             onUpdateProfile={handleUpdateProfile}
           />
@@ -252,7 +256,18 @@ function App() {
               </div>
             }>
             <Routes>
-              <Route path="/" element={<LandingPage onLoginClick={() => setIsLoginModalOpen(true)} />} />
+              <Route path="/" element={
+                <LandingPage 
+                  onLoginClick={() => {
+                    setLoginModalInitialView('login');
+                    setIsLoginModalOpen(true);
+                  }} 
+                  onRegisterClick={() => {
+                    setLoginModalInitialView('register');
+                    setIsLoginModalOpen(true);
+                  }}
+                />
+              } />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/reset-password" element={<Navigate to="/" replace />} />
               <Route
@@ -282,7 +297,14 @@ function App() {
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/ia-juridica" element={<IAJuridicaPage />} />
               <Route path="/calculadoras" element={<CalculatorsPage />} />
-              <Route path="/planos" element={<PlanosPage />} />
+              <Route path="/planos" element={
+                <PlanosPage 
+                  onRegisterClick={() => {
+                    setLoginModalInitialView('register');
+                    setIsLoginModalOpen(true);
+                  }}
+                />
+              } />
               <Route path="/sobre" element={<AboutPage />} />
               {/* Rotas alternativas (aliases) para compatibilidade futura */}
               <Route path="/calculators" element={<CalculatorsPage />} />
@@ -296,6 +318,7 @@ function App() {
             isOpen={isLoginModalOpen}
             onClose={() => setIsLoginModalOpen(false)}
             onLoginSuccess={handleLoginSuccess}
+            initialView={loginModalInitialView}
           />
 
           <SessionTimeoutWarning

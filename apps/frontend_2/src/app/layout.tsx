@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { PageLoadingBar } from "@/components/ui/page-loading-bar";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -23,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
+        <PageLoadingBar />
         {children}
         <Toaster position="top-right" richColors closeButton />
       </body>

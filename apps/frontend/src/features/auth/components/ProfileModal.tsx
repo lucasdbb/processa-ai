@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { X, Camera, User as UserIcon, Mail, Calendar, Phone, FileText } from 'lucide-react';
+import { X, Camera } from 'lucide-react';
 import type { User, DocumentType } from '../types/auth';
 import {
   phoneMask,
@@ -52,7 +52,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   }, [isOpen, user.newsletter_opt_in]);
 
-  // Close modal on escape key
+  // Close modal on escape key and lock scroll
   React.useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
@@ -61,8 +61,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     };
 
     if (isOpen) {
+      document.body.style.overflow = 'hidden';
       document.addEventListener('keydown', handleEscape);
       return () => {
+        document.body.style.overflow = 'unset';
         document.removeEventListener('keydown', handleEscape);
       };
     }
@@ -186,38 +188,23 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {isEditing ? 'Editar Perfil' : 'Meu Perfil'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Fechar modal"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {/* Avatar Section */}
-          <div className="flex flex-col items-center mb-6">
-            <div className="relative">
-              <div className="w-24 h-24 bg-primary-600 text-white rounded-full flex items-center justify-center text-2xl font-medium overflow-hidden">
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+        {/* Header Compacto com Avatar */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex items-center gap-4">
+             <div className="relative group">
+              <div className="w-14 h-14 bg-gray-900 text-white rounded-full flex items-center justify-center text-lg font-bold overflow-hidden shadow-md ring-2 ring-gray-100">
                 {avatarPreview ? (
                   <img 
                     src={avatarPreview} 
-                    alt="Preview do avatar" 
+                    alt="Preview" 
                     className="w-full h-full object-cover"
                   />
                 ) : user.avatar_url || user.avatar ? (
                   <img 
                     src={user.avatar_url || user.avatar} 
-                    alt="Avatar do usuário" 
+                    alt="Avatar" 
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -229,14 +216,23 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 bg-primary-600 text-white rounded-full p-2 hover:bg-primary-700 transition-colors shadow-lg"
-                  aria-label="Alterar foto de perfil"
+                  className="absolute -bottom-1 -right-1 bg-white text-gray-900 border border-gray-200 rounded-full p-1.5 hover:bg-gray-50 transition-colors shadow-sm"
+                  aria-label="Alterar foto"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3 h-3" />
                 </button>
               )}
             </div>
             
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                {isEditing ? 'Editar Perfil' : 'Meu Perfil'}
+              </h2>
+              <p className="text-xs text-gray-500 font-medium">
+                {user.email}
+              </p>
+            </div>
+
             <input
               ref={fileInputRef}
               type="file"
@@ -246,203 +242,163 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             />
           </div>
 
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
+            aria-label="Fechar modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5">
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name Field */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                <UserIcon className="w-4 h-4 inline mr-2" />
-                Nome
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  !isEditing ? 'bg-gray-50 text-gray-600' : ''
-                }`}
-                required
-              />
-            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name Field */}
+              <div className="md:col-span-2">
+                <label htmlFor="name" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                  className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all ${
+                    !isEditing ? 'bg-gray-50 text-gray-500' : 'bg-white text-gray-900'
+                  }`}
+                  required
+                />
+              </div>
 
-            {/* Email Field (Read-only) */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                <Mail className="w-4 h-4 inline mr-2" />
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-                readOnly
-              />
-            </div>
+              {/* Phone Field */}
+              <div>
+                <label htmlFor="phone" className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Telefone
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                  placeholder="(11) 99999-9999"
+                  title={isEditing && formData.phone && !isValidPhone(formData.phone) ? "Telefone inválido" : ""}
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    !isEditing
+                      ? 'bg-gray-50 text-gray-500 border-gray-200'
+                      : formData.phone && !isValidPhone(formData.phone)
+                        ? 'border-red-300 focus:ring-red-500'
+                        : formData.phone && isValidPhone(formData.phone)
+                          ? 'border-green-300 focus:ring-green-500'
+                          : 'border-gray-200 focus:ring-gray-900'
+                  }`}
+                />
+              </div>
 
-            {/* Phone Field */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                <Phone className="w-4 h-4 inline mr-2" />
-                Telefone
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                placeholder="(11) 99999-9999"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent ${
-                  !isEditing
-                    ? 'bg-gray-50 text-gray-600 border-gray-300'
-                    : formData.phone && !isValidPhone(formData.phone)
-                      ? 'border-red-300 focus:ring-red-500'
-                      : formData.phone && isValidPhone(formData.phone)
-                        ? 'border-green-300 focus:ring-green-500'
-                        : 'border-gray-300 focus:ring-primary-500'
-                }`}
-              />
-              {isEditing && formData.phone && !isValidPhone(formData.phone) && (
-                <p className="mt-1 text-sm text-red-600">
-                  Telefone deve ter 11 dígitos no formato (XX) XXXXX-XXXX
-                </p>
-              )}
-            </div>
-
-            {/* Document Type Toggle and Document Number Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FileText className="w-4 h-4 inline mr-2" />
-                Documento
-              </label>
-
-              {/* Toggle CPF/CNPJ */}
-              {isEditing && (
-                <div className="flex gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => handleDocumentTypeChange('cpf')}
-                    className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 ${
-                      documentType === 'cpf'
-                        ? 'bg-primary-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              {/* Document Field */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Documento
+                </label>
+                
+                <div className="flex gap-2">
+                   {isEditing && (
+                    <div className="flex bg-gray-100 p-0.5 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => handleDocumentTypeChange('cpf')}
+                        className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
+                          documentType === 'cpf' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                        }`}
+                      >
+                        CPF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDocumentTypeChange('cnpj')}
+                        className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
+                          documentType === 'cnpj' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                        }`}
+                      >
+                        CNPJ
+                      </button>
+                    </div>
+                  )}
+                  
+                  <input
+                    type="text"
+                    id="documentNumber"
+                    name="documentNumber"
+                    value={formData.documentNumber}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                    title={isEditing && formData.documentNumber && (documentType === 'cpf' ? !isValidCpf(formData.documentNumber) : !isValidCnpj(formData.documentNumber)) ? (documentType === 'cpf' ? "CPF inválido" : "CNPJ inválido") : ""}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all flex-1 ${
+                      !isEditing
+                        ? 'bg-gray-50 text-gray-500 border-gray-200'
+                        : formData.documentNumber && (
+                            documentType === 'cpf'
+                              ? !isValidCpf(formData.documentNumber)
+                              : !isValidCnpj(formData.documentNumber)
+                          )
+                          ? 'border-red-300 focus:ring-red-500'
+                          : formData.documentNumber && (
+                              documentType === 'cpf'
+                                ? isValidCpf(formData.documentNumber)
+                                : isValidCnpj(formData.documentNumber)
+                            )
+                            ? 'border-green-300 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-gray-900'
                     }`}
-                  >
-                    CPF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDocumentTypeChange('cnpj')}
-                    className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 ${
-                      documentType === 'cnpj'
-                        ? 'bg-primary-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    CNPJ
-                  </button>
+                  />
                 </div>
-              )}
+              </div>
 
-              {/* Document Number Input */}
-              <input
-                type="text"
-                id="documentNumber"
-                name="documentNumber"
-                value={formData.documentNumber}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent ${
-                  !isEditing
-                    ? 'bg-gray-50 text-gray-600 border-gray-300'
-                    : formData.documentNumber && (
-                        documentType === 'cpf'
-                          ? !isValidCpf(formData.documentNumber)
-                          : !isValidCnpj(formData.documentNumber)
-                      )
-                      ? 'border-red-300 focus:ring-red-500'
-                      : formData.documentNumber && (
-                          documentType === 'cpf'
-                            ? isValidCpf(formData.documentNumber)
-                            : isValidCnpj(formData.documentNumber)
-                        )
-                        ? 'border-green-300 focus:ring-green-500'
-                        : 'border-gray-300 focus:ring-primary-500'
-                }`}
-              />
-              {isEditing && formData.documentNumber && (
-                documentType === 'cpf'
-                  ? !isValidCpf(formData.documentNumber)
-                  : !isValidCnpj(formData.documentNumber)
-              ) && (
-                <p className="mt-1 text-sm text-red-600">
-                  {documentType === 'cpf' ? 'CPF inválido' : 'CNPJ inválido'}
-                </p>
-              )}
-              {isEditing && formData.documentNumber && (
-                documentType === 'cpf'
-                  ? isValidCpf(formData.documentNumber)
-                  : isValidCnpj(formData.documentNumber)
-              ) && (
-                <p className="mt-1 text-sm text-green-600 flex items-center">
-                  <span className="mr-1">✓</span>
-                  {documentType === 'cpf' ? 'CPF válido' : 'CNPJ válido'}
-                </p>
-              )}
-            </div>
-
-            {/* Created At Field (Read-only) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Calendar className="w-4 h-4 inline mr-2" />
-                Membro desde
-              </label>
-              <input
-                type="text"
-                value={formatDate(user.createdAt)}
-                disabled
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-              />
+              {/* Created At Field (Read-only) */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Membro desde
+                </label>
+                <input
+                  type="text"
+                  value={formatDate(user.createdAt)}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm cursor-not-allowed"
+                />
+              </div>
             </div>
 
             {/* Newsletter Checkbox */}
-            <div className="flex items-start space-x-3 pt-2">
-              <div className="flex items-center h-5">
-                <input
-                  type="checkbox"
-                  id="newsletter"
-                  name="newsletter"
-                  ref={newsletterCheckboxRef}
-                  defaultChecked={user.newsletter_opt_in || false}
-                  disabled={!isEditing}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-              </div>
-              <div className="text-sm">
-                <label htmlFor="newsletter" className={`font-medium ${!isEditing ? 'text-gray-500' : 'text-gray-700'} cursor-pointer`}>
-                  Desejo receber a newsletter
-                </label>
-                <p className="text-gray-500 text-xs mt-1">
-                  Receba novidades, atualizações e artigos jurídicos exclusivos diretamente no seu e-mail.
-                </p>
-              </div>
+            <div className="flex items-center space-x-3 pt-2 bg-gray-50 p-3 rounded-xl">
+              <input
+                type="checkbox"
+                id="newsletter"
+                name="newsletter"
+                ref={newsletterCheckboxRef}
+                defaultChecked={user.newsletter_opt_in || false}
+                disabled={!isEditing}
+                className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+              />
+              <label htmlFor="newsletter" className={`text-sm font-medium ${!isEditing ? 'text-gray-500' : 'text-gray-700'} cursor-pointer`}>
+                Receber novidades e atualizações por e-mail
+              </label>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex justify-end space-x-3 pt-2 border-t border-gray-100 mt-4">
               {!isEditing ? (
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 font-medium text-sm"
                 >
                   Editar Perfil
                 </button>
@@ -452,14 +408,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="button"
                     onClick={handleCancel}
                     disabled={isLoading}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
+                    className="px-5 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 font-medium text-sm"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50 font-medium text-sm"
                   >
                     {isLoading ? 'Salvando...' : 'Salvar'}
                   </button>

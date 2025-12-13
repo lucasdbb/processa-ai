@@ -23,7 +23,7 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
   const [success, setSuccess] = useState<boolean>(false);
 
   // Form validation
-  const { errors, validateForm, clearFieldError } = useFormValidation({
+  const { errors, validateForm, clearFieldError, clearErrors } = useFormValidation({
     password: {
       required: true,
       minLength: 8,
@@ -47,24 +47,30 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
     }
   });
 
-  // Close modal on ESC key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !success) {
-        onClose();
-      }
-    };
+  const handleEsc = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && !success) {
+      onClose();
+    }
+  }, [onClose, success]);
 
+  // Handle modal open/close effects
+  useEffect(() => {
     if (isOpen) {
-      document.addEventListener('keydown', handleEsc);
       document.body.style.overflow = 'hidden';
+      document.addEventListener('keydown', handleEsc);
+    } else {
+      document.body.style.overflow = 'unset';
+      setPassword('');
+      setConfirmPassword('');
+      setSuccess(false);
+      clearErrors();
     }
 
     return () => {
       document.removeEventListener('keydown', handleEsc);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose, success]);
+  }, [isOpen, handleEsc, clearErrors]);
 
   /**
    * Handles password reset form submission
@@ -154,11 +160,11 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300"
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 relative"
+        className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -168,33 +174,36 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
         {!success && (
           <button
             onClick={handleClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg p-1"
+            className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
             aria-label="Fechar modal"
           >
-            <X className="h-6 w-6" aria-hidden="true" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         )}
 
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 id="reset-password-title" className="text-3xl font-bold text-gray-900">
+          <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-900 rounded-xl mb-3 text-white">
+            <Lock className="h-5 w-5" />
+          </div>
+          <h1 id="reset-password-title" className="text-2xl font-bold text-gray-900 tracking-tight">
             Redefinir Senha
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-500 mt-1 text-base">
             {success ? 'Senha atualizada com sucesso!' : 'Digite sua nova senha'}
           </p>
         </div>
 
         {/* Success State */}
         {success ? (
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+          <div className="space-y-6">
+            <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-start gap-3" role="alert">
               <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1">
                 <p className="text-sm text-green-800 font-medium">
                   Sua senha foi redefinida com sucesso!
                 </p>
-                <p className="text-sm text-green-700 mt-2">
+                <p className="text-sm text-green-700 mt-1 leading-relaxed">
                   Você será redirecionado para a página inicial em alguns segundos...
                 </p>
               </div>
@@ -205,7 +214,7 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
                 onClose();
                 navigate('/');
               }}
-              className="w-full btn-primary"
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 px-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all shadow-lg shadow-gray-900/20"
             >
               Ir para Página Inicial
             </button>
@@ -214,27 +223,27 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
           <>
             {/* Error Message */}
             {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2" role="alert">
+              <div className="mb-6 bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3" role="alert">
                 <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
             )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Nova Senha
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
+                  <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     name="password"
                     value={password}
                     onChange={handlePasswordChange}
-                    className={`input-field pl-10 pr-10 ${errors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block pl-10 pr-10 p-2.5 transition-colors ${errors.password ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
                     placeholder="Sua nova senha"
                     aria-describedby={errors.password ? 'password-error' : 'password-help'}
                     aria-invalid={!!errors.password}
@@ -243,7 +252,7 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded p-1"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
                     aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                   >
                     {showPassword ? (
@@ -254,30 +263,30 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
                   </button>
                 </div>
                 {errors.password && (
-                  <p id="password-error" className="mt-1 text-sm text-red-600" role="alert">
+                  <p id="password-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                     {errors.password}
                   </p>
                 )}
                 {!errors.password && (
-                  <p id="password-help" className="mt-1 text-sm text-gray-500">
-                    Mínimo 8 caracteres, incluindo maiúscula, minúscula e número
+                  <p id="password-help" className="mt-1 text-xs text-gray-500">
+                    Mínimo 8 caracteres, maiúscula, minúscula e número
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Confirmar Nova Senha
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
+                  <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     id="confirmPassword"
                     name="confirmPassword"
                     value={confirmPassword}
                     onChange={handleConfirmPasswordChange}
-                    className={`input-field pl-10 ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block pl-10 p-2.5 transition-colors ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
                     placeholder="Confirme sua nova senha"
                     aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined}
                     aria-invalid={!!errors.confirmPassword}
@@ -285,7 +294,7 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
                   />
                 </div>
                 {errors.confirmPassword && (
-                  <p id="confirm-password-error" className="mt-1 text-sm text-red-600" role="alert">
+                  <p id="confirm-password-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                     {errors.confirmPassword}
                   </p>
                 )}
@@ -294,7 +303,7 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ isOpen, onClose
               <button
                 type="submit"
                 disabled={isLoading || !accessToken}
-                className="w-full btn-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-2.5 px-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-gray-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg shadow-gray-900/20"
               >
                 {isLoading && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
                 {isLoading ? 'Redefinindo...' : 'Redefinir Senha'}

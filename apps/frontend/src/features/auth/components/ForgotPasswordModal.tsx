@@ -46,14 +46,20 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = React.memo(({ is
     };
   }, [isOpen, onClose]);
 
-  // Reset state when modal closes
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
       setEmail('');
       setError('');
       setSuccess(false);
       setIsLoading(false);
+    } else {
+      document.body.style.overflow = 'unset';
     }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   /**
@@ -124,7 +130,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = React.memo(({ is
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300"
       role="dialog"
       aria-modal="true"
       aria-labelledby="forgot-password-title"
@@ -132,71 +138,74 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = React.memo(({ is
     >
       <div
         ref={modalRef}
-        className="bg-white rounded-lg max-w-md w-full p-6 relative"
+        className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg p-1"
+          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200"
           aria-label="Fechar modal de recuperação de senha"
         >
-          <X className="h-6 w-6" aria-hidden="true" />
+          <X className="h-5 w-5" aria-hidden="true" />
         </button>
 
         {/* Header */}
         <div className="text-center mb-6">
-          <h2 id="forgot-password-title" className="text-2xl font-bold text-gray-900">
+          <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-900 rounded-xl mb-3 text-white">
+            <Mail className="h-5 w-5" />
+          </div>
+          <h2 id="forgot-password-title" className="text-2xl font-bold text-gray-900 tracking-tight">
             Recuperar Senha
           </h2>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-500 mt-1 text-base">
             {success
-              ? 'E-mail de recuperação enviado!'
-              : 'Digite seu e-mail para receber o link de recuperação'
+              ? 'E-mail enviado com sucesso'
+              : 'Recupere o acesso à sua conta'
             }
           </p>
         </div>
 
         {/* Success State */}
         {success ? (
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+          <div className="space-y-6">
+            <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-start gap-3" role="alert">
               <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1">
                 <p className="text-sm text-green-800 font-medium">
-                  Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.
+                  Verifique sua caixa de entrada
                 </p>
-                <p className="text-sm text-green-700 mt-2">
-                  Verifique sua caixa de entrada e também a pasta de spam.
+                <p className="text-sm text-green-700 mt-1 leading-relaxed">
+                  Enviamos um link de recuperação para <strong>{email}</strong>. Verifique também a pasta de spam.
                 </p>
               </div>
             </div>
 
             <button
               onClick={onClose}
-              className="w-full btn-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 px-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all shadow-lg shadow-gray-900/20"
             >
-              Fechar
+              Voltar para o Login
             </button>
           </div>
         ) : (
           <>
             {/* Error Message */}
             {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2" role="alert">
+              <div className="mb-6 bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3" role="alert">
                 <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
             )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div>
-                <label htmlFor="recovery-email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="recovery-email" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   E-mail
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
+                  <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" aria-hidden="true" />
                   <input
                     ref={inputRef}
                     type="email"
@@ -204,7 +213,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = React.memo(({ is
                     name="email"
                     value={email}
                     onChange={handleEmailChange}
-                    className={`input-field pl-10 ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    className={`w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-gray-900 focus:border-gray-900 block pl-10 p-2.5 transition-colors ${error ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50' : ''}`}
                     placeholder="seu@email.com"
                     aria-describedby={error ? 'email-error' : undefined}
                     aria-invalid={!!error}
@@ -212,7 +221,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = React.memo(({ is
                   />
                 </div>
                 {error && (
-                  <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
+                  <p id="email-error" className="mt-1 text-sm text-red-600 font-medium" role="alert">
                     {error}
                   </p>
                 )}
@@ -221,20 +230,20 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = React.memo(({ is
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full btn-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-2.5 px-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-gray-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg shadow-gray-900/20"
               >
                 {isLoading && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
-                {isLoading ? 'Enviando...' : 'Enviar Link de Recuperação'}
+                {isLoading ? 'Enviando Link...' : 'Enviar Link de Recuperação'}
               </button>
             </form>
 
             {/* Back to Login */}
-            <div className="text-center mt-4">
+            <div className="text-center mt-6 pt-6 border-t border-gray-100">
               <button
                 onClick={onClose}
-                className="text-primary-600 hover:text-primary-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded px-1 inline-flex items-center gap-1"
+                className="text-gray-600 hover:text-gray-900 font-semibold text-sm focus:outline-none rounded px-1 inline-flex items-center gap-2 transition-colors group"
               >
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" aria-hidden="true" />
                 Voltar para o login
               </button>
             </div>

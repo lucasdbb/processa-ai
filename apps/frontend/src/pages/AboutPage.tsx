@@ -9,7 +9,9 @@ import {
   CheckCircle,
   Mail,
   Linkedin,
-  Phone
+  Phone,
+  HeadphonesIcon,
+  Clock
 } from 'lucide-react';
 
 const AboutPage: React.FC = React.memo(() => {
@@ -83,40 +85,45 @@ const AboutPage: React.FC = React.memo(() => {
   ];
 
   return (
-    <div className="min-h-screen bg-warm-bg">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-800 to-primary-900 text-white h-[260px] md:h-[300px] flex items-center">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-6">
-              <Users className="h-7 w-7" />
+      <section className="relative py-20 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-gray-100 to-transparent rounded-full blur-3xl opacity-60" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-8 animate-in fade-in zoom-in duration-500">
+              <Users className="h-8 w-8 text-gray-900" strokeWidth={1.5} />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
               Sobre a Processa AI
             </h1>
-            <p className="text-xl text-primary-100 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-500 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
               Transformando a prática jurídica com tecnologia e inovação
             </p>
           </div>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 relative z-10">
         {/* Nossa História */}
-        <section className="mb-16">
+        <section className="mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">Nossa História</h2>
-              <div className="space-y-4 text-gray-600 leading-relaxed">
+              <h2 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Nossa História</h2>
+              <div className="space-y-6 text-gray-500 text-lg leading-relaxed">
                 <p>
-                  A <strong className="text-primary-700">Processa AI</strong> nasceu da necessidade
+                  A <strong className="text-gray-900">Processa AI</strong> nasceu da necessidade
                   de modernizar e otimizar o trabalho dos profissionais do direito. Fundada em 2025
                   por advogados que enfrentavam diariamente os desafios da rotina jurídica, nossa
                   missão é trazer tecnologia de ponta para simplificar processos e aumentar a
                   produtividade.
                 </p>
                 <p>
-                  Combinamos <strong>inteligência artificial</strong>, <strong>automação</strong> e
+                  Combinamos <strong className="text-gray-900">inteligência artificial</strong>, <strong className="text-gray-900">automação</strong> e
                   conhecimento jurídico profundo para criar uma plataforma que realmente entende as
                   necessidades dos advogados brasileiros.
                 </p>
@@ -127,58 +134,59 @@ const AboutPage: React.FC = React.memo(() => {
                 </p>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gray-900/10 rounded-[2rem] transform rotate-3 transition-transform group-hover:rotate-6 duration-300" />
               <img
                 src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=600&h=400&fit=crop"
                 alt="Equipe da Processa AI trabalhando em conjunto em um ambiente moderno de escritório"
-                className="rounded-2xl shadow-2xl"
+                className="relative rounded-[2rem] shadow-2xl w-full object-cover transform transition-transform duration-300 group-hover:-translate-y-2"
                 loading="lazy"
               />
-              <div className="absolute -bottom-6 -left-6 bg-secondary-600 text-white p-6 rounded-xl shadow-lg">
-                <p className="text-3xl font-bold">2025</p>
-                <p className="text-sm">Ano de Fundação</p>
+              <div className="absolute -bottom-6 -left-6 bg-gray-900 text-white p-8 rounded-[1.5rem] shadow-xl transform transition-transform duration-300 group-hover:scale-105">
+                <p className="text-4xl font-bold mb-1">2025</p>
+                <p className="text-sm text-gray-400 font-medium tracking-wide uppercase">Ano de Fundação</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* Missão, Visão e Valores */}
-        <section className="mb-16">
+        <section className="mb-24">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="bg-primary-600 p-3 rounded-lg">
-                  <Target className="h-6 w-6 text-white" aria-hidden="true" />
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group">
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="bg-gray-50 p-4 rounded-2xl group-hover:scale-110 transition-transform duration-300">
+                  <Target className="h-8 w-8 text-gray-900" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-xl font-bold text-primary-900">Missão</h3>
+                <h3 className="text-xl font-bold text-gray-900">Missão</h3>
               </div>
-              <p className="text-primary-800">
+              <p className="text-gray-500 leading-relaxed">
                 Democratizar o acesso à tecnologia jurídica, oferecendo ferramentas de alta
                 qualidade que tornem o trabalho dos advogados mais eficiente e produtivo.
               </p>
             </div>
 
-            <div className="card bg-gradient-to-br from-secondary-50 to-secondary-100 border-secondary-200">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="bg-secondary-600 p-3 rounded-lg">
-                  <Eye className="h-6 w-6 text-white" aria-hidden="true" />
+            <div className="bg-gray-900 p-8 rounded-[2rem] shadow-xl hover:shadow-2xl transition-all duration-300 group text-white transform md:-translate-y-4">
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="bg-white/10 p-4 rounded-2xl group-hover:scale-110 transition-transform duration-300">
+                  <Eye className="h-8 w-8 text-white" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-xl font-bold text-secondary-900">Visão</h3>
+                <h3 className="text-xl font-bold">Visão</h3>
               </div>
-              <p className="text-secondary-800">
+              <p className="text-gray-300 leading-relaxed">
                 Ser a plataforma jurídica mais completa e inovadora do Brasil, reconhecida
                 pela excelência e pela transformação digital no meio jurídico.
               </p>
             </div>
 
-            <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="bg-primary-600 p-3 rounded-lg">
-                  <Heart className="h-6 w-6 text-white" aria-hidden="true" />
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group">
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="bg-gray-50 p-4 rounded-2xl group-hover:scale-110 transition-transform duration-300">
+                  <Heart className="h-8 w-8 text-gray-900" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-xl font-bold text-primary-900">Valores</h3>
+                <h3 className="text-xl font-bold text-gray-900">Valores</h3>
               </div>
-              <p className="text-primary-800">
+              <p className="text-gray-500 leading-relaxed">
                 Excelência, inovação, ética, compromisso com o cliente e respeito à
                 profissão jurídica guiam todas as nossas decisões e ações.
               </p>
@@ -186,43 +194,25 @@ const AboutPage: React.FC = React.memo(() => {
           </div>
         </section>
 
-        {/* Nossos Valores Detalhados */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Nossos Pilares</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Nossos Pilares */}
+        <section className="mb-24">
+          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center tracking-tight">Nossos Pilares</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {values.map((value, index) => (
-              <div key={index} className="card text-center hover:shadow-xl transition-shadow duration-300">
-                <div className={`${value.color} w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4`}>
-                  <value.icon className="h-8 w-8 text-white" aria-hidden="true" />
+              <div key={index} className="bg-white p-8 rounded-[2rem] border border-gray-100 text-center hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-50 rounded-2xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <value.icon className="h-8 w-8 text-gray-900" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{value.title}</h3>
-                <p className="text-sm text-gray-600">{value.description}</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-3">{value.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{value.description}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Conquistas */}
-        {/* <section className="mb-16">
-          <div className="bg-gradient-to-br from-primary-800 to-primary-900 rounded-2xl p-12 text-white">
-            <h2 className="text-3xl font-bold mb-8 text-center">Nossas Conquistas</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {achievements.map((achievement, index) => (
-                <div key={index} className="text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
-                    <achievement.icon className="h-8 w-8" aria-hidden="true" />
-                  </div>
-                  <p className="text-4xl font-bold mb-2">{achievement.number}</p>
-                  <p className="text-primary-100">{achievement.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section> */}
-
         {/* Nossa Equipe */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Conheça Nossa Equipe</h2>
+        <section className="mb-24">
+          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center tracking-tight">Conheça Nossa Equipe</h2>
           <div
             className={`grid grid-cols-1 gap-8 ${
               team.length === 1
@@ -235,105 +225,125 @@ const AboutPage: React.FC = React.memo(() => {
             }`}
           >
             {team.map((member, index) => (
-              <div key={index} className="card text-center hover:shadow-xl transition-shadow duration-300">
-                <img
-                  src={member.image}
-                  alt={`Foto de ${member.name}, ${member.role} da Processa AI`}
-                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-primary-100"
-                  loading="lazy"
-                />
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h3>
-                <p className="text-primary-700 font-semibold mb-3">{member.role}</p>
-                <p className="text-sm text-gray-600">{member.description}</p>
+              <div key={index} className="bg-white p-8 rounded-[2rem] border border-gray-100 text-center hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
+                <div className="relative inline-block mb-6">
+                  <div className="absolute inset-0 bg-gray-900/5 rounded-full transform rotate-6 transition-transform group-hover:rotate-12" />
+                  <img
+                    src={member.image}
+                    alt={`Foto de ${member.name}, ${member.role} da Processa AI`}
+                    className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                    loading="lazy"
+                  />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{member.name}</h3>
+                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">{member.role}</p>
+                <p className="text-sm text-gray-500 leading-relaxed">{member.description}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* O Que Oferecemos */}
-        <section className="mb-16">
+        <section className="mb-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">O Que Oferecemos</h2>
-              <div className="space-y-3">
+              <h2 className="text-3xl font-bold text-gray-900 mb-8 tracking-tight">O Que Oferecemos</h2>
+              <div className="space-y-4">
                 {features.map((feature, index) => (
-                  <div key={index} className="flex items-start space-x-3">
-                    <CheckCircle className="h-6 w-6 text-secondary-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-gray-700">{feature}</p>
+                  <div key={index} className="flex items-start space-x-4 p-4 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-50 flex items-center justify-center mt-0.5">
+                      <CheckCircle className="h-4 w-4 text-green-600" strokeWidth={2.5} />
+                    </div>
+                    <p className="text-gray-600 font-medium">{feature}</p>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="card bg-gradient-to-br from-secondary-50 to-secondary-100 border-secondary-200 p-8">
-              <h3 className="text-2xl font-bold text-secondary-900 mb-4">
-                Por que escolher a Processa AI?
-              </h3>
-              <ul className="space-y-3 text-secondary-800">
-                <li className="flex items-start">
-                  <span className="font-bold mr-2">✓</span>
-                  Tecnologia de ponta com IA especializada em direito
-                </li>
-                <li className="flex items-start">
-                  <span className="font-bold mr-2">✓</span>
-                  Economia de tempo em tarefas repetitivas
-                </li>
-                <li className="flex items-start">
-                  <span className="font-bold mr-2">✓</span>
-                  Precisão em cálculos complexos
-                </li>
-                <li className="flex items-start">
-                  <span className="font-bold mr-2">✓</span>
-                  Atualizações constantes com a legislação
-                </li>
-                <li className="flex items-start">
-                  <span className="font-bold mr-2">✓</span>
-                  Suporte dedicado para advogados
-                </li>
-              </ul>
+            <div className="bg-gray-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gray-800 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-50" />
+              <div className="relative z-10">
+                <h3 className="text-2xl font-bold mb-8">
+                  Por que escolher a Processa AI?
+                </h3>
+                <ul className="space-y-6">
+                  <li className="flex items-center space-x-4">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <Zap className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="font-medium text-gray-200">Tecnologia de ponta com IA</span>
+                  </li>
+                  <li className="flex items-center space-x-4">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="font-medium text-gray-200">Economia de tempo</span>
+                  </li>
+                  <li className="flex items-center space-x-4">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <Target className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="font-medium text-gray-200">Precisão em cálculos</span>
+                  </li>
+                  <li className="flex items-center space-x-4">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <Shield className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="font-medium text-gray-200">Atualizações constantes</span>
+                  </li>
+                  <li className="flex items-center space-x-4">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <HeadphonesIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="font-medium text-gray-200">Suporte dedicado</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Contato */}
         <section>
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Entre em Contato</h2>
-            <p className="text-gray-600 text-center mb-8 max-w-2xl mx-auto">
+          <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 p-8 md:p-16 text-center">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Entre em Contato</h2>
+            <p className="text-lg text-gray-500 mb-12 max-w-2xl mx-auto">
               Tem alguma dúvida ou sugestão? Estamos sempre prontos para ouvir você e
               melhorar ainda mais nossa plataforma.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <a
                 href="mailto:contato@processaai.com"
-                className="flex items-center justify-center space-x-3 p-4 border-2 border-primary-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all duration-200"
+                className="flex flex-col items-center justify-center p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
               >
-                <Mail className="h-6 w-6 text-primary-700" />
-                <div>
-                  <p className="font-semibold text-gray-900">E-mail</p>
-                  <p className="text-sm text-gray-600">contato@processaai.com</p>
+                <div className="w-14 h-14 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Mail className="h-7 w-7 text-gray-900" strokeWidth={1.5} />
                 </div>
+                <p className="font-bold text-gray-900 mb-1">E-mail</p>
+                <p className="text-sm text-gray-500">contato@processaai.com</p>
               </a>
+
               <a
                 href="tel:+5511999999999"
-                className="flex items-center justify-center space-x-3 p-4 border-2 border-primary-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all duration-200"
+                className="flex flex-col items-center justify-center p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
               >
-                <Phone className="h-6 w-6 text-primary-700" />
-                <div>
-                  <p className="font-semibold text-gray-900">Telefone</p>
-                  <p className="text-sm text-gray-600">(11) 99999-9999</p>
+                <div className="w-14 h-14 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Phone className="h-7 w-7 text-gray-900" strokeWidth={1.5} />
                 </div>
+                <p className="font-bold text-gray-900 mb-1">Telefone</p>
+                <p className="text-sm text-gray-500">(11) 99999-9999</p>
               </a>
+
               <a
                 href="https://linkedin.com/company/processa-ai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center space-x-3 p-4 border-2 border-primary-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all duration-200"
+                className="flex flex-col items-center justify-center p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
               >
-                <Linkedin className="h-6 w-6 text-primary-700" />
-                <div>
-                  <p className="font-semibold text-gray-900">LinkedIn</p>
-                  <p className="text-sm text-gray-600">Siga-nos</p>
+                <div className="w-14 h-14 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Linkedin className="h-7 w-7 text-gray-900" strokeWidth={1.5} />
                 </div>
+                <p className="font-bold text-gray-900 mb-1">LinkedIn</p>
+                <p className="text-sm text-gray-500">Siga-nos</p>
               </a>
             </div>
           </div>
