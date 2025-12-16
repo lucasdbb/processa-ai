@@ -14,9 +14,12 @@ import {
 } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { ProtectedFeaturePreview } from '@/components/auth/protected-feature-preview'
 import { toast } from 'sonner'
+import { useUser } from '@/features/auth/hooks/use-user'
 
 export default function IAJuridicaPage() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useUser()
   const [selectedTool, setSelectedTool] = useState('petition')
   const [prompt, setPrompt] = useState('')
   const [generatedText, setGeneratedText] = useState('')
@@ -163,6 +166,37 @@ OAB/SP nº [número]
     }
   }, [generatedText, selectedTool, tools])
 
+  // Show loading while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show preview if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <ProtectedFeaturePreview
+        title="IA Jurídica"
+        description="Crie documentos jurídicos profissionais com auxílio da inteligência artificial. Economize tempo e melhore a qualidade das suas peças processuais."
+        benefits={[
+          'Geração automática de petições iniciais, contestações e recursos',
+          'Criação de minutas de contratos personalizados',
+          'Templates prontos para diversos tipos de documentos',
+          'Análise de jurisprudência e fundamentação legal',
+          'Economia de até 70% do tempo na elaboração de peças',
+          'Sugestões inteligentes baseadas em milhares de casos',
+        ]}
+      />
+    )
+  }
+
+  // Show the full page if authenticated
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
       <Header />

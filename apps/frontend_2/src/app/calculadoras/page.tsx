@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { ProtectedFeaturePreview } from '@/components/auth/protected-feature-preview'
+import { useUser } from '@/features/auth/hooks/use-user'
 import { Calculator, DollarSign, Calendar, FileText, Download, Info } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
@@ -42,6 +44,7 @@ interface CalculatorConfig {
 }
 
 export default function CalculadorasPage() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useUser()
   const [selectedCalculator, setSelectedCalculator] = useState<CalculatorType>('rescisao')
   const [formData, setFormData] = useState<CalculatorFormData>({
     // Rescisão
@@ -183,7 +186,7 @@ export default function CalculadorasPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-bold text-gray-900 mb-2">
-            💰 Salário Mensal (R$) *
+            Salário Mensal (R$) *
           </label>
           <input
             type="number"
@@ -195,7 +198,7 @@ export default function CalculadorasPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">📋 Tipo de Rescisão *</label>
+          <label className="block text-sm font-bold text-gray-900 mb-2">Tipo de Rescisão *</label>
           <select
             value={formData.tipoRescisao}
             onChange={(e) => handleInputChange('tipoRescisao', e.target.value)}
@@ -208,7 +211,7 @@ export default function CalculadorasPage() {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">📅 Data de Admissão *</label>
+          <label className="block text-sm font-bold text-gray-900 mb-2">Data de Admissão *</label>
           <input
             type="date"
             value={formData.dataAdmissao}
@@ -218,7 +221,7 @@ export default function CalculadorasPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">📅 Data de Rescisão *</label>
+          <label className="block text-sm font-bold text-gray-900 mb-2">Data de Rescisão *</label>
           <input
             type="date"
             value={formData.dataRescisao}
@@ -229,7 +232,7 @@ export default function CalculadorasPage() {
         </div>
         <div className="md:col-span-2">
           <label className="block text-sm font-bold text-gray-900 mb-2">
-            🏖️ Férias Vencidas (R$)
+            Férias Vencidas (R$)
           </label>
           <input
             type="number"
@@ -243,7 +246,7 @@ export default function CalculadorasPage() {
       </div>
 
       <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-        <h3 className="text-sm font-bold text-gray-900 mb-4">✅ Verbas Adicionais</h3>
+        <h3 className="text-sm font-bold text-gray-900 mb-4">Verbas Adicionais</h3>
         <div className="space-y-3">
           <label className="flex items-center cursor-pointer group">
             <input
@@ -287,7 +290,7 @@ export default function CalculadorasPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">👤 Idade Atual *</label>
+          <label className="block text-sm font-bold text-gray-900 mb-2">Idade Atual *</label>
           <input
             type="number"
             value={formData.idade}
@@ -300,7 +303,7 @@ export default function CalculadorasPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">👥 Sexo *</label>
+          <label className="block text-sm font-bold text-gray-900 mb-2">Sexo *</label>
           <select
             value={formData.sexo}
             onChange={(e) => handleInputChange('sexo', e.target.value)}
@@ -312,7 +315,7 @@ export default function CalculadorasPage() {
         </div>
         <div>
           <label className="block text-sm font-bold text-gray-900 mb-2">
-            ⏱️ Tempo de Contribuição (anos) *
+            Tempo de Contribuição (anos) *
           </label>
           <input
             type="number"
@@ -327,7 +330,7 @@ export default function CalculadorasPage() {
         </div>
         <div>
           <label className="block text-sm font-bold text-gray-900 mb-2">
-            💵 Salário de Contribuição (R$) *
+            Salário de Contribuição (R$) *
           </label>
           <input
             type="number"
@@ -341,7 +344,7 @@ export default function CalculadorasPage() {
       </div>
 
       <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-        <h3 className="text-sm font-bold text-blue-900 mb-3">ℹ️ Informações Importantes</h3>
+        <h3 className="text-sm font-bold text-blue-900 mb-3">Informações Importantes</h3>
         <ul className="text-xs text-blue-800 space-y-2">
           <li className="flex items-center">
             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></span>Idade mínima para
@@ -480,6 +483,37 @@ export default function CalculadorasPage() {
     return null
   }
 
+  // Show loading while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show preview if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <ProtectedFeaturePreview
+        title="Calculadoras Jurídicas"
+        description="Ferramentas precisas para cálculos trabalhistas e previdenciários. Economize tempo e evite erros em seus cálculos."
+        benefits={[
+          "Cálculo preciso de rescisão trabalhista com todas as verbas",
+          "Simulação completa de aposentadoria (idade e tempo de contribuição)",
+          "Geração de relatórios em PDF para seus clientes",
+          "Histórico de cálculos salvos para consulta futura",
+          "Atualizações automáticas conforme mudanças na legislação",
+          "Interface intuitiva que economiza tempo no dia a dia",
+        ]}
+      />
+    )
+  }
+
+  // Show the full page if authenticated
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
       <Header />
@@ -634,7 +668,7 @@ export default function CalculadorasPage() {
                   <Info className="h-5 w-5 text-yellow-700" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-yellow-900 mb-2">⚠️ Aviso Legal Importante</h3>
+                  <h3 className="text-sm font-bold text-yellow-900 mb-2">Aviso Legal Importante</h3>
                   <p className="text-sm text-yellow-800 leading-relaxed">
                     Os cálculos apresentados são <strong>estimativas</strong> baseadas na legislação
                     vigente. Sempre consulte a legislação atualizada e considere as particularidades

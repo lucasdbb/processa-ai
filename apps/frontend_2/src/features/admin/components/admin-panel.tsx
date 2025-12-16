@@ -15,6 +15,7 @@ import {
   FileText,
   LayoutDashboard,
   Edit,
+  ArrowLeft,
 } from 'lucide-react'
 import { adminService } from '@/features/blog/services/admin-service'
 import type { UserListItem, AdminPostListItem } from '@/features/blog/services/admin-service'
@@ -237,6 +238,13 @@ export function AdminPanel({ user }: AdminPanelProps) {
           </h1>
         </div>
         <nav className="flex-1 p-4 space-y-1">
+          <button
+            onClick={() => router.push('/')}
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-gray-600 hover:bg-gray-50 mb-4 border border-gray-200"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Voltar para Home
+          </button>
           <button
             onClick={() => setActiveTab('overview')}
             className={cn(

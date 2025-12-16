@@ -8,7 +8,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
  */
 export async function updateSession(request: NextRequest) {
   // Protected routes that require authentication
-  const protectedRoutes = ["/admin", "/ia-juridica", "/calculadoras"];
+  // Note: /ia-juridica and /calculadoras handle auth on client-side to show preview pages
+  const protectedRoutes = ["/admin"];
   const isProtectedRoute = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
   );
