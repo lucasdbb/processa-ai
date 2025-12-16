@@ -133,7 +133,7 @@ export function BlogList({ initialPosts }: BlogListProps) {
                   </div>
 
                   <Link
-                    href={`/blog/${featuredPost.id}`}
+                    href={`/blog/${featuredPost.slug}`}
                     className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition-all shadow-lg shadow-gray-900/20 transform hover:-translate-y-0.5"
                   >
                     Ler Artigo
@@ -218,7 +218,7 @@ export function BlogList({ initialPosts }: BlogListProps) {
                   </span>
 
                   <Link
-                    href={`/blog/${post.id}`}
+                    href={`/blog/${post.slug}`}
                     className="text-sm font-bold text-gray-900 hover:text-gray-600 transition-colors"
                   >
                     Ler mais

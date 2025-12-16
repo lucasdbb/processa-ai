@@ -98,3 +98,25 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Force Inter font on prose elements to match the rest of the site */
+.prose {
+  font-family: var(--font-sans), system-ui, sans-serif !important;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.prose p,
+.prose a,
+.prose li,
+.prose td,
+.prose th,
+.prose blockquote,
+.prose code,
+.prose pre {
+  font-family: var(--font-sans), system-ui, sans-serif !important;
+}
