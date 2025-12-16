@@ -342,24 +342,6 @@ export default function CalculadorasPage() {
           />
         </div>
       </div>
-
-      <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-        <h3 className="text-sm font-bold text-blue-900 mb-3">Informações Importantes</h3>
-        <ul className="text-xs text-blue-800 space-y-2">
-          <li className="flex items-center">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></span>Idade mínima para
-            homens: 65 anos
-          </li>
-          <li className="flex items-center">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></span>Idade mínima para
-            mulheres: 62 anos
-          </li>
-          <li className="flex items-center">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2"></span>Tempo mínimo de
-            contribuição: 15 anos
-          </li>
-        </ul>
-      </div>
     </div>
   )
 
@@ -588,21 +570,6 @@ export default function CalculadorasPage() {
                   </div>
                 </button>
               ))}
-            </div>
-
-            {/* Info Card */}
-            <div className="mt-6 p-6 bg-white rounded-2xl border border-gray-200 shadow-sm">
-              <div className="flex items-start space-x-3">
-                <div className="bg-blue-50 p-2 rounded-lg">
-                  <Info className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 mb-1">Dica</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    Preencha todos os campos obrigatórios para obter um cálculo preciso.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
 
