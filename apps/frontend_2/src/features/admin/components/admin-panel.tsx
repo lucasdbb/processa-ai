@@ -255,7 +255,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
             )}
           >
             <LayoutDashboard className="w-5 h-5" />
-            Visao Geral
+            Visão Geral
           </button>
           <button
             onClick={() => setActiveTab('users')}
@@ -265,7 +265,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
             )}
           >
             <Users className="w-5 h-5" />
-            Usuarios
+            Usuários
           </button>
           <button
             onClick={() => setActiveTab('posts')}
@@ -308,7 +308,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900">Visao Geral do Sistema</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Visão Geral do Sistema</h2>
                 <button
                   onClick={loadData}
                   className="px-4 py-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg flex items-center gap-2"
@@ -320,7 +320,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
 
               <div className="grid grid-cols-1 gap-8">
                 <section>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4">Metricas de Usuarios</h3>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4">Métricas de Usuários</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                       <div className="flex items-center justify-between mb-4">
@@ -330,7 +330,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                         <span className="text-xs font-medium text-gray-500">Total</span>
                       </div>
                       <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                      <p className="text-sm text-gray-600 mt-1">Usuarios cadastrados</p>
+                      <p className="text-sm text-gray-600 mt-1">Usuários cadastrados</p>
                     </div>
 
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -352,7 +352,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                         <span className="text-xs font-medium text-green-600">+7 dias</span>
                       </div>
                       <p className="text-3xl font-bold text-gray-900">{stats.recentSignups}</p>
-                      <p className="text-sm text-gray-600 mt-1">Novos usuarios</p>
+                      <p className="text-sm text-gray-600 mt-1">Novos usuários</p>
                     </div>
                   </div>
                 </section>
@@ -381,7 +381,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                       <p className="text-3xl font-bold text-gray-900">
                         {posts.filter((p) => p.status === 'published').length}
                       </p>
-                      <p className="text-sm text-gray-600 mt-1">Visiveis no blog</p>
+                      <p className="text-sm text-gray-600 mt-1">Visíveis no blog</p>
                     </div>
 
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -394,7 +394,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                       <p className="text-3xl font-bold text-gray-900">
                         {posts.filter((p) => p.status === 'draft').length}
                       </p>
-                      <p className="text-sm text-gray-600 mt-1">Em edicao</p>
+                      <p className="text-sm text-gray-600 mt-1">Em edição</p>
                     </div>
                   </div>
                 </section>
@@ -406,7 +406,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
           {activeTab === 'users' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900">Gerenciar Usuarios</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Gerenciar Usuários</h2>
                 <button
                   onClick={loadData}
                   className="px-4 py-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg flex items-center gap-2"
@@ -422,7 +422,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Buscar usuarios..."
+                      placeholder="Buscar usuários..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
@@ -434,7 +434,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                     className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white min-w-[200px]"
                   >
                     <option value="all">Todas as roles</option>
-                    <option value="user">Usuario</option>
+                    <option value="user">Usuário</option>
                     <option value="author">Autor</option>
                     <option value="premium">Premium</option>
                     <option value="admin">Admin</option>
@@ -445,10 +445,10 @@ export function AdminPanel({ user }: AdminPanelProps) {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="px-6 py-3 font-medium text-gray-500">Usuario</th>
+                        <th className="px-6 py-3 font-medium text-gray-500">Usuário</th>
                         <th className="px-6 py-3 font-medium text-gray-500">Role</th>
                         <th className="px-6 py-3 font-medium text-gray-500">Data Cadastro</th>
-                        <th className="px-6 py-3 text-right font-medium text-gray-500">Acoes</th>
+                        <th className="px-6 py-3 text-right font-medium text-gray-500">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -508,7 +508,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                     </tbody>
                   </table>
                   {filteredUsers.length === 0 && (
-                    <div className="text-center py-12 text-gray-500">Nenhum usuario encontrado.</div>
+                    <div className="text-center py-12 text-gray-500">Nenhum usuário encontrado.</div>
                   )}
                 </div>
               </div>
@@ -570,7 +570,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                         <th className="px-6 py-3 font-medium text-gray-500">Autor</th>
                         <th className="px-6 py-3 font-medium text-gray-500">Status</th>
                         <th className="px-6 py-3 font-medium text-gray-500">Data</th>
-                        <th className="px-6 py-3 text-right font-medium text-gray-500">Acoes</th>
+                        <th className="px-6 py-3 text-right font-medium text-gray-500">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -637,7 +637,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
               <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Alterar Role</h3>
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-500 mb-1">Usuario selecionado</p>
+                  <p className="text-sm text-gray-500 mb-1">Usuário selecionado</p>
                   <p className="font-medium text-gray-900">{selectedUser.name}</p>
                   <p className="text-sm text-gray-500">{selectedUser.email}</p>
                 </div>
