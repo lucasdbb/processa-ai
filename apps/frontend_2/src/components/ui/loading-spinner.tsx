@@ -14,7 +14,7 @@ export function LoadingSpinner({ size = 'md', text, fullScreen = false }: Loadin
   }
 
   const spinner = (
-    <div className="flex flex-col items-center justify-center gap-4">
+    <div className="flex flex-col items-center justify-center gap-4 font-sans">
       <Loader2 className={`${sizeClasses[size]} animate-spin text-gray-900`} />
       {text && <p className="text-sm text-gray-500 font-medium">{text}</p>}
     </div>
@@ -22,7 +22,7 @@ export function LoadingSpinner({ size = 'md', text, fullScreen = false }: Loadin
 
   if (fullScreen) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
         {spinner}
       </div>
     )

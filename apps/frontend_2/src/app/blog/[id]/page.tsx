@@ -8,10 +8,7 @@ import Link from 'next/link'
 import { postService } from '@/features/blog/services/post-service'
 import { formatDate } from '@/lib/utils'
 import type { Metadata } from 'next'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
-import rehypeSanitize from 'rehype-sanitize'
+import { MarkdownPreview } from '@/components/markdown/markdown-preview'
 
 // Revalidate every 5 minutes (ISR)
 export const revalidate = 300
@@ -77,9 +74,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
       <Header />
 
       <main className="flex-1 pt-24 pb-16 font-sans">
-        {/* Botão Voltar - Fixo no topo */}
-        <div className="sticky top-20 z-10 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200 mb-8">
-          <div className="mx-auto max-w-4xl px-6 lg:px-8 py-4">
+        <article className="mx-auto max-w-6xl px-6 lg:px-8">
+          {/* Botão Voltar */}
+          <div className="mb-8">
             <Link href="/blog">
               <Button
                 variant="ghost"
@@ -90,111 +87,191 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
               </Button>
             </Link>
           </div>
-        </div>
+          {/* Layout com Imagem */}
+          {(post.cover_image_url || post.featured_image) && (
+            <>
+              {/* Flex container: Imagem (80%) + Sidebar (20%) */}
+              <div className="flex flex-col lg:flex-row gap-6 mb-8 pb-8 border-b border-gray-200">
+                {/* Imagem com Overlay - 80% */}
+                <div className="lg:w-[80%]">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg">
+                    <img
+                      src={post.cover_image_url || post.featured_image}
+                      alt={post.title}
+                      className="w-full h-auto max-h-[500px] object-cover"
+                    />
 
-        <article className="mx-auto max-w-4xl px-6 lg:px-8">
-          {/* Cabeçalho do Post */}
-          <header className="mb-12">
-            <div className="flex items-center gap-3 mb-6">
-              <Badge className="text-xs font-bold px-3 py-1">
-                {post.category}
-              </Badge>
-              {post.published_at && (
-                <span className="text-sm text-gray-500">
-                  Publicado em {formatDate(post.published_at || post.created_at)}
-                </span>
-              )}
-            </div>
+                    {/* Overlay com Título e Metadados */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 md:p-8">
+                      {/* Categoria */}
+                      {post.category && (
+                        <div className="mb-3">
+                          <Badge className="text-xs font-bold px-3 py-1 bg-white text-gray-900">
+                            {post.category}
+                          </Badge>
+                        </div>
+                      )}
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 mb-6 leading-tight">
-              {post.title}
-            </h1>
+                      {/* Título */}
+                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-3 leading-tight">
+                        {post.title}
+                      </h1>
 
-            {post.excerpt && (
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                {post.excerpt}
-              </p>
-            )}
-
-            {/* Metadados do Autor */}
-            <div className="flex items-center justify-between py-6 border-y border-gray-200">
-              <div className="flex items-center gap-4">
-                {post.author && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold border-2 border-gray-300">
-                      <User className="h-6 w-6" />
+                      {/* Metadados */}
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-white/90">
+                        {post.published_at && (
+                          <span>{formatDate(post.published_at || post.created_at)}</span>
+                        )}
+                        {post.published_at && (
+                          <span className="text-white/60">•</span>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{estimateReadTime(post.content)}</span>
+                        </div>
+                      </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Sidebar: Resumo, Tags e Autor - 20% */}
+                <div className="lg:w-[20%] flex flex-col gap-6">
+                  {/* Resumo */}
+                  {post.excerpt && (
                     <div>
-                      <p className="font-semibold text-gray-900">{post.author.name}</p>
-                      <p className="text-sm text-gray-500">Autor</p>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                        Resumo
+                      </h3>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {post.excerpt}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  {post.tags && post.tags.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                        Tags
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {post.tags.map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant="outline"
+                            className="px-2 py-1 text-xs hover:bg-gray-100 transition-colors cursor-pointer"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Autor */}
+                  {post.authors && post.authors.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                        Autor
+                      </h3>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">{post.authors[0].name}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Cabeçalho do Post (sem imagem) */}
+          {!(post.cover_image_url || post.featured_image) && (
+            <>
+              <header className="mb-10">
+                {/* Categoria */}
+                {post.category && (
+                  <div className="mb-4">
+                    <Badge className="text-xs font-bold px-3 py-1">
+                      {post.category}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Título */}
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 mb-4 leading-tight">
+                  {post.title}
+                </h1>
+
+                {/* Metadados */}
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                  {post.published_at && (
+                    <span>{formatDate(post.published_at || post.created_at)}</span>
+                  )}
+                  {post.published_at && (
+                    <span className="text-gray-300">•</span>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{estimateReadTime(post.content)}</span>
+                  </div>
+                </div>
+              </header>
+
+              {/* Resumo e Tags */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 pb-8 border-b border-gray-200">
+                {post.excerpt && (
+                  <div className="lg:col-span-2">
+                    <p className="text-lg text-gray-700 leading-relaxed">
+                      {post.excerpt}
+                    </p>
+                  </div>
+                )}
+
+                {post.tags && post.tags.length > 0 && (
+                  <div className={post.excerpt ? '' : 'lg:col-span-3'}>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                      Tags
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {post.tags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className="px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-gray-500">
-                <Clock className="h-4 w-4" />
-                <span className="text-sm">{estimateReadTime(post.content)}</span>
-              </div>
-            </div>
-          </header>
 
-          {/* Imagem em Destaque */}
-          {(post.cover_image_url || post.featured_image) && (
-            <div className="mb-12 aspect-video w-full overflow-hidden rounded-2xl shadow-xl">
-              <img
-                src={post.cover_image_url || post.featured_image}
-                alt={post.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
+              {/* Autor após resumo e tags */}
+              {post.authors && post.authors.length > 0 && (
+                <div className="mb-10 flex items-center gap-2 text-gray-600">
+                  <span className="text-sm">Por</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <span className="font-semibold text-gray-900">{post.authors[0].name}</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Conteúdo em Markdown */}
-          <div className="font-sans prose prose-lg prose-gray max-w-none mb-12
-            prose-headings:font-bold prose-headings:text-gray-900
-            prose-h1:text-4xl prose-h1:mb-6 prose-h1:mt-12
-            prose-h2:text-3xl prose-h2:mb-4 prose-h2:mt-10
-            prose-h3:text-2xl prose-h3:mb-3 prose-h3:mt-8
-            prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-6
-            prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-            prose-strong:text-gray-900 prose-strong:font-bold
-            prose-ul:my-6 prose-ul:list-disc prose-ul:pl-6
-            prose-ol:my-6 prose-ol:list-decimal prose-ol:pl-6
-            prose-li:text-gray-700 prose-li:mb-2
-            prose-blockquote:border-l-4 prose-blockquote:border-gray-300 prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:text-gray-600
-            prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:text-gray-900
-            prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:p-6 prose-pre:rounded-xl prose-pre:overflow-x-auto
-            prose-img:rounded-xl prose-img:shadow-lg
-            prose-hr:border-gray-300 prose-hr:my-8
-            bg-white rounded-2xl shadow-sm border border-gray-200 p-8 md:p-12"
-          >
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeSanitize]}
-            >
-              {post.content}
-            </ReactMarkdown>
+          <div className="mb-12">
+            <MarkdownPreview
+              source={post.content}
+              className="prose prose-lg prose-gray max-w-none"
+            />
           </div>
-
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">
-                Tags Relacionadas
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {post.tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="outline"
-                    className="px-3 py-1 text-sm hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Botão Voltar - Inferior */}
           <div className="mt-12 pt-8 border-t border-gray-200">

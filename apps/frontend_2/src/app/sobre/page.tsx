@@ -235,60 +235,60 @@ export default function AboutPage() {
         </section>
 
         {/* O Que Oferecemos */}
-        <section className="mb-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <section className="mb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-8 tracking-tight">
+              <h2 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">
                 O Que Oferecemos
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {features.map((feature, index) => (
                   <div
                     key={index}
-                    className="flex items-start space-x-4 p-4 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200"
+                    className="flex items-start space-x-3 p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200"
                   >
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-50 flex items-center justify-center mt-0.5">
-                      <CheckCircle className="h-4 w-4 text-green-600" strokeWidth={2.5} />
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-50 flex items-center justify-center mt-0.5">
+                      <CheckCircle className="h-3.5 w-3.5 text-green-600" strokeWidth={2.5} />
                     </div>
-                    <p className="text-gray-600 font-medium">{feature}</p>
+                    <p className="text-gray-600 font-medium text-sm">{feature}</p>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="bg-gray-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+            <div className="bg-gray-900 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl">
               <div className="absolute top-0 right-0 w-64 h-64 bg-gray-800 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-50" />
               <div className="relative z-10">
-                <h3 className="text-2xl font-bold mb-8">Por que escolher a Processa AI?</h3>
-                <ul className="space-y-6">
-                  <li className="flex items-center space-x-4">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <Zap className="h-4 w-4 text-white" />
+                <h3 className="text-xl font-bold mb-6">Por que escolher a Processa AI?</h3>
+                <ul className="space-y-4">
+                  <li className="flex items-center space-x-3">
+                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                      <Zap className="h-3.5 w-3.5 text-white" />
                     </div>
-                    <span className="font-medium text-gray-200">Tecnologia de ponta com IA</span>
+                    <span className="font-medium text-gray-200 text-sm">Tecnologia de ponta com IA</span>
                   </li>
-                  <li className="flex items-center space-x-4">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <Clock className="h-4 w-4 text-white" />
+                  <li className="flex items-center space-x-3">
+                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                      <Clock className="h-3.5 w-3.5 text-white" />
                     </div>
-                    <span className="font-medium text-gray-200">Economia de tempo</span>
+                    <span className="font-medium text-gray-200 text-sm">Economia de tempo</span>
                   </li>
-                  <li className="flex items-center space-x-4">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <Target className="h-4 w-4 text-white" />
+                  <li className="flex items-center space-x-3">
+                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                      <Target className="h-3.5 w-3.5 text-white" />
                     </div>
-                    <span className="font-medium text-gray-200">Precisão em cálculos</span>
+                    <span className="font-medium text-gray-200 text-sm">Precisão em cálculos</span>
                   </li>
-                  <li className="flex items-center space-x-4">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <Shield className="h-4 w-4 text-white" />
+                  <li className="flex items-center space-x-3">
+                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                      <Shield className="h-3.5 w-3.5 text-white" />
                     </div>
-                    <span className="font-medium text-gray-200">Atualizações constantes</span>
+                    <span className="font-medium text-gray-200 text-sm">Atualizações constantes</span>
                   </li>
-                  <li className="flex items-center space-x-4">
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <HeadphonesIcon className="h-4 w-4 text-white" />
+                  <li className="flex items-center space-x-3">
+                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                      <HeadphonesIcon className="h-3.5 w-3.5 text-white" />
                     </div>
-                    <span className="font-medium text-gray-200">Suporte dedicado</span>
+                    <span className="font-medium text-gray-200 text-sm">Suporte dedicado</span>
                   </li>
                 </ul>
               </div>
@@ -298,48 +298,48 @@ export default function AboutPage() {
 
         {/* Contato */}
         <section>
-          <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 p-8 md:p-16 text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8 md:p-12 text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 tracking-tight">
               Entre em Contato
             </h2>
-            <p className="text-lg text-gray-500 mb-12 max-w-2xl mx-auto">
+            <p className="text-base text-gray-500 mb-8 max-w-2xl mx-auto">
               Tem alguma dúvida ou sugestão? Estamos sempre prontos para ouvir você e melhorar ainda
               mais nossa plataforma.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <a
                 href="mailto:contato@processaai.com"
-                className="flex flex-col items-center justify-center p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
+                className="flex flex-col items-center justify-center p-6 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
               >
-                <div className="w-14 h-14 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Mail className="h-7 w-7 text-gray-900" strokeWidth={1.5} />
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Mail className="h-6 w-6 text-gray-900" strokeWidth={1.5} />
                 </div>
-                <p className="font-bold text-gray-900 mb-1">E-mail</p>
-                <p className="text-sm text-gray-500">contato@processaai.com</p>
+                <p className="font-bold text-gray-900 mb-1 text-sm">E-mail</p>
+                <p className="text-xs text-gray-500">contato@processaai.com</p>
               </a>
 
               <a
                 href="tel:+5511999999999"
-                className="flex flex-col items-center justify-center p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
+                className="flex flex-col items-center justify-center p-6 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
               >
-                <div className="w-14 h-14 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Phone className="h-7 w-7 text-gray-900" strokeWidth={1.5} />
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Phone className="h-6 w-6 text-gray-900" strokeWidth={1.5} />
                 </div>
-                <p className="font-bold text-gray-900 mb-1">Telefone</p>
-                <p className="text-sm text-gray-500">(11) 99999-9999</p>
+                <p className="font-bold text-gray-900 mb-1 text-sm">Telefone</p>
+                <p className="text-xs text-gray-500">(11) 99999-9999</p>
               </a>
 
               <a
                 href="https://linkedin.com/company/processa-ai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
+                className="flex flex-col items-center justify-center p-6 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
               >
-                <div className="w-14 h-14 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Linkedin className="h-7 w-7 text-gray-900" strokeWidth={1.5} />
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Linkedin className="h-6 w-6 text-gray-900" strokeWidth={1.5} />
                 </div>
-                <p className="font-bold text-gray-900 mb-1">LinkedIn</p>
-                <p className="text-sm text-gray-500">Siga-nos</p>
+                <p className="font-bold text-gray-900 mb-1 text-sm">LinkedIn</p>
+                <p className="text-xs text-gray-500">Siga-nos</p>
               </a>
             </div>
           </div>

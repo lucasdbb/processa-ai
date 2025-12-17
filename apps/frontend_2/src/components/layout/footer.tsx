@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import Link from 'next/link'
@@ -24,9 +25,6 @@ export function Footer() {
                 alt=""
                 className="h-6 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
               />
-              <span className="text-lg font-bold text-gray-400 group-hover:text-gray-900 transition-colors">
-                Processa AI
-              </span>
             </Link>
             <span className="hidden md:block w-px h-4 bg-gray-300"></span>
             <p className="text-sm text-gray-400">

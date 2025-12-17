@@ -266,6 +266,15 @@ class BlogService:
                     "slug": cat.get("slug")
                 }
 
+        # Fetch tags
+        tags = []
+        tres = self.supabase.table("blog_post_tags").select("tag_id").eq("post_id", post["id"]).execute()
+        if tres.data:
+            tag_ids = [t["tag_id"] for t in tres.data]
+            if tag_ids:
+                tags_res = self.supabase.table("blog_tags").select("name").in_("id", tag_ids).execute()
+                tags = [t["name"] for t in tags_res.data or []]
+
         # Fetch authors
         authors_ids = {post.get("author_id")}
         co = (
@@ -297,6 +306,7 @@ class BlogService:
             "content": post.get("content"),
             "cover_image_url": post.get("cover_image_url"),
             "category": category,
+            "tags": tags,
             "published_at": post.get("published_at"),
             "authors": authors,
         }
@@ -444,6 +454,54 @@ class BlogService:
             )
             if cats.data:
                 updates["category_id"] = cats.data[0]["id"]
+
+        # Update tags if provided
+        if getattr(data, "tags", None) is not None:
+            # Delete existing tags
+            try:
+                self.supabase.table("blog_post_tags").delete().eq("post_id", post_id).execute()
+            except Exception:
+                pass
+
+            # Insert new tags
+            try:
+                for raw in (data.tags or []):
+                    name = (raw or "").strip()
+                    if not name:
+                        continue
+                    slug_tag = self._slugify(name)
+                    existing = (
+                        self.supabase
+                        .table("blog_tags")
+                        .select("id")
+                        .eq("slug", slug_tag)
+                        .limit(1)
+                        .execute()
+                    )
+                    tag_id = None
+                    if existing.data:
+                        tag_id = existing.data[0]["id"]
+                    else:
+                        newtag = (
+                            self.supabase
+                            .table("blog_tags")
+                            .insert({"name": name, "slug": slug_tag})
+                            .execute()
+                        )
+                        if newtag.data:
+                            tag_id = newtag.data[0]["id"]
+                    if tag_id:
+                        try:
+                            self.supabase.table("blog_post_tags").insert({
+                                "post_id": post_id,
+                                "tag_id": tag_id,
+                            }).execute()
+                        except Exception:
+                            pass
+            except Exception:
+                # Ignore tag failures; post is updated
+                pass
+
         if not updates:
             return {"updated": False}
         upd = self.supabase.table("blog_posts").update(updates).eq("id", post_id).execute()

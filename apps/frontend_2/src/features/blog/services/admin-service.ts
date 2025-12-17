@@ -50,6 +50,41 @@ export interface ListAdminPostsResponse {
   page_size: number
 }
 
+export interface BlogPostDetail {
+  id: string
+  title: string
+  slug: string
+  excerpt?: string
+  content: string
+  cover_image_url?: string
+  category_id?: string
+  category_slug?: string
+  tags?: string[]
+  published_at?: string
+  authors: Array<{
+    id: string
+    name?: string
+  }>
+}
+
+export interface CreatePostRequest {
+  title: string
+  excerpt?: string
+  content: string
+  cover_image_url?: string
+  category?: string
+  tags?: string[]
+}
+
+export interface UpdatePostRequest {
+  title?: string
+  excerpt?: string
+  content?: string
+  cover_image_url?: string
+  category?: string
+  tags?: string[]
+}
+
 /**
  * Admin service for managing users and posts
  */
@@ -125,6 +160,64 @@ class AdminService {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.detail || 'Erro ao arquivar post')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Get post details (admin only)
+   */
+  async getPost(postId: string): Promise<BlogPostDetail> {
+    const response = await fetch(`${API_URL}/blog/admin/posts/${postId}`, {
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Erro ao buscar post')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Create new post (draft)
+   */
+  async createPost(data: CreatePostRequest): Promise<{ id: string; slug: string }> {
+    const response = await fetch(`${API_URL}/blog/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Erro ao criar post')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Update post
+   */
+  async updatePost(postId: string, data: UpdatePostRequest): Promise<{ id: string }> {
+    const response = await fetch(`${API_URL}/blog/posts/${postId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Erro ao atualizar post')
     }
 
     return response.json()

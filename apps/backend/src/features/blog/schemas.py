@@ -54,6 +54,7 @@ class BlogPostDetailResponse(BaseModel):
     content: str
     cover_image_url: Optional[str] = None
     category_id: Optional[str] = None
+    tags: Optional[list[str]] = None
     published_at: Optional[str] = None
     authors: list[AuthorInfo]
 

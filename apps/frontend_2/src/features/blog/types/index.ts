@@ -7,12 +7,16 @@ export interface BlogPost {
   tags?: string[]
   featured_image?: string
   cover_image_url?: string
-  author_id: string
+  author_id?: string
   author?: {
     id: string
     name: string
     avatar_url?: string
   }
+  authors?: Array<{
+    id: string
+    name: string
+  }>
   published: boolean
   published_at?: string
   created_at: string
