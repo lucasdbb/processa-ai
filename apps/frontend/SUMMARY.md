@@ -169,7 +169,7 @@ O build atualmente falha em `/_global-error` devido a um problema de SSR com Rad
 
 ```bash
 # Desenvolvimento (FUNCIONA!)
-cd apps/frontend_2
+cd apps/frontend
 npm install
 npm run dev
 # Acesse http://localhost:3000
@@ -178,7 +178,7 @@ npm run dev
 ### Estrutura de Arquivos Criada
 
 ```
-apps/frontend_2/
+apps/frontend/
 ├── src/
 │   ├── app/
 │   │   ├── _components/

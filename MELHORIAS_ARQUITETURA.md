@@ -397,7 +397,7 @@ useEffect(() => {
 - **Soluções:**
 ```typescript
 // 1. Remover force-dynamic se possível
-// apps/frontend_2/src/app/page.tsx
+// apps/frontend/src/app/page.tsx
 // export const dynamic = 'force-dynamic'  // Remover se não necessário
 
 // 2. Adicionar debounce em buscas
@@ -717,7 +717,7 @@ apps/backend/
 ### Frontend - Arquivos a Criar
 
 ```
-apps/frontend_2/
+apps/frontend/
 ├── src/
 │   ├── components/
 │   │   ├── error-boundary.tsx     # ✨ NOVO

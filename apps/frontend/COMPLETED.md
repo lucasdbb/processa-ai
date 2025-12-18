@@ -202,7 +202,7 @@ A migração do frontend para Next.js 15 foi **100% completada** com sucesso! To
 ## 📁 Estrutura Final
 
 ```
-apps/frontend_2/
+apps/frontend/
 ├── src/
 │   ├── app/
 │   │   ├── _components/
@@ -304,7 +304,7 @@ apps/frontend_2/
 ### Desenvolvimento
 
 ```bash
-cd apps/frontend_2
+cd apps/frontend
 npm install
 npm run dev
 ```
