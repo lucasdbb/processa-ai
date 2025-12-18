@@ -25,13 +25,19 @@ user_service = UserService()
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str, expires_in: int = 3600):
     """Set httpOnly cookies for authentication tokens"""
+    from src.core.config import settings
+
+    # Use SameSite=None for cross-site cookies in production (requires Secure=True)
+    # Use SameSite=Lax for same-site in development
+    is_production = settings.ENVIRONMENT == "production"
+
     # Access token cookie (shorter expiration)
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
-        samesite="lax",
+        secure=is_production,  # True in production (HTTPS required for SameSite=None)
+        samesite="none" if is_production else "lax",  # None for cross-site in production
         max_age=expires_in,  # Expires with the token
         path="/",
     )
@@ -41,8 +47,8 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str, 
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
-        samesite="lax",
+        secure=is_production,  # True in production (HTTPS required for SameSite=None)
+        samesite="none" if is_production else "lax",  # None for cross-site in production
         max_age=60 * 60 * 24 * 7,  # 7 days
         path="/",
     )
