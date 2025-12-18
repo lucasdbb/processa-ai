@@ -23,6 +23,7 @@ import type { UserListItem, AdminPostListItem } from '@/features/blog/services/a
 import type { User as AuthUser } from '@/features/auth/types'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 interface AdminPanelProps {
   user: AuthUser
@@ -217,14 +218,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando painel...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen size="lg" />
   }
 
   return (

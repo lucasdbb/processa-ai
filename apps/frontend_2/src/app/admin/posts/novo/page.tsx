@@ -147,7 +147,7 @@ export default function NewPostPage() {
 
   // Mostrar loading apenas durante verificação inicial de auth
   if (isAuthLoading && !hasCheckedAuth) {
-    return <LoadingSpinner fullScreen size="lg" text="Carregando..." />
+    return <LoadingSpinner fullScreen size="lg" />
   }
 
   if (!user || user.role !== 'admin') {

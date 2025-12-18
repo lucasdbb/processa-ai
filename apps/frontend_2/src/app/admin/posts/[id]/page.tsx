@@ -205,7 +205,7 @@ export default function EditPostPage() {
 
   // Mostrar loading apenas durante verificação inicial de auth ou carregamento do post
   if ((isAuthLoading && !hasCheckedAuth) || (hasCheckedAuth && isLoading)) {
-    return <LoadingSpinner fullScreen size="lg" text="Carregando post..." />
+    return <LoadingSpinner fullScreen size="lg" />
   }
 
   if (!user || user.role !== 'admin' || !post) {

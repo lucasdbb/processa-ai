@@ -34,7 +34,7 @@ export default function AdminPage() {
 
   // Mostrar loading apenas enquanto está realmente verificando
   if (isLoading && !hasCheckedAuth) {
-    return <LoadingSpinner fullScreen size="lg" text="Carregando painel..." />
+    return <LoadingSpinner fullScreen size="lg" />
   }
 
   if (!user || user.role !== 'admin') {
@@ -42,7 +42,7 @@ export default function AdminPage() {
   }
 
   return (
-    <Suspense fallback={<LoadingSpinner fullScreen size="lg" text="Carregando painel..." />}>
+    <Suspense fallback={<LoadingSpinner fullScreen size="lg" />}>
       <AdminPanel user={user} />
     </Suspense>
   )

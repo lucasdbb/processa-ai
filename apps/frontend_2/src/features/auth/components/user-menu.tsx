@@ -59,7 +59,7 @@ export function UserMenu({ user }: UserMenuProps) {
   }
 
   return (
-    <DropdownMenu onOpenChange={setIsOpen}>
+    <DropdownMenu modal={false} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
           <Avatar className="h-8 w-8">
