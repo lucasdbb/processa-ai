@@ -3,9 +3,6 @@
  * This ensures that httpOnly cookies are always sent with requests
  */
 
-// Store reference to native fetch before Next.js can override it
-const nativeFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : fetch;
-
 export interface FetchOptions extends RequestInit {
   credentials?: RequestCredentials;
 }
@@ -26,8 +23,13 @@ export async function fetchWithCredentials(
     cache: init?.cache ?? 'no-store',
   };
 
-  // Use native fetch if in browser, otherwise use Next.js fetch
-  const fetchFn = typeof window !== 'undefined' ? nativeFetch : fetch;
+  // CRITICAL: Get native fetch at runtime, not at import time
+  // This ensures we get the real browser fetch, not Next.js polyfill
+  if (typeof window !== 'undefined' && window.fetch) {
+    // We're in the browser - use native fetch directly
+    return window.fetch(input, options);
+  }
 
-  return fetchFn(input, options);
+  // We're on the server - use Next.js fetch (but this shouldn't happen for auth)
+  return fetch(input, options);
 }
