@@ -28,6 +28,7 @@ export const authService = {
       },
       body: JSON.stringify(credentials),
       credentials: 'include', // Important: sends and receives cookies
+      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {
@@ -50,6 +51,7 @@ export const authService = {
       },
       body: JSON.stringify(data),
       credentials: 'include', // Important: sends and receives cookies
+      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {
@@ -68,6 +70,7 @@ export const authService = {
     const response = await fetch(`${API_URL}/auth/logout`, {
       method: 'POST',
       credentials: 'include', // Important: sends cookies to be cleared
+      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {
@@ -110,6 +113,7 @@ export const authService = {
       },
       body: JSON.stringify(data),
       credentials: 'include', // Important: sends cookies automatically
+      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {

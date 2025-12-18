@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+
+  // Experimental: disable fetch cache to preserve credentials
+  experimental: {
+    fetchCacheKeyPrefix: '',
+  },
 };
 
 export default nextConfig;
