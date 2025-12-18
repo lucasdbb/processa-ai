@@ -1,5 +1,6 @@
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
-const API_URL = `${BACKEND_URL}/api`
+import { fetchWithCredentials } from '@/lib/fetch'
+
+const API_URL = '/api'
 
 /**
  * User list item interface
@@ -121,9 +122,7 @@ class AdminService {
     if (search) params.append('search', search)
     if (status && status !== 'all') params.append('status', status)
 
-    const response = await fetch(`${API_URL}/blog/admin/posts?${params.toString()}`, {
-      credentials: 'include',
-    })
+    const response = await fetchWithCredentials(`${API_URL}/blog/admin/posts?${params.toString()}`)
 
     if (!response.ok) {
       const error = await response.json()
@@ -137,9 +136,8 @@ class AdminService {
    * Publish post (admin only)
    */
   async publishPost(postId: string): Promise<{ id: string; status: string }> {
-    const response = await fetch(`${API_URL}/blog/posts/${postId}/publish`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts/${postId}/publish`, {
       method: 'PATCH',
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -151,9 +149,8 @@ class AdminService {
   }
 
   async restorePostToDraft(postId: string): Promise<{ id: string; status: string }> {
-    const response = await fetch(`${API_URL}/blog/posts/${postId}/restore`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts/${postId}/restore`, {
       method: 'PATCH',
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -168,9 +165,8 @@ class AdminService {
    * Delete post (admin only) - soft delete (archives)
    */
   async deletePost(postId: string): Promise<{ id: string; deleted: boolean }> {
-    const response = await fetch(`${API_URL}/blog/posts/${postId}`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts/${postId}`, {
       method: 'DELETE',
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -185,9 +181,7 @@ class AdminService {
    * Get post details (admin only)
    */
   async getPost(postId: string): Promise<BlogPostDetail> {
-    const response = await fetch(`${API_URL}/blog/admin/posts/${postId}`, {
-      credentials: 'include',
-    })
+    const response = await fetchWithCredentials(`${API_URL}/blog/admin/posts/${postId}`)
 
     if (!response.ok) {
       const error = await response.json()
@@ -201,12 +195,11 @@ class AdminService {
    * Create new post (draft)
    */
   async createPost(data: CreatePostRequest): Promise<{ id: string; slug: string }> {
-    const response = await fetch(`${API_URL}/blog/posts`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      credentials: 'include',
       body: JSON.stringify(data),
     })
 
@@ -222,12 +215,11 @@ class AdminService {
    * Update post
    */
   async updatePost(postId: string, data: UpdatePostRequest): Promise<{ id: string }> {
-    const response = await fetch(`${API_URL}/blog/posts/${postId}`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts/${postId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      credentials: 'include',
       body: JSON.stringify(data),
     })
 
@@ -258,9 +250,7 @@ class AdminService {
     if (search) params.append('search', search)
 
     const url = `${API_URL}/users/${params.toString() ? `?${params.toString()}` : ''}`
-    const response = await fetch(url, {
-      credentials: 'include',
-    })
+    const response = await fetchWithCredentials(url)
 
     if (!response.ok) {
       const error = await response.json()
@@ -309,12 +299,11 @@ class AdminService {
     userId: string,
     role: 'user' | 'author' | 'admin' | 'premium'
   ): Promise<{ message: string; user: { id: string; email: string; role: string } }> {
-    const response = await fetch(`${API_URL}/users/update-role`, {
+    const response = await fetchWithCredentials(`${API_URL}/users/update-role`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      credentials: 'include',
       body: JSON.stringify({ userId, role }),
     })
 

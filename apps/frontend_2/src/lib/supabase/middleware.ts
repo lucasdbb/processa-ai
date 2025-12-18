@@ -1,8 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000")
-const API_URL = `${BACKEND_URL}/api`;
-
 /**
  * Middleware for session management and route protection
  * Uses httpOnly cookies for secure authentication
@@ -29,7 +26,7 @@ export async function updateSession(request: NextRequest) {
   // Try to verify user session with backend using httpOnly cookies
   try {
     // Call /auth/me endpoint - backend will read httpOnly cookie automatically
-    const response = await fetch(`${API_URL}/auth/me`, {
+    const response = await fetch(new URL('/api/auth/me', request.url), {
       method: "GET",
       headers: {
         Cookie: request.headers.get("cookie") || "",

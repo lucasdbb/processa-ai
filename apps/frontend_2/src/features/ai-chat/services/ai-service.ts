@@ -1,9 +1,10 @@
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
-const API_URL = `${BACKEND_URL}/api`
+import { fetchWithCredentials } from '@/lib/fetch'
+
+const API_URL = '/api'
 
 export const aiService = {
   async sendMessage(message: string, sessionId?: string): Promise<string> {
-    const response = await fetch(`${API_URL}/ai/chat`, {
+    const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -12,7 +13,6 @@ export const aiService = {
         message,
         session_id: sessionId,
       }),
-      credentials: 'include',
     })
 
     if (!response.ok) {

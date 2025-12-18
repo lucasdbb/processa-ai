@@ -1,7 +1,8 @@
 import type { BlogPost, CreatePostData, UpdatePostData } from '../types'
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
-const API_URL = `${BACKEND_URL}/api`
+import { fetchWithCredentials } from '@/lib/fetch'
+
+const API_URL = '/api'
 
 export const postService = {
   async getPosts(params?: {
@@ -16,9 +17,7 @@ export const postService = {
     if (params?.limit) queryParams.append('limit', String(params.limit))
     if (params?.offset) queryParams.append('offset', String(params.offset))
 
-    const response = await fetch(`${API_URL}/blog/posts?${queryParams}`, {
-      credentials: 'include',
-    })
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts?${queryParams}`)
 
     if (!response.ok) {
       throw new Error('Erro ao carregar posts')
@@ -29,9 +28,7 @@ export const postService = {
   },
 
   async getPost(id: string): Promise<BlogPost> {
-    const response = await fetch(`${API_URL}/blog/posts/${id}`, {
-      credentials: 'include',
-    })
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts/${id}`)
 
     if (!response.ok) {
       throw new Error('Erro ao carregar post')
@@ -41,13 +38,12 @@ export const postService = {
   },
 
   async createPost(data: CreatePostData): Promise<BlogPost> {
-    const response = await fetch(`${API_URL}/blog/posts`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -60,13 +56,12 @@ export const postService = {
 
   async updatePost(data: UpdatePostData): Promise<BlogPost> {
     const { id, ...updateData } = data
-    const response = await fetch(`${API_URL}/blog/posts/${id}`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(updateData),
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -78,9 +73,8 @@ export const postService = {
   },
 
   async deletePost(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/blog/posts/${id}`, {
+    const response = await fetchWithCredentials(`${API_URL}/blog/posts/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
     })
 
     if (!response.ok) {

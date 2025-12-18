@@ -7,8 +7,7 @@ import type {
 } from '../types'
 import { fetchWithCredentials } from '@/lib/fetch'
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
-const API_URL = `${BACKEND_URL}/api`
+const API_URL = '/api'
 
 /**
  * Authentication Service
@@ -119,7 +118,7 @@ export const authService = {
    * Request password reset
    */
   async forgotPassword(email: string): Promise<void> {
-    const response = await fetch(`${API_URL}/auth/forgot-password`, {
+    const response = await fetchWithCredentials(`${API_URL}/auth/forgot-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -137,7 +136,7 @@ export const authService = {
    * Reset password with token
    */
   async resetPassword(data: ResetPasswordData): Promise<void> {
-    const response = await fetch(`${API_URL}/auth/reset-password`, {
+    const response = await fetchWithCredentials(`${API_URL}/auth/reset-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -156,7 +155,7 @@ export const authService = {
    * Verify email with token
    */
   async verifyEmail(token: string): Promise<void> {
-    const response = await fetch(`${API_URL}/auth/verify-email`, {
+    const response = await fetchWithCredentials(`${API_URL}/auth/verify-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
