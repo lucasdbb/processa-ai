@@ -5,6 +5,7 @@ import type {
   UpdateProfileData,
   ResetPasswordData,
 } from '../types'
+import { fetchWithCredentials } from '@/lib/fetch'
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
 const API_URL = `${BACKEND_URL}/api`
@@ -21,14 +22,12 @@ export const authService = {
    * Backend sets httpOnly cookies automatically
    */
   async login(credentials: LoginCredentials): Promise<{ user: User; access_token: string; refresh_token: string; token_type: string; expires_in: number }> {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await fetchWithCredentials(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
-      credentials: 'include', // Important: sends and receives cookies
-      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {
@@ -44,14 +43,12 @@ export const authService = {
    * Backend sets httpOnly cookies automatically
    */
   async register(data: RegisterData): Promise<{ user: User; access_token: string; refresh_token: string; token_type: string; expires_in: number }> {
-    const response = await fetch(`${API_URL}/auth/register`, {
+    const response = await fetchWithCredentials(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
-      credentials: 'include', // Important: sends and receives cookies
-      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {
@@ -67,10 +64,8 @@ export const authService = {
    * Backend clears httpOnly cookies automatically
    */
   async logout(): Promise<void> {
-    const response = await fetch(`${API_URL}/auth/logout`, {
+    const response = await fetchWithCredentials(`${API_URL}/auth/logout`, {
       method: 'POST',
-      credentials: 'include', // Important: sends cookies to be cleared
-      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {
@@ -84,10 +79,8 @@ export const authService = {
    */
   async getCurrentUser(): Promise<User | null> {
     try {
-      const response = await fetch(`${API_URL}/auth/me`, {
+      const response = await fetchWithCredentials(`${API_URL}/auth/me`, {
         method: 'GET',
-        credentials: 'include', // Important: sends cookies automatically
-        cache: 'no-store', // Disable Next.js caching for auth requests
       })
 
       if (!response.ok) {
@@ -106,14 +99,12 @@ export const authService = {
    * Uses httpOnly cookie automatically sent by browser
    */
   async updateProfile(data: UpdateProfileData): Promise<User> {
-    const response = await fetch(`${API_URL}/users/profile`, {
+    const response = await fetchWithCredentials(`${API_URL}/users/profile`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
-      credentials: 'include', // Important: sends cookies automatically
-      cache: 'no-store', // Disable Next.js caching
     })
 
     if (!response.ok) {

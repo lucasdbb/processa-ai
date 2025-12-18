@@ -23,7 +23,6 @@ export const metadata: Metadata = {
 
 // Force dynamic rendering for all pages to preserve auth cookies
 export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
 
 export default function RootLayout({
   children,
