@@ -84,6 +84,7 @@ export const authService = {
       const response = await fetch(`${API_URL}/auth/me`, {
         method: 'GET',
         credentials: 'include', // Important: sends cookies automatically
+        cache: 'no-store', // Disable Next.js caching for auth requests
       })
 
       if (!response.ok) {
