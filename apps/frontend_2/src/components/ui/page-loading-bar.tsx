@@ -14,7 +14,6 @@ export function PageLoadingBar() {
 
   useEffect(() => {
     const handleStart = () => setLoading(true)
-    const handleComplete = () => setLoading(false)
 
     // Listen to route changes
     window.addEventListener('beforeunload', handleStart)

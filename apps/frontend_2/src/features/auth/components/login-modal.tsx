@@ -227,7 +227,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
                   aria-hidden="true"
                 />
                 <input
-                  ref={!isLogin ? firstInputRef : undefined}
+                  {...(!isLogin ? { ref: firstInputRef } : {})}
                   type="text"
                   id="name"
                   placeholder="Seu nome completo"
@@ -259,7 +259,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
                 aria-hidden="true"
               />
               <input
-                ref={isLogin ? firstInputRef : undefined}
+                {...(isLogin ? { ref: firstInputRef } : {})}
                 type="email"
                 id="email"
                 placeholder="seu@email.com"

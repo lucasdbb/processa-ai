@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Brain,
   Calculator,
@@ -282,10 +283,12 @@ export function HomePage() {
                 </div>
               </div>
               {/* Placeholder para o vídeo - substituir src pelo vídeo real */}
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop"
                 alt="Demonstração da Plataforma"
-                className="w-full h-full object-cover opacity-80"
+                fill
+                sizes="(max-width: 1024px) 100vw, 80vw"
+                className="object-cover opacity-80"
               />
             </div>
           </div>

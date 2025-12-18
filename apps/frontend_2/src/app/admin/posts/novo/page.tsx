@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { adminService } from '@/features/blog/services/admin-service'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -17,6 +18,7 @@ export default function NewPostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
+  const [isCoverPreviewHidden, setIsCoverPreviewHidden] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
@@ -71,13 +73,14 @@ export default function NewPostPage() {
       reader.onloadend = () => {
         const base64String = reader.result as string
         setFormData({ ...formData, cover_image_url: base64String })
+        setIsCoverPreviewHidden(false)
         toast.success('Imagem carregada!')
       }
       reader.onerror = () => {
         toast.error('Erro ao ler arquivo')
       }
       reader.readAsDataURL(file)
-    } catch (error) {
+    } catch {
       toast.error('Erro ao processar imagem')
     } finally {
       setIsUploadingImage(false)
@@ -124,7 +127,7 @@ export default function NewPostPage() {
     setIsSubmitting(true)
 
     try {
-      const result = await adminService.createPost({
+      await adminService.createPost({
         title: formData.title,
         excerpt: formData.excerpt || undefined,
         content: formData.content,
@@ -236,24 +239,33 @@ export default function NewPostPage() {
                 <input
                   type="url"
                   value={formData.cover_image_url.startsWith('data:') ? '' : formData.cover_image_url}
-                  onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, cover_image_url: e.target.value })
+                    setIsCoverPreviewHidden(false)
+                  }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                   placeholder="Ou cole uma URL de imagem"
                 />
               </div>
-              {formData.cover_image_url && (
+              {formData.cover_image_url && !isCoverPreviewHidden && (
                 <div className="relative">
-                  <img
-                    src={formData.cover_image_url}
-                    alt="Preview"
-                    className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-200"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
+                  <div className="relative w-full max-w-md h-48 rounded-lg border border-gray-200 overflow-hidden">
+                    <Image
+                      src={formData.cover_image_url}
+                      alt="Preview"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 448px"
+                      className="object-cover"
+                      unoptimized
+                      onError={() => setIsCoverPreviewHidden(true)}
+                    />
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, cover_image_url: '' })}
+                    onClick={() => {
+                      setFormData({ ...formData, cover_image_url: '' })
+                      setIsCoverPreviewHidden(false)
+                    }}
                     className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
                   >
                     <X className="w-4 h-4" />

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, User, Eye } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,11 +16,13 @@ export function PostCard({ post }: PostCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       {post.featured_image && (
-        <div className="aspect-video w-full overflow-hidden">
-          <img
+        <div className="relative aspect-video w-full overflow-hidden">
+          <Image
             src={post.featured_image}
             alt={post.title}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover hover:scale-105 transition-transform duration-300"
           />
         </div>
       )}
@@ -31,7 +34,7 @@ export function PostCard({ post }: PostCardProps) {
           )}
         </div>
         <CardTitle className="line-clamp-2 hover:text-primary-700 transition-colors">
-          <Link href={`/blog/${post.id}`}>
+          <Link href={`/blog/${post.slug}`}>
             {post.title}
           </Link>
         </CardTitle>

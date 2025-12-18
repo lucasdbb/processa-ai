@@ -1,7 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Linkedin, Instagram, Facebook } from 'lucide-react'
 
 export function Footer() {
@@ -20,9 +20,11 @@ export function Footer() {
               onClick={scrollToTop}
               className="flex items-center gap-2 group"
             >
-              <img
+              <Image
                 src="/logo.png"
                 alt=""
+                width={96}
+                height={24}
                 className="h-6 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
               />
             </Link>

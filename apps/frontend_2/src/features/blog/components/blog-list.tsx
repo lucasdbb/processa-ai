@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, User, Clock, Search } from 'lucide-react'
 import type { BlogPost } from '../types'
 
@@ -88,16 +89,20 @@ export function BlogList({ initialPosts }: BlogListProps) {
             <div className="md:flex">
               <div className="md:w-1/2 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900/10 group-hover:bg-gray-900/0 transition-colors z-10" />
-                <img
-                  src={
-                    featuredPost.cover_image_url ||
-                    featuredPost.featured_image ||
-                    'https://images.unsplash.com/photo-1554224154-26032fced8bd?w=800&h=500&fit=crop'
-                  }
-                  alt={`Imagem ilustrativa do artigo: ${featuredPost.title}`}
-                  className="w-full h-64 md:h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                  loading="lazy"
-                />
+                <div className="relative w-full h-64 md:h-full">
+                  <Image
+                    src={
+                      featuredPost.cover_image_url ||
+                      featuredPost.featured_image ||
+                      'https://images.unsplash.com/photo-1554224154-26032fced8bd?w=800&h=500&fit=crop'
+                    }
+                    alt={`Imagem ilustrativa do artigo: ${featuredPost.title}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover transform group-hover:scale-105 transition-transform duration-700"
+                    loading="lazy"
+                  />
+                </div>
               </div>
               <div className="md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-6">
@@ -172,14 +177,16 @@ export function BlogList({ initialPosts }: BlogListProps) {
             >
               <div className="relative h-56 overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900/0 group-hover:bg-gray-900/5 transition-colors z-10" />
-                <img
+                <Image
                   src={
                     post.cover_image_url ||
                     post.featured_image ||
                     'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&h=400&fit=crop'
                   }
                   alt={`Imagem ilustrativa do artigo: ${post.title}`}
-                  className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover transform group-hover:scale-110 transition-transform duration-700"
                   loading="lazy"
                 />
                 {post.category && (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import {
   Users,
   Shield,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react'
 import { adminService } from '@/features/blog/services/admin-service'
 import type { UserListItem, AdminPostListItem } from '@/features/blog/services/admin-service'
-import type { User as AuthUser } from '@/features/auth/types/auth'
+import type { User as AuthUser } from '@/features/auth/types'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -36,12 +37,15 @@ export function AdminPanel({ user }: AdminPanelProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const roleFilterValues = ['all', 'user', 'author', 'admin', 'premium'] as const
+  type RoleFilter = (typeof roleFilterValues)[number]
+  const isRoleFilter = (value: string): value is RoleFilter =>
+    (roleFilterValues as readonly string[]).includes(value)
+
   // Users State
   const [users, setUsers] = useState<UserListItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'author' | 'admin' | 'premium'>(
-    'all'
-  )
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null)
   const [isUpdatingRole, setIsUpdatingRole] = useState(false)
 
@@ -114,7 +118,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
 
   const handleRoleUpdate = async (
     userId: string,
-    newRole: 'user' | 'author' | 'admin' | 'premium'
+    newRole: UserListItem['role']
   ) => {
     try {
       setIsUpdatingRole(true)
@@ -130,11 +134,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
     }
   }
 
-  const handlePostAction = async (
-    id: string,
-    action: 'archive' | 'publish' | 'restore',
-    title: string
-  ) => {
+  const handlePostAction = async (id: string, action: 'archive' | 'publish' | 'restore') => {
     try {
       if (action === 'publish') {
         await adminService.publishPost(id)
@@ -430,7 +430,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                   </div>
                   <select
                     value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value as any)}
+                    onChange={(e) => setRoleFilter(isRoleFilter(e.target.value) ? e.target.value : 'all')}
                     className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white min-w-[200px]"
                   >
                     <option value="all">Todas as roles</option>
@@ -458,11 +458,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium overflow-hidden">
                                 {u.avatar_url ? (
-                                  <img
-                                    src={u.avatar_url}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
+                                  <Image src={u.avatar_url} alt="" width={40} height={40} className="w-full h-full object-cover" unoptimized />
                                 ) : u.name ? (
                                   u.name.substring(0, 2).toUpperCase()
                                 ) : (
@@ -612,7 +608,7 @@ export function AdminPanel({ user }: AdminPanelProps) {
                             </button>
                             {p.status === 'draft' && (
                               <button
-                                onClick={() => handlePostAction(p.id, 'publish', p.title)}
+                                onClick={() => handlePostAction(p.id, 'publish')}
                                 className="text-green-600 hover:text-green-700 font-medium text-xs px-3 py-1 rounded-md border border-green-200 hover:bg-green-50"
                               >
                                 Publicar

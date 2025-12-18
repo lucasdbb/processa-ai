@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
+const API_URL = `${BACKEND_URL}/api`
 
 /**
  * User list item interface
@@ -27,6 +28,21 @@ export interface ListUsersResponse {
   page: number
   limit: number
 }
+
+const userRoleValues = ['user', 'author', 'admin', 'premium'] as const
+
+const isUserRole = (value: unknown): value is UserListItem['role'] =>
+  typeof value === 'string' && (userRoleValues as readonly string[]).includes(value)
+
+const toStringOrEmpty = (value: unknown): string => (typeof value === 'string' ? value : '')
+
+const toStringOrNull = (value: unknown): string | null =>
+  typeof value === 'string' ? value : null
+
+const toBoolean = (value: unknown): boolean => (typeof value === 'boolean' ? value : false)
+
+const toUserId = (value: unknown): string =>
+  typeof value === 'string' ? value : typeof value === 'number' ? String(value) : ''
 
 export interface AdminPostListItem {
   id: string
@@ -252,20 +268,31 @@ class AdminService {
     }
 
     const raw = await response.json()
-    const users: UserListItem[] = (Array.isArray(raw) ? raw : []).map((p: any) => ({
-      id: p.id,
-      email: p.email,
-      name: p.name || p.full_name || '',
-      role: p.role ?? 'user',
-      status: p.status || 'active',
-      avatar_url: p.avatar_url ?? null,
-      document_type: p.document_type ?? null,
-      document_number: p.document_number ?? null,
-      phone: p.phone ?? null,
-      email_verified: p.email_verified ?? false,
-      created_at: p.created_at,
-      last_sign_in_at: p.last_sign_in_at ?? null,
-    }))
+    const users: UserListItem[] = (Array.isArray(raw) ? raw : []).map((p) => {
+      const record = typeof p === 'object' && p !== null ? (p as Record<string, unknown>) : {}
+      const name =
+        typeof record.name === 'string'
+          ? record.name
+          : typeof record.full_name === 'string'
+            ? record.full_name
+            : ''
+
+      return {
+        id: toUserId(record.id),
+        email: toStringOrEmpty(record.email),
+        name,
+        role: isUserRole(record.role) ? record.role : 'user',
+        status: toStringOrEmpty(record.status) || 'active',
+        avatar_url: toStringOrNull(record.avatar_url),
+        document_type: toStringOrNull(record.document_type),
+        document_number: toStringOrNull(record.document_number),
+        phone: toStringOrNull(record.phone),
+        email_verified: toBoolean(record.email_verified),
+        created_at:
+          typeof record.created_at === 'string' ? record.created_at : new Date().toISOString(),
+        last_sign_in_at: toStringOrNull(record.last_sign_in_at),
+      }
+    })
 
     return {
       users,

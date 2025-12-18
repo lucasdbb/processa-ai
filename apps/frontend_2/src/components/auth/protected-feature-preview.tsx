@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/footer'
 import { Button } from '@/components/ui/button'
 import { Lock, Sparkles, CheckCircle2 } from 'lucide-react'
 import { LoginModal } from '@/features/auth/components/login-modal'
+import Image from 'next/image'
 
 interface ProtectedFeaturePreviewProps {
   title: string
@@ -81,9 +82,12 @@ export function ProtectedFeaturePreview({
             <div className="mb-16 relative">
               <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-transparent z-10 pointer-events-none" />
               <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200">
-                <img
+                <Image
                   src={imageSrc}
                   alt={imageAlt || title}
+                  width={1200}
+                  height={675}
+                  sizes="100vw"
                   className="w-full h-auto opacity-60 blur-sm"
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900/30 backdrop-blur-sm">

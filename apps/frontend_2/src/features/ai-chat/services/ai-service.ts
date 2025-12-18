@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000')
+const API_URL = `${BACKEND_URL}/api`
 
 export const aiService = {
   async sendMessage(message: string, sessionId?: string): Promise<string> {

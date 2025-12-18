@@ -8,7 +8,6 @@ import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 
 type CalculatorType = 'rescisao' | 'aposentadoria'
-type DocumentType = 'cpf' | 'cnpj'
 
 interface CalculatorFormData {
   // Rescisão
@@ -29,10 +28,35 @@ interface CalculatorFormData {
   tipoAposentadoria: string
 }
 
-interface Resultado {
-  tipo: 'rescisao' | 'aposentadoria'
-  detalhes: any
+type RescisaoDetalhes = {
+  saldoSalario: number
+  avisoPrevio: number
+  feriasVencidas: number
+  feriasProporcionais: number
+  decimoTerceiro: number
+  fgts: number
+  multaFgts: number
+  total: number
 }
+
+type AposentadoriaDetalhes = {
+  podeAposentar: boolean
+  anosRestantes: number
+  tempoRestante: number
+  beneficio: number
+  idadeMinima: number
+  tempoMinimoContrib: number
+}
+
+type Resultado =
+  | {
+      tipo: 'rescisao'
+      detalhes: RescisaoDetalhes
+    }
+  | {
+      tipo: 'aposentadoria'
+      detalhes: AposentadoriaDetalhes
+    }
 
 interface CalculatorConfig {
   id: CalculatorType

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { AdminPanel } from '@/features/admin/components/admin-panel'
@@ -41,5 +41,9 @@ export default function AdminPage() {
     return null
   }
 
-  return <AdminPanel user={user} />
+  return (
+    <Suspense fallback={<LoadingSpinner fullScreen size="lg" text="Carregando painel..." />}>
+      <AdminPanel user={user} />
+    </Suspense>
+  )
 }

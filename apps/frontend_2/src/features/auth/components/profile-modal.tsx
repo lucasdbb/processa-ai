@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
+import Image from 'next/image'
 import type { User, DocumentType } from '../types'
 import {
   phoneMask,
@@ -206,15 +207,11 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
         <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
           <div className="flex items-center gap-4">
             <div className="relative group">
-              <div className="w-14 h-14 bg-gray-900 text-white rounded-full flex items-center justify-center text-lg font-bold overflow-hidden shadow-md ring-2 ring-gray-100">
+              <div className="relative w-14 h-14 bg-gray-900 text-white rounded-full flex items-center justify-center text-lg font-bold overflow-hidden shadow-md ring-2 ring-gray-100">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <Image src={avatarPreview} alt="Preview" fill className="object-cover" unoptimized />
                 ) : user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt="Avatar"
-                    className="w-full h-full object-cover"
-                  />
+                  <Image src={user.avatar_url} alt="Avatar" fill className="object-cover" unoptimized />
                 ) : (
                   getInitials(user.name || user.email)
                 )}

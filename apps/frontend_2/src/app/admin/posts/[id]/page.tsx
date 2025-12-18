@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { adminService, type BlogPostDetail } from '@/features/blog/services/admin-service'
@@ -10,6 +10,7 @@ import { ArrowLeft, Save, Eye, Archive, Upload, X, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { MarkdownEditor } from '@/components/editor/markdown-editor'
 import { CategorySelect } from '@/components/forms/category-select'
+import Image from 'next/image'
 
 export default function EditPostPage() {
   const router = useRouter()
@@ -33,6 +34,7 @@ export default function EditPostPage() {
   })
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
+  const [isCoverPreviewHidden, setIsCoverPreviewHidden] = useState(false)
 
   // Timeout de segurança: se após 5 segundos ainda estiver carregando auth, redirecionar
   useEffect(() => {
@@ -53,13 +55,7 @@ export default function EditPostPage() {
     }
   }, [user, isAuthLoading, router])
 
-  useEffect(() => {
-    if (hasCheckedAuth && user && user.role === 'admin' && postId) {
-      loadPost()
-    }
-  }, [hasCheckedAuth, user, postId])
-
-  const loadPost = async () => {
+  const loadPost = useCallback(async () => {
     try {
       setIsLoading(true)
       const data = await adminService.getPost(postId)
@@ -78,7 +74,13 @@ export default function EditPostPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [postId, router])
+
+  useEffect(() => {
+    if (hasCheckedAuth && user && user.role === 'admin' && postId) {
+      loadPost()
+    }
+  }, [hasCheckedAuth, user, postId, loadPost])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -100,6 +102,7 @@ export default function EditPostPage() {
       const reader = new FileReader()
       reader.onloadend = () => {
         const base64String = reader.result as string
+        setIsCoverPreviewHidden(false)
         setFormData({ ...formData, cover_image_url: base64String })
         toast.success('Imagem carregada!')
       }
@@ -107,7 +110,7 @@ export default function EditPostPage() {
         toast.error('Erro ao ler arquivo')
       }
       reader.readAsDataURL(file)
-    } catch (error) {
+    } catch {
       toast.error('Erro ao processar imagem')
     } finally {
       setIsUploadingImage(false)
@@ -317,24 +320,33 @@ export default function EditPostPage() {
                 <input
                   type="url"
                   value={formData.cover_image_url.startsWith('data:') ? '' : formData.cover_image_url}
-                  onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
+                  onChange={(e) => {
+                    setIsCoverPreviewHidden(false)
+                    setFormData({ ...formData, cover_image_url: e.target.value })
+                  }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
                   placeholder="Ou cole uma URL de imagem"
                 />
               </div>
-              {formData.cover_image_url && (
+              {formData.cover_image_url && !isCoverPreviewHidden && (
                 <div className="relative">
-                  <img
-                    src={formData.cover_image_url}
-                    alt="Preview"
-                    className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-200"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
+                  <div className="relative w-full max-w-md h-48 rounded-lg border border-gray-200 overflow-hidden">
+                    <Image
+                      src={formData.cover_image_url}
+                      alt="Preview"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 448px"
+                      className="object-cover"
+                      unoptimized
+                      onError={() => setIsCoverPreviewHidden(true)}
+                    />
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, cover_image_url: '' })}
+                    onClick={() => {
+                      setIsCoverPreviewHidden(false)
+                      setFormData({ ...formData, cover_image_url: '' })
+                    }}
                     className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
                   >
                     <X className="w-4 h-4" />

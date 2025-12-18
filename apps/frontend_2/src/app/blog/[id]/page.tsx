@@ -9,6 +9,7 @@ import { postService } from '@/features/blog/services/post-service'
 import { formatDate } from '@/lib/utils'
 import type { Metadata } from 'next'
 import { MarkdownPreview } from '@/components/markdown/markdown-preview'
+import Image from 'next/image'
 
 // Revalidate every 5 minutes (ISR)
 export const revalidate = 300
@@ -46,7 +47,7 @@ export async function generateStaticParams() {
   try {
     const posts = await postService.getPosts({ published: true, limit: 20 })
     return posts.map((post) => ({
-      id: post.id,
+      id: post.slug,
     }))
   } catch {
     return []
@@ -59,7 +60,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
   try {
     const { id } = await params
     post = await postService.getPost(id)
-  } catch (error) {
+  } catch {
     notFound()
   }
 
@@ -95,10 +96,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                 {/* Imagem com Overlay - 80% */}
                 <div className="lg:w-[80%]">
                   <div className="relative w-full overflow-hidden rounded-2xl shadow-lg">
-                    <img
-                      src={post.cover_image_url || post.featured_image}
+                    <Image
+                      src={post.cover_image_url || post.featured_image || ''}
                       alt={post.title}
+                      width={1200}
+                      height={630}
+                      sizes="(max-width: 1024px) 100vw, 80vw"
                       className="w-full h-auto max-h-[500px] object-cover"
+                      priority
                     />
 
                     {/* Overlay com Título e Metadados */}

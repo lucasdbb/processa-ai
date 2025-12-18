@@ -1,6 +1,5 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { ArrowLeft } from 'lucide-react'
 
 export default function BlogPostLoading() {
   return (

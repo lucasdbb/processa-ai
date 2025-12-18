@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -73,10 +74,13 @@ export function Header({ onLoginClick }: HeaderProps) {
               className="flex items-center hover:opacity-80 transition-opacity focus:outline-none rounded-lg"
               aria-label="Processa AI - Página inicial"
             >
-              <img
+              <Image
                 src="/logo.png"
                 alt="Processa AI"
+                width={160}
+                height={40}
                 className="h-10 w-auto object-contain"
+                priority
               />
             </Link>
           </div>

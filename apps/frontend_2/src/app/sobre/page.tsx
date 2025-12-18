@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import Image from 'next/image'
 
 const values = [
   {
@@ -121,9 +122,12 @@ export default function AboutPage() {
             </div>
             <div className="relative group">
               <div className="absolute inset-0 bg-gray-900/10 rounded-[2rem] transform rotate-3 transition-transform group-hover:rotate-6 duration-300" />
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=600&h=400&fit=crop"
                 alt="Equipe da Processa AI trabalhando em conjunto em um ambiente moderno de escritório"
+                width={600}
+                height={400}
+                sizes="(max-width: 1024px) 100vw, 50vw"
                 className="relative rounded-[2rem] shadow-2xl w-full object-cover transform transition-transform duration-300 group-hover:-translate-y-2"
                 loading="lazy"
               />
@@ -215,9 +219,12 @@ export default function AboutPage() {
               >
                 <div className="relative inline-block mb-6 mx-auto">
                   <div className="absolute inset-0 bg-gray-900/5 rounded-full transform rotate-6 transition-transform group-hover:rotate-12" />
-                  <img
+                  <Image
                     src={member.image}
                     alt={`Foto de ${member.name}, ${member.role} da Processa AI`}
+                    width={128}
+                    height={128}
+                    sizes="128px"
                     className="relative w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                     loading="lazy"
                   />

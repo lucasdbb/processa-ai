@@ -18,70 +18,70 @@ import { ProtectedFeaturePreview } from '@/components/auth/protected-feature-pre
 import { toast } from 'sonner'
 import { useUser } from '@/features/auth/hooks/use-user'
 
+const TOOLS = [
+  {
+    id: 'petition',
+    name: 'Petição Inicial',
+    description: 'Crie petições iniciais com base nos fatos do caso',
+    icon: FileText,
+  },
+  {
+    id: 'contract',
+    name: 'Contratos',
+    description: 'Gere minutas de contratos personalizados',
+    icon: Edit3,
+  },
+  {
+    id: 'defense',
+    name: 'Contestação',
+    description: 'Elabore contestações e defesas processuais',
+    icon: MessageSquare,
+  },
+  {
+    id: 'appeal',
+    name: 'Recursos',
+    description: 'Crie recursos e apelações fundamentadas',
+    icon: Settings,
+  },
+] as const
+
+const TEMPLATES: Record<string, string[]> = {
+  petition: [
+    'Ação de Cobrança',
+    'Ação Trabalhista',
+    'Ação de Indenização',
+    'Ação Previdenciária',
+    'Ação de Despejo',
+  ],
+  contract: [
+    'Contrato de Trabalho',
+    'Contrato de Prestação de Serviços',
+    'Contrato de Locação',
+    'Contrato de Compra e Venda',
+    'Contrato de Sociedade',
+  ],
+  defense: [
+    'Contestação Trabalhista',
+    'Contestação Cível',
+    'Defesa Criminal',
+    'Impugnação ao Valor da Causa',
+    'Exceção de Incompetência',
+  ],
+  appeal: [
+    'Recurso Ordinário',
+    'Apelação Cível',
+    'Agravo de Instrumento',
+    'Recurso Especial',
+    'Recurso Extraordinário',
+  ],
+}
+
 export default function IAJuridicaPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
   const [selectedTool, setSelectedTool] = useState('petition')
   const [prompt, setPrompt] = useState('')
   const [generatedText, setGeneratedText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-
-  const tools = [
-    {
-      id: 'petition',
-      name: 'Petição Inicial',
-      description: 'Crie petições iniciais com base nos fatos do caso',
-      icon: FileText,
-    },
-    {
-      id: 'contract',
-      name: 'Contratos',
-      description: 'Gere minutas de contratos personalizados',
-      icon: Edit3,
-    },
-    {
-      id: 'defense',
-      name: 'Contestação',
-      description: 'Elabore contestações e defesas processuais',
-      icon: MessageSquare,
-    },
-    {
-      id: 'appeal',
-      name: 'Recursos',
-      description: 'Crie recursos e apelações fundamentadas',
-      icon: Settings,
-    },
-  ]
-
-  const templates: Record<string, string[]> = {
-    petition: [
-      'Ação de Cobrança',
-      'Ação Trabalhista',
-      'Ação de Indenização',
-      'Ação Previdenciária',
-      'Ação de Despejo',
-    ],
-    contract: [
-      'Contrato de Trabalho',
-      'Contrato de Prestação de Serviços',
-      'Contrato de Locação',
-      'Contrato de Compra e Venda',
-      'Contrato de Sociedade',
-    ],
-    defense: [
-      'Contestação Trabalhista',
-      'Contestação Cível',
-      'Defesa Criminal',
-      'Impugnação ao Valor da Causa',
-      'Exceção de Incompetência',
-    ],
-    appeal: [
-      'Recurso Ordinário',
-      'Apelação Cível',
-      'Agravo de Instrumento',
-      'Recurso Especial',
-      'Recurso Extraordinário',
-    ],
-  }
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -136,7 +136,7 @@ OAB/SP nº [número]
 
       setGeneratedText(sampleText)
       toast.success('Documento gerado com sucesso!')
-    } catch (error) {
+    } catch {
       toast.error('Erro ao gerar documento. Tente novamente.')
     } finally {
       setIsLoading(false)
@@ -155,7 +155,7 @@ OAB/SP nº [número]
       const element = document.createElement('a')
       const file = new Blob([generatedText], { type: 'text/plain' })
       element.href = URL.createObjectURL(file)
-      element.download = `${tools
+      element.download = `${TOOLS
         .find((t) => t.id === selectedTool)
         ?.name.toLowerCase()
         .replace(' ', '_')}_${Date.now()}.txt`
@@ -164,7 +164,7 @@ OAB/SP nº [número]
       document.body.removeChild(element)
       toast.success('Documento baixado com sucesso!')
     }
-  }, [generatedText, selectedTool, tools])
+  }, [generatedText, selectedTool])
 
   // Show loading while checking authentication
   if (isAuthLoading) {
@@ -232,7 +232,7 @@ OAB/SP nº [número]
               Ferramentas
             </h2>
             <div className="space-y-4" role="radiogroup" aria-labelledby="tools-heading">
-              {tools.map((tool) => (
+              {TOOLS.map((tool) => (
                 <button
                   key={tool.id}
                   onClick={() => setSelectedTool(tool.id)}
@@ -282,7 +282,7 @@ OAB/SP nº [número]
                 Templates
               </h3>
               <div className="space-y-2" role="list" aria-labelledby="templates-heading">
-                {templates[selectedTool]?.map((template, index) => (
+                {TEMPLATES[selectedTool]?.map((template, index) => (
                   <button
                     key={index}
                     onClick={() => setPrompt(`Criar ${template.toLowerCase()} para `)}
@@ -306,10 +306,10 @@ OAB/SP nº [número]
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-                    {tools.find((t) => t.id === selectedTool)?.name}
+                    {TOOLS.find((t) => t.id === selectedTool)?.name}
                   </h2>
                   <p className="text-gray-500 mt-1">
-                    {tools.find((t) => t.id === selectedTool)?.description}
+                    {TOOLS.find((t) => t.id === selectedTool)?.description}
                   </p>
                 </div>
               </div>

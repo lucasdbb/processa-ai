@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000")
+const API_URL = `${BACKEND_URL}/api`;
 
 /**
  * Middleware for session management and route protection
