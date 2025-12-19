@@ -98,6 +98,20 @@ class AuthService:
                     detail="Credenciais inválidas",
                 )
 
+            role = "user"
+            try:
+                prof = (
+                    self.supabase.table("profiles")
+                    .select("role")
+                    .eq("id", response.user.id)
+                    .limit(1)
+                    .execute()
+                )
+                if prof.data:
+                    role = prof.data[0].get("role") or "user"
+            except Exception:
+                role = "user"
+
             return {
                 "access_token": response.session.access_token,
                 "refresh_token": response.session.refresh_token,
@@ -106,7 +120,7 @@ class AuthService:
                 "user": {
                     "id": response.user.id,
                     "email": response.user.email,
-                    "role": response.user.user_metadata.get("role", "user"),
+                    "role": role,
                 },
             }
         except Exception:

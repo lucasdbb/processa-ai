@@ -79,11 +79,9 @@ async def get_current_admin(
             supabase.table("profiles").select("role").eq("id", user.id).execute()
         )
 
-        role = None
+        role = "user"
         if profile_response.data:
-            role = profile_response.data[0].get("role")
-        else:
-            role = user.user_metadata.get("role", "user")
+            role = profile_response.data[0].get("role") or "user"
 
         if role != "admin":
             raise HTTPException(
