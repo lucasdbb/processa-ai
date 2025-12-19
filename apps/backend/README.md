@@ -144,7 +144,18 @@ apps/backend/
 │   │   │   ├── router.py
 │   │   │   ├── schemas.py
 │   │   │   └── service.py
-│   │   ├── blog/            # Blog (TODO)
+│   │   ├── blog/            # Blog ✅
+│   │   │   ├── router.py
+│   │   │   ├── schemas.py
+│   │   │   └── service.py
+│   │   ├── newsletter/      # Newsletter ✅
+│   │   │   ├── router.py
+│   │   │   ├── schemas.py
+│   │   │   └── service.py
+│   │   ├── support/         # Suporte/Contato ✅
+│   │   │   ├── router.py
+│   │   │   ├── schemas.py
+│   │   │   └── service.py
 │   │   ├── calculators/     # Calculadoras (TODO)
 │   │   └── ai_chat/         # Chat IA (TODO)
 │   └── shared/              # Código compartilhado
@@ -176,6 +187,24 @@ apps/backend/
 - `GET /api/users/profile` - Ver perfil do usuário
 - `PUT /api/users/profile` - Atualizar perfil
 - `GET /api/users` - Listar usuários (admin)
+
+### Blog (`/api/blog`)
+
+- `GET /api/blog/posts` - Listar posts publicados
+- `GET /api/blog/posts/{slug}` - Buscar post por slug
+- `POST /api/blog/posts` - Criar novo post (admin)
+- `PUT /api/blog/posts/{post_id}` - Atualizar post (admin)
+- `DELETE /api/blog/posts/{post_id}` - Deletar post (admin)
+- `GET /api/blog/categories` - Listar categorias
+
+### Newsletter (`/api/newsletter`)
+
+- `POST /api/newsletter/subscribe` - Inscrever email na newsletter
+- `POST /api/newsletter/unsubscribe` - Cancelar inscrição
+
+### Suporte (`/api/support`)
+
+- `POST /api/support/contact` - Enviar mensagem de contato
 
 ### Health Check
 
@@ -316,14 +345,26 @@ async def admin_route(user=Depends(get_current_admin)):
 
 ## 📝 Próximos Passos
 
-### Features
-- [ ] Implementar módulo de Blog (routers, services, schemas)
-- [ ] Implementar módulo de Calculadoras (pension, employment_termination)
-- [ ] Implementar módulo de AI Chat (integração com OpenAI/Anthropic)
+### Features Implementadas ✅
+- [x] Módulo de Autenticação (login, registro, reset de senha)
+- [x] Módulo de Usuários (perfis)
+- [x] Módulo de Blog (posts, categorias, admin)
+- [x] Módulo de Newsletter (inscrições)
+- [x] Módulo de Suporte (formulário de contato)
 
-### Melhorias
+### Features Pendentes 🚧
+- [ ] Implementar módulo de Calculadoras Trabalhistas
+  - [ ] Calculadora de Rescisão Trabalhista
+  - [ ] Calculadora de Aposentadoria/Previdência
+- [ ] Implementar módulo de AI Chat
+  - [ ] Integração com OpenAI/Anthropic
+  - [ ] Sistema de sessões de chat
+  - [ ] Histórico de conversas
+
+### Melhorias Técnicas 🔧
 - [ ] Adicionar rate limiting (slowapi ou fastapi-limiter)
-- [ ] Implementar cache com Redis
+- [ ] Implementar cache com Redis (opcional)
 - [ ] Adicionar observability (logs estruturados, metrics, traces)
-- [ ] Adicionar testes unitários e de integração
+- [ ] Expandir cobertura de testes unitários e de integração
 - [ ] Configurar CI/CD (GitHub Actions)
+- [ ] Adicionar documentação de API mais detalhada
