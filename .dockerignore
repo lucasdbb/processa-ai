@@ -3,8 +3,26 @@ node_modules
 apps/**/node_modules
 packages/**/node_modules
 
+# Build outputs
 dist
+.next
+apps/frontend/.next
+apps/frontend/out
 apps/web/dist
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+apps/backend/.venv
+apps/backend/venv
+.venv
+venv
+*.egg-info
+.pytest_cache
+.ruff_cache
 
 # Controle de versão e configs locais
 .git
@@ -12,8 +30,28 @@ apps/web/dist
 .vercel
 .vercelignore
 .env*
+!.env.example
 **/*.log
+*.log
 
 # Tests e caches
 coverage
 .cache
+.nyc_output
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentação
+*.md
+!README.md
+CLAUDE.md
+ARQUITETURA*.md

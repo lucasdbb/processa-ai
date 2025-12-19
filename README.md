@@ -1,142 +1,199 @@
 # Processa AI - Monorepo
 
-Uma plataforma moderna para cálculos trabalhistas e assistência com IA, desenvolvida com React (frontend) e Python + FastAPI (backend), utilizando Supabase em arquitetura de monorepo.
+Uma plataforma completa de tecnologia jurídica para cálculos trabalhistas, assistência com IA e blog especializado, desenvolvida com Next.js 15 + React 19 (frontend) e Python 3.13 + FastAPI (backend), utilizando Supabase.
 
 ## 🏗️ Estrutura do Monorepo
 
 ```
 processa-ai/
 ├── apps/
-│   ├── frontend/      # Frontend React + Vite + TypeScript
-│   └── backend/       # Backend Python + FastAPI
-└── package.json       # Workspace raiz (npm para frontend)
+│   ├── frontend/           # Frontend Next.js 15 + React 19 + TypeScript
+│   │   ├── src/            # Código fonte
+│   │   ├── Dockerfile      # Container Next.js
+│   │   └── package.json
+│   └── backend/            # Backend Python 3.13 + FastAPI
+│       ├── src/            # Código fonte
+│       ├── Dockerfile      # Container FastAPI
+│       └── pyproject.toml
+├── docker-compose.yml      # Orquestração de serviços (dev)
+├── docker-compose.prod.yml # Override para produção
+├── .env.example            # Exemplo de variáveis de ambiente
+├── .dockerignore           # Arquivos ignorados no build Docker
+└── package.json            # Workspace raiz (npm)
 ```
 
 ## 🚀 Funcionalidades
 
+### Implementadas ✅
+- **Blog Jurídico**: Sistema completo de blog com editor Markdown, categorias e admin dashboard
+- **Autenticação Segura**: Login, registro e recuperação de senha via Supabase Auth
+- **Newsletter**: Sistema de inscrição e gerenciamento de newsletter
+- **Suporte**: Formulário de contato integrado
+- **Interface Moderna**: Design responsivo com Next.js, Server Components e shadcn/ui
+- **API Documentada**: FastAPI com documentação automática (Swagger/ReDoc)
+
+### Em Desenvolvimento 🚧
 - **Calculadoras Trabalhistas**: Cálculos precisos de rescisão e aposentadoria
-- **Assistente IA**: Geração de textos e análises com inteligência artificial
-- **Interface Moderna**: Design responsivo e intuitivo
-- **Autenticação Segura**: Sistema completo de login e registro via API
-- **Blog Integrado**: Artigos e conteúdo educativo
-- **API Backend**: Python + FastAPI para alta performance
+- **Assistente IA**: Geração de textos jurídicos e análises com inteligência artificial
 
 ## 🛠️ Tecnologias
 
 ### Frontend (apps/frontend)
-- **Framework**: React 19 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Roteamento**: React Router DOM
-- **Ícones**: Lucide React
+- **Framework**: Next.js 15.5.9 com App Router
+- **UI Library**: React 19.2.1 com Server Components
+- **Language**: TypeScript 5
+- **Styling**: Tailwind CSS 4
+- **Components**: shadcn/ui (Radix UI primitives)
+- **State**: Zustand 5.0
+- **Forms**: react-hook-form + Zod
+- **Auth**: Supabase SSR (@supabase/ssr)
+- **Icons**: lucide-react
+- **Markdown**: @uiw/react-md-editor
 
 ### Backend (apps/backend)
-- **Language**: Python 3.11+
+- **Language**: Python 3.13
 - **Framework**: FastAPI
+- **Package Manager**: uv (ultra-fast)
 - **Server**: Uvicorn (ASGI)
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
-- **Validation**: Pydantic
-
-### Packages
-- **types**: Tipos TypeScript compartilhados
-- **ui**: Componentes React reutilizáveis
-- **utils**: Funções utilitárias
+- **Validation**: Pydantic 2.10
+- **Linter**: Ruff
 
 ## 📦 Instalação
 
-1. Clone o repositório:
+### 1. Clone o repositório
 ```bash
 git clone https://github.com/seu-usuario/processa-ai.git
 cd processa-ai
 ```
 
-2. Instale as dependências:
+### 2. Instale as dependências
 
-**Frontend:**
+**Frontend (Next.js):**
 ```bash
+cd apps/frontend
 npm install
 ```
 
-**Backend:**
+**Backend (Python):**
 ```bash
-npm run backend:install
-# ou diretamente
 cd apps/backend
-pip install -r requirements.txt
+# Instalar uv (se não tiver)
+pip install uv
+# Sincronizar dependências
+uv sync
 ```
 
-3. Configure as variáveis de ambiente:
+### 3. Configure as variáveis de ambiente
 
-**Frontend:**
+**Frontend (.env.local):**
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
+```
+
+**Backend (.env):**
+```env
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY=sua-chave-anon
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
+FRONTEND_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+### 4. Inicie o desenvolvimento
+
+#### Opção A: Docker Compose (Recomendado) 🐳
+
+**1. Configure as variáveis de ambiente:**
+```bash
+cp .env.example .env
+# Edite o arquivo .env com suas credenciais do Supabase
+```
+
+**2. Inicie todos os serviços:**
+```bash
+docker-compose up
+```
+
+**3. Acesse a aplicação:**
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+**Comandos úteis:**
+```bash
+docker-compose up --build      # Rebuild e iniciar (necessário após mudanças no código)
+docker-compose up -d           # Rodar em background
+docker-compose down            # Parar todos os serviços
+docker-compose logs -f         # Ver logs em tempo real
+docker-compose logs frontend   # Ver logs do frontend
+docker-compose logs backend    # Ver logs do backend
+```
+
+**⚠️ Observação:** Como não usamos volumes, você precisará fazer **rebuild** (`docker-compose up --build`) sempre que modificar o código.
+
+#### Opção B: Desenvolvimento Local
+
+**Frontend (porta 3000):**
 ```bash
 cd apps/frontend
-cp .env.example .env
-```
-
-**Backend:**
-```bash
-cd apps/backend
-cp .env.example .env
-```
-
-4. Inicie o desenvolvimento:
-```bash
-# Frontend (terminal 1)
-npm run frontend:dev
-
-# Backend (terminal 2)
-npm run backend:dev
-
-# Ou apenas frontend
 npm run dev
 ```
 
-## 🔧 Scripts Disponíveis
-
-### Scripts Globais
-- `npm run dev` - Inicia o frontend
-- `npm run build` - Build de todos os projetos
-- `npm run lint` - Lint de todos os projetos
-- `npm run type-check` - Verificação de tipos
-- `npm run clean` - Limpa builds
-
-### Scripts Específicos
-- `npm run frontend:dev` - Frontend em modo desenvolvimento
-- `npm run frontend:build` - Build do frontend
-- `npm run backend:dev` - Backend em modo desenvolvimento
-- `npm run backend:install` - Instalar dependências Python
-- `npm run backend:test` - Executar testes do backend
-- `npm run types:build` - Build dos tipos
-
-## 🌐 Desenvolvimento
-
-### Frontend (localhost:5173)
-```bash
-cd apps/frontend
-npm run dev
-```
-
-### Backend (localhost:8000)
+**Backend (porta 8000):**
 ```bash
 cd apps/backend
-uvicorn src.main:app --reload
-# ou
-python -m src.main
+uv run uvicorn src.main:app --reload
 ```
 
-Documentação da API: `http://localhost:8000/docs`
+## 🔧 Comandos de Desenvolvimento
 
-## 📱 Aplicações
+### Frontend
+```bash
+cd apps/frontend
+npm run dev              # Servidor de desenvolvimento (porta 3000)
+npm run build           # Build de produção
+npm run start           # Serve build de produção
+npm run lint            # ESLint
+```
 
-### Frontend (apps/frontend)
-- **Home**: Página inicial com apresentação da plataforma
-- **Calculadoras**: Ferramentas de cálculo trabalhista
-- **Ferramentas**: Assistente IA para geração de textos
-- **Blog**: Artigos e conteúdo educativo
-- **Sobre**: Informações sobre a plataforma
+### Backend
+```bash
+cd apps/backend
+uv run uvicorn src.main:app --reload  # Servidor de desenvolvimento (porta 8000)
+uv run pytest                         # Executar testes
+uv run ruff check src/                # Verificar linting
+uv run ruff format src/               # Formatar código
+```
 
-### Backend API (apps/backend)
+## 🌐 Ambientes de Desenvolvimento
+
+### Frontend - Next.js
+- **URL**: http://localhost:3000
+- **Hot Reload**: Automático (Fast Refresh)
+- **Server Components**: Renderização no servidor por padrão
+
+### Backend - FastAPI
+- **URL**: http://localhost:8000
+- **Documentação Interativa**: http://localhost:8000/docs (Swagger UI)
+- **Documentação Alternativa**: http://localhost:8000/redoc (ReDoc)
+- **Hot Reload**: Automático com `--reload`
+
+## 📱 Rotas da Aplicação
+
+### Frontend (Next.js App Router)
+- **`/`** - Landing page (público)
+- **`/blog`** - Lista de posts do blog (público)
+- **`/blog/[slug]`** - Post individual (público)
+- **`/ia-juridica`** - Chat com IA (requer autenticação)
+- **`/calculadoras`** - Calculadoras trabalhistas (requer autenticação)
+- **`/planos`** - Planos e preços (público)
+- **`/sobre`** - Sobre a plataforma (público)
+- **`/admin`** - Dashboard administrativo (requer role admin)
+
+### Backend API (FastAPI)
 
 **Autenticação (`/api/auth`)**
 - `POST /api/auth/register` - Registrar novo usuário
@@ -151,327 +208,260 @@ Documentação da API: `http://localhost:8000/docs`
 - `PUT /api/users/profile` - Atualizar perfil
 - `GET /api/users` - Listar usuários (admin)
 
-**Documentação completa:** `http://localhost:8000/docs`
+**Blog (`/api/blog`)**
+- `GET /api/blog/posts` - Listar posts publicados
+- `GET /api/blog/posts/{slug}` - Buscar post por slug
+- `POST /api/blog/posts` - Criar novo post (admin)
+- `PUT /api/blog/posts/{post_id}` - Atualizar post (admin)
+- `DELETE /api/blog/posts/{post_id}` - Deletar post (admin)
+- `GET /api/blog/categories` - Listar categorias
 
-## 📦 Packages
+**Newsletter (`/api/newsletter`)**
+- `POST /api/newsletter/subscribe` - Inscrever email
+- `POST /api/newsletter/unsubscribe` - Cancelar inscrição
 
-### @processa-ai/types
-Tipos TypeScript compartilhados entre frontend e backend:
-- Tipos de autenticação
-- Tipos de calculadoras
-- Tipos de blog
-- Tipos comuns (API responses, estados, etc.)
+**Suporte (`/api/support`)**
+- `POST /api/support/contact` - Enviar mensagem de contato
 
-### @processa-ai/ui (Futuro)
-Componentes React reutilizáveis:
-- Botões, inputs, modais
-- Layouts e grids
-- Componentes de formulário
-
-### @processa-ai/utils (Futuro)
-Funções utilitárias compartilhadas:
-- Validações
-- Formatações
-- Helpers de data/hora
+**Documentação completa:** http://localhost:8000/docs
 
 ## 🔐 Autenticação
 
-Sistema completo de autenticação com Supabase:
-- **Login/Registro**: Via API FastAPI
-- **JWT Tokens**: Access e refresh tokens gerenciados pelo Supabase
-- **Validação**: Pydantic schemas para validação de dados
-- **CORS**: Configurado para frontend
+Sistema robusto de autenticação com Supabase:
+
+### Frontend (Direct Supabase SSR)
+- **Cliente Supabase SSR** (`@supabase/ssr`)
+- **Sessões via cookies** (httpOnly, secure, sameSite)
+- **Middleware Next.js** para proteção de rotas
+- **Refresh automático** de sessão
+- **Role-based access control** (user, admin)
+
+### Backend (FastAPI + Supabase)
+- **Endpoints de autenticação** disponíveis via API
+- **JWT validation** com Supabase Auth
+- **Protected routes** usando FastAPI dependencies
+- **Pydantic schemas** para validação de dados
+
+## 🐳 Docker
+
+### Desenvolvimento com Docker Compose
+
+O projeto inclui configuração Docker Compose para facilitar o desenvolvimento:
+
+**Estrutura:**
+- `docker-compose.yml` - Orquestração dos serviços
+- `apps/frontend/Dockerfile` - Container Next.js
+- `apps/backend/Dockerfile` - Container FastAPI
+
+**Benefícios:**
+- ✅ Ambiente consistente entre desenvolvedores
+- ✅ Isolamento de dependências
+- ✅ Setup rápido com um único comando
+- ✅ Fácil integração com CI/CD
+
+**Requisitos:**
+- Docker 20.10+
+- Docker Compose 2.0+
+
+**Produção:**
+```bash
+# Build das imagens
+docker-compose build
+
+# Rodar em modo produção
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+```
 
 ## 🚀 Deploy
 
-### Frontend (Vercel)
+### Frontend (Vercel - Recomendado)
 ```bash
 cd apps/frontend
+npm run build
+# Conectar ao Vercel via CLI ou Dashboard
 vercel --prod
 ```
 
+**Variáveis de ambiente (Vercel):**
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
 ### Backend (Railway/Render)
 
-**Railway:**
+**Build Command:**
 ```bash
-railway init
-railway up
+pip install uv && uv sync
 ```
 
-**Render:**
-- Conecte o repositório
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `uvicorn src.main:app --host 0.0.0.0 --port $PORT`
+**Start Command:**
+```bash
+uv run uvicorn src.main:app --host 0.0.0.0 --port $PORT
+```
 
-### Variáveis de Ambiente
-
-**Frontend (Vercel):**
-- `VITE_API_URL` - URL da API backend
-
-**Backend (Railway/Render):**
+**Variáveis de ambiente:**
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `SECRET_KEY`
 - `FRONTEND_URL`
-- `ENVIRONMENT=production`
+- `ALLOWED_ORIGINS`
 
-## 🔧 Configuração do Workspace
+## 📊 Features em Desenvolvimento
 
-O projeto usa npm workspaces para gerenciar dependências:
+### Calculadoras Trabalhistas 🚧
+- **Rescisão Trabalhista**: Cálculo de verbas rescisórias com diferentes tipos de rescisão
+- **Aposentadoria**: Cálculo de tempo de contribuição e projeções futuras
+- **Relatórios**: Geração de relatórios detalhados em PDF
 
-```json
-{
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
-}
-```
-
-## 📊 Calculadoras
-
-### Rescisão Trabalhista
-- Cálculo de verbas rescisórias
-- Diferentes tipos de rescisão
-- Relatório detalhado
-
-### Aposentadoria
-- Cálculo de tempo de contribuição
-- Diferentes modalidades
-- Projeções futuras
-
-## 🤖 Assistente IA
-
-- Geração de textos jurídicos
-- Análise de documentos
-- Sugestões personalizadas
-- Interface conversacional
+### Assistente IA 🚧
+- **Geração de textos jurídicos** com IA (OpenAI/Anthropic)
+- **Análise de documentos** e extração de informações
+- **Sugestões personalizadas** baseadas em contexto
+- **Interface conversacional** com histórico de chat
 
 ## 🏗️ Arquitetura
 
-### Padrões de Design
-- **Component-Based Architecture**: Componentes reutilizáveis e modulares
-- **Functional Components**: Uso exclusivo de React Hooks
-- **TypeScript First**: Tipagem estrita em todo o codebase
-- **Mobile-First Design**: Design responsivo com abordagem mobile-first
-- **Accessibility First**: Implementação de acessibilidade desde o início
+### Frontend (Next.js)
 
-### Estrutura de Componentes
+**Princípios:**
+- **Server Components por padrão**: Melhor performance e SEO
+- **Feature-first architecture**: Código organizado por domínio
+- **TypeScript strict**: Tipagem rigorosa em todo o código
+- **Mobile-first**: Design responsivo desde o início
+- **Accessibility-first**: WCAG 2.1 compliance
+
+**Estrutura:**
 ```
-src/
-├── components/           # Componentes reutilizáveis
-│   ├── Header.tsx       # Navegação principal com acessibilidade
-│   ├── Footer.tsx       # Rodapé com informações de contato
-│   └── LoginModal.tsx   # Modal de autenticação com validação
-├── pages/               # Páginas da aplicação
-│   ├── LandingPage.tsx  # Página inicial otimizada para SEO
-│   ├── BlogPage.tsx     # Blog com lazy loading de imagens
-│   ├── ToolsPage.tsx    # Ferramentas de IA com estados de loading
-│   ├── CalculatorsPage.tsx # Calculadoras com validação de formulários
-│   ├── AboutPage.tsx    # Página sobre com imagens otimizadas
-│   └── Dashboard.tsx    # Dashboard protegido por autenticação
-└── types/               # Definições de tipos TypeScript
+apps/frontend/src/
+├── app/              # Next.js App Router (file-based routing)
+│   ├── blog/         # Rotas do blog
+│   ├── admin/        # Dashboard admin
+│   └── ...
+├── components/       # Componentes reutilizáveis
+│   ├── ui/           # shadcn/ui components
+│   └── layout/       # Header, Footer
+├── features/         # Módulos por domínio
+│   ├── auth/         # Autenticação
+│   ├── blog/         # Blog
+│   └── ...
+└── lib/             # Bibliotecas e utils
 ```
 
-### Gerenciamento de Estado
-- **React Hooks**: useState, useEffect, useCallback, useMemo
-- **Context API**: Para estado global (autenticação)
-- **Local Storage**: Persistência de preferências do usuário
-- **Form State**: Gerenciamento local de formulários com validação
+### Backend (FastAPI)
+
+**Princípios:**
+- **Feature-based modules**: Cada feature é um módulo independente
+- **Async-first**: APIs assíncronas para melhor performance
+- **Type-safe**: Pydantic para validação runtime
+- **Auto-documented**: Swagger/ReDoc gerado automaticamente
+
+**Estrutura:**
+```
+apps/backend/src/
+├── main.py          # Entry point
+├── core/            # Settings, logging, dependencies
+├── features/        # Feature modules
+│   ├── auth/        # router.py, schemas.py, service.py
+│   ├── blog/
+│   └── ...
+└── shared/          # Código compartilhado (database, utils)
+```
 
 ## 🎨 Design System
 
-### Paleta de Cores
-```css
-/* Cores Principais */
---primary-50: #eff6ff;
---primary-600: #2563eb;
---primary-900: #1e3a8a;
+### Componentes UI (shadcn/ui)
+- **Acessíveis**: Construídos sobre Radix UI com WAI-ARIA
+- **Customizáveis**: Código próprio, não dependência NPM
+- **Consistentes**: Design system unificado
+- **Dark mode**: Suporte nativo via next-themes
 
-/* Cores Secundárias */
---secondary-50: #fef3c7;
---secondary-600: #d97706;
---secondary-900: #92400e;
-
-/* Cores de Fundo */
---warm-bg: #fefbf3;
-```
-
-### Tipografia
-- **Fonte Principal**: Inter (sistema)
-- **Hierarquia**: h1 (3xl) → h2 (2xl) → h3 (xl) → h4 (lg)
-- **Responsividade**: Escala automática com Tailwind CSS
-- **Acessibilidade**: Contraste mínimo de 4.5:1
-
-### Componentes UI
-- **Buttons**: Estados hover, focus, disabled com feedback visual
-- **Cards**: Sombras suaves com transições smooth
-- **Forms**: Validação em tempo real com mensagens de erro
-- **Modals**: Gerenciamento de foco e navegação por teclado
-
-## 🔧 Configuração de Desenvolvimento
-
-### ESLint
-O projeto utiliza ESLint com configurações para TypeScript e React:
-- **Regras TypeScript**: Verificação de tipos em tempo real
-- **React Hooks**: Validação de dependências e regras de hooks
-- **React Refresh**: Hot reload otimizado para desenvolvimento
-- **Globals**: Configuração para diferentes ambientes (browser, node)
-
-### Tailwind CSS
-Configuração personalizada com:
-- **Paleta Customizada**: Primary, Secondary, e Warm-bg colors
-- **Componentes Utilitários**: Classes personalizadas para botões e cards
-- **Design Responsivo**: Mobile-first com breakpoints otimizados
-- **Forms Plugin**: Estilos consistentes para formulários
-
-### TypeScript
-Configuração estrita com:
-- **Strict Mode**: Verificação rigorosa de tipos
-- **Path Mapping**: Imports absolutos para melhor organização
-- **Build Optimization**: Compilação otimizada para produção
-- **Type Checking**: Validação em tempo de desenvolvimento
+### Estilização (Tailwind CSS 4)
+- **Utility-first**: Classes utilitárias para rapidez
+- **CSS Variables**: Temas customizáveis
+- **Responsive**: Mobile-first breakpoints
+- **Performance**: JIT compiler para builds otimizadas
 
 ## 🔒 Segurança
 
-### Práticas de Segurança
-- **Input Validation**: Validação rigorosa de todos os inputs do usuário
-- **XSS Prevention**: Sanitização de conteúdo dinâmico
-- **CSRF Protection**: Tokens de proteção contra ataques CSRF
-- **Secure Headers**: Configuração de headers de segurança
-- **Environment Variables**: Separação de configurações sensíveis
+### Frontend
+- **CSRF Protection**: Nativo no Next.js
+- **XSS Prevention**: Sanitização com DOMPurify
+- **Secure Cookies**: httpOnly, secure, sameSite
+- **Environment Variables**: Variáveis sensíveis protegidas
 
-### Autenticação
-- **Protected Routes**: Rotas protegidas com redirecionamento
-- **Session Management**: Gerenciamento seguro de sessões
-- **Token Validation**: Validação de tokens de autenticação
-- **Logout Security**: Limpeza completa de dados de sessão
+### Backend
+- **Input Validation**: Pydantic schemas em todas as rotas
+- **SQL Injection**: Protegido via Supabase (PostgreSQL)
+- **JWT Validation**: Tokens validados em rotas protegidas
+- **CORS**: Configurado apenas para origens permitidas
+- **Rate Limiting**: (planejado)
 
 ## ⚡ Performance
 
-### Otimizações Implementadas
-- **Lazy Loading**: Carregamento sob demanda de imagens
-- **Code Splitting**: Divisão automática de código por rotas
-- **Tree Shaking**: Remoção de código não utilizado
-- **Bundle Optimization**: Otimização automática do Vite
-- **Image Optimization**: Formatos otimizados (SVG, WebP)
+### Frontend (Next.js)
+- **Server Components**: Renderização no servidor reduz JavaScript no cliente
+- **Code Splitting**: Automático por rota
+- **Image Optimization**: Next.js Image com formatos modernos (WebP, AVIF)
+- **Font Optimization**: Subset automático de fontes
+- **Route Prefetching**: Navegação instantânea
 
-### Métricas de Performance
-- **First Contentful Paint**: < 1.5s
-- **Largest Contentful Paint**: < 2.5s
-- **Cumulative Layout Shift**: < 0.1
-- **First Input Delay**: < 100ms
-
-### Monitoramento
-- **Lighthouse**: Auditoria automática de performance
-- **Web Vitals**: Métricas essenciais de experiência do usuário
-- **Bundle Analyzer**: Análise de tamanho de bundles
+### Backend (FastAPI)
+- **Async I/O**: Todas as operações de I/O são assíncronas
+- **Connection Pooling**: Supabase gerencia pool de conexões
+- **Response Compression**: Gzip habilitado
+- **Caching**: (planejado com Redis)
 
 ## 🧪 Testes
 
-### Estratégia de Testes
-- **Unit Tests**: Testes de componentes individuais
-- **Integration Tests**: Testes de fluxos de usuário
-- **E2E Tests**: Testes de ponta a ponta com Cypress
-- **Accessibility Tests**: Validação automática de acessibilidade
-
-### Ferramentas de Teste
+### Backend
 ```bash
-# Executar testes unitários
-npm run test
-
-# Executar testes com coverage
-npm run test:coverage
-
-# Executar testes E2E
-npm run test:e2e
-
-# Executar testes de acessibilidade
-npm run test:a11y
+cd apps/backend
+uv run pytest                    # Executar testes
+uv run pytest --cov=src          # Com coverage
+uv run pytest -v                 # Verbose
 ```
 
-### Cobertura de Testes
-- **Componentes**: > 90% de cobertura
-- **Hooks Customizados**: 100% de cobertura
-- **Utilitários**: 100% de cobertura
-- **Fluxos Críticos**: 100% de cobertura
-
-## 🚀 Deploy
-
-### Build de Produção
+### Frontend
 ```bash
-# Build otimizada para produção
-npm run build
-
-# Preview da build local
-npm run preview
-
-# Análise do bundle
-npm run analyze
+cd apps/frontend
+npm run lint                     # ESLint
+npm run type-check               # TypeScript check
+# Testes unitários (planejado)
 ```
-
-### Variáveis de Ambiente
-Crie um arquivo `.env` na raiz do projeto:
-```env
-# API Configuration
-VITE_API_URL=https://api.processa-ai.com
-VITE_APP_NAME=Processa AI
-
-# Authentication
-VITE_AUTH_DOMAIN=processa-ai.auth0.com
-VITE_AUTH_CLIENT_ID=your_client_id
-
-# Analytics
-VITE_GA_TRACKING_ID=GA_TRACKING_ID
-VITE_HOTJAR_ID=HOTJAR_ID
-
-# Feature Flags
-VITE_ENABLE_BETA_FEATURES=false
-```
-
-### Deployment Checklist
-- [ ] Testes passando (unit, integration, e2e)
-- [ ] Build sem erros ou warnings
-- [ ] Lighthouse score > 90
-- [ ] Acessibilidade validada
-- [ ] Variáveis de ambiente configuradas
-- [ ] SSL/TLS configurado
-- [ ] CDN configurado para assets estáticos
-- [ ] Monitoramento de erros ativo
 
 ## 🤝 Contribuição
 
 ### Padrões de Código
-- **TypeScript**: Tipagem estrita obrigatória
-- **ESLint**: Código deve passar sem warnings
-- **Prettier**: Formatação automática configurada
-- **Conventional Commits**: Mensagens de commit padronizadas
 
-### Processo de Contribuição
-1. **Fork** o projeto
-2. **Clone** seu fork localmente
-3. **Crie** uma branch para sua feature (`git checkout -b feature/amazing-feature`)
-4. **Implemente** sua feature seguindo os padrões do projeto
-5. **Teste** sua implementação (unit, integration, e2e)
-6. **Commit** suas mudanças (`git commit -m 'feat: add amazing feature'`)
-7. **Push** para sua branch (`git push origin feature/amazing-feature`)
-8. **Abra** um Pull Request com descrição detalhada
+**Frontend:**
+- TypeScript strict mode
+- ESLint com config Next.js
+- Conventional Commits
+- Components: Server Components por padrão
 
-### Code Review Guidelines
-- **Funcionalidade**: Feature funciona conforme especificado
-- **Testes**: Cobertura adequada de testes
-- **Performance**: Sem impacto negativo na performance
-- **Acessibilidade**: Mantém ou melhora a acessibilidade
-- **Segurança**: Não introduz vulnerabilidades
-- **Documentação**: Código auto-documentado ou com JSDoc
+**Backend:**
+- Python 3.13+
+- Ruff para linting e formatting
+- Type hints obrigatórios
+- Docstrings em funções públicas
+
+### Processo
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/nova-feature`)
+3. Commit suas mudanças (`git commit -m 'feat: adicionar nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request
+
+## 📚 Documentação Adicional
+
+- [Frontend README](apps/frontend/README.md) - Documentação detalhada do frontend
+- [Backend README](apps/backend/README.md) - Documentação detalhada do backend
+- [Docker Guide](DOCKER.md) - Guia completo de Docker e Docker Compose
+- [CLAUDE.md](CLAUDE.md) - Guia para Claude Code (AI assistant)
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Este projeto está sob a licença MIT.
 
-## 📞 Contato
+## 📞 Suporte
 
-- **Website**: [processa-ai.com](https://processa-ai.com)
-- **Email**: contato@processa-ai.com
-- **LinkedIn**: [Processa AI](https://linkedin.com/company/processa-ai)
+Para questões e suporte, utilize o formulário de contato na aplicação ou abra uma issue no GitHub.

@@ -1,21 +1,20 @@
-# FastAPI Backend with uv
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install uv
+# Instalar uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-ENV PATH="/root/.local/bin:$PATH"
 
-# Copy project files
-COPY pyproject.toml ./
+# Copiar arquivos de configuração e código
+COPY pyproject.toml .python-version ./
 COPY src ./src
 
-# Install dependencies and activate venv
-RUN uv sync --no-dev
+# Instalar dependências
+RUN uv sync
 
-# Add venv to PATH so Python can find installed packages
+# Adicionar venv ao PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Run application directly using venv Python
-CMD ["python", "src/main.py"]
+EXPOSE 8000
+
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
