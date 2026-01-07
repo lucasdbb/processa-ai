@@ -16,10 +16,14 @@ import {
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { LoginModal } from '@/features/auth/components/login-modal'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { toast } from 'sonner'
 
 export function HomePage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
   const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
+  const [newsletterEmail, setNewsletterEmail] = useState('')
+  const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false)
 
   const featuresRef = useRef<HTMLElement>(null)
   const demoRef = useRef<HTMLElement>(null)
@@ -57,6 +61,45 @@ export function HomePage() {
         top: offsetPosition,
         behavior: 'smooth',
       })
+    }
+  }
+
+  const handleNewsletterSubscribe = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    const email = newsletterEmail.trim()
+    if (!email) {
+      toast.error('Informe seu e-mail')
+      return
+    }
+
+    setIsNewsletterSubmitting(true)
+    try {
+      const response = await fetchWithCredentials(`${API_URL}/newsletter/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          channel: 'email',
+          consent: true,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = (await response.json().catch(() => null)) as
+          | { detail?: string; error?: string }
+          | null
+        throw new Error(error?.detail || error?.error || 'Não foi possível inscrever na newsletter')
+      }
+
+      setNewsletterEmail('')
+      toast.success('Inscrição recebida! Confira seu e-mail para confirmar.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao inscrever na newsletter')
+    } finally {
+      setIsNewsletterSubmitting(false)
     }
   }
 
@@ -233,27 +276,62 @@ export function HomePage() {
               </div>
 
               {/* Card 4: Blog/Updates (Wide) */}
-              <div className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 flex flex-col md:flex-row items-center justify-between gap-6 hover:border-gray-300 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02]">
-                <div className="flex items-center gap-6 w-full">
-                  <div className="w-12 h-12 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
+              <div className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 flex flex-col hover:border-gray-300 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] h-full">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 flex-1">
+                  <div className="flex items-start gap-6 w-full">
+                    <div className="w-12 h-12 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight">
+                        Blog Jurídico
+                      </h3>
+                      <p className="text-gray-500 text-sm leading-relaxed">
+                        Notícias do meio jurídico e análises aprofundadas sobre legislação.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight">
-                      Blog Jurídico
-                    </h3>
-                    <p className="text-gray-500 text-sm leading-relaxed">
-                      Notícias do meio jurídico e análises aprofundadas sobre legislação.
-                    </p>
+
+                  <div className="w-full md:w-auto pt-6 md:pt-0 md:pl-8 md:border-l border-gray-100 border-t md:border-t-0">
+                    <Link
+                      href="/blog"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-600 transition-colors whitespace-nowrap group-hover:translate-x-1 duration-200"
+                    >
+                      Ler Notícias <ArrowRight className="w-4 h-4" />
+                    </Link>
                   </div>
                 </div>
-                <div className="w-full md:w-auto pt-6 md:pt-0 md:pl-8 md:border-l border-gray-100 border-t md:border-t-0">
-                  <Link
-                    href="/blog"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-600 transition-colors whitespace-nowrap group-hover:translate-x-1 duration-200"
-                  >
-                    Ler Notícias <ArrowRight className="w-4 h-4" />
-                  </Link>
+
+                <div className="mt-auto pt-4 border-t border-gray-100 w-full">
+                  <form onSubmit={handleNewsletterSubscribe} className="w-full max-w-2xl">
+                    <label htmlFor="home-newsletter-email" className="sr-only">
+                      Seu melhor e-mail
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        id="home-newsletter-email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        placeholder="Seu melhor e-mail"
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:bg-white transition-all"
+                        disabled={isNewsletterSubmitting}
+                        required
+                      />
+                      <button
+                        type="submit"
+                        disabled={isNewsletterSubmitting}
+                        className="bg-gray-900 text-white hover:bg-gray-800 font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-md whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+                      >
+                        {isNewsletterSubmitting ? 'Inscrevendo…' : 'Inscrever-se'}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-gray-400">
+                      Ao se inscrever, você concorda em receber e-mails.
+                    </p>
+                  </form>
                 </div>
               </div>
             </div>
