@@ -1,6 +1,7 @@
 """
 Authentication schemas (Pydantic models)
 """
+
 from pydantic import BaseModel, EmailStr, Field
 
 

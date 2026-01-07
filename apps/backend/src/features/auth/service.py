@@ -1,6 +1,7 @@
 """
 Authentication service with Supabase integration
 """
+
 from fastapi import HTTPException, status
 
 from src.core.config import settings
@@ -22,17 +23,20 @@ class AuthService:
         try:
             # Sign up user with Supabase Auth
             from supabase import create_client
+
             client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-            response = client.auth.sign_up({
-                "email": user_data.email,
-                "password": user_data.password,
-                "options": {
-                    "data": {
-                        "full_name": user_data.full_name,
-                        "role": "user",  # Default role
-                    }
+            response = client.auth.sign_up(
+                {
+                    "email": user_data.email,
+                    "password": user_data.password,
+                    "options": {
+                        "data": {
+                            "full_name": user_data.full_name,
+                            "role": "user",  # Default role
+                        }
+                    },
                 }
-            })
+            )
 
             if not response.user:
                 raise HTTPException(
@@ -86,11 +90,14 @@ class AuthService:
         """Login user with Supabase Auth"""
         try:
             from supabase import create_client
+
             client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-            response = client.auth.sign_in_with_password({
-                "email": user_data.email,
-                "password": user_data.password,
-            })
+            response = client.auth.sign_in_with_password(
+                {
+                    "email": user_data.email,
+                    "password": user_data.password,
+                }
+            )
 
             if not response.user:
                 raise HTTPException(
@@ -133,6 +140,7 @@ class AuthService:
         """Refresh access token"""
         try:
             from supabase import create_client
+
             client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
             response = client.auth.refresh_session(refresh_token)
 
@@ -162,6 +170,7 @@ class AuthService:
         """Send password reset email"""
         try:
             from supabase import create_client
+
             client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
             client.auth.reset_password_email(email)
             return {"message": "E-mail de recuperação enviado com sucesso"}

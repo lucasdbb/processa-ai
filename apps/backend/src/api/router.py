@@ -1,6 +1,7 @@
 """
 Main API router that aggregates all feature routers
 """
+
 from fastapi import APIRouter
 
 from src.features.auth.router import router as auth_router
@@ -19,5 +20,3 @@ api_router.include_router(newsletter_router, prefix="/newsletter", tags=["Newsle
 api_router.include_router(blog_router, prefix="/blog", tags=["Blog"])
 # api_router.include_router(calculators_router, prefix="/calculators", tags=["Calculators"])
 # api_router.include_router(ai_chat_router, prefix="/chat", tags=["AI Chat"])
-
-

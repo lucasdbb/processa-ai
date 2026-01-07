@@ -25,12 +25,14 @@ class NewsletterService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Consentimento necessário",
             )
-        
+
         # Tentar encontrar usuário existente pelo email se user_id não for fornecido
         if not user_id:
             try:
                 # Buscar na tabela de perfis pública primeiro
-                profile_res = self.supabase.table("profiles").select("id").eq("email", email).execute()
+                profile_res = (
+                    self.supabase.table("profiles").select("id").eq("email", email).execute()
+                )
                 if profile_res.data:
                     user_id = profile_res.data[0]["id"]
             except Exception:
@@ -71,9 +73,7 @@ class NewsletterService:
                     f"Se você não solicitou esta assinatura, ignore este e-mail."
                 )
                 payload_email = {
-                    "personalizations": [
-                        {"to": [{"email": email}], "subject": subject}
-                    ],
+                    "personalizations": [{"to": [{"email": email}], "subject": subject}],
                     "from": {"email": settings.SENDGRID_FROM or settings.ADMIN_EMAIL or email},
                     "content": [{"type": "text/plain", "value": body}],
                 }
@@ -101,11 +101,17 @@ class NewsletterService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token inválido")
             sub_id = data[0]["id"]
             now = datetime.now(timezone.utc).isoformat()
-            upd = table.update({
-                "status": "subscribed",
-                "confirmed_at": now,
-                "confirmation_token": None,
-            }).eq("id", sub_id).execute()
+            upd = (
+                table.update(
+                    {
+                        "status": "subscribed",
+                        "confirmed_at": now,
+                        "confirmation_token": None,
+                    }
+                )
+                .eq("id", sub_id)
+                .execute()
+            )
             if not upd.data:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -149,10 +155,16 @@ class NewsletterService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token inválido")
             sub_id = data[0]["id"]
             now = datetime.now(timezone.utc).isoformat()
-            upd = table.update({
-                "status": "unsubscribed",
-                "unsubscribed_at": now,
-            }).eq("id", sub_id).execute()
+            upd = (
+                table.update(
+                    {
+                        "status": "unsubscribed",
+                        "unsubscribed_at": now,
+                    }
+                )
+                .eq("id", sub_id)
+                .execute()
+            )
             if not upd.data:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -1,6 +1,7 @@
 """
 User schemas (Pydantic models)
 """
+
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr
@@ -34,7 +35,6 @@ class UpdateProfile(BaseModel):
     documentType: str | None = None
     documentNumber: str | None = None
     newsletter_opt_in: bool | None = None
-
 
 
 class UpdateRoleRequest(BaseModel):

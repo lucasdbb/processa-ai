@@ -25,15 +25,20 @@ class BlogService:
     ):
         start = (page - 1) * page_size
         end = start + page_size - 1
-        q = self.supabase.table("blog_posts").select(
-            "id,title,slug,excerpt,cover_image_url,category_id,author_id,published_at",
-        ).eq("status", "published").order("published_at", desc=True).range(start, end)
+        q = (
+            self.supabase.table("blog_posts")
+            .select(
+                "id,title,slug,excerpt,cover_image_url,category_id,author_id,published_at",
+            )
+            .eq("status", "published")
+            .order("published_at", desc=True)
+            .range(start, end)
+        )
         if search:
             q = q.ilike("title", f"%{search}%")
         if category_slug:
             cats = (
-                self.supabase
-                .table("blog_categories")
+                self.supabase.table("blog_categories")
                 .select("id,slug")
                 .eq("slug", category_slug)
                 .limit(1)
@@ -51,8 +56,7 @@ class BlogService:
         profiles = {}
         if author_ids:
             pr = (
-                self.supabase
-                .table("profiles")
+                self.supabase.table("profiles")
                 .select("id,full_name")
                 .in_("id", author_ids)
                 .execute()
@@ -65,8 +69,7 @@ class BlogService:
         categories_map = {}
         if category_ids:
             cat_res = (
-                self.supabase
-                .table("blog_categories")
+                self.supabase.table("blog_categories")
                 .select("id,name,slug")
                 .in_("id", category_ids)
                 .execute()
@@ -75,7 +78,7 @@ class BlogService:
                 categories_map[cat["id"]] = {
                     "id": str(cat["id"]),
                     "name": cat.get("name"),
-                    "slug": cat.get("slug")
+                    "slug": cat.get("slug"),
                 }
 
         items = []
@@ -107,8 +110,7 @@ class BlogService:
         status_filter: str | None,
     ):
         prof = (
-            self.supabase
-            .table("profiles")
+            self.supabase.table("profiles")
             .select("role")
             .eq("id", admin_user.id)
             .limit(1)
@@ -119,23 +121,27 @@ class BlogService:
 
         start = (page - 1) * page_size
         end = start + page_size - 1
-        q = self.supabase.table("blog_posts").select(
-            "id,title,slug,excerpt,cover_image_url,category_id,author_id,published_at,status,created_at",
-        ).order("created_at", desc=True).range(start, end)
-        
+        q = (
+            self.supabase.table("blog_posts")
+            .select(
+                "id,title,slug,excerpt,cover_image_url,category_id,author_id,published_at,status,created_at",
+            )
+            .order("created_at", desc=True)
+            .range(start, end)
+        )
+
         if status_filter and status_filter != "all":
             q = q.eq("status", status_filter)
         if search:
             q = q.ilike("title", f"%{search}%")
-            
+
         res = q.execute()
         data = res.data or []
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
             pr = (
-                self.supabase
-                .table("profiles")
+                self.supabase.table("profiles")
                 .select("id,full_name")
                 .in_("id", author_ids)
                 .execute()
@@ -164,8 +170,7 @@ class BlogService:
 
     async def get_admin_post(self, admin_user, post_id: str):
         prof = (
-            self.supabase
-            .table("profiles")
+            self.supabase.table("profiles")
             .select("role")
             .eq("id", admin_user.id)
             .limit(1)
@@ -174,36 +179,54 @@ class BlogService:
         if not prof.data or prof.data[0].get("role") != "admin":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
 
-        res = self.supabase.table("blog_posts").select(
-            "id,title,slug,excerpt,content,cover_image_url,category_id,author_id,published_at,status,created_at",
-        ).eq("id", post_id).limit(1).execute()
-        
+        res = (
+            self.supabase.table("blog_posts")
+            .select(
+                "id,title,slug,excerpt,content,cover_image_url,category_id,author_id,published_at,status,created_at",
+            )
+            .eq("id", post_id)
+            .limit(1)
+            .execute()
+        )
+
         data = res.data or []
         if not data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
-        
+
         post = data[0]
-        
+
         # Get category slug
         cat_slug = ""
         if post.get("category_id"):
-            cres = self.supabase.table("blog_categories").select("slug").eq("id", post.get("category_id")).limit(1).execute()
+            cres = (
+                self.supabase.table("blog_categories")
+                .select("slug")
+                .eq("id", post.get("category_id"))
+                .limit(1)
+                .execute()
+            )
             if cres.data:
                 cat_slug = cres.data[0]["slug"]
 
         # Get tags
         tags = []
-        tres = self.supabase.table("blog_post_tags").select("tag_id").eq("post_id", post["id"]).execute()
+        tres = (
+            self.supabase.table("blog_post_tags")
+            .select("tag_id")
+            .eq("post_id", post["id"])
+            .execute()
+        )
         if tres.data:
             tag_ids = [t["tag_id"] for t in tres.data]
             if tag_ids:
-                tags_res = self.supabase.table("blog_tags").select("name").in_("id", tag_ids).execute()
+                tags_res = (
+                    self.supabase.table("blog_tags").select("name").in_("id", tag_ids).execute()
+                )
                 tags = [t["name"] for t in tags_res.data or []]
 
         authors_ids = {post.get("author_id")}
         co = (
-            self.supabase
-            .table("blog_post_authors")
+            self.supabase.table("blog_post_authors")
             .select("user_id,role")
             .eq("post_id", post["id"])
             .execute()
@@ -213,15 +236,14 @@ class BlogService:
         profiles = []
         if authors_ids:
             pr = (
-                self.supabase
-                .table("profiles")
+                self.supabase.table("profiles")
                 .select("id,full_name")
                 .in_("id", list(authors_ids))
                 .execute()
             )
             profiles = pr.data or []
         authors = [{"id": str(p["id"]), "name": p.get("full_name")} for p in profiles]
-        
+
         return {
             "id": str(post.get("id")),
             "title": post.get("title"),
@@ -239,9 +261,15 @@ class BlogService:
         }
 
     async def get_published_by_slug(self, slug: str):
-        res = self.supabase.table("blog_posts").select(
-            "id,title,slug,excerpt,content,cover_image_url,category_id,author_id,published_at,status",
-        ).eq("slug", slug).limit(1).execute()
+        res = (
+            self.supabase.table("blog_posts")
+            .select(
+                "id,title,slug,excerpt,content,cover_image_url,category_id,author_id,published_at,status",
+            )
+            .eq("slug", slug)
+            .limit(1)
+            .execute()
+        )
         data = res.data or []
         if not data or data[0].get("status") != "published":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
@@ -251,8 +279,7 @@ class BlogService:
         category = None
         if post.get("category_id"):
             cat_res = (
-                self.supabase
-                .table("blog_categories")
+                self.supabase.table("blog_categories")
                 .select("id,name,slug")
                 .eq("id", post.get("category_id"))
                 .limit(1)
@@ -260,26 +287,28 @@ class BlogService:
             )
             if cat_res.data:
                 cat = cat_res.data[0]
-                category = {
-                    "id": str(cat["id"]),
-                    "name": cat.get("name"),
-                    "slug": cat.get("slug")
-                }
+                category = {"id": str(cat["id"]), "name": cat.get("name"), "slug": cat.get("slug")}
 
         # Fetch tags
         tags = []
-        tres = self.supabase.table("blog_post_tags").select("tag_id").eq("post_id", post["id"]).execute()
+        tres = (
+            self.supabase.table("blog_post_tags")
+            .select("tag_id")
+            .eq("post_id", post["id"])
+            .execute()
+        )
         if tres.data:
             tag_ids = [t["tag_id"] for t in tres.data]
             if tag_ids:
-                tags_res = self.supabase.table("blog_tags").select("name").in_("id", tag_ids).execute()
+                tags_res = (
+                    self.supabase.table("blog_tags").select("name").in_("id", tag_ids).execute()
+                )
                 tags = [t["name"] for t in tags_res.data or []]
 
         # Fetch authors
         authors_ids = {post.get("author_id")}
         co = (
-            self.supabase
-            .table("blog_post_authors")
+            self.supabase.table("blog_post_authors")
             .select("user_id,role")
             .eq("post_id", post["id"])
             .execute()
@@ -289,8 +318,7 @@ class BlogService:
         profiles = []
         if authors_ids:
             pr = (
-                self.supabase
-                .table("profiles")
+                self.supabase.table("profiles")
                 .select("id,full_name")
                 .in_("id", list(authors_ids))
                 .execute()
@@ -331,8 +359,7 @@ class BlogService:
         category_id = data.category_id
         if not category_id and getattr(data, "category", None):
             cats = (
-                self.supabase
-                .table("blog_categories")
+                self.supabase.table("blog_categories")
                 .select("id,slug")
                 .eq("slug", data.category)
                 .limit(1)
@@ -359,14 +386,13 @@ class BlogService:
         post = ins.data[0]
         # Save tags if provided
         try:
-            for raw in (getattr(data, "tags", None) or []):
+            for raw in getattr(data, "tags", None) or []:
                 name = (raw or "").strip()
                 if not name:
                     continue
                 slug_tag = self._slugify(name)
                 existing = (
-                    self.supabase
-                    .table("blog_tags")
+                    self.supabase.table("blog_tags")
                     .select("id")
                     .eq("slug", slug_tag)
                     .limit(1)
@@ -377,8 +403,7 @@ class BlogService:
                     tag_id = existing.data[0]["id"]
                 else:
                     newtag = (
-                        self.supabase
-                        .table("blog_tags")
+                        self.supabase.table("blog_tags")
                         .insert({"name": name, "slug": slug_tag})
                         .execute()
                     )
@@ -386,29 +411,32 @@ class BlogService:
                         tag_id = newtag.data[0]["id"]
                 if tag_id:
                     try:
-                        self.supabase.table("blog_post_tags").insert({
-                            "post_id": post["id"],
-                            "tag_id": tag_id,
-                        }).execute()
+                        self.supabase.table("blog_post_tags").insert(
+                            {
+                                "post_id": post["id"],
+                                "tag_id": tag_id,
+                            }
+                        ).execute()
                     except Exception:
                         pass
         except Exception:
             # Ignore tag failures; post is created
             pass
         try:
-            self.supabase.table("blog_post_authors").insert({
-                "post_id": post["id"],
-                "user_id": user.id,
-                "role": "main",
-            }).execute()
+            self.supabase.table("blog_post_authors").insert(
+                {
+                    "post_id": post["id"],
+                    "user_id": user.id,
+                    "role": "main",
+                }
+            ).execute()
         except Exception:
             pass
         return {"id": str(post.get("id")), "slug": post.get("slug")}
 
     async def update_draft(self, user, post_id: str, data):
         res = (
-            self.supabase
-            .table("blog_posts")
+            self.supabase.table("blog_posts")
             .select("id,author_id,status")
             .eq("id", post_id)
             .limit(1)
@@ -421,8 +449,7 @@ class BlogService:
         is_author = post.get("author_id") == user.id
         if not is_author:
             co = (
-                self.supabase
-                .table("blog_post_authors")
+                self.supabase.table("blog_post_authors")
                 .select("user_id")
                 .eq("post_id", post_id)
                 .eq("user_id", user.id)
@@ -445,8 +472,7 @@ class BlogService:
             updates["category_id"] = data.category_id
         if getattr(data, "category", None):
             cats = (
-                self.supabase
-                .table("blog_categories")
+                self.supabase.table("blog_categories")
                 .select("id,slug")
                 .eq("slug", data.category)
                 .limit(1)
@@ -465,14 +491,13 @@ class BlogService:
 
             # Insert new tags
             try:
-                for raw in (data.tags or []):
+                for raw in data.tags or []:
                     name = (raw or "").strip()
                     if not name:
                         continue
                     slug_tag = self._slugify(name)
                     existing = (
-                        self.supabase
-                        .table("blog_tags")
+                        self.supabase.table("blog_tags")
                         .select("id")
                         .eq("slug", slug_tag)
                         .limit(1)
@@ -483,8 +508,7 @@ class BlogService:
                         tag_id = existing.data[0]["id"]
                     else:
                         newtag = (
-                            self.supabase
-                            .table("blog_tags")
+                            self.supabase.table("blog_tags")
                             .insert({"name": name, "slug": slug_tag})
                             .execute()
                         )
@@ -492,10 +516,12 @@ class BlogService:
                             tag_id = newtag.data[0]["id"]
                     if tag_id:
                         try:
-                            self.supabase.table("blog_post_tags").insert({
-                                "post_id": post_id,
-                                "tag_id": tag_id,
-                            }).execute()
+                            self.supabase.table("blog_post_tags").insert(
+                                {
+                                    "post_id": post_id,
+                                    "tag_id": tag_id,
+                                }
+                            ).execute()
                         except Exception:
                             pass
             except Exception:
@@ -509,8 +535,7 @@ class BlogService:
 
     async def add_coauthor(self, user, post_id: str, co_user_id: str):
         res = (
-            self.supabase
-            .table("blog_posts")
+            self.supabase.table("blog_posts")
             .select("id,author_id,status")
             .eq("id", post_id)
             .limit(1)
@@ -527,19 +552,20 @@ class BlogService:
         if not (is_admin or post.get("author_id") == user.id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
         try:
-            self.supabase.table("blog_post_authors").insert({
-                "post_id": post_id,
-                "user_id": co_user_id,
-                "role": "co",
-            }).execute()
+            self.supabase.table("blog_post_authors").insert(
+                {
+                    "post_id": post_id,
+                    "user_id": co_user_id,
+                    "role": "co",
+                }
+            ).execute()
             return {"added": True}
         except Exception:
             return {"added": False}
 
     async def publish(self, admin_user, post_id: str):
         prof = (
-            self.supabase
-            .table("profiles")
+            self.supabase.table("profiles")
             .select("role")
             .eq("id", admin_user.id)
             .limit(1)
@@ -555,12 +581,13 @@ class BlogService:
             )
         now = datetime.now(timezone.utc).isoformat()
         upd = (
-            self.supabase
-            .table("blog_posts")
-            .update({
-                "status": "published",
-                "published_at": now,
-            })
+            self.supabase.table("blog_posts")
+            .update(
+                {
+                    "status": "published",
+                    "published_at": now,
+                }
+            )
             .eq("id", post_id)
             .execute()
         )
@@ -573,8 +600,7 @@ class BlogService:
 
     async def restore(self, admin_user, post_id: str):
         prof = (
-            self.supabase
-            .table("profiles")
+            self.supabase.table("profiles")
             .select("role")
             .eq("id", admin_user.id)
             .limit(1)
@@ -589,12 +615,13 @@ class BlogService:
                 detail="Apenas admin restaura",
             )
         upd = (
-            self.supabase
-            .table("blog_posts")
-            .update({
-                "status": "draft",
-                "published_at": None,
-            })
+            self.supabase.table("blog_posts")
+            .update(
+                {
+                    "status": "draft",
+                    "published_at": None,
+                }
+            )
             .eq("id", post_id)
             .execute()
         )
@@ -607,8 +634,7 @@ class BlogService:
 
     async def delete_post(self, admin_user, post_id: str):
         prof = (
-            self.supabase
-            .table("profiles")
+            self.supabase.table("profiles")
             .select("role")
             .eq("id", admin_user.id)
             .limit(1)
@@ -619,14 +645,19 @@ class BlogService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Apenas admin pode arquivar posts",
             )
-        
+
         # Check if post exists
         chk = self.supabase.table("blog_posts").select("id").eq("id", post_id).limit(1).execute()
         if not chk.data:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
 
         # Soft delete (archive) instead of hard delete
-        res = self.supabase.table("blog_posts").update({"status": "archived"}).eq("id", post_id).execute()
+        res = (
+            self.supabase.table("blog_posts")
+            .update({"status": "archived"})
+            .eq("id", post_id)
+            .execute()
+        )
         if not res.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

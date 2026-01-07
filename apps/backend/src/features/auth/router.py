@@ -1,6 +1,7 @@
 """
 Authentication routes
 """
+
 from typing import Union
 
 from fastapi import APIRouter, Depends, Response, status
@@ -23,7 +24,9 @@ auth_service = AuthService()
 user_service = UserService()
 
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str, expires_in: int = 3600):
+def set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str, expires_in: int = 3600
+):
     """Set httpOnly cookies for authentication tokens"""
     from src.core.config import settings
 
@@ -82,7 +85,7 @@ async def register(user_data: UserRegister, response: Response):
             response,
             result["access_token"],
             result["refresh_token"],
-            result.get("expires_in", 3600)
+            result.get("expires_in", 3600),
         )
 
     return result
@@ -95,10 +98,7 @@ async def login(user_data: UserLogin, response: Response):
 
     # Set authentication cookies
     set_auth_cookies(
-        response,
-        result["access_token"],
-        result["refresh_token"],
-        result.get("expires_in", 3600)
+        response, result["access_token"], result["refresh_token"], result.get("expires_in", 3600)
     )
 
     return result

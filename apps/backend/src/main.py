@@ -2,6 +2,7 @@
 Processa AI - Backend API
 FastAPI application for legal tech platform
 """
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

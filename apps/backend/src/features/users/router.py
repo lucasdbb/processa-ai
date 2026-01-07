@@ -1,6 +1,7 @@
 """
 Users routes
 """
+
 from fastapi import APIRouter, Depends, Query
 
 from src.core.dependencies import get_current_admin, get_current_user

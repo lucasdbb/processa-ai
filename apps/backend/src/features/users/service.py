@@ -1,7 +1,9 @@
 """
 User service
 """
+
 from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 
 from src.features.users.schemas import UpdateProfile
@@ -18,9 +20,12 @@ class UserService:
         """Get user profile"""
         try:
             # Buscar dados do profile com campos específicos (evita erro se campos não existem)
-            profile_response = self.supabase.table("profiles").select(
-                "id, email, full_name, role, avatar_url, created_at"
-            ).eq("id", user_id).execute()
+            profile_response = (
+                self.supabase.table("profiles")
+                .select("id, email, full_name, role, avatar_url, created_at")
+                .eq("id", user_id)
+                .execute()
+            )
 
             if not profile_response.data:
                 raise HTTPException(
@@ -108,10 +113,7 @@ class UserService:
             # Se houver dados de perfil para atualizar
             if db_update:
                 response = (
-                    self.supabase.table("profiles")
-                    .update(db_update)
-                    .eq("id", user_id)
-                    .execute()
+                    self.supabase.table("profiles").update(db_update).eq("id", user_id).execute()
                 )
 
                 if not response.data:
@@ -132,27 +134,38 @@ class UserService:
                 try:
                     if newsletter_opt_in:
                         # Verificar se já existe registro
-                        existing = self.supabase.table("newsletter_subscriptions").select("id").eq("user_id", user_id).execute()
+                        existing = (
+                            self.supabase.table("newsletter_subscriptions")
+                            .select("id")
+                            .eq("user_id", user_id)
+                            .execute()
+                        )
                         if existing.data:
-                            self.supabase.table("newsletter_subscriptions").update({
-                                "status": "subscribed",
-                                "confirmed_at": datetime.now(timezone.utc).isoformat(),
-                                "consent": True
-                            }).eq("id", existing.data[0]["id"]).execute()
+                            self.supabase.table("newsletter_subscriptions").update(
+                                {
+                                    "status": "subscribed",
+                                    "confirmed_at": datetime.now(timezone.utc).isoformat(),
+                                    "consent": True,
+                                }
+                            ).eq("id", existing.data[0]["id"]).execute()
                         else:
-                            self.supabase.table("newsletter_subscriptions").insert({
-                                "user_id": user_id,
-                                "email": profile["email"],
-                                "status": "subscribed",
-                                "confirmed_at": datetime.now(timezone.utc).isoformat(),
-                                "consent": True,
-                                "channel": "email"
-                            }).execute()
+                            self.supabase.table("newsletter_subscriptions").insert(
+                                {
+                                    "user_id": user_id,
+                                    "email": profile["email"],
+                                    "status": "subscribed",
+                                    "confirmed_at": datetime.now(timezone.utc).isoformat(),
+                                    "consent": True,
+                                    "channel": "email",
+                                }
+                            ).execute()
                     else:
-                        self.supabase.table("newsletter_subscriptions").update({
-                            "status": "unsubscribed",
-                            "unsubscribed_at": datetime.now(timezone.utc).isoformat()
-                        }).eq("user_id", user_id).execute()
+                        self.supabase.table("newsletter_subscriptions").update(
+                            {
+                                "status": "unsubscribed",
+                                "unsubscribed_at": datetime.now(timezone.utc).isoformat(),
+                            }
+                        ).eq("user_id", user_id).execute()
                 except Exception as e:
                     # Log erro mas não falha a request principal
                     print(f"Erro ao atualizar newsletter: {e}")

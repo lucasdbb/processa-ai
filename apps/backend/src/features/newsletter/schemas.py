@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr
 class SubscribeRequest(BaseModel):
     email: EmailStr
     topics: Optional[list[str]] = None
-    channel: Literal['email'] = 'email'
+    channel: Literal["email"] = "email"
     consent: bool
 
 

@@ -9,7 +9,7 @@ class SupportContactRequest(BaseModel):
     phone: Optional[str] = None
     company: Optional[str] = None
     subject: str
-    contactPreference: Literal['email', 'telefone', 'whatsapp']
+    contactPreference: Literal["email", "telefone", "whatsapp"]
     message: str
     isClient: bool = False
     consent: bool

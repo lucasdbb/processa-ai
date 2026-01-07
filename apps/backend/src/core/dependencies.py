@@ -1,7 +1,9 @@
 """
 FastAPI dependencies for authentication and authorization
 """
+
 from typing import Optional
+
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -75,9 +77,7 @@ async def get_current_admin(
     supabase = get_supabase()
 
     try:
-        profile_response = (
-            supabase.table("profiles").select("role").eq("id", user.id).execute()
-        )
+        profile_response = supabase.table("profiles").select("role").eq("id", user.id).execute()
 
         role = "user"
         if profile_response.data:
