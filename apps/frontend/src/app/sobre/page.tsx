@@ -4,7 +4,6 @@ import {
   Target,
   Eye,
   Heart,
-  Users,
   Zap,
   Shield,
   CheckCircle,
@@ -53,7 +52,7 @@ const team = [
   {
     name: 'Marcelo Cardozo',
     role: 'Fundador & CTO',
-    description: 'Especialista em Tecnologia Jurídica e Inteligência Artificial.',
+    description: 'Engenheiro de software especialista em Inteligência Artificial e Tecnologia Jurídica.',
     image: '/images/founder_marcelo.jpg',
   },
 ]
@@ -81,10 +80,7 @@ export default function AboutPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-8">
-              <Users className="h-8 w-8 text-gray-900" strokeWidth={1.5} />
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 mt-8">
               Sobre a Processa AI
             </h1>
             <p className="text-xl text-gray-500 leading-relaxed">

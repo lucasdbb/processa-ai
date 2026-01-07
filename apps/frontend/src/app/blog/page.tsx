@@ -1,4 +1,3 @@
-import { Newspaper } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { BlogList } from '@/features/blog/components/blog-list'
@@ -40,10 +39,7 @@ export default async function BlogPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-8">
-              <Newspaper className="h-8 w-8 text-gray-900" strokeWidth={1.5} />
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 mt-8">
               Blog Jurídico
             </h1>
             <p className="text-xl text-gray-500 leading-relaxed">

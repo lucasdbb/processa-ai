@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Linkedin, Instagram, Facebook } from 'lucide-react'
+import { Linkedin } from 'lucide-react'
 
 export function Footer() {
   const scrollToTop = () => {
@@ -67,20 +67,6 @@ export function Footer() {
               aria-label="LinkedIn"
             >
               <Linkedin className="w-5 h-5" />
-            </a>
-            <a
-              href="#"
-              className="text-gray-400 hover:text-pink-600 transition-colors"
-              aria-label="Instagram"
-            >
-              <Instagram className="w-5 h-5" />
-            </a>
-            <a
-              href="#"
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              aria-label="Facebook"
-            >
-              <Facebook className="w-5 h-5" />
             </a>
           </div>
         </div>

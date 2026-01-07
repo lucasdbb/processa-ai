@@ -527,10 +527,7 @@ export default function CalculadorasPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-8 animate-in fade-in zoom-in duration-500">
-              <Calculator className="h-8 w-8 text-gray-900" strokeWidth={1.5} />
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
               Calculadoras Jurídicas
             </h1>
             <p className="text-xl text-gray-500 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
