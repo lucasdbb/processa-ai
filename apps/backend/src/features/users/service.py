@@ -88,14 +88,13 @@ class UserService:
         try:
             update_data = profile_data.model_dump(exclude_none=True)
 
-            if not update_data and not profile_data.newsletter_opt_in is not None:
+            newsletter_opt_in = update_data.pop("newsletter_opt_in", None)
+
+            if not update_data and newsletter_opt_in is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Nenhum dado para atualizar",
                 )
-
-            # Extrair newsletter_opt_in pois não é coluna da tabela profiles
-            newsletter_opt_in = update_data.pop("newsletter_opt_in", None)
 
             # Mapear campos do frontend para o banco
             db_update = {}
@@ -105,6 +104,10 @@ class UserService:
                 db_update["avatar_url"] = update_data["avatar_url"]
             if "phone" in update_data:
                 db_update["phone"] = update_data["phone"]
+            if "document_type" in update_data:
+                db_update["document_type"] = update_data["document_type"]
+            if "document_number" in update_data:
+                db_update["document_number"] = update_data["document_number"]
             if "documentType" in update_data:
                 db_update["document_type"] = update_data["documentType"]
             if "documentNumber" in update_data:

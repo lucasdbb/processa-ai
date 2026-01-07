@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+const backendUrl = (
+  process.env.BACKEND_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "http://localhost:8000"
+).replace(/\/$/, "");
+
 const nextConfig: NextConfig = {
   // Disable static generation for pages with client components
   // This avoids hydration errors with Zustand and Radix UI
@@ -30,6 +36,15 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+  },
+
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
   },
 };
 

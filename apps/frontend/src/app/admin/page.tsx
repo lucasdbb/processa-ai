@@ -12,21 +12,9 @@ export default function AdminPage() {
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
-    // Timeout de segurança: se após 5 segundos ainda estiver carregando,
-    // considerar não autenticado e redirecionar
-    const timeout = setTimeout(() => {
-      if (isLoading && !user) {
-        router.push('/')
-      }
-    }, 5000)
-
-    return () => clearTimeout(timeout)
-  }, [isLoading, user, router])
-
-  useEffect(() => {
     if (!isLoading) {
       setHasCheckedAuth(true)
-      if (!user || user.role !== 'admin') {
+      if (!user || (user.role !== 'admin' && user.role !== 'author')) {
         router.push('/')
       }
     }
@@ -37,7 +25,7 @@ export default function AdminPage() {
     return <LoadingSpinner fullScreen size="lg" />
   }
 
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'author')) {
     return null
   }
 

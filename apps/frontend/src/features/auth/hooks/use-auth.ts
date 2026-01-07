@@ -48,17 +48,16 @@ export function useAuth() {
   const login = async (credentials: LoginCredentials) => {
     setLoading(true);
     try {
-      const response = await authService.login(credentials);
+      await authService.login(credentials);
 
-      if (!response || !response.user) {
-        throw new Error("Invalid login response");
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
+
+      if (!currentUser) {
+        throw new Error("Falha ao carregar usuário após login");
       }
 
-      // Backend sets httpOnly cookies automatically
-      // Just update the user state
-      setUser(response.user);
-
-      return response.user;
+      return currentUser;
     } finally {
       setLoading(false);
     }
@@ -67,17 +66,16 @@ export function useAuth() {
   const register = async (data: RegisterData) => {
     setLoading(true);
     try {
-      const response = await authService.register(data);
+      await authService.register(data);
 
-      if (!response || !response.user) {
-        throw new Error("Invalid register response");
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
+
+      if (!currentUser) {
+        throw new Error("Falha ao carregar usuário após cadastro");
       }
 
-      // Backend sets httpOnly cookies automatically
-      // Just update the user state
-      setUser(response.user);
-
-      return response.user;
+      return currentUser;
     } finally {
       setLoading(false);
     }

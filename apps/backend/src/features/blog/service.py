@@ -116,7 +116,7 @@ class BlogService:
             .limit(1)
             .execute()
         )
-        if not prof.data or prof.data[0].get("role") != "admin":
+        if not prof.data or prof.data[0].get("role") not in {"admin", "author"}:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
 
         start = (page - 1) * page_size
@@ -176,7 +176,7 @@ class BlogService:
             .limit(1)
             .execute()
         )
-        if not prof.data or prof.data[0].get("role") != "admin":
+        if not prof.data or prof.data[0].get("role") not in {"admin", "author"}:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
 
         res = (

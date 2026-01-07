@@ -4,7 +4,7 @@ Authentication routes
 
 from typing import Union
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 
 from src.core.dependencies import get_current_user
 from src.features.auth.schemas import (
@@ -105,9 +105,25 @@ async def login(user_data: UserLogin, response: Response):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_token: str):
-    """Refresh access token"""
-    return await auth_service.refresh_token(refresh_token)
+async def refresh_token(
+    response: Response,
+    refresh_token: str | None = Cookie(None),
+):
+    """Refresh access token and update httpOnly cookies"""
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
+        )
+
+    result = await auth_service.refresh_token(refresh_token)
+    set_auth_cookies(
+        response,
+        result["access_token"],
+        result["refresh_token"],
+        result.get("expires_in", 3600),
+    )
+    return result
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)

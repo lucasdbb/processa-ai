@@ -3,14 +3,17 @@ Authentication schemas (Pydantic models)
 """
 
 from pydantic import BaseModel, EmailStr, Field
+from pydantic.config import ConfigDict
 
 
 class UserRegister(BaseModel):
     """User registration schema"""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=100)
-    full_name: str | None = None
+    full_name: str | None = Field(default=None, alias="name")
 
 
 class UserLogin(BaseModel):
@@ -47,5 +50,7 @@ class ForgotPassword(BaseModel):
 class ResetPassword(BaseModel):
     """Reset password schema"""
 
-    token: str
-    new_password: str = Field(..., min_length=8, max_length=100)
+    model_config = ConfigDict(populate_by_name=True)
+
+    token: str = Field(..., alias="access_token")
+    new_password: str = Field(..., min_length=8, max_length=100, alias="password")

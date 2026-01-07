@@ -1,7 +1,4 @@
-import { fetchWithCredentials } from '@/lib/fetch'
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-const API_URL = `${BACKEND_URL}/api`
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 
 export const aiService = {
   async sendMessage(message: string, sessionId?: string): Promise<string> {

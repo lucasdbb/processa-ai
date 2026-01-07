@@ -95,3 +95,22 @@ async def get_current_admin(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso negado. Apenas administradores.",
         )
+
+
+async def get_current_staff(
+    user=Depends(get_current_user),
+):
+    supabase = get_supabase()
+
+    profile_response = supabase.table("profiles").select("role").eq("id", user.id).execute()
+    role = "user"
+    if profile_response.data:
+        role = profile_response.data[0].get("role") or "user"
+
+    if role not in {"admin", "author"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado.",
+        )
+
+    return user

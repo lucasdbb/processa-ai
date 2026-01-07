@@ -5,10 +5,7 @@ import type {
   UpdateProfileData,
   ResetPasswordData,
 } from '../types'
-import { fetchWithCredentials } from '@/lib/fetch'
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-const API_URL = `${BACKEND_URL}/api`
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 
 /**
  * Authentication Service
@@ -48,7 +45,11 @@ export const authService = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        full_name: data.name,
+      }),
     })
 
     if (!response.ok) {
@@ -100,7 +101,7 @@ export const authService = {
    */
   async updateProfile(data: UpdateProfileData): Promise<User> {
     const response = await fetchWithCredentials(`${API_URL}/users/profile`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -141,9 +142,11 @@ export const authService = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${data.access_token}`,
       },
-      body: JSON.stringify({ password: data.password }),
+      body: JSON.stringify({
+        token: data.access_token,
+        new_password: data.password,
+      }),
     })
 
     if (!response.ok) {
@@ -152,21 +155,4 @@ export const authService = {
     }
   },
 
-  /**
-   * Verify email with token
-   */
-  async verifyEmail(token: string): Promise<void> {
-    const response = await fetchWithCredentials(`${API_URL}/auth/verify-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token }),
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || 'Erro ao verificar email')
-    }
-  },
 }

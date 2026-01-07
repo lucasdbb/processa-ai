@@ -103,8 +103,6 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
       toast.success('Login realizado com sucesso!')
       onClose()
       loginForm.reset()
-      // Recarregar a página para atualizar o estado de autenticação
-      window.location.reload()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login'
       setApiError(message)
