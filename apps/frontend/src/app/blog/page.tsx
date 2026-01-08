@@ -54,8 +54,8 @@ export default async function BlogPage() {
         <BlogList initialPosts={posts} />
 
         {/* Newsletter */}
-        <div className="mt-24">
-          <div className="bg-gray-900 rounded-[2.5rem] p-8 md:p-16 text-center relative overflow-hidden shadow-2xl">
+        <div className="mt-20">
+          <div className="bg-gray-900 rounded-[2.5rem] p-8 md:p-12 text-center relative overflow-hidden shadow-2xl">
             {/* Background Effects */}
             <div className="absolute inset-0">
               <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gray-800/30 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
@@ -66,18 +66,18 @@ export default async function BlogPage() {
               <h3 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">
                 Receba as últimas notícias jurídicas
               </h3>
-              <p className="text-lg text-gray-400 mb-10 leading-relaxed font-light">
+              <p className="text-lg text-gray-400 mb-8 leading-relaxed font-light">
                 Assine nossa newsletter e seja o primeiro a saber sobre mudanças na legislação,
                 novos precedentes e análises jurídicas relevantes.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+              <div className="flex flex-col sm:flex-row gap-3 max-w-1.5xl mx-auto">
                 <input
                   type="email"
                   placeholder="Seu melhor e-mail"
-                  className="flex-1 px-6 py-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:bg-white/20 transition-all"
+                  className="flex-[2] px-6 py-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:bg-white/20 transition-all"
                 />
-                <button className="bg-white text-gray-900 hover:bg-gray-50 font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-lg transform hover:-translate-y-1 flex items-center justify-center gap-2 whitespace-nowrap">
+                <button className="bg-white text-gray-900 hover:bg-gray-50 font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap">
                   Inscrever-se
                 </button>
               </div>
