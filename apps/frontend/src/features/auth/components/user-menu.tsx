@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/use-auth'
 import type { User } from '../types'
 import { useState } from 'react'
 import { ProfileModal } from './profile-modal'
+import { SettingsModal } from './settings-modal'
 import { useAuthStore } from '../store/auth-store'
 
 interface UserMenuProps {
@@ -25,6 +26,7 @@ export function UserMenu({ user }: UserMenuProps) {
   const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const setUser = useAuthStore((state) => state.setUser)
 
   const getInitials = () => {
@@ -52,6 +54,11 @@ export function UserMenu({ user }: UserMenuProps) {
   const handleProfileClick = () => {
     setIsOpen(false)
     setIsProfileModalOpen(true)
+  }
+
+  const handleSettingsClick = () => {
+    setIsOpen(false)
+    setIsSettingsModalOpen(true)
   }
 
   const handleUpdateProfile = (updatedUser: User) => {
@@ -110,10 +117,10 @@ export function UserMenu({ user }: UserMenuProps) {
             </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild className="rounded-none p-0 focus:bg-transparent">
-            <Link href="/configuracoes" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 cursor-pointer focus:outline-none">
+            <button onClick={handleSettingsClick} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 cursor-pointer focus:outline-none">
               <Settings className="w-4 h-4 mr-3 text-gray-400" />
               <span>Configurações</span>
-            </Link>
+            </button>
           </DropdownMenuItem>
         </div>
         <DropdownMenuSeparator className="border-t border-gray-100 my-1 bg-transparent" />
@@ -130,6 +137,10 @@ export function UserMenu({ user }: UserMenuProps) {
         onClose={() => setIsProfileModalOpen(false)}
         user={user}
         onUpdateProfile={handleUpdateProfile}
+      />
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
       />
     </DropdownMenu>
   )
