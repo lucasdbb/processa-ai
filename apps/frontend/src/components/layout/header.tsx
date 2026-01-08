@@ -60,8 +60,8 @@ export function Header({ onLoginClick }: HeaderProps) {
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
         isScrolled || mobileMenuOpen
-          ? 'bg-white/80 backdrop-blur-md border-gray-200 shadow-sm'
-          : 'bg-white/0 border-transparent'
+          ? 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm'
+          : 'bg-white/95 border-transparent'
       )}
       role="banner"
     >
@@ -79,7 +79,7 @@ export function Header({ onLoginClick }: HeaderProps) {
                 alt="Processa AI"
                 width={160}
                 height={40}
-                className="h-10 w-auto object-contain"
+                className="h-15 w-auto object-contain"
                 priority
               />
             </Link>
