@@ -247,7 +247,7 @@ class AdminService {
     if (role) params.append('role', role)
     if (search) params.append('search', search)
 
-    const url = `${API_URL}/users/${params.toString() ? `?${params.toString()}` : ''}`
+    const url = `${API_URL}/users${params.toString() ? `?${params.toString()}` : ''}`
     const response = await fetchWithCredentials(url)
 
     if (!response.ok) {
