@@ -28,6 +28,7 @@ export function MarkdownPreview({ source, className }: MarkdownPreviewProps) {
       <MDPreview
         source={source}
         className={mergedClassName}
+        style={{ backgroundColor: 'transparent' }}
         wrapperElement={{
           'data-color-mode': isDark ? 'dark' : 'light'
         }}
