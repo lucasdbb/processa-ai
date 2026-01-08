@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 
 def test_health_check(monkeypatch):
     monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-    monkeypatch.setenv("SUPABASE_ANON_KEY", "test")
-    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "test.test.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
 
     from src.main import app
 
@@ -15,4 +15,3 @@ def test_health_check(monkeypatch):
     payload = response.json()
     assert payload["status"] == "healthy"
     assert payload["service"] == "processa-ai-backend"
-
