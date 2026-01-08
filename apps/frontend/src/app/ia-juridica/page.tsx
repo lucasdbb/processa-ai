@@ -192,22 +192,22 @@ OAB/SP nº [número]
 
   // Show the full page if authenticated
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
+    <div className="min-h-screen bg-background font-sans text-foreground selection:bg-slate-700 selection:text-white">
       <Header />
 
       {/* Hero Section */}
       <section className="relative py-20 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-gray-100 to-transparent rounded-full blur-3xl opacity-60" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 mt-8">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-6 mt-8">
               IA Jurídica
             </h1>
-            <p className="text-xl text-gray-500 leading-relaxed">
+            <p className="text-xl text-muted-foreground leading-relaxed">
               Crie documentos jurídicos profissionais com auxílio da inteligência artificial.
               Economize tempo e melhore a qualidade das suas peças processuais.
             </p>
@@ -219,7 +219,7 @@ OAB/SP nº [número]
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar com Ferramentas */}
           <div className="lg:col-span-1">
-            <h2 id="tools-heading" className="text-xl font-bold text-gray-900 mb-6 tracking-tight">
+            <h2 id="tools-heading" className="text-xl font-bold text-foreground mb-6 tracking-tight">
               Ferramentas
             </h2>
             <div className="space-y-4" role="radiogroup" aria-labelledby="tools-heading">
@@ -229,10 +229,10 @@ OAB/SP nº [número]
                   onClick={() => setSelectedTool(tool.id)}
                   role="radio"
                   aria-checked={selectedTool === tool.id}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 group ${
+                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 group ${
                     selectedTool === tool.id
-                      ? 'border-gray-900 bg-gray-900 shadow-lg scale-[1.02]'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                      ? 'border-primary bg-slate-900 shadow-lg scale-[1.02]'
+                      : 'border-border bg-card hover:border-muted-foreground/50 hover:shadow-md'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
@@ -240,7 +240,7 @@ OAB/SP nº [número]
                       className={`p-2.5 rounded-xl transition-colors ${
                         selectedTool === tool.id
                           ? 'bg-white/10 text-white'
-                          : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
+                          : 'bg-muted text-muted-foreground group-hover:bg-muted/80'
                       }`}
                       aria-hidden="true"
                     >
@@ -249,14 +249,14 @@ OAB/SP nº [número]
                     <div>
                       <h3
                         className={`font-bold text-sm ${
-                          selectedTool === tool.id ? 'text-white' : 'text-gray-900'
+                          selectedTool === tool.id ? 'text-white' : 'text-foreground'
                         }`}
                       >
                         {tool.name}
                       </h3>
                       <p
                         className={`text-xs mt-1 ${
-                          selectedTool === tool.id ? 'text-gray-400' : 'text-gray-500'
+                          selectedTool === tool.id ? 'text-white/80' : 'text-muted-foreground'
                         }`}
                       >
                         {tool.description}
@@ -269,7 +269,7 @@ OAB/SP nº [número]
 
             {/* Templates */}
             <div className="mt-8">
-              <h3 id="templates-heading" className="text-lg font-bold text-gray-900 mb-4 tracking-tight">
+              <h3 id="templates-heading" className="text-lg font-bold text-foreground mb-4 tracking-tight">
                 Templates
               </h3>
               <div className="space-y-2" role="list" aria-labelledby="templates-heading">
@@ -279,7 +279,7 @@ OAB/SP nº [número]
                     onClick={() => setPrompt(`Criar ${template.toLowerCase()} para `)}
                     role="listitem"
                     aria-label={`Usar template: ${template}`}
-                    className="w-full text-left px-4 py-3 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-400 hover:shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 text-gray-700 font-medium"
+                    className="w-full text-left px-4 py-3 text-sm bg-card border border-border rounded-xl hover:border-muted-foreground/50 hover:shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-foreground font-medium"
                   >
                     {template}
                   </button>
@@ -290,16 +290,16 @@ OAB/SP nº [número]
 
           {/* Área Principal */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-[2rem] border border-gray-200 shadow-xl p-8">
+            <div className="bg-card rounded-[2rem] border border-border shadow-xl p-8">
               <div className="flex items-center space-x-4 mb-8">
-                <div className="bg-gray-900 p-4 rounded-2xl shadow-lg">
+                <div className="bg-slate-900 p-4 rounded-2xl shadow-lg">
                   <Brain className="h-8 w-8 text-white" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight">
                     {TOOLS.find((t) => t.id === selectedTool)?.name}
                   </h2>
-                  <p className="text-gray-500 mt-1">
+                  <p className="text-muted-foreground mt-1">
                     {TOOLS.find((t) => t.id === selectedTool)?.description}
                   </p>
                 </div>
@@ -307,8 +307,8 @@ OAB/SP nº [número]
 
               {/* Input do Prompt */}
               <div className="mb-8">
-                <label htmlFor="prompt-input" className="block text-sm font-bold text-gray-900 mb-3">
-                  Descreva o que você precisa <span className="text-red-500">*</span>
+                <label htmlFor="prompt-input" className="block text-sm font-bold text-foreground mb-3">
+                  Descreva o que você precisa <span className="text-destructive">*</span>
                 </label>
                 <div className="relative">
                   <textarea
@@ -316,9 +316,9 @@ OAB/SP nº [número]
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Ex: Criar uma petição inicial para ação de cobrança contra empresa que não pagou serviços prestados no valor de R$ 10.000,00..."
-                    className="w-full h-40 px-6 py-4 text-base border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none transition-all duration-200 bg-gray-50 placeholder-gray-400"
+                    className="w-full h-40 px-6 py-4 text-base border border-input rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all duration-200 bg-muted/50 placeholder-muted-foreground text-foreground"
                   />
-                  <div className="absolute bottom-4 right-4 text-xs text-gray-400 font-medium">
+                  <div className="absolute bottom-4 right-4 text-xs text-muted-foreground font-medium">
                     {prompt.length} caracteres
                   </div>
                 </div>
@@ -328,7 +328,7 @@ OAB/SP nº [número]
                 <button
                   onClick={handleGenerate}
                   disabled={!prompt.trim() || isLoading}
-                  className="bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 w-full sm:w-auto"
+                  className="bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
                 >
                   {isLoading ? (
                     <>
@@ -348,14 +348,14 @@ OAB/SP nº [número]
               {generatedText && (
                 <div role="region" aria-labelledby="result-heading">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 id="result-heading" className="text-lg font-bold text-gray-900">
+                    <h3 id="result-heading" className="text-lg font-bold text-foreground">
                       Documento Gerado
                     </h3>
                     <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
                       <button
                         onClick={handleCopy}
                         aria-label="Copiar documento para a área de transferência"
-                        className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
                         title="Copiar"
                       >
                         <Copy className="h-5 w-5" aria-hidden="true" />
@@ -363,7 +363,7 @@ OAB/SP nº [número]
                       <button
                         onClick={handleDownload}
                         aria-label="Baixar documento como arquivo de texto"
-                        className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
                         title="Baixar"
                       >
                         <Download className="h-5 w-5" aria-hidden="true" />
@@ -371,7 +371,7 @@ OAB/SP nº [número]
                       <button
                         onClick={() => toast.info('Função em desenvolvimento')}
                         aria-label="Salvar documento no sistema"
-                        className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
                         title="Salvar"
                       >
                         <Save className="h-5 w-5" aria-hidden="true" />
@@ -379,13 +379,13 @@ OAB/SP nº [número]
                     </div>
                   </div>
                   <div
-                    className="bg-gray-50 border border-gray-200 rounded-2xl p-8 shadow-inner"
+                    className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner"
                     role="textbox"
                     aria-readonly="true"
                     aria-label="Documento gerado pela IA"
                     tabIndex={0}
                   >
-                    <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono leading-relaxed">
+                    <pre className="whitespace-pre-wrap text-sm text-foreground font-mono leading-relaxed">
                       {generatedText}
                     </pre>
                   </div>
@@ -394,30 +394,30 @@ OAB/SP nº [número]
             </div>
 
             {/* Dicas */}
-            <div className="mt-8 bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                <span className="bg-yellow-100 text-yellow-800 p-2 rounded-lg mr-3">💡</span>
+            <div className="mt-8 bg-card border border-border rounded-2xl p-8 shadow-sm">
+              <h3 className="text-lg font-bold text-foreground mb-4 flex items-center">
+                <span className="bg-[hsl(var(--tip-bg)/var(--tip-bg-alpha))] text-[hsl(var(--tip-text))] p-2 rounded-lg mr-3">💡</span>
                 Dicas para melhores resultados
               </h3>
-              <ul className="space-y-3 text-gray-600">
+              <ul className="space-y-3 text-muted-foreground">
                 <li className="flex items-start">
-                  <span className="mr-2 text-gray-400">•</span>
+                  <span className="mr-2 text-muted-foreground/60">•</span>
                   Seja específico sobre os fatos do caso, incluindo datas e valores
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 text-gray-400">•</span>
+                  <span className="mr-2 text-muted-foreground/60">•</span>
                   Identifique claramente as partes envolvidas (requerente e requerido)
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 text-gray-400">•</span>
+                  <span className="mr-2 text-muted-foreground/60">•</span>
                   Mencione a legislação aplicável ou jurisprudência se souber
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 text-gray-400">•</span>
+                  <span className="mr-2 text-muted-foreground/60">•</span>
                   Sempre revise o texto gerado por um profissional qualificado
                 </li>
                 <li className="flex items-start">
-                  <span className="mr-2 text-gray-400">•</span>
+                  <span className="mr-2 text-muted-foreground/60">•</span>
                   Use os templates sugeridos para estruturar melhor seu pedido
                 </li>
               </ul>

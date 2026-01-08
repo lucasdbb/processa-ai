@@ -61,7 +61,7 @@ export default function PlanosPage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-900 selection:text-white flex flex-col">
+    <div className="min-h-screen bg-background font-sans text-foreground selection:bg-slate-700 selection:text-white flex flex-col">
       <Header onLoginClick={() => setIsLoginModalOpen(true)} />
 
       <main className="flex-1">
@@ -69,15 +69,15 @@ export default function PlanosPage() {
         <section className="relative py-20 overflow-hidden">
           {/* Background Elements */}
           <div className="absolute inset-0 z-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-gray-100 to-transparent rounded-full blur-3xl opacity-60" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />
           </div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="text-center max-w-3xl mx-auto">
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 mt-8">
+              <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-6 mt-8">
                 Escolha o Plano Ideal
               </h1>
-              <p className="text-xl text-gray-500 leading-relaxed">
+              <p className="text-xl text-muted-foreground leading-relaxed">
                 Ferramentas jurídicas inteligentes para impulsionar sua prática profissional
               </p>
             </div>
@@ -94,15 +94,15 @@ export default function PlanosPage() {
                 return (
                   <div
                     key={index}
-                    className={`relative bg-white rounded-2xl p-5 flex flex-col transition-all duration-300 hover:scale-[1.02] ${
+                    className={`relative bg-card rounded-2xl p-5 flex flex-col transition-all duration-300 hover:scale-[1.02] ${
                       plan.popular
-                        ? 'shadow-2xl ring-2 ring-gray-900 z-10'
-                        : 'shadow-xl border border-gray-200 hover:shadow-2xl'
+                        ? 'shadow-2xl ring-2 ring-primary z-10'
+                        : 'shadow-xl border border-border hover:shadow-2xl hover:border-muted-foreground/50'
                     }`}
                   >
                     {plan.popular && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <div className="bg-gray-900 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg flex items-center tracking-wide">
+                        <div className="bg-slate-900 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg flex items-center tracking-wide">
                           <Star className="w-3 h-3 mr-1.5 fill-current" />
                           MAIS POPULAR
                         </div>
@@ -112,22 +112,24 @@ export default function PlanosPage() {
                     <div className="mb-4">
                       <div
                         className={`inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 ${
-                          plan.popular ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'
+                          plan.popular
+                            ? 'bg-slate-900 text-white'
+                            : 'bg-muted text-foreground'
                         }`}
                       >
                         <IconComponent className="w-5 h-5" strokeWidth={1.5} />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">
+                      <h3 className="text-xl font-bold text-foreground mb-2 tracking-tight">
                         {plan.name}
                       </h3>
-                      <p className="text-gray-500 text-sm leading-relaxed">{plan.description}</p>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{plan.description}</p>
                     </div>
 
                     <div className="flex items-baseline mb-4">
-                      <span className="text-3xl font-bold text-gray-900 tracking-tight">
+                      <span className="text-3xl font-bold text-foreground tracking-tight">
                         {plan.price}
                       </span>
-                      <span className="text-gray-500 ml-1.5 text-sm font-medium">
+                      <span className="text-muted-foreground ml-1.5 text-sm font-medium">
                         {plan.period}
                       </span>
                     </div>
@@ -135,10 +137,10 @@ export default function PlanosPage() {
                     <ul className="space-y-2.5 mb-4 flex-grow">
                       {plan.features.map((feature, featureIndex) => (
                         <li key={featureIndex} className="flex items-start">
-                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-50 flex items-center justify-center mr-2.5 mt-0.5">
-                            <Check className="w-3 h-3 text-green-600" strokeWidth={3} />
+                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center mr-2.5 mt-0.5">
+                            <Check className="w-3 h-3 text-[hsl(var(--success-strong))]" strokeWidth={3} />
                           </div>
-                          <span className="text-gray-600 text-sm font-medium leading-relaxed">
+                          <span className="text-muted-foreground text-sm font-medium leading-relaxed">
                             {feature}
                           </span>
                         </li>
@@ -150,8 +152,8 @@ export default function PlanosPage() {
                         onClick={() => setIsLoginModalOpen(true)}
                         className={`w-full py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 transform hover:-translate-y-0.5 ${
                           plan.popular
-                            ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg hover:shadow-xl'
-                            : 'bg-white text-gray-900 border-2 border-gray-200 hover:border-gray-900 hover:bg-gray-50'
+                            ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl'
+                            : 'bg-card text-foreground border-2 border-border hover:border-primary hover:bg-muted'
                         }`}
                       >
                         {plan.buttonText}

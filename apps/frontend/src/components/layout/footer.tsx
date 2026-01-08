@@ -10,7 +10,7 @@ export function Footer() {
   }
 
   return (
-    <footer className="bg-white border-t border-gray-100 py-6">
+    <footer className="bg-background border-t border-border py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           {/* Brand & Copyright */}
@@ -28,32 +28,32 @@ export function Footer() {
                 className="h-6 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
               />
             </Link>
-            <span className="hidden md:block w-px h-4 bg-gray-300"></span>
-            <p className="text-sm text-gray-400">
+            <span className="hidden md:block w-px h-4 bg-muted"></span>
+            <p className="text-sm text-muted-foreground">
               © 2025. Todos os direitos reservados.
             </p>
           </div>
 
           {/* Minimal Links */}
-          <div className="flex items-center gap-6 text-sm text-gray-500">
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link
               href="/termos"
               onClick={scrollToTop}
-              className="hover:text-gray-900 transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               Termos
             </Link>
             <Link
               href="/privacidade"
               onClick={scrollToTop}
-              className="hover:text-gray-900 transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               Privacidade
             </Link>
             <Link
               href="/contato"
               onClick={scrollToTop}
-              className="hover:text-gray-900 transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               Contato
             </Link>
@@ -63,7 +63,7 @@ export function Footer() {
           <div className="flex gap-4">
             <a
               href="#"
-              className="text-gray-400 hover:text-gray-900 transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
               aria-label="LinkedIn"
             >
               <Linkedin className="w-5 h-5" />

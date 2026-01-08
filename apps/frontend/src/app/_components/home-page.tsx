@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Brain,
   Calculator,
   FileText,
   ArrowRight,
@@ -18,12 +17,20 @@ import { Footer } from '@/components/layout/footer'
 import { LoginModal } from '@/features/auth/components/login-modal'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { toast } from 'sonner'
+import { useTheme } from 'next-themes'
 
 export function HomePage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
   const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false)
+
+  const { resolvedTheme } = useTheme()
+  const [hasMounted, setHasMounted] = useState(false)
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+  const isDark = hasMounted && resolvedTheme === 'dark'
 
   const featuresRef = useRef<HTMLElement>(null)
   const demoRef = useRef<HTMLElement>(null)
@@ -104,7 +111,7 @@ export function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
+    <div className="min-h-screen bg-background font-sans text-foreground selection:bg-slate-700 selection:text-white">
       <Header onLoginClick={handleLoginClick} />
 
       <main>
@@ -112,20 +119,20 @@ export function HomePage() {
         <section className="relative min-h-screen flex flex-col justify-center pt-20 overflow-hidden">
           {/* Background Elements */}
           <div className="absolute inset-0 z-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-gray-100 to-transparent rounded-full blur-3xl opacity-60" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-60" />
           </div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex-grow flex flex-col justify-center">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 mb-8 leading-[1.1]">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-8 leading-[1.1]">
               A evolução natural <br className="hidden md:block" />
               do seu{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-foreground via-muted-foreground to-foreground">
                 escritório jurídico
               </span>
               .
             </h1>
 
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-12 leading-relaxed">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
               Elimine o trabalho repetitivo com nossa IA. Crie petições, realize cálculos
               complexos e mantenha-se atualizado em uma única interface moderna.
             </p>
@@ -133,7 +140,11 @@ export function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button
                 onClick={handleRegisterClick}
-                className="group relative px-8 py-4 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 transition-all duration-200 shadow-xl shadow-gray-900/10 hover:-translate-y-1 overflow-hidden"
+                className={`group relative px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 shadow-xl hover:-translate-y-1 overflow-hidden ${
+                  isDark
+                    ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-black/10'
+                    : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/10'
+                }`}
               >
                 <span className="relative z-10 flex items-center gap-2">
                   Começar Gratuitamente
@@ -142,25 +153,10 @@ export function HomePage() {
               </button>
               <button
                 onClick={scrollToDemo}
-                className="px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-2xl font-semibold text-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
+                className="px-8 py-4 bg-card text-card-foreground border border-border rounded-2xl font-semibold text-lg hover:bg-accent hover:border-border transition-all duration-200"
               >
                 Ver Demonstração
               </button>
-            </div>
-
-            {/* Floating UI Preview - Smaller but visible */}
-            <div className="mt-16 relative max-w-4xl mx-auto hidden md:block">
-              <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden aspect-[21/9] transform scale-95 opacity-80 hover:opacity-100 hover:scale-100 transition-all duration-500">
-                <div className="absolute inset-0 bg-gray-50/50 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-3 animate-bounce">
-                      <Brain className="w-6 h-6 text-gray-900" />
-                    </div>
-                    <p className="text-gray-400 font-medium text-sm">Interface do Sistema</p>
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-transparent" />
-              </div>
             </div>
           </div>
 
@@ -176,41 +172,77 @@ export function HomePage() {
         {/* Bento Grid Features */}
         <section
           ref={featuresRef}
-          className="min-h-[calc(100vh-5rem)] flex flex-col justify-center py-12 lg:py-16 bg-white relative z-10"
+          className="min-h-[calc(100vh-5rem)] flex flex-col justify-center py-12 lg:py-16 bg-background relative z-10"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                 Poder concentrado.
               </h2>
-              <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Todas as ferramentas que você precisa para elevar o nível da sua advocacia.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[280px]">
               {/* Card 1: IA (Large) */}
-              <div className="md:col-span-2 md:row-span-1 group relative overflow-hidden rounded-3xl bg-gray-900 p-8 flex flex-col justify-between transition-all duration-500 hover:shadow-2xl shadow-xl hover:scale-[1.02] border border-gray-800">
+              <div
+                className={`md:col-span-2 md:row-span-1 group relative overflow-hidden rounded-3xl p-8 flex flex-col justify-between transition-all duration-500 hover:shadow-2xl shadow-xl hover:scale-[1.02] border ${
+                  isDark ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-slate-900 border-[#1e293b]'
+                }`}
+              >
                 {/* Background with Hover Gradient Reveal */}
-                <div className="absolute inset-0 bg-gray-900 z-0 transition-opacity duration-500 group-hover:opacity-0" />
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-[#1e1b4b] to-gray-900 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div
+                  className={`absolute inset-0 z-0 transition-opacity duration-500 group-hover:opacity-0 ${
+                    isDark ? 'bg-[#f8fafc]' : 'bg-[#0f172a]'
+                  }`}
+                />
+                <div
+                  className={`absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
+                    isDark
+                      ? 'bg-gradient-to-br from-[#f8fafc] via-white to-[#f1f5f9]'
+                      : 'bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#0f172a]'
+                  }`}
+                />
 
                 {/* Subtle Glow Effects on Hover */}
-                <div className="absolute -right-20 -top-20 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute -right-20 -top-20 w-96 h-96 bg-slate-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                 <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
                 <div className="relative z-10 flex flex-col md:flex-row gap-6 md:items-start">
-                  <div className="w-14 h-14 bg-gray-800 rounded-2xl flex items-center justify-center flex-shrink-0 border border-gray-700 group-hover:border-indigo-500/30 group-hover:bg-indigo-900/20 transition-all duration-500">
+                  <div
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 border group-hover:border-slate-500/30 transition-all duration-500 shadow-sm ${
+                      isDark
+                        ? 'bg-white border-[#e2e8f0] group-hover:bg-slate-50'
+                        : 'bg-[#1e293b] border-[#334155] group-hover:bg-slate-900/20'
+                    }`}
+                  >
                     <BrainCircuit
-                      className="w-7 h-7 text-gray-300 group-hover:text-indigo-300 transition-colors duration-300"
+                      className={`w-7 h-7 transition-colors duration-300 ${
+                        isDark
+                          ? 'text-[#0f172a] group-hover:text-slate-600'
+                          : 'text-[#cbd5e1] group-hover:text-slate-300'
+                      }`}
                       strokeWidth={1.5}
                     />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold mb-2 tracking-tight text-white group-hover:text-indigo-50 transition-colors duration-300">
+                    <h3
+                      className={`text-2xl font-bold mb-2 tracking-tight transition-colors duration-300 ${
+                        isDark
+                          ? 'text-[#0f172a] group-hover:text-slate-900'
+                          : 'text-white group-hover:text-slate-50'
+                      }`}
+                    >
                       IA Jurídica Avançada
                     </h3>
-                    <p className="text-gray-400 text-base max-w-lg leading-relaxed font-light group-hover:text-gray-300 transition-colors duration-300">
+                    <p
+                      className={`text-base max-w-lg leading-relaxed font-light transition-colors duration-300 ${
+                        isDark
+                          ? 'text-[#475569] group-hover:text-[#1e293b]'
+                          : 'text-[#94a3b8] group-hover:text-[#cbd5e1]'
+                      }`}
+                    >
                       Gere petições fundamentadas, analise contratos e obtenha insights estratégicos
                       em segundos.
                     </p>
@@ -219,30 +251,40 @@ export function HomePage() {
 
                 <Link
                   href="/ia-juridica"
-                  className="relative z-10 mt-6 md:mt-0 inline-flex items-center gap-2 text-gray-300 font-medium hover:gap-3 transition-all self-start pt-6 border-t border-gray-800 w-full group-hover:border-indigo-500/20 group-hover:text-white"
+                  className={`relative z-10 mt-6 md:mt-0 inline-flex items-center gap-2 font-medium hover:gap-3 transition-all self-start pt-6 border-t w-full group-hover:border-slate-500/20 ${
+                    isDark
+                      ? 'text-[#334155] border-[#e2e8f0] group-hover:text-[#0f172a]'
+                      : 'text-[#cbd5e1] border-[#1e293b] group-hover:text-white'
+                  }`}
                 >
                   <span className="transition-colors">Explorar IA</span>{' '}
-                  <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-indigo-300 transition-colors" />
+                  <ArrowRight
+                    className={`w-4 h-4 transition-colors ${
+                      isDark
+                        ? 'text-[#94a3b8] group-hover:text-slate-600'
+                        : 'text-[#64748b] group-hover:text-slate-300'
+                    }`}
+                  />
                 </Link>
               </div>
 
               {/* Card 2: Calculators */}
-              <div className="group relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 flex flex-col justify-between hover:border-gray-300 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02]">
+              <div className="group relative overflow-hidden rounded-3xl bg-card border border-border p-8 flex flex-col justify-between hover:border-muted-foreground/50 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02]">
                 <div>
-                  <div className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center mb-6">
-                    <Calculator className="w-5 h-5 text-gray-700" strokeWidth={1.5} />
+                  <div className="w-10 h-10 bg-muted border border-border rounded-xl flex items-center justify-center mb-6">
+                    <Calculator className="w-5 h-5 text-foreground" strokeWidth={1.5} />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 tracking-tight">
+                  <h3 className="text-lg font-bold text-foreground mb-2 tracking-tight">
                     Calculadoras
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
                     Trabalhista e previdenciário com atualização automática.
                   </p>
                 </div>
-                <div className="pt-6 border-t border-gray-100">
+                <div className="pt-6 border-t border-border">
                   <Link
                     href="/calculadoras"
-                    className="inline-flex items-center justify-between w-full text-sm font-semibold text-gray-900 hover:text-gray-600 transition-colors group-hover:translate-x-1 duration-200"
+                    className="inline-flex items-center justify-between w-full text-sm font-semibold text-foreground hover:text-muted-foreground transition-colors group-hover:translate-x-1 duration-200"
                   >
                     Acessar <ArrowRight className="w-4 h-4" />
                   </Link>
@@ -250,25 +292,25 @@ export function HomePage() {
               </div>
 
               {/* Card 3: Tracking (New) */}
-              <div className="group relative overflow-hidden rounded-3xl bg-gray-50 border border-gray-200 p-8 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02]">
+              <div className="group relative overflow-hidden rounded-3xl bg-muted/30 border border-border p-8 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02]">
                 <div>
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center">
-                      <Search className="w-5 h-5 text-gray-400" strokeWidth={1.5} />
+                    <div className="w-10 h-10 bg-card border border-border rounded-xl flex items-center justify-center">
+                      <Search className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
                     </div>
-                    <span className="px-2.5 py-1 bg-gray-200/50 text-gray-500 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-gray-200">
+                    <span className="px-2.5 py-1 bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider rounded-lg border border-border">
                       Em Breve
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-gray-500 mb-2 tracking-tight">Processos</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
+                  <h3 className="text-lg font-bold text-muted-foreground mb-2 tracking-tight">Processos</h3>
+                  <p className="text-muted-foreground/80 text-sm leading-relaxed">
                     Monitoramento automático com notificações em tempo real.
                   </p>
                 </div>
-                <div className="pt-6 border-t border-gray-200/50">
+                <div className="pt-6 border-t border-border">
                   <button
                     disabled
-                    className="inline-flex items-center justify-between w-full text-sm font-semibold text-gray-400 cursor-not-allowed"
+                    className="inline-flex items-center justify-between w-full text-sm font-semibold text-muted-foreground cursor-not-allowed"
                   >
                     Aguarde <Clock className="w-4 h-4" />
                   </button>
@@ -276,33 +318,33 @@ export function HomePage() {
               </div>
 
               {/* Card 4: Blog/Updates (Wide) */}
-              <div className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 flex flex-col hover:border-gray-300 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] h-full">
+              <div className="md:col-span-2 group relative overflow-hidden rounded-3xl bg-card border border-border p-8 flex flex-col hover:border-muted-foreground/50 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] h-full">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 flex-1">
                   <div className="flex items-start gap-6 w-full">
-                    <div className="w-12 h-12 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
+                    <div className="w-12 h-12 bg-muted border border-border rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-6 h-6 text-foreground" strokeWidth={1.5} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-1 tracking-tight">
+                      <h3 className="text-lg font-bold text-foreground mb-1 tracking-tight">
                         Blog Jurídico
                       </h3>
-                      <p className="text-gray-500 text-sm leading-relaxed">
+                      <p className="text-muted-foreground text-sm leading-relaxed">
                         Notícias do meio jurídico e análises aprofundadas sobre legislação.
                       </p>
                     </div>
                   </div>
 
-                  <div className="w-full md:w-auto pt-6 md:pt-0 md:pl-8 md:border-l border-gray-100 border-t md:border-t-0">
+                  <div className="w-full md:w-auto pt-6 md:pt-0 md:pl-8 md:border-l border-border border-t md:border-t-0">
                     <Link
                       href="/blog"
-                      className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-600 transition-colors whitespace-nowrap group-hover:translate-x-1 duration-200"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-muted-foreground transition-colors whitespace-nowrap group-hover:translate-x-1 duration-200"
                     >
                       Ler Notícias <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>
 
-                <div className="mt-auto pt-4 border-t border-gray-100 w-full">
+                <div className="mt-auto pt-4 border-t border-border w-full">
                   <form onSubmit={handleNewsletterSubscribe} className="w-full max-w-2xl">
                     <label htmlFor="home-newsletter-email" className="sr-only">
                       Seu melhor e-mail
@@ -316,19 +358,23 @@ export function HomePage() {
                         placeholder="Seu melhor e-mail"
                         value={newsletterEmail}
                         onChange={(e) => setNewsletterEmail(e.target.value)}
-                        className="flex-1 px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/20 focus:bg-white transition-all"
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background transition-all"
                         disabled={isNewsletterSubmitting}
                         required
                       />
                       <button
                         type="submit"
                         disabled={isNewsletterSubmitting}
-                        className="bg-gray-900 text-white hover:bg-gray-800 font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-md whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+                        className={`font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 shadow-md whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed text-sm ${
+                          isDark
+                            ? 'bg-white text-slate-900 hover:bg-slate-100'
+                            : 'bg-slate-900 text-white hover:bg-slate-800'
+                        }`}
                       >
                         {isNewsletterSubmitting ? 'Inscrevendo…' : 'Inscrever-se'}
                       </button>
                     </div>
-                    <p className="mt-2 text-[11px] text-gray-400">
+                    <p className="mt-2 text-[11px] text-muted-foreground">
                       Ao se inscrever, você concorda em receber e-mails.
                     </p>
                   </form>
@@ -341,20 +387,20 @@ export function HomePage() {
         {/* Demo Section - Video */}
         <section
           ref={demoRef}
-          className="min-h-[calc(100vh-5rem)] flex flex-col justify-center py-12 lg:py-16 bg-gray-50 relative overflow-hidden"
+          className="min-h-[calc(100vh-5rem)] flex flex-col justify-center py-12 lg:py-16 bg-muted/30 relative overflow-hidden"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                 Veja em ação.
               </h2>
-              <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Descubra como nossa plataforma transforma a rotina do seu escritório em poucos
                 cliques.
               </p>
             </div>
 
-            <div className="relative max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl border border-gray-200 bg-gray-900 aspect-video group">
+            <div className="relative max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl border border-border bg-card aspect-video group">
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/30 transition-colors cursor-pointer">
                 <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 transition-transform group-hover:scale-110">
                   <div className="w-0 h-0 border-t-[12px] border-t-transparent border-l-[24px] border-l-white border-b-[12px] border-b-transparent ml-2" />
@@ -374,25 +420,45 @@ export function HomePage() {
           {/* Background Elements for Demo Section */}
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
             <div className="absolute top-1/4 -left-64 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-1/4 -right-64 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-1/4 -right-64 w-96 h-96 bg-slate-500/10 rounded-full blur-3xl" />
           </div>
         </section>
 
         {/* CTA Section - Distinct & Modern */}
-        <section className="py-24 bg-white relative overflow-hidden">
+        <section className="py-24 bg-background relative overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="bg-gray-900 rounded-[2.5rem] p-8 md:p-16 text-center relative overflow-hidden shadow-2xl">
+            <div
+              className={`rounded-[2.5rem] p-8 md:p-16 text-center relative overflow-hidden shadow-2xl ${
+                isDark ? 'bg-muted' : 'bg-slate-900'
+              }`}
+            >
               {/* Background Effects - Subtle */}
               <div className="absolute inset-0">
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gray-800/30 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gray-800/30 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />
+                <div
+                  className={`absolute top-0 right-0 w-[600px] h-[600px] rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 ${
+                    isDark ? 'bg-background/10' : 'bg-white/5'
+                  }`}
+                />
+                <div
+                  className={`absolute bottom-0 left-0 w-[600px] h-[600px] rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2 ${
+                    isDark ? 'bg-background/10' : 'bg-white/5'
+                  }`}
+                />
               </div>
 
               <div className="relative z-10 max-w-3xl mx-auto">
-                <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                <h2
+                  className={`text-3xl md:text-5xl font-bold mb-6 tracking-tight ${
+                    isDark ? 'text-foreground' : 'text-white'
+                  }`}
+                >
                   Pronto para o próximo nível?
                 </h2>
-                <p className="text-lg text-gray-400 mb-10 leading-relaxed font-light">
+                <p
+                  className={`text-lg mb-10 leading-relaxed font-light ${
+                    isDark ? 'text-muted-foreground' : 'text-slate-300'
+                  }`}
+                >
                   Junte-se a milhares de advogados que já estão economizando tempo e aumentando sua
                   produtividade com a Processa AI.
                 </p>
@@ -400,19 +466,27 @@ export function HomePage() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button
                     onClick={handleRegisterClick}
-                    className="px-8 py-4 bg-white text-gray-900 rounded-xl font-bold text-lg hover:bg-gray-50 transition-all transform hover:-translate-y-1 shadow-lg"
+                    className={`px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:-translate-y-1 shadow-lg ${
+                      isDark
+                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                        : 'bg-white text-slate-900 hover:bg-slate-50'
+                    }`}
                   >
                     Criar Conta Gratuita
                   </button>
                   <Link
                     href="/planos"
-                    className="px-8 py-4 bg-transparent border border-gray-700 text-white rounded-xl font-bold text-lg hover:bg-gray-800 hover:border-gray-600 transition-all inline-flex items-center justify-center"
+                    className={`px-8 py-4 bg-transparent border rounded-xl font-bold text-lg transition-all inline-flex items-center justify-center ${
+                      isDark
+                        ? 'border-border text-foreground hover:bg-background/10'
+                        : 'border-slate-700 text-white hover:bg-white/10'
+                    }`}
                   >
                     Ver Planos
                   </Link>
                 </div>
 
-                <p className="mt-8 text-sm text-gray-500">
+                <p className={`mt-8 text-sm ${isDark ? 'text-muted-foreground' : 'text-slate-500'}`}>
                   Sem cartão de crédito • Cancelamento a qualquer momento
                 </p>
               </div>

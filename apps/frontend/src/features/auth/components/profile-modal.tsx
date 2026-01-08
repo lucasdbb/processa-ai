@@ -201,13 +201,13 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300">
+      <div className="bg-card text-card-foreground rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 border border-border">
         {/* Header Compacto com Avatar */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex items-center justify-between p-5 border-b border-border bg-muted/30">
           <div className="flex items-center gap-4">
             <div className="relative group">
-              <div className="relative w-14 h-14 bg-gray-900 text-white rounded-full flex items-center justify-center text-lg font-bold overflow-hidden shadow-md ring-2 ring-gray-100">
+              <div className="relative w-14 h-14 bg-slate-900 text-white rounded-full flex items-center justify-center text-lg font-bold overflow-hidden shadow-md ring-2 ring-muted">
                 {avatarPreview ? (
                   <Image src={avatarPreview} alt="Preview" fill className="object-cover" unoptimized />
                 ) : user.avatar_url ? (
@@ -221,7 +221,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 bg-white text-gray-900 border border-gray-200 rounded-full p-1.5 hover:bg-gray-50 transition-colors shadow-sm"
+                  className="absolute -bottom-1 -right-1 bg-background text-foreground border border-border rounded-full p-1.5 hover:bg-muted transition-colors shadow-sm"
                   aria-label="Alterar foto"
                 >
                   <Camera className="w-3 h-3" />
@@ -230,10 +230,10 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
             </div>
 
             <div>
-              <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+              <h2 className="text-lg font-bold text-foreground tracking-tight">
                 {isEditing ? 'Editar Perfil' : 'Meu Perfil'}
               </h2>
-              <p className="text-xs text-gray-500 font-medium">{user.email}</p>
+              <p className="text-xs text-muted-foreground font-medium">{user.email}</p>
             </div>
 
             <input
@@ -247,7 +247,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
 
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-full p-2 transition-colors"
             aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
@@ -263,7 +263,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
               <div className="md:col-span-2">
                 <label
                   htmlFor="name"
-                  className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5"
+                  className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5"
                 >
                   Nome Completo
                 </label>
@@ -274,8 +274,8 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                   value={formData.name}
                   onChange={handleInputChange}
                   disabled={!isEditing}
-                  className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all ${
-                    !isEditing ? 'bg-gray-50 text-gray-500' : 'bg-white text-gray-900'
+                  className={`w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                    !isEditing ? 'bg-muted text-muted-foreground' : 'bg-background text-foreground'
                   }`}
                   required
                 />
@@ -285,7 +285,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
               <div>
                 <label
                   htmlFor="phone"
-                  className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5"
+                  className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5"
                 >
                   Telefone
                 </label>
@@ -304,32 +304,32 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                   }
                   className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
                     !isEditing
-                      ? 'bg-gray-50 text-gray-500 border-gray-200'
+                      ? 'bg-muted text-muted-foreground border-input'
                       : formData.phone && !isValidPhone(formData.phone)
-                        ? 'border-red-300 focus:ring-red-500'
+                        ? 'border-destructive focus:ring-destructive'
                         : formData.phone && isValidPhone(formData.phone)
-                          ? 'border-green-300 focus:ring-green-500'
-                          : 'border-gray-200 focus:ring-gray-900'
+                          ? 'border-green-500 focus:ring-green-500'
+                          : 'border-input focus:ring-primary'
                   }`}
                 />
               </div>
 
               {/* Document Field */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Documento
                 </label>
 
                 <div className="flex gap-2">
                   {isEditing && (
-                    <div className="flex bg-gray-100 p-0.5 rounded-lg">
+                    <div className="flex bg-muted p-0.5 rounded-lg">
                       <button
                         type="button"
                         onClick={() => handleDocumentTypeChange('cpf')}
                         className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
                           documentType === 'cpf'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground'
                         }`}
                       >
                         CPF
@@ -339,8 +339,8 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                         onClick={() => handleDocumentTypeChange('cnpj')}
                         className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
                           documentType === 'cnpj'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground'
                         }`}
                       >
                         CNPJ
@@ -369,18 +369,18 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                     }
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all flex-1 ${
                       !isEditing
-                        ? 'bg-gray-50 text-gray-500 border-gray-200'
+                        ? 'bg-muted text-muted-foreground border-input'
                         : formData.documentNumber &&
                             (documentType === 'cpf'
                               ? !isValidCpf(formData.documentNumber)
                               : !isValidCnpj(formData.documentNumber))
-                          ? 'border-red-300 focus:ring-red-500'
+                          ? 'border-destructive focus:ring-destructive'
                           : formData.documentNumber &&
                               (documentType === 'cpf'
                                 ? isValidCpf(formData.documentNumber)
                                 : isValidCnpj(formData.documentNumber))
-                            ? 'border-green-300 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-gray-900'
+                            ? 'border-green-500 focus:ring-green-500'
+                            : 'border-input focus:ring-primary'
                     }`}
                   />
                 </div>
@@ -388,20 +388,20 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
 
               {/* Created At Field (Read-only) */}
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Membro desde
                 </label>
                 <input
                   type="text"
                   value={formatDate(user.created_at)}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm cursor-not-allowed"
+                  className="w-full px-3 py-2 border border-input rounded-lg bg-muted text-muted-foreground text-sm cursor-not-allowed"
                 />
               </div>
             </div>
 
             {/* Newsletter Checkbox */}
-            <div className="flex items-center space-x-3 pt-2 bg-gray-50 p-3 rounded-xl">
+            <div className="flex items-center space-x-3 pt-2 bg-muted p-3 rounded-xl">
               <input
                 type="checkbox"
                 id="newsletter"
@@ -409,23 +409,23 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                 ref={newsletterCheckboxRef}
                 defaultChecked={user.newsletter_opt_in || false}
                 disabled={!isEditing}
-                className="h-4 w-4 text-gray-900 focus:ring-gray-900 border-gray-300 rounded cursor-pointer disabled:opacity-50"
+                className="h-4 w-4 text-primary focus:ring-primary border-input rounded cursor-pointer disabled:opacity-50 bg-background"
               />
               <label
                 htmlFor="newsletter"
-                className={`text-sm font-medium ${!isEditing ? 'text-gray-500' : 'text-gray-700'} cursor-pointer`}
+                className={`text-sm font-medium ${!isEditing ? 'text-muted-foreground' : 'text-foreground'} cursor-pointer`}
               >
                 Receber novidades e atualizações por e-mail
               </label>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-2 border-t border-gray-100 mt-4">
+            <div className="flex justify-end space-x-3 pt-2 border-t border-border mt-4">
               {!isEditing ? (
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 font-medium text-sm"
+                  className="px-5 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-ring font-medium text-sm"
                 >
                   Editar Perfil
                 </button>
@@ -435,14 +435,14 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                     type="button"
                     onClick={handleCancel}
                     disabled={isLoading}
-                    className="px-5 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 font-medium text-sm"
+                    className="px-5 py-2 border border-input text-foreground rounded-lg hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring font-medium text-sm"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="px-5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50 font-medium text-sm"
+                    className="px-5 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 font-medium text-sm"
                   >
                     {isLoading ? 'Salvando...' : 'Salvar'}
                   </button>

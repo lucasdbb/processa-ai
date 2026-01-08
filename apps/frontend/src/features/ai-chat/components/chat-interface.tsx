@@ -35,7 +35,7 @@ export function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <Bot className="h-16 w-16 text-primary-500 mb-4" />
+            <Bot className="h-16 w-16 text-slate-500 mb-4" />
             <h3 className="text-lg font-semibold mb-2">IA Jurídica</h3>
             <p className="text-muted-foreground max-w-md">
               Olá! Sou seu assistente jurídico inteligente. Faça uma pergunta sobre direito e
@@ -54,7 +54,7 @@ export function ChatInterface() {
             <div
               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                 message.role === 'user'
-                  ? 'bg-primary-800 text-white'
+                  ? 'bg-slate-800 text-white'
                   : 'bg-secondary-500 text-white'
               }`}
             >
@@ -68,7 +68,7 @@ export function ChatInterface() {
             <div
               className={`flex-1 rounded-lg p-4 ${
                 message.role === 'user'
-                  ? 'bg-primary-100 text-primary-900'
+                  ? 'bg-slate-100 text-slate-900'
                   : 'bg-gray-100 text-gray-900'
               }`}
             >
@@ -89,7 +89,7 @@ export function ChatInterface() {
               <Bot className="h-5 w-5" />
             </div>
             <div className="flex-1 rounded-lg p-4 bg-gray-100">
-              <Loader2 className="h-5 w-5 animate-spin text-primary-700" />
+              <Loader2 className="h-5 w-5 animate-spin text-slate-700" />
             </div>
           </div>
         )}
@@ -110,7 +110,7 @@ export function ChatInterface() {
           <Button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="bg-primary-800 hover:bg-primary-900"
+            className="bg-slate-800 hover:bg-slate-900"
           >
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />

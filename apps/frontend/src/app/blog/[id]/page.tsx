@@ -71,7 +71,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
+    <div className="min-h-screen flex flex-col bg-background font-sans">
       <Header />
 
       <main className="flex-1 pt-24 pb-16 font-sans">
@@ -81,7 +81,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
             <Link href="/blog">
               <Button
                 variant="ghost"
-                className="hover:bg-white hover:shadow-sm transition-all"
+                className="hover:bg-muted hover:shadow-sm transition-all text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar para o blog
@@ -92,10 +92,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
           {(post.cover_image_url || post.featured_image) && (
             <>
               {/* Flex container: Imagem (80%) + Sidebar (20%) */}
-              <div className="flex flex-col lg:flex-row gap-6 mb-8 pb-8 border-b border-gray-200">
+              <div className="flex flex-col lg:flex-row gap-6 mb-8 pb-8 border-b border-border">
                 {/* Imagem com Overlay - 80% */}
                 <div className="lg:w-[80%]">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border border-border">
                     <Image
                       src={post.cover_image_url || post.featured_image || ''}
                       alt={post.title}
@@ -107,18 +107,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                     />
 
                     {/* Overlay com Título e Metadados */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 md:p-8">
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-6 md:p-8">
                       {/* Categoria */}
                       {post.category && (
                         <div className="mb-3">
-                          <Badge className="text-xs font-bold px-3 py-1 bg-white text-gray-900">
+                          <Badge className="text-xs font-bold px-3 py-1 bg-background text-foreground border-none">
                             {post.category}
                           </Badge>
                         </div>
                       )}
 
                       {/* Título */}
-                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-3 leading-tight">
+                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-3 leading-tight drop-shadow-md">
                         {post.title}
                       </h1>
 
@@ -144,10 +144,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                   {/* Resumo */}
                   {post.excerpt && (
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                      <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">
                         Resumo
                       </h3>
-                      <p className="text-sm text-gray-700 leading-relaxed">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
                         {post.excerpt}
                       </p>
                     </div>
@@ -156,7 +156,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                   {/* Tags */}
                   {post.tags && post.tags.length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                      <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">
                         Tags
                       </h3>
                       <div className="flex flex-wrap gap-2">
@@ -164,7 +164,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                           <Badge
                             key={tag}
                             variant="outline"
-                            className="px-2 py-1 text-xs hover:bg-gray-100 transition-colors cursor-pointer"
+                            className="px-2 py-1 text-xs hover:bg-muted transition-colors cursor-pointer border-border text-muted-foreground"
                           >
                             {tag}
                           </Badge>
@@ -176,14 +176,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                   {/* Autor */}
                   {post.authors && post.authors.length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                      <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">
                         Autor
                       </h3>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                          <User className="h-4 w-4" />
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                          <User className="h-4 w-4 text-foreground" />
                         </div>
-                        <span className="text-sm font-semibold text-gray-900">{post.authors[0].name}</span>
+                        <span className="text-sm font-semibold text-foreground">{post.authors[0].name}</span>
                       </div>
                     </div>
                   )}
@@ -199,24 +199,24 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                 {/* Categoria */}
                 {post.category && (
                   <div className="mb-4">
-                    <Badge className="text-xs font-bold px-3 py-1">
+                    <Badge className="text-xs font-bold px-3 py-1 bg-slate-900 text-white">
                       {post.category}
                     </Badge>
                   </div>
                 )}
 
                 {/* Título */}
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 mb-4 leading-tight">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-4 leading-tight">
                   {post.title}
                 </h1>
 
                 {/* Metadados */}
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                   {post.published_at && (
                     <span>{formatDate(post.published_at || post.created_at)}</span>
                   )}
                   {post.published_at && (
-                    <span className="text-gray-300">•</span>
+                    <span className="text-muted-foreground/50">•</span>
                   )}
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
@@ -226,10 +226,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
               </header>
 
               {/* Resumo e Tags */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 pb-8 border-b border-gray-200">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 pb-8 border-b border-border">
                 {post.excerpt && (
                   <div className="lg:col-span-2">
-                    <p className="text-lg text-gray-700 leading-relaxed">
+                    <p className="text-lg text-muted-foreground leading-relaxed">
                       {post.excerpt}
                     </p>
                   </div>
@@ -237,7 +237,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
 
                 {post.tags && post.tags.length > 0 && (
                   <div className={post.excerpt ? '' : 'lg:col-span-3'}>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">
                       Tags
                     </h3>
                     <div className="flex flex-wrap gap-2">
@@ -245,7 +245,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
                         <Badge
                           key={tag}
                           variant="outline"
-                          className="px-3 py-1.5 text-sm hover:bg-gray-100 transition-colors cursor-pointer"
+                          className="px-3 py-1.5 text-sm hover:bg-muted transition-colors cursor-pointer border-border text-muted-foreground"
                         >
                           {tag}
                         </Badge>
@@ -257,13 +257,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
 
               {/* Autor após resumo e tags */}
               {post.authors && post.authors.length > 0 && (
-                <div className="mb-10 flex items-center gap-2 text-gray-600">
+                <div className="mb-10 flex items-center gap-2 text-muted-foreground">
                   <span className="text-sm">Por</span>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                      <User className="h-4 w-4" />
+                    <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                      <User className="h-4 w-4 text-foreground" />
                     </div>
-                    <span className="font-semibold text-gray-900">{post.authors[0].name}</span>
+                    <span className="font-semibold text-foreground">{post.authors[0].name}</span>
                   </div>
                 </div>
               )}
@@ -274,16 +274,16 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
           <div className="mb-12">
             <MarkdownPreview
               source={post.content}
-              className="prose prose-lg prose-gray max-w-none"
+              className="prose prose-lg max-w-none"
             />
           </div>
 
           {/* Botão Voltar - Inferior */}
-          <div className="mt-12 pt-8 border-t border-gray-200">
+          <div className="mt-12 pt-8 border-t border-border">
             <Link href="/blog">
               <Button
                 variant="outline"
-                className="w-full md:w-auto hover:bg-gray-100 transition-all"
+                className="w-full md:w-auto hover:bg-muted transition-all border-border text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar para o blog

@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Moon, Sun } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { UserMenu } from '@/features/auth/components/user-menu'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { cn } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 
 const navigation = [
   { name: 'Início', href: '/' },
@@ -27,6 +28,8 @@ export function Header({ onLoginClick }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
   const { user, isAuthenticated, isLoading } = useUser()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [hasMounted, setHasMounted] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,13 +39,19 @@ export function Header({ onLoginClick }: HeaderProps) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  const isDark = hasMounted && resolvedTheme === 'dark'
+
   const isActive = (path: string) => pathname === path
 
   const getLinkClasses = (path: string) => {
     const active = isActive(path)
     return cn(
       'text-sm font-medium transition-colors duration-200',
-      active ? 'text-gray-900' : 'text-gray-600 hover:text-gray-900'
+      active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
     )
   }
 
@@ -50,8 +59,8 @@ export function Header({ onLoginClick }: HeaderProps) {
     return cn(
       'block px-4 py-3 rounded-xl transition-all duration-200',
       isActive(path)
-        ? 'text-gray-900 font-semibold bg-gray-50'
-        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+        ? 'text-foreground font-semibold bg-accent'
+        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
     )
   }
 
@@ -60,8 +69,8 @@ export function Header({ onLoginClick }: HeaderProps) {
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
         isScrolled || mobileMenuOpen
-          ? 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm'
-          : 'bg-white/95 border-transparent'
+          ? 'bg-background/95 backdrop-blur-md border-border shadow-sm'
+          : 'bg-background/95 border-transparent'
       )}
       role="banner"
     >
@@ -106,17 +115,36 @@ export function Header({ onLoginClick }: HeaderProps) {
 
           {/* Login Button / User Menu */}
           <div className="hidden md:flex items-center space-x-4">
+            <button
+              type="button"
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              className={cn(
+                'inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400 focus:ring-offset-background',
+                isDark ? 'bg-transparent hover:opacity-80' : 'bg-muted hover:bg-muted/80'
+              )}
+              aria-label="Alternar tema"
+            >
+              {hasMounted ? (
+                isDark ? (
+                  <Sun className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <Moon className="h-5 w-5" aria-hidden="true" />
+                )
+              ) : (
+                <span className="h-5 w-5" />
+              )}
+            </button>
             {isLoading ? (
-              <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 animate-pulse">
-                <div className="h-8 w-8 bg-gray-300 rounded-full" />
-                <div className="h-4 w-24 bg-gray-300 rounded" />
+              <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-accent animate-pulse">
+                <div className="h-8 w-8 bg-muted rounded-full" />
+                <div className="h-4 w-24 bg-muted rounded" />
               </div>
             ) : isAuthenticated && user ? (
               <UserMenu user={user} />
             ) : (
               <button
                 onClick={onLoginClick}
-                className="group relative inline-flex items-center justify-center px-6 py-2 text-sm font-semibold text-white transition-all duration-200 bg-gray-900 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
+                className="group relative inline-flex items-center justify-center px-6 py-2 text-sm font-semibold text-white transition-all duration-200 bg-slate-900 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
                 aria-label="Fazer login na plataforma"
               >
                 Entrar
@@ -129,7 +157,7 @@ export function Header({ onLoginClick }: HeaderProps) {
           <div className="md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-700 hover:text-gray-900 p-2 rounded-lg transition-all duration-200 focus:outline-none"
+              className="text-muted-foreground hover:text-foreground p-2 rounded-lg transition-all duration-200 focus:outline-none"
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
               aria-label={mobileMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
@@ -146,7 +174,7 @@ export function Header({ onLoginClick }: HeaderProps) {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div
-            className="md:hidden absolute top-20 left-0 right-0 bg-white border-b border-gray-100 shadow-xl"
+            className="md:hidden absolute top-20 left-0 right-0 bg-background border-b border-border shadow-xl"
             id="mobile-menu"
           >
             <nav
@@ -166,11 +194,11 @@ export function Header({ onLoginClick }: HeaderProps) {
                 </Link>
               ))}
 
-              <div className="pt-4 mt-4 border-t border-gray-100">
+              <div className="pt-4 mt-4 border-t border-border">
                 {isAuthenticated && user ? (
                   <div className="space-y-2">
                     <div className="px-4 py-3 flex items-center space-x-3 mb-2">
-                      <div className="w-10 h-10 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-medium shadow-sm">
+                      <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center text-sm font-medium shadow-sm">
                         {(user.name || user.email?.split('@')[0] || 'U')
                           .split(' ')
                           .map((n) => n[0])
@@ -179,10 +207,10 @@ export function Header({ onLoginClick }: HeaderProps) {
                           .slice(0, 2)}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {user.name || user.email?.split('@')[0]}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                       </div>
                     </div>
                     <UserMenu user={user} />
@@ -194,7 +222,7 @@ export function Header({ onLoginClick }: HeaderProps) {
                         onLoginClick?.()
                         setMobileMenuOpen(false)
                       }}
-                      className="w-full py-3 text-white bg-gray-900 hover:bg-gray-800 font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg shadow-gray-900/10"
+                      className="w-full py-3 text-white bg-slate-900 hover:bg-slate-800 font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg"
                     >
                       Entrar na Plataforma
                     </button>

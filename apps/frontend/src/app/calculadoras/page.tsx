@@ -98,7 +98,7 @@ export default function CalculadorasPage() {
       name: 'Rescisão Trabalhista',
       description: 'Calcule todas as verbas rescisórias',
       icon: DollarSign,
-      color: 'bg-primary-600',
+      color: 'bg-slate-600',
       available: true,
     },
     {
@@ -210,77 +210,86 @@ export default function CalculadorasPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Salário Mensal (R$) *
           </label>
           <input
             type="number"
             value={formData.salario}
             onChange={(e) => handleInputChange('salario', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
-            placeholder="Ex: 3500,00"
+            className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground"
+            placeholder="Ex: 3000,00"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">Tipo de Rescisão *</label>
-          <select
-            value={formData.tipoRescisao}
-            onChange={(e) => handleInputChange('tipoRescisao', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
-          >
-            <option value="sem_justa_causa">Sem Justa Causa</option>
-            <option value="com_justa_causa">Com Justa Causa</option>
-            <option value="pedido_demissao">Pedido de Demissão</option>
-            <option value="acordo">Acordo</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">Data de Admissão *</label>
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Data de Admissão *
+          </label>
           <input
             type="date"
             value={formData.dataAdmissao}
             onChange={(e) => handleInputChange('dataAdmissao', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">Data de Rescisão *</label>
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Data de Rescisão *
+          </label>
           <input
             type="date"
             value={formData.dataRescisao}
             onChange={(e) => handleInputChange('dataRescisao', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground"
             required
           />
         </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-bold text-gray-900 mb-2">
-            Férias Vencidas (R$)
+        <div>
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Motivo da Rescisão *
+          </label>
+          <div className="relative">
+            <select
+              value={formData.tipoRescisao}
+              onChange={(e) => handleInputChange('tipoRescisao', e.target.value)}
+              className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none text-foreground"
+            >
+              <option value="sem_justa_causa">Dispensa sem Justa Causa</option>
+              <option value="por_pedido">Pedido de Demissão</option>
+              <option value="com_justa_causa">Dispensa com Justa Causa</option>
+              <option value="acordo">Acordo (Reforma Trabalhista)</option>
+              <option value="termino_contrato">Término de Contrato</option>
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-muted-foreground">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Férias Vencidas (dias)
           </label>
           <input
             type="number"
             value={formData.feriasVencidas}
             onChange={(e) => handleInputChange('feriasVencidas', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
-            placeholder="Ex: 1000,00 (opcional)"
+            className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground"
+            placeholder="Ex: 30"
           />
-          <p className="text-xs text-gray-500 mt-1">Deixe em branco se não houver férias vencidas</p>
         </div>
-      </div>
-
-      <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-        <h3 className="text-sm font-bold text-gray-900 mb-4">Verbas Adicionais</h3>
-        <div className="space-y-3">
+        <div className="flex flex-col space-y-4 pt-2">
           <label className="flex items-center cursor-pointer group">
             <input
               type="checkbox"
               checked={formData.avisoPrevio}
               onChange={(e) => handleInputChange('avisoPrevio', e.target.checked)}
-              className="rounded border-gray-300 text-gray-900 focus:ring-gray-900 w-5 h-5 transition-all"
+              className="rounded border-input text-primary focus:ring-primary w-5 h-5 transition-all"
             />
-            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 font-medium">
+            <span className="ml-3 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
               Aviso Prévio
             </span>
           </label>
@@ -289,9 +298,9 @@ export default function CalculadorasPage() {
               type="checkbox"
               checked={formData.feriasProporcionais}
               onChange={(e) => handleInputChange('feriasProporcionais', e.target.checked)}
-              className="rounded border-gray-300 text-gray-900 focus:ring-gray-900 w-5 h-5 transition-all"
+              className="rounded border-input text-primary focus:ring-primary w-5 h-5 transition-all"
             />
-            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 font-medium">
+            <span className="ml-3 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
               Férias Proporcionais
             </span>
           </label>
@@ -300,9 +309,9 @@ export default function CalculadorasPage() {
               type="checkbox"
               checked={formData.decimoTerceiro}
               onChange={(e) => handleInputChange('decimoTerceiro', e.target.checked)}
-              className="rounded border-gray-300 text-gray-900 focus:ring-gray-900 w-5 h-5 transition-all"
+              className="rounded border-input text-primary focus:ring-primary w-5 h-5 transition-all"
             />
-            <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 font-medium">
+            <span className="ml-3 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
               13º Salário Proporcional
             </span>
           </label>
@@ -315,12 +324,64 @@ export default function CalculadorasPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">Idade Atual *</label>
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Sexo *
+          </label>
+          <div className="flex space-x-4">
+            <label className="flex items-center cursor-pointer group">
+              <input
+                type="radio"
+                name="sexo"
+                value="masculino"
+                checked={formData.sexo === 'masculino'}
+                onChange={(e) => handleInputChange('sexo', e.target.value)}
+                className="w-4 h-4 text-primary focus:ring-primary border-input"
+              />
+              <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground transition-colors">Masculino</span>
+            </label>
+            <label className="flex items-center cursor-pointer group">
+              <input
+                type="radio"
+                name="sexo"
+                value="feminino"
+                checked={formData.sexo === 'feminino'}
+                onChange={(e) => handleInputChange('sexo', e.target.value)}
+                className="w-4 h-4 text-primary focus:ring-primary border-input"
+              />
+              <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground transition-colors">Feminino</span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Tipo de Aposentadoria *
+          </label>
+          <div className="relative">
+            <select
+              value={formData.tipoAposentadoria}
+              onChange={(e) => handleInputChange('tipoAposentadoria', e.target.value)}
+              className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none text-foreground"
+            >
+              <option value="tempo_contribuicao">Tempo de Contribuição</option>
+              <option value="idade">Idade</option>
+              <option value="pontos">Pontos</option>
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-muted-foreground">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-foreground mb-2">
+            Idade Atual *
+          </label>
           <input
             type="number"
             value={formData.idade}
             onChange={(e) => handleInputChange('idade', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground"
             placeholder="Ex: 55"
             min="0"
             max="120"
@@ -328,25 +389,14 @@ export default function CalculadorasPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">Sexo *</label>
-          <select
-            value={formData.sexo}
-            onChange={(e) => handleInputChange('sexo', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
-          >
-            <option value="masculino">Masculino</option>
-            <option value="feminino">Feminino</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Tempo de Contribuição (anos) *
           </label>
           <input
             type="number"
             value={formData.tempoContribuicao}
             onChange={(e) => handleInputChange('tempoContribuicao', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground"
             placeholder="Ex: 25"
             min="0"
             max="60"
@@ -354,14 +404,14 @@ export default function CalculadorasPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-2">
+          <label className="block text-sm font-bold text-foreground mb-2">
             Salário de Contribuição (R$) *
           </label>
           <input
             type="number"
             value={formData.salarioContribuicao}
             onChange={(e) => handleInputChange('salarioContribuicao', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground"
             placeholder="Ex: 4500,00"
             required
           />
@@ -376,41 +426,41 @@ export default function CalculadorasPage() {
     if (resultado.tipo === 'rescisao') {
       const { detalhes } = resultado
       return (
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Resultado do Cálculo</h3>
+        <div className="bg-muted/50 border border-border rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-foreground mb-6">Resultado do Cálculo</h3>
           <div className="space-y-4">
-            <div className="flex justify-between items-center text-gray-600">
+            <div className="flex justify-between items-center text-muted-foreground">
               <span>Saldo de Salário:</span>
-              <span className="font-medium text-gray-900">R$ {detalhes.saldoSalario.toFixed(2)}</span>
+              <span className="font-medium text-foreground">R$ {detalhes.saldoSalario.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between items-center text-gray-600">
+            <div className="flex justify-between items-center text-muted-foreground">
               <span>Aviso Prévio:</span>
-              <span className="font-medium text-gray-900">R$ {detalhes.avisoPrevio.toFixed(2)}</span>
+              <span className="font-medium text-foreground">R$ {detalhes.avisoPrevio.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between items-center text-gray-600">
+            <div className="flex justify-between items-center text-muted-foreground">
               <span>Férias Vencidas:</span>
-              <span className="font-medium text-gray-900">R$ {detalhes.feriasVencidas.toFixed(2)}</span>
+              <span className="font-medium text-foreground">R$ {detalhes.feriasVencidas.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between items-center text-gray-600">
+            <div className="flex justify-between items-center text-muted-foreground">
               <span>Férias Proporcionais:</span>
-              <span className="font-medium text-gray-900">
+              <span className="font-medium text-foreground">
                 R$ {detalhes.feriasProporcionais.toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between items-center text-gray-600">
+            <div className="flex justify-between items-center text-muted-foreground">
               <span>13º Proporcional:</span>
-              <span className="font-medium text-gray-900">R$ {detalhes.decimoTerceiro.toFixed(2)}</span>
+              <span className="font-medium text-foreground">R$ {detalhes.decimoTerceiro.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between items-center text-gray-600">
+            <div className="flex justify-between items-center text-muted-foreground">
               <span>FGTS:</span>
-              <span className="font-medium text-gray-900">R$ {detalhes.fgts.toFixed(2)}</span>
+              <span className="font-medium text-foreground">R$ {detalhes.fgts.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between items-center text-gray-600">
+            <div className="flex justify-between items-center text-muted-foreground">
               <span>Multa FGTS (40%):</span>
-              <span className="font-medium text-gray-900">R$ {detalhes.multaFgts.toFixed(2)}</span>
+              <span className="font-medium text-foreground">R$ {detalhes.multaFgts.toFixed(2)}</span>
             </div>
-            <div className="border-t border-gray-200 pt-4 mt-2">
-              <div className="flex justify-between items-center text-xl font-bold text-gray-900">
+            <div className="border-t border-border pt-4 mt-2">
+              <div className="flex justify-between items-center text-xl font-bold text-foreground">
                 <span>Total:</span>
                 <span>R$ {detalhes.total.toFixed(2)}</span>
               </div>
@@ -424,60 +474,76 @@ export default function CalculadorasPage() {
       const { detalhes } = resultado
       return (
         <div
-          className={`p-6 rounded-2xl border ${detalhes.podeAposentar ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}
+          className={`p-6 rounded-2xl border ${
+            detalhes.podeAposentar
+              ? 'bg-green-500/10 border-green-500/20'
+              : 'bg-yellow-500/10 border-yellow-500/20'
+          }`}
         >
           <h3
-            className={`text-lg font-bold mb-6 ${detalhes.podeAposentar ? 'text-green-900' : 'text-yellow-900'}`}
+            className={`text-lg font-bold mb-6 ${
+              detalhes.podeAposentar
+                ? 'text-[hsl(var(--success-strong))]'
+                : 'text-[hsl(var(--warning-strong))]'
+            }`}
           >
             Resultado da Simulação
           </h3>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className={detalhes.podeAposentar ? 'text-green-800' : 'text-yellow-800'}>
+              <span
+                className={
+                  detalhes.podeAposentar ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'
+                }
+              >
                 Status:
               </span>
               <span
-                className={`font-bold ${detalhes.podeAposentar ? 'text-green-900' : 'text-yellow-900'}`}
+                className={`font-bold ${
+                  detalhes.podeAposentar
+                    ? 'text-[hsl(var(--success-strong))]'
+                    : 'text-[hsl(var(--warning-strong))]'
+                }`}
               >
                 {detalhes.podeAposentar ? 'Pode se aposentar' : 'Não pode se aposentar ainda'}
               </span>
             </div>
             {!detalhes.podeAposentar && (
               <>
-                <div className="flex justify-between items-center text-yellow-800">
+                <div className="flex justify-between items-center text-[hsl(var(--warning))]">
                   <span>Anos restantes (idade):</span>
                   <span className="font-medium">{detalhes.anosRestantes} anos</span>
                 </div>
-                <div className="flex justify-between items-center text-yellow-800">
+                <div className="flex justify-between items-center text-[hsl(var(--warning))]">
                   <span>Tempo restante (contribuição):</span>
                   <span className="font-medium">{detalhes.tempoRestante} anos</span>
                 </div>
               </>
             )}
-            <div className="flex justify-between items-center text-gray-600">
-              <span className={detalhes.podeAposentar ? 'text-green-800' : 'text-yellow-800'}>
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span
+                className={
+                  detalhes.podeAposentar ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'
+                }
+              >
                 Idade mínima:
               </span>
-              <span
-                className={`font-medium ${detalhes.podeAposentar ? 'text-green-900' : 'text-yellow-900'}`}
-              >
-                {detalhes.idadeMinima} anos
-              </span>
+              <span className="font-medium text-foreground">{detalhes.idadeMinima} anos</span>
             </div>
-            <div className="flex justify-between items-center text-gray-600">
-              <span className={detalhes.podeAposentar ? 'text-green-800' : 'text-yellow-800'}>
-                Tempo mínimo de contribuição:
-              </span>
+            <div className="flex justify-between items-center text-muted-foreground">
               <span
-                className={`font-medium ${detalhes.podeAposentar ? 'text-green-900' : 'text-yellow-900'}`}
+                className={
+                  detalhes.podeAposentar ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--warning))]'
+                }
               >
-                {detalhes.tempoMinimoContrib} anos
+                Tempo mínimo:
               </span>
+              <span className="font-medium text-foreground">{detalhes.tempoMinimoContrib} anos</span>
             </div>
             {detalhes.podeAposentar && (
-              <div className="border-t border-green-200 pt-4 mt-2">
-                <div className="flex justify-between items-center text-xl font-bold text-green-900">
-                  <span>Benefício estimado:</span>
+              <div className="border-t border-green-500/20 pt-4 mt-2">
+                <div className="flex justify-between items-center text-xl font-bold text-[hsl(var(--success-strong))]">
+                  <span>Benefício Estimado:</span>
                   <span>R$ {detalhes.beneficio.toFixed(2)}</span>
                 </div>
               </div>
@@ -486,8 +552,6 @@ export default function CalculadorasPage() {
         </div>
       )
     }
-
-    return null
   }
 
   // Show loading while checking authentication
@@ -515,22 +579,22 @@ export default function CalculadorasPage() {
 
   // Show the full page if authenticated
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
+    <div className="min-h-screen bg-background font-sans text-foreground selection:bg-slate-700 selection:text-white">
       <Header />
 
       {/* Hero Section */}
       <section className="relative py-20 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-gray-100 to-transparent rounded-full blur-3xl opacity-60" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-6 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
               Calculadoras Jurídicas
             </h1>
-            <p className="text-xl text-gray-500 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+            <p className="text-xl text-muted-foreground leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
               Ferramentas precisas para cálculos trabalhistas e previdenciários. Economize tempo e
               evite erros em seus cálculos.
             </p>
@@ -542,7 +606,7 @@ export default function CalculadorasPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar com Calculadoras */}
           <div className="lg:col-span-1 animate-in fade-in slide-in-from-left duration-700 delay-300">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 tracking-tight">
+            <h2 className="text-xl font-bold text-foreground mb-6 tracking-tight">
               Escolha a Calculadora
             </h2>
             <div className="space-y-4">
@@ -550,10 +614,10 @@ export default function CalculadorasPage() {
                 <button
                   key={calc.id}
                   onClick={() => handleCalculatorSelect(calc.id)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 group ${
+                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 group ${
                     selectedCalculator === calc.id
-                      ? 'border-gray-900 bg-gray-900 shadow-lg scale-[1.02]'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                      ? 'border-primary bg-slate-900 shadow-lg scale-[1.02]'
+                      : 'border-border bg-card hover:border-muted-foreground/50 hover:shadow-md'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
@@ -561,7 +625,7 @@ export default function CalculadorasPage() {
                       className={`p-2.5 rounded-xl transition-colors ${
                         selectedCalculator === calc.id
                           ? 'bg-white/10 text-white'
-                          : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
+                          : 'bg-muted text-muted-foreground group-hover:bg-muted/80'
                       }`}
                     >
                       <calc.icon className="h-5 w-5" strokeWidth={2} />
@@ -569,14 +633,14 @@ export default function CalculadorasPage() {
                     <div className="flex-1">
                       <h3
                         className={`font-bold text-sm ${
-                          selectedCalculator === calc.id ? 'text-white' : 'text-gray-900'
+                          selectedCalculator === calc.id ? 'text-white' : 'text-foreground'
                         }`}
                       >
                         {calc.name}
                       </h3>
                       <p
                         className={`text-xs mt-1 ${
-                          selectedCalculator === calc.id ? 'text-gray-400' : 'text-gray-500'
+                          selectedCalculator === calc.id ? 'text-white/80' : 'text-muted-foreground'
                         }`}
                       >
                         {calc.description}
@@ -590,9 +654,9 @@ export default function CalculadorasPage() {
 
           {/* Área Principal */}
           <div className="lg:col-span-3 animate-in fade-in slide-in-from-bottom duration-700 delay-500">
-            <div className="bg-white rounded-[2rem] border border-gray-200 shadow-xl p-8">
-              <div className="flex items-center space-x-4 mb-8 pb-6 border-b border-gray-100">
-                <div className="bg-gray-900 p-4 rounded-2xl shadow-lg">
+            <div className="bg-card rounded-[2rem] border border-border shadow-xl p-8">
+              <div className="flex items-center space-x-4 mb-8 pb-6 border-b border-border">
+                <div className="bg-slate-900 p-4 rounded-2xl shadow-lg">
                   {calculators.find((c) => c.id === selectedCalculator)?.icon &&
                     (() => {
                       const Icon = calculators.find((c) => c.id === selectedCalculator)!.icon
@@ -600,10 +664,10 @@ export default function CalculadorasPage() {
                     })()}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight">
                     {calculators.find((c) => c.id === selectedCalculator)?.name}
                   </h2>
-                  <p className="text-gray-500 mt-1">
+                  <p className="text-muted-foreground mt-1">
                     {calculators.find((c) => c.id === selectedCalculator)?.description}
                   </p>
                 </div>
@@ -614,10 +678,10 @@ export default function CalculadorasPage() {
               {selectedCalculator === 'aposentadoria' && renderAposentadoriaForm()}
 
               {(selectedCalculator === 'rescisao' || selectedCalculator === 'aposentadoria') && (
-                <div className="mt-8 pt-6 border-t border-gray-100">
+                <div className="mt-8 pt-6 border-t border-border">
                   <button
                     onClick={handleCalculate}
-                    className="bg-gray-900 text-white hover:bg-gray-800 flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 w-full sm:w-auto"
+                    className="bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
                   >
                     <Calculator className="h-5 w-5 mr-2" />
                     <span>Calcular Agora</span>
@@ -631,11 +695,11 @@ export default function CalculadorasPage() {
               <div className="mt-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
                 {renderResultado()}
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <button className="flex items-center space-x-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hover:shadow-md">
+                  <button className="flex items-center space-x-2 px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-xl hover:bg-muted hover:border-muted-foreground/50 transition-all shadow-sm hover:shadow-md">
                     <Download className="h-5 w-5" />
                     <span>Baixar Relatório PDF</span>
                   </button>
-                  <button className="flex items-center space-x-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hover:shadow-md">
+                  <button className="flex items-center space-x-2 px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-xl hover:bg-muted hover:border-muted-foreground/50 transition-all shadow-sm hover:shadow-md">
                     <FileText className="h-5 w-5" />
                     <span>Salvar Cálculo</span>
                   </button>
@@ -644,14 +708,14 @@ export default function CalculadorasPage() {
             )}
 
             {/* Aviso Legal */}
-            <div className="mt-8 bg-yellow-50 border border-yellow-100 rounded-2xl p-6">
+            <div className="mt-8 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6">
               <div className="flex items-start space-x-3">
-                <div className="bg-yellow-100 p-2 rounded-lg">
-                  <Info className="h-5 w-5 text-yellow-700" />
+                <div className="bg-yellow-500/20 p-2 rounded-lg">
+                  <Info className="h-5 w-5 text-[hsl(var(--warning-strong))]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-yellow-900 mb-2">Aviso Legal Importante</h3>
-                  <p className="text-sm text-yellow-800 leading-relaxed">
+                  <h3 className="text-sm font-bold text-[hsl(var(--warning-title))] mb-2">Aviso Legal Importante</h3>
+                  <p className="text-sm text-[hsl(var(--warning-strong))] leading-relaxed">
                     Os cálculos apresentados são <strong>estimativas</strong> baseadas na legislação
                     vigente. Sempre consulte a legislação atualizada e considere as particularidades
                     de cada caso. <strong>Recomenda-se fortemente</strong> a revisão por

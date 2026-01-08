@@ -3,9 +3,9 @@
 @layer base {
   :root {
     /* Processa AI Custom Colors */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --warm-bg: 30 100% 98%;
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --warm-bg: 210 20% 98%;
 
     /* Primary (Navy Blue) */
     --primary-50: 210 52% 95%;
@@ -33,9 +33,9 @@
 
     /* shadcn/ui variables */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
     --primary: 210 58% 21%;
     --primary-foreground: 210 40% 98%;
     --secondary: 43 47% 45%;
@@ -50,6 +50,67 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 210 58% 21%;
     --radius: 0.5rem;
+
+    --hero-glow-opacity: 0.6;
+    --newsletter-card-alpha: 1;
+    --blog-surface: var(--card);
+    --blog-surface-alpha: 1;
+
+    --success: 142 71% 36%;
+    --success-strong: 142 76% 29%;
+    --warning: 43 96% 41%;
+    --warning-strong: 32 95% 33%;
+    --warning-title: 32 95% 33%;
+
+    --tip-bg: 48 96% 90%;
+    --tip-bg-alpha: 1;
+    --tip-text: 43 96% 33%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --warm-bg: 222.2 84% 4.9%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    --hero-glow-opacity: 0.2;
+    --newsletter-card-alpha: 0.5;
+    --blog-surface: var(--muted);
+    --blog-surface-alpha: 0.2;
+
+    --success: 142 71% 45%;
+    --success-strong: 142 69% 58%;
+    --warning: 45 93% 47%;
+    --warning-strong: 48 96% 53%;
+    --warning-title: 54 98% 63%;
+
+    --tip-bg: 43 96% 11%;
+    --tip-bg-alpha: 0.3;
+    --tip-text: 48 96% 53%;
   }
 }
 
@@ -58,7 +119,35 @@
   --font-mono: var(--font-geist-mono);
 
   /* Map custom colors to Tailwind */
-  --color-warm-bg: rgb(255 250 246);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-warm-bg: hsl(var(--warm-bg));
 
   --color-primary-50: hsl(var(--primary-50));
   --color-primary-100: hsl(var(--primary-100));
