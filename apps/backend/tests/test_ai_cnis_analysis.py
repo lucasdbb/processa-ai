@@ -96,3 +96,53 @@ def test_cnis_analysis_calls_mistral_agent(monkeypatch):
     assert calls[0]["kwargs"]["json"]["agent_id"] == "agent_123"
 
     app.dependency_overrides.clear()
+
+
+def test_cnis_analysis_pdf_returns_pdf(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "test.test.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
+
+    from src.core.dependencies import get_current_user
+    from src.main import app
+
+    async def override_user():
+        return SimpleNamespace(id="user")
+
+    app.dependency_overrides[get_current_user] = override_user
+
+    client = TestClient(app)
+    res = client.post(
+        "/api/ai/cnis-analysis/pdf",
+        json={"markdown": "# Título\n\n- Item 1\n- Item 2", "filename": "cnis"},
+    )
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("application/pdf")
+    assert res.content.startswith(b"%PDF")
+
+    app.dependency_overrides.clear()
+
+
+def test_cnis_analysis_pdf_rejects_empty_markdown(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "test.test.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
+
+    from src.core.dependencies import get_current_user
+    from src.main import app
+
+    async def override_user():
+        return SimpleNamespace(id="user")
+
+    app.dependency_overrides[get_current_user] = override_user
+
+    client = TestClient(app)
+    res = client.post(
+        "/api/ai/cnis-analysis/pdf",
+        json={"markdown": "  ", "filename": "cnis"},
+    )
+
+    assert res.status_code == 400
+
+    app.dependency_overrides.clear()

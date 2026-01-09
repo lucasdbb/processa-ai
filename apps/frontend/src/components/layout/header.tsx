@@ -84,11 +84,11 @@ export function Header({ onLoginClick }: HeaderProps) {
               aria-label="Processa AI - Página inicial"
             >
               <Image
-                src="/logo.png"
+                src="/logo_v2.png"
                 alt="Processa AI"
                 width={160}
                 height={40}
-                className="h-15 w-auto object-contain"
+                className="h-12 w-auto object-contain"
                 priority
               />
             </Link>

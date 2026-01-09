@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 
 from src.core.dependencies import get_current_user
-from src.features.ai.schemas import AiToolResponse, CnisAnalysisResponse
+from src.features.ai.schemas import AiToolResponse, CnisAnalysisResponse, MarkdownToPdfRequest
 from src.features.ai.service import AiService
 
 router = APIRouter()
@@ -21,6 +21,23 @@ async def cnis_analysis(
 
     text = await service.analyze_cnis(file)
     return CnisAnalysisResponse(text=text)
+
+
+@router.post("/cnis-analysis/pdf", status_code=status.HTTP_200_OK)
+async def cnis_analysis_pdf(data: MarkdownToPdfRequest, _user=Depends(get_current_user)):
+    pdf_bytes = service.markdown_to_pdf_bytes(
+        markdown=data.markdown,
+        title=data.filename or "cnis-analise",
+    )
+    filename = (data.filename or "cnis-analise").strip() or "cnis-analise"
+    filename = filename.replace('"', "_")
+    if not filename.lower().endswith(".pdf"):
+        filename = f"{filename}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/tools", response_model=list[AiToolResponse], status_code=status.HTTP_200_OK)

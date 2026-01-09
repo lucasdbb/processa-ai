@@ -21,7 +21,7 @@ export function Footer() {
               className="flex items-center gap-2 group"
             >
               <Image
-                src="/logo.png"
+                src="/logo_v2.png"
                 alt=""
                 width={96}
                 height={24}

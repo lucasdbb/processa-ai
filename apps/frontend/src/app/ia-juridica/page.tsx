@@ -7,13 +7,11 @@ import {
   FileText,
   Edit3,
   Download,
-  Copy,
   Sparkles,
   Lock,
   Upload,
   Trash2,
   MessageSquare,
-  Save,
 } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
@@ -64,6 +62,17 @@ const TEMPLATES: Record<string, string[]> = {
   ],
 }
 
+const normalizeMarkdown = (value: string): string => {
+  const text = value.trim()
+  if (!text.startsWith('```')) return text
+
+  const lines = text.split('\n')
+  if (lines.length < 2) return text
+  if (!lines[0].trim().startsWith('```')) return text
+  if (lines[lines.length - 1].trim() !== '```') return text
+  return lines.slice(1, -1).join('\n').trim()
+}
+
 export default function IAJuridicaPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
   const [tools, setTools] = useState<AiTool[]>([])
@@ -79,6 +88,7 @@ export default function IAJuridicaPage() {
   const aiEndpoint = selectedTool ? `${API_URL}/ai/${selectedTool}` : ''
 
   const currentTool = tools.find((t) => t.slug === selectedTool) || null
+  const markdownToRender = normalizeMarkdown(generatedText)
 
   const resetToolState = useCallback(() => {
     setPrompt('')
@@ -224,29 +234,51 @@ OAB/SP nº [número]
     }
   }, [aiEndpoint, cnisFile, isCnisAnalysis, prompt, selectedTool])
 
-  const handleCopy = useCallback(() => {
-    if (generatedText) {
-      navigator.clipboard.writeText(generatedText)
-      toast.success('Documento copiado para a área de transferência!')
-    }
-  }, [generatedText])
-
   const handleDownload = useCallback(() => {
-    if (generatedText) {
-      const element = document.createElement('a')
-      const isMarkdown = isCnisAnalysis
-      const file = new Blob([generatedText], { type: isMarkdown ? 'text/markdown' : 'text/plain' })
-      element.href = URL.createObjectURL(file)
-      element.download = `${(currentTool?.name || 'documento')
-        .toLowerCase()
-        .replace(' ', '_')}_${Date.now()}.txt`
-        .replace(/\.txt$/, isMarkdown ? '.md' : '.txt')
-      document.body.appendChild(element)
-      element.click()
-      document.body.removeChild(element)
-      toast.success('Documento baixado com sucesso!')
-    }
-  }, [currentTool?.name, generatedText, isCnisAnalysis])
+    if (!generatedText) return
+
+    ;(async () => {
+      try {
+        const response = await fetchWithCredentials(`${API_URL}/ai/cnis-analysis/pdf`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            markdown: markdownToRender,
+            filename: (currentTool?.name || 'documento').toLowerCase().replaceAll(' ', '_'),
+          }),
+        })
+
+        if (!response.ok) {
+          let message = 'Erro ao gerar PDF. Tente novamente.'
+          try {
+            const data = (await response.json()) as { detail?: string }
+            if (data?.detail) message = data.detail
+          } catch {
+            // ignore
+          }
+          throw new Error(message)
+        }
+
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const element = document.createElement('a')
+        const baseName = (currentTool?.name || 'documento').toLowerCase().replaceAll(' ', '_')
+
+        element.href = url
+        element.download = `${baseName}_${Date.now()}.pdf`
+        document.body.appendChild(element)
+        element.click()
+        document.body.removeChild(element)
+        URL.revokeObjectURL(url)
+
+        toast.success('PDF gerado com sucesso!')
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Erro ao gerar PDF')
+      }
+    })()
+  }, [currentTool?.name, generatedText, markdownToRender])
 
   // Show loading while checking authentication
   if (isAuthLoading) {
@@ -538,32 +570,12 @@ OAB/SP nº [número]
                     </h3>
                     <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
                       <button
-                        onClick={handleCopy}
-                        aria-label="Copiar documento para a área de transferência"
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                        title="Copiar"
-                      >
-                        <Copy className="h-5 w-5" aria-hidden="true" />
-                      </button>
-                      <button
                         onClick={handleDownload}
-                        aria-label={
-                          isCnisAnalysis
-                            ? 'Baixar análise do CNIS como Markdown'
-                            : 'Baixar documento como arquivo de texto'
-                        }
+                        aria-label="Baixar como PDF"
                         className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                        title="Baixar"
+                        title="Baixar PDF"
                       >
                         <Download className="h-5 w-5" aria-hidden="true" />
-                      </button>
-                      <button
-                        onClick={() => toast.info('Função em desenvolvimento')}
-                        aria-label="Salvar documento no sistema"
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                        title="Salvar"
-                      >
-                        <Save className="h-5 w-5" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
@@ -573,7 +585,7 @@ OAB/SP nº [número]
                     aria-label={isCnisAnalysis ? 'Análise do CNIS' : 'Documento gerado pela IA'}
                     tabIndex={0}
                   >
-                    <MarkdownPreview source={generatedText} className="text-sm" />
+                    <MarkdownPreview source={markdownToRender} className="text-sm" />
                   </div>
                 </div>
               )}
