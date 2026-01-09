@@ -38,6 +38,12 @@ class Settings:
         self.SENDGRID_API_KEY: str | None = os.getenv("SENDGRID_API_KEY")
         self.SENDGRID_FROM: str | None = os.getenv("SENDGRID_FROM")
 
+        # Mistral Configuration
+        self.MISTRAL_API_KEY: str | None = os.getenv("MISTRAL_API_KEY")
+        self.MISTRAL_CNIS_AGENT_ID: str | None = os.getenv("MISTRAL_CNIS_AGENT_ID")
+        self.MISTRAL_CHAT_MODEL: str = os.getenv("MISTRAL_CHAT_MODEL", "mistral-small-latest")
+        self.MISTRAL_TIMEOUT_S: float = float(os.getenv("MISTRAL_TIMEOUT_S", "60"))
+
         # Validate required fields
         if not self.SUPABASE_URL:
             raise ValueError("SUPABASE_URL environment variable is required")

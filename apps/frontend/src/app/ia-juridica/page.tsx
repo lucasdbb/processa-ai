@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { MarkdownPreview } from '@/components/markdown/markdown-preview'
 
 type AiTool = {
   slug: string
@@ -233,17 +234,19 @@ OAB/SP nº [número]
   const handleDownload = useCallback(() => {
     if (generatedText) {
       const element = document.createElement('a')
-      const file = new Blob([generatedText], { type: 'text/plain' })
+      const isMarkdown = isCnisAnalysis
+      const file = new Blob([generatedText], { type: isMarkdown ? 'text/markdown' : 'text/plain' })
       element.href = URL.createObjectURL(file)
       element.download = `${(currentTool?.name || 'documento')
         .toLowerCase()
         .replace(' ', '_')}_${Date.now()}.txt`
+        .replace(/\.txt$/, isMarkdown ? '.md' : '.txt')
       document.body.appendChild(element)
       element.click()
       document.body.removeChild(element)
       toast.success('Documento baixado com sucesso!')
     }
-  }, [currentTool?.name, generatedText])
+  }, [currentTool?.name, generatedText, isCnisAnalysis])
 
   // Show loading while checking authentication
   if (isAuthLoading) {
@@ -531,7 +534,7 @@ OAB/SP nº [número]
                 <div role="region" aria-labelledby="result-heading">
                   <div className="flex items-center justify-between mb-4">
                     <h3 id="result-heading" className="text-lg font-bold text-foreground">
-                      Documento Gerado
+                      {isCnisAnalysis ? 'Análise do CNIS' : 'Documento Gerado'}
                     </h3>
                     <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
                       <button
@@ -544,7 +547,11 @@ OAB/SP nº [número]
                       </button>
                       <button
                         onClick={handleDownload}
-                        aria-label="Baixar documento como arquivo de texto"
+                        aria-label={
+                          isCnisAnalysis
+                            ? 'Baixar análise do CNIS como Markdown'
+                            : 'Baixar documento como arquivo de texto'
+                        }
                         className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
                         title="Baixar"
                       >
@@ -562,14 +569,11 @@ OAB/SP nº [número]
                   </div>
                   <div
                     className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner"
-                    role="textbox"
-                    aria-readonly="true"
-                    aria-label="Documento gerado pela IA"
+                    role="article"
+                    aria-label={isCnisAnalysis ? 'Análise do CNIS' : 'Documento gerado pela IA'}
                     tabIndex={0}
                   >
-                    <pre className="whitespace-pre-wrap text-sm text-foreground font-mono leading-relaxed">
-                      {generatedText}
-                    </pre>
+                    <MarkdownPreview source={generatedText} className="text-sm" />
                   </div>
                 </div>
               )}
