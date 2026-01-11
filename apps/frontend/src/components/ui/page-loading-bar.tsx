@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/features/auth/hooks/use-auth'
 
 export function PageLoadingBar() {
+  useAuth()
+
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)

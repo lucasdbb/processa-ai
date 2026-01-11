@@ -104,9 +104,8 @@ def test_cnis_analysis_pdf_returns_pdf(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
 
     from src.core.dependencies import get_current_user
-    from src.main import app
-
     from src.features.ai.service import AiService
+    from src.main import app
 
     async def override_user():
         return SimpleNamespace(id="user")
@@ -145,9 +144,8 @@ def test_cnis_analysis_pdf_supports_basic_markdown_formatting(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
 
     from src.core.dependencies import get_current_user
-    from src.main import app
-
     from src.features.ai.service import AiService
+    from src.main import app
 
     async def override_user():
         return SimpleNamespace(id="user")

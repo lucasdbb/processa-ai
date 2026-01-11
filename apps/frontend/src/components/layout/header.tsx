@@ -15,6 +15,7 @@ const navigation = [
   { name: 'Blog', href: '/blog' },
   { name: 'IA Jurídica', href: '/ia-juridica' },
   { name: 'Calculadoras', href: '/calculadoras' },
+  { name: 'Materiais', href: '/materials' },
   { name: 'Planos', href: '/planos' },
   { name: 'Sobre', href: '/sobre' },
 ]
@@ -106,6 +107,7 @@ export function Header({ onLoginClick }: HeaderProps) {
                 key={item.name}
                 href={item.href}
                 className={getLinkClasses(item.href)}
+                title={item.name}
                 aria-current={isActive(item.href) ? 'page' : undefined}
               >
                 {item.name}
@@ -188,6 +190,7 @@ export function Header({ onLoginClick }: HeaderProps) {
                   href={item.href}
                   className={getMobileLinkClasses(item.href)}
                   onClick={() => setMobileMenuOpen(false)}
+                  title={item.name}
                   aria-current={isActive(item.href) ? 'page' : undefined}
                 >
                   {item.name}
