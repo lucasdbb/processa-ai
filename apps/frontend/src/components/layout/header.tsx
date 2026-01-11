@@ -45,6 +45,7 @@ export function Header({ onLoginClick }: HeaderProps) {
   }, [])
 
   const isDark = hasMounted && resolvedTheme === 'dark'
+  const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
 
   const isActive = (path: string) => pathname === path
 
@@ -85,11 +86,11 @@ export function Header({ onLoginClick }: HeaderProps) {
               aria-label="Processa AI - Página inicial"
             >
               <Image
-                src="/logo_v2.png"
+                src={logoSrc}
                 alt="Processa AI"
                 width={160}
                 height={40}
-                className="h-12 w-auto object-contain"
+                className="h-28 w-auto object-contain"
                 priority
               />
             </Link>

@@ -3,8 +3,20 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Linkedin } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { useEffect, useState } from 'react'
 
 export function Footer() {
+  const { resolvedTheme } = useTheme()
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  const isDark = hasMounted && resolvedTheme === 'dark'
+  const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -21,7 +33,7 @@ export function Footer() {
               className="flex items-center gap-2 group"
             >
               <Image
-                src="/logo_v2.png"
+                src={logoSrc}
                 alt=""
                 width={96}
                 height={24}
