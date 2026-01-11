@@ -10,6 +10,14 @@ class MarkdownToPdfRequest(BaseModel):
     filename: str | None = None
 
 
+class SignedPdfResponse(BaseModel):
+    download_url: str
+    expires_in: int
+    document_id: str
+    storage_path: str
+    pipeline_version: str
+
+
 class AiToolResponse(BaseModel):
     slug: str
     name: str

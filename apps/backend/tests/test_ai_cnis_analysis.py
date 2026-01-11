@@ -106,10 +106,23 @@ def test_cnis_analysis_pdf_returns_pdf(monkeypatch):
     from src.core.dependencies import get_current_user
     from src.main import app
 
+    from src.features.ai.service import AiService
+
     async def override_user():
         return SimpleNamespace(id="user")
 
     app.dependency_overrides[get_current_user] = override_user
+
+    def fake_signed_pdf(self, markdown: str, user_id: str, pipeline_name: str, title=None):
+        return {
+            "download_url": "https://example.com/signed.pdf",
+            "expires_in": 600,
+            "document_id": "doc_123",
+            "storage_path": "cnis-analysis/hash_1.0.0.pdf",
+            "pipeline_version": "1.0.0",
+        }
+
+    monkeypatch.setattr(AiService, "markdown_to_signed_pdf", fake_signed_pdf, raising=True)
 
     client = TestClient(app)
     res = client.post(
@@ -118,8 +131,68 @@ def test_cnis_analysis_pdf_returns_pdf(monkeypatch):
     )
 
     assert res.status_code == 200
-    assert res.headers["content-type"].startswith("application/pdf")
-    assert res.content.startswith(b"%PDF")
+    payload = res.json()
+    assert payload["download_url"] == "https://example.com/signed.pdf"
+    assert payload["expires_in"] == 600
+    assert payload["document_id"] == "doc_123"
+
+    app.dependency_overrides.clear()
+
+
+def test_cnis_analysis_pdf_supports_basic_markdown_formatting(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "test.test.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
+
+    from src.core.dependencies import get_current_user
+    from src.main import app
+
+    from src.features.ai.service import AiService
+
+    async def override_user():
+        return SimpleNamespace(id="user")
+
+    app.dependency_overrides[get_current_user] = override_user
+
+    def fake_signed_pdf(self, markdown: str, user_id: str, pipeline_name: str, title=None):
+        return {
+            "download_url": "https://example.com/signed.pdf",
+            "expires_in": 600,
+            "document_id": "doc_123",
+            "storage_path": "cnis-analysis/hash_1.0.0.pdf",
+            "pipeline_version": "1.0.0",
+        }
+
+    monkeypatch.setattr(AiService, "markdown_to_signed_pdf", fake_signed_pdf, raising=True)
+
+    client = TestClient(app)
+    markdown = """# Título
+
+Texto com **negrito**, *itálico* e `código`.
+
+1. Primeiro item
+2) Segundo item
+
+> Bloco de citação com [link](https://example.com)
+
+---
+
+```txt
+linha 1
+  linha 2
+```
+"""
+
+    res = client.post(
+        "/api/ai/cnis-analysis/pdf",
+        json={"markdown": markdown, "filename": "cnis"},
+    )
+
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["download_url"] == "https://example.com/signed.pdf"
+    assert payload["expires_in"] == 600
+    assert payload["document_id"] == "doc_123"
 
     app.dependency_overrides.clear()
 

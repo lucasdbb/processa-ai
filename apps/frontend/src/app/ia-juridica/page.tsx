@@ -261,7 +261,24 @@ OAB/SP nº [número]
           throw new Error(message)
         }
 
-        const blob = await response.blob()
+        const payload = (await response.json()) as {
+          download_url?: string
+          expires_in?: number
+          document_id?: string
+          storage_path?: string
+          pipeline_version?: string
+        }
+
+        if (!payload.download_url) {
+          throw new Error('URL de download inválida')
+        }
+
+        const signedRes = await fetch(payload.download_url)
+        if (!signedRes.ok) {
+          throw new Error('Erro ao baixar PDF')
+        }
+
+        const blob = await signedRes.blob()
         const url = URL.createObjectURL(blob)
         const element = document.createElement('a')
         const baseName = (currentTool?.name || 'documento').toLowerCase().replaceAll(' ', '_')

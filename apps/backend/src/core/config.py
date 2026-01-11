@@ -44,6 +44,9 @@ class Settings:
         self.MISTRAL_CHAT_MODEL: str = os.getenv("MISTRAL_CHAT_MODEL", "mistral-small-latest")
         self.MISTRAL_TIMEOUT_S: float = float(os.getenv("MISTRAL_TIMEOUT_S", "60"))
 
+        # AI / Storage
+        self.AI_DOCUMENTS_BUCKET: str = os.getenv("AI_DOCUMENTS_BUCKET", "ai-documents")
+
         # Validate required fields
         if not self.SUPABASE_URL:
             raise ValueError("SUPABASE_URL environment variable is required")
