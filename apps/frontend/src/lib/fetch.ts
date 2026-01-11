@@ -4,10 +4,10 @@
  */
 
 export interface FetchOptions extends RequestInit {
-  credentials?: RequestCredentials;
+  credentials?: RequestCredentials
 }
 
-export const API_URL = '/api';
+export const API_URL = '/api'
 
 const backendUrl = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000').replace(
   /\/$/,
@@ -37,17 +37,17 @@ export async function fetchWithCredentials(
     ...init,
     credentials: init?.credentials ?? (isBrowser ? 'include' : 'same-origin'),
     cache: init?.cache ?? (isBrowser ? 'no-store' : undefined),
-  };
+  }
 
-  const method = (options.method || 'GET').toUpperCase();
+  const method = (options.method || 'GET').toUpperCase()
 
   const nativeFetch = (req: RequestInfo | URL, opts: FetchOptions) => {
     if (typeof window !== 'undefined' && window.fetch) {
-      return window.fetch(req, opts);
+      return window.fetch(req, opts)
     }
 
-    return fetch(req, opts);
-  };
+    return fetch(req, opts)
+  }
 
   // CRITICAL: Get native fetch at runtime, not at import time
   // This ensures we get the real browser fetch, not Next.js polyfill
@@ -61,7 +61,7 @@ export async function fetchWithCredentials(
   }
 
   if (!isBrowser || response.status !== 401 || method !== 'GET') {
-    return response;
+    return response
   }
 
   try {
@@ -83,7 +83,7 @@ export async function fetchWithCredentials(
     }
 
     if (!refreshResponse.ok) {
-      return response;
+      return response
     }
 
     try {
@@ -94,6 +94,6 @@ export async function fetchWithCredentials(
       return await nativeFetch(fallback, options)
     }
   } catch {
-    return response;
+    return response
   }
 }
