@@ -9,7 +9,10 @@ export interface FetchOptions extends RequestInit {
 
 export const API_URL = '/api';
 
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '')
+const backendUrl = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000').replace(
+  /\/$/,
+  ''
+)
 
 const toAbsoluteBackendUrl = (req: RequestInfo | URL): string | null => {
   if (!backendUrl) return null
@@ -26,12 +29,14 @@ export async function fetchWithCredentials(
   input: RequestInfo | URL,
   init?: FetchOptions
 ): Promise<Response> {
+  const isBrowser = typeof window !== 'undefined'
+
+  const resolvedInput: RequestInfo | URL = isBrowser ? input : (toAbsoluteBackendUrl(input) ?? input)
+
   const options: FetchOptions = {
     ...init,
-    // Force credentials to 'include' unless explicitly set to something else
-    credentials: init?.credentials ?? 'include',
-    // Disable Next.js caching
-    cache: init?.cache ?? 'no-store',
+    credentials: init?.credentials ?? (isBrowser ? 'include' : 'same-origin'),
+    cache: init?.cache ?? (isBrowser ? 'no-store' : undefined),
   };
 
   const method = (options.method || 'GET').toUpperCase();
@@ -48,14 +53,14 @@ export async function fetchWithCredentials(
   // This ensures we get the real browser fetch, not Next.js polyfill
   let response: Response
   try {
-    response = await nativeFetch(input, options)
+    response = await nativeFetch(resolvedInput, options)
   } catch (error) {
-    const fallback = toAbsoluteBackendUrl(input)
+    const fallback = toAbsoluteBackendUrl(resolvedInput)
     if (!fallback) throw error
     response = await nativeFetch(fallback, options)
   }
 
-  if (response.status !== 401 || method !== 'GET') {
+  if (!isBrowser || response.status !== 401 || method !== 'GET') {
     return response;
   }
 
@@ -82,9 +87,9 @@ export async function fetchWithCredentials(
     }
 
     try {
-      return await nativeFetch(input, options)
+      return await nativeFetch(resolvedInput, options)
     } catch (error) {
-      const fallback = toAbsoluteBackendUrl(input)
+      const fallback = toAbsoluteBackendUrl(resolvedInput)
       if (!fallback) throw error
       return await nativeFetch(fallback, options)
     }

@@ -22,9 +22,6 @@ export const metadata: Metadata = {
   keywords: ["direito", "jurídico", "IA", "calculadoras", "advocacia"],
 };
 
-// Force dynamic rendering for all pages to preserve auth cookies
-export const dynamic = 'force-dynamic';
-
 export default function RootLayout({
   children,
 }: Readonly<{
