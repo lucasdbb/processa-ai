@@ -57,7 +57,7 @@ export default function MaterialsPage() {
     const load = async () => {
       setIsLoading(true)
       try {
-        const res = await fetchWithCredentials(`${API_URL}/materials/`, { method: 'GET' })
+        const res = await fetchWithCredentials(`${API_URL}/materials/list`, { method: 'GET' })
         if (!res.ok) throw new Error('Erro ao carregar materiais')
         const data = (await res.json()) as Material[]
         setMaterials(Array.isArray(data) ? data : [])

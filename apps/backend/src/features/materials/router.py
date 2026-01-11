@@ -9,7 +9,7 @@ router = APIRouter()
 service = MaterialsService()
 
 
-@router.get("/", response_model=list[MaterialListItem], status_code=status.HTTP_200_OK)
+@router.get("/list", response_model=list[MaterialListItem], status_code=status.HTTP_200_OK)
 async def list_materials(_user=Depends(get_current_user)):
     return await service.list_materials()
 
@@ -18,4 +18,3 @@ async def list_materials(_user=Depends(get_current_user)):
 async def download_material(slug: str, _user=Depends(get_current_user)):
     url = await service.get_download_redirect_url(slug)
     return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
-
