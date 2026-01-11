@@ -90,7 +90,7 @@ export function Header({ onLoginClick }: HeaderProps) {
                 alt="Processa AI"
                 width={160}
                 height={40}
-                className="h-28 w-auto object-contain"
+                className="h-16 w-auto object-contain"
                 priority
               />
             </Link>

@@ -37,7 +37,7 @@ export function Footer() {
                 alt=""
                 width={96}
                 height={24}
-                className="h-6 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
+                className="h-8 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
               />
             </Link>
             <span className="hidden md:block w-px h-4 bg-muted"></span>
