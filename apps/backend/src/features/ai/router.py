@@ -16,7 +16,7 @@ service = AiService()
 @router.post("/cnis-analysis", response_model=CnisAnalysisResponse, status_code=status.HTTP_200_OK)
 async def cnis_analysis(
     file: UploadFile = File(...),
-    _user=Depends(get_current_user),
+    user=Depends(get_current_user),
 ):
     is_pdf = file.content_type == "application/pdf" or (file.filename or "").lower().endswith(
         ".pdf"
@@ -24,7 +24,7 @@ async def cnis_analysis(
     if not is_pdf:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envie um arquivo PDF")
 
-    text = await service.analyze_cnis(file)
+    text = await service.analyze_cnis(file, user_id=str(user.id))
     return CnisAnalysisResponse(text=text)
 
 

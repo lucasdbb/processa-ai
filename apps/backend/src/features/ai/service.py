@@ -21,6 +21,9 @@ class AiService:
     def __init__(self):
         self.supabase = get_supabase()
 
+    def _sha256_bytes(self, val: bytes) -> str:
+        return hashlib.sha256(val).hexdigest()
+
     def _get_pipeline_version(self, pipeline_name: str) -> str:
         try:
             res = (
@@ -73,27 +76,9 @@ class AiService:
     ) -> dict:
         expires_in = 600
         storage_bucket = settings.AI_DOCUMENTS_BUCKET
-
-        pdf_bytes = self.markdown_to_pdf_bytes(markdown, title)
         content_hash = hashlib.sha256((markdown or "").encode("utf-8")).hexdigest()
         pipeline_version = self._get_pipeline_version(pipeline_name)
         storage_path = f"{pipeline_name}/{content_hash}_{pipeline_version}.pdf"
-
-        self._ensure_storage_bucket(storage_bucket)
-
-        try:
-            self.supabase.storage.from_(storage_bucket).upload(
-                storage_path,
-                pdf_bytes,
-                {"content-type": "application/pdf", "upsert": "true"},
-            )
-        except Exception as e:
-            logger.error("Falha ao enviar PDF para Storage", exc_info=e)
-            detail = "Falha ao enviar PDF para Storage"
-            msg = str(e).strip()
-            if msg:
-                detail = f"{detail}: {msg}"
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
 
         doc_id = None
         try:
@@ -110,6 +95,42 @@ class AiService:
                 doc_id = str(existing.data[0]["id"])
         except Exception:
             doc_id = None
+
+        if doc_id:
+            try:
+                signed = self.supabase.storage.from_(storage_bucket).create_signed_url(
+                    storage_path,
+                    expires_in,
+                )
+                download_url = self._extract_signed_url(signed)
+                if download_url:
+                    return {
+                        "download_url": download_url,
+                        "expires_in": expires_in,
+                        "document_id": doc_id,
+                        "storage_path": storage_path,
+                        "pipeline_version": pipeline_version,
+                    }
+            except Exception:
+                pass
+
+        pdf_bytes = self.markdown_to_pdf_bytes(markdown, title)
+
+        self._ensure_storage_bucket(storage_bucket)
+
+        try:
+            self.supabase.storage.from_(storage_bucket).upload(
+                storage_path,
+                pdf_bytes,
+                {"content-type": "application/pdf", "upsert": "true"},
+            )
+        except Exception as e:
+            logger.error("Falha ao enviar PDF para Storage", exc_info=e)
+            detail = "Falha ao enviar PDF para Storage"
+            msg = str(e).strip()
+            if msg:
+                detail = f"{detail}: {msg}"
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
 
         if not doc_id:
             try:
@@ -345,9 +366,235 @@ class AiService:
 
         return text
 
-    async def analyze_cnis(self, file: UploadFile) -> str:
+    def _get_cached_ai_run_output_text(
+        self,
+        *,
+        user_id: str,
+        kind: str,
+        input_hash: str,
+        version: str,
+    ) -> str | None:
+        try:
+            res = (
+                self.supabase.table("ai_runs")
+                .select("status,output")
+                .eq("user_id", user_id)
+                .eq("kind", kind)
+                .eq("input_hash", input_hash)
+                .eq("version", version)
+                .is_("parent_id", "null")
+                .limit(1)
+                .execute()
+            )
+            if not res.data:
+                return None
+            row = res.data[0] or {}
+            if row.get("status") != "completed":
+                return None
+            out = row.get("output")
+            if isinstance(out, dict) and out.get("text"):
+                return str(out["text"])
+            return None
+        except Exception:
+            return None
+
+    async def analyze_cnis(self, file: UploadFile, user_id: str) -> str:
         content = await file.read()
-        return await self._call_mistral_cnis_agent(content)
+        pipeline_name = "cnis-analysis"
+        kind = pipeline_name
+        version = self._get_pipeline_version(pipeline_name)
+        input_hash = self._sha256_bytes(content)
+
+        cached = self._get_cached_ai_run_output_text(
+            user_id=user_id,
+            kind=kind,
+            input_hash=input_hash,
+            version=version,
+        )
+        if cached:
+            return cached
+
+        root_run_id: str | None = None
+
+        try:
+            inserted = self.supabase.table("ai_runs").insert(
+                {
+                    "user_id": user_id,
+                    "kind": kind,
+                    "version": version,
+                    "status": "processing",
+                    "input_hash": input_hash,
+                    "input": {
+                        "filename": file.filename,
+                        "content_type": file.content_type,
+                        "size_bytes": len(content),
+                    },
+                }
+            ).execute()
+            if inserted.data:
+                inserted_id = inserted.data[0].get("id")
+                root_run_id = str(inserted_id) if inserted_id else None
+        except Exception:
+            try:
+                res = (
+                    self.supabase.table("ai_runs")
+                    .select("id,status,output")
+                    .eq("user_id", user_id)
+                    .eq("kind", kind)
+                    .eq("input_hash", input_hash)
+                    .eq("version", version)
+                    .is_("parent_id", "null")
+                    .limit(1)
+                    .execute()
+                )
+                if res.data:
+                    row = res.data[0] or {}
+                    if row.get("id"):
+                        root_run_id = str(row["id"])
+                    if row.get("status") == "completed":
+                        out = row.get("output")
+                        if isinstance(out, dict) and out.get("text"):
+                            return str(out["text"])
+                    if row.get("status") == "processing":
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="Processamento em andamento",
+                        )
+            except HTTPException:
+                raise
+            except Exception:
+                pass
+
+            try:
+                self.supabase.table("ai_runs").update(
+                    {
+                        "status": "processing",
+                        "error": None,
+                        "output": {},
+                    }
+                ).eq("user_id", user_id).eq("kind", kind).eq("input_hash", input_hash).eq(
+                    "version", version
+                ).execute()
+            except Exception:
+                pass
+
+        if not root_run_id:
+            try:
+                res = (
+                    self.supabase.table("ai_runs")
+                    .select("id")
+                    .eq("user_id", user_id)
+                    .eq("kind", kind)
+                    .eq("input_hash", input_hash)
+                    .eq("version", version)
+                    .is_("parent_id", "null")
+                    .limit(1)
+                    .execute()
+                )
+                if res.data and res.data[0].get("id"):
+                    root_run_id = str(res.data[0]["id"])
+            except Exception:
+                root_run_id = None
+
+        step_run_id: str | None = None
+        if root_run_id:
+            try:
+                step_inserted = self.supabase.table("ai_runs").insert(
+                    {
+                        "user_id": user_id,
+                        "parent_id": root_run_id,
+                        "kind": "provider:mistral",
+                        "version": version,
+                        "status": "processing",
+                        "input": {
+                            "pipeline": pipeline_name,
+                            "agent_id": settings.MISTRAL_CNIS_AGENT_ID,
+                            "model": settings.MISTRAL_CHAT_MODEL,
+                        },
+                    }
+                ).execute()
+                if step_inserted.data and step_inserted.data[0].get("id"):
+                    step_run_id = str(step_inserted.data[0]["id"])
+            except Exception:
+                step_run_id = None
+
+        try:
+            text = await self._call_mistral_cnis_agent(content)
+        except HTTPException as e:
+            try:
+                self.supabase.table("ai_runs").update(
+                    {
+                        "status": "failed",
+                        "error": str(getattr(e, "detail", None) or "Erro ao processar"),
+                    }
+                ).eq("user_id", user_id).eq("kind", kind).eq("input_hash", input_hash).eq(
+                    "version", version
+                ).execute()
+            except Exception:
+                pass
+
+            if step_run_id:
+                try:
+                    self.supabase.table("ai_runs").update(
+                        {
+                            "status": "failed",
+                            "error": str(getattr(e, "detail", None) or "Erro ao processar"),
+                        }
+                    ).eq("id", step_run_id).execute()
+                except Exception:
+                    pass
+            raise
+        except Exception as e:
+            try:
+                self.supabase.table("ai_runs").update(
+                    {
+                        "status": "failed",
+                        "error": str(e)[:1000],
+                    }
+                ).eq("user_id", user_id).eq("kind", kind).eq("input_hash", input_hash).eq(
+                    "version", version
+                ).execute()
+            except Exception:
+                pass
+
+            if step_run_id:
+                try:
+                    self.supabase.table("ai_runs").update(
+                        {
+                            "status": "failed",
+                            "error": str(e)[:1000],
+                        }
+                    ).eq("id", step_run_id).execute()
+                except Exception:
+                    pass
+            raise
+
+        try:
+            self.supabase.table("ai_runs").update(
+                {
+                    "status": "completed",
+                    "output": {"text": text},
+                    "error": None,
+                }
+            ).eq("user_id", user_id).eq("kind", kind).eq("input_hash", input_hash).eq(
+                "version", version
+            ).execute()
+        except Exception:
+            pass
+
+        if step_run_id:
+            try:
+                self.supabase.table("ai_runs").update(
+                    {
+                        "status": "completed",
+                        "output": {"ok": True},
+                        "error": None,
+                    }
+                ).eq("id", step_run_id).execute()
+            except Exception:
+                pass
+
+        return text
 
     async def list_tools(self):
         response = (
