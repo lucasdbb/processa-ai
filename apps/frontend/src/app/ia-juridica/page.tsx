@@ -29,6 +29,7 @@ type AiTool = {
   icon: 'file-search' | 'edit-3' | 'message-square' | 'file-text' | (string & {})
   locked: boolean
   order: number
+  templates: { label: string; prompt: string }[]
 }
 
 const ICONS = {
@@ -38,29 +39,6 @@ const ICONS = {
   'file-text': FileText,
 } as const
 
-const TEMPLATES: Record<string, string[]> = {
-  petition: [
-    'Ação de Cobrança',
-    'Ação Trabalhista',
-    'Ação de Indenização',
-    'Ação Previdenciária',
-    'Ação de Despejo',
-  ],
-  contract: [
-    'Contrato de Trabalho',
-    'Contrato de Prestação de Serviços',
-    'Contrato de Locação',
-    'Contrato de Compra e Venda',
-    'Contrato de Sociedade',
-  ],
-  defense: [
-    'Contestação Trabalhista',
-    'Contestação Cível',
-    'Defesa Criminal',
-    'Impugnação ao Valor da Causa',
-    'Exceção de Incompetência',
-  ],
-}
 
 const normalizeMarkdown = (value: string): string => {
   const text = value.trim()
@@ -89,6 +67,7 @@ export default function IAJuridicaPage() {
 
   const currentTool = tools.find((t) => t.slug === selectedTool) || null
   const markdownToRender = normalizeMarkdown(generatedText)
+  const templates = currentTool?.templates || []
 
   const resetToolState = useCallback(() => {
     setPrompt('')
@@ -433,21 +412,21 @@ OAB/SP nº [número]
             </div>
 
             {/* Templates */}
-            {TEMPLATES[selectedTool]?.length ? (
+            {templates.length ? (
               <div className="mt-8">
                 <h3 id="templates-heading" className="text-lg font-bold text-foreground mb-4 tracking-tight">
                   Templates
                 </h3>
                 <div className="space-y-2" role="list" aria-labelledby="templates-heading">
-                  {TEMPLATES[selectedTool]?.map((template, index) => (
+                  {templates.map((template, index) => (
                     <button
                       key={index}
-                      onClick={() => setPrompt(`Criar ${template.toLowerCase()} para `)}
+                      onClick={() => setPrompt(template.prompt)}
                       role="listitem"
-                      aria-label={`Usar template: ${template}`}
+                      aria-label={`Usar template: ${template.label}`}
                       className="w-full text-left px-4 py-3 text-sm bg-card border border-border rounded-xl hover:border-muted-foreground/50 hover:shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-foreground font-medium"
                     >
-                      {template}
+                      {template.label}
                     </button>
                   ))}
                 </div>

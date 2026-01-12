@@ -16,4 +16,3 @@ class BillingPlanPublic(BaseModel):
     sort_order: int
     price: BillingPlanPrice | None = None
     features: list[str]
-

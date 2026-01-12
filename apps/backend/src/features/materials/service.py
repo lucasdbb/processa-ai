@@ -341,9 +341,7 @@ class MaterialsService:
         if not updates:
             return {"updated": False}
 
-        res = (
-            self.supabase.table("materials").update(updates).eq("id", material_id).execute()
-        )
+        res = self.supabase.table("materials").update(updates).eq("id", material_id).execute()
         if not res.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

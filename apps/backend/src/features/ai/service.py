@@ -417,20 +417,24 @@ class AiService:
         root_run_id: str | None = None
 
         try:
-            inserted = self.supabase.table("ai_runs").insert(
-                {
-                    "user_id": user_id,
-                    "kind": kind,
-                    "version": version,
-                    "status": "processing",
-                    "input_hash": input_hash,
-                    "input": {
-                        "filename": file.filename,
-                        "content_type": file.content_type,
-                        "size_bytes": len(content),
-                    },
-                }
-            ).execute()
+            inserted = (
+                self.supabase.table("ai_runs")
+                .insert(
+                    {
+                        "user_id": user_id,
+                        "kind": kind,
+                        "version": version,
+                        "status": "processing",
+                        "input_hash": input_hash,
+                        "input": {
+                            "filename": file.filename,
+                            "content_type": file.content_type,
+                            "size_bytes": len(content),
+                        },
+                    }
+                )
+                .execute()
+            )
             if inserted.data:
                 inserted_id = inserted.data[0].get("id")
                 root_run_id = str(inserted_id) if inserted_id else None
@@ -499,20 +503,24 @@ class AiService:
         step_run_id: str | None = None
         if root_run_id:
             try:
-                step_inserted = self.supabase.table("ai_runs").insert(
-                    {
-                        "user_id": user_id,
-                        "parent_id": root_run_id,
-                        "kind": "provider:mistral",
-                        "version": version,
-                        "status": "processing",
-                        "input": {
-                            "pipeline": pipeline_name,
-                            "agent_id": settings.MISTRAL_CNIS_AGENT_ID,
-                            "model": settings.MISTRAL_CHAT_MODEL,
-                        },
-                    }
-                ).execute()
+                step_inserted = (
+                    self.supabase.table("ai_runs")
+                    .insert(
+                        {
+                            "user_id": user_id,
+                            "parent_id": root_run_id,
+                            "kind": "provider:mistral",
+                            "version": version,
+                            "status": "processing",
+                            "input": {
+                                "pipeline": pipeline_name,
+                                "agent_id": settings.MISTRAL_CNIS_AGENT_ID,
+                                "model": settings.MISTRAL_CHAT_MODEL,
+                            },
+                        }
+                    )
+                    .execute()
+                )
                 if step_inserted.data and step_inserted.data[0].get("id"):
                     step_run_id = str(step_inserted.data[0]["id"])
             except Exception:
@@ -604,7 +612,47 @@ class AiService:
             .execute()
         )
 
-        return response.data or []
+        tools = response.data or []
+
+        tool_slugs = [str(t.get("slug")) for t in tools if t and t.get("slug")]
+        templates_by_tool: dict[str, list[dict[str, str]]] = {}
+
+        if tool_slugs:
+            templates_res = (
+                self.supabase.table("ai_tool_templates")
+                .select("tool_slug,template,prompt,sort_order")
+                .in_("tool_slug", tool_slugs)
+                .order("tool_slug")
+                .order("sort_order")
+                .execute()
+            )
+
+            for row in templates_res.data or []:
+                tool_slug = str(row.get("tool_slug") or "").strip()
+                label = str(row.get("template") or "").strip()
+                prompt = str(row.get("prompt") or "").strip()
+                if not tool_slug or not label or not prompt:
+                    continue
+                templates_by_tool.setdefault(tool_slug, []).append(
+                    {
+                        "label": label,
+                        "prompt": prompt,
+                    }
+                )
+
+        out: list[dict] = []
+        for tool in tools:
+            payload = tool or {}
+            slug = str(payload.get("slug") or "")
+            templates = templates_by_tool.get(slug, [])
+            out.append(
+                {
+                    **payload,
+                    "templates": templates,
+                }
+            )
+
+        return out
 
     def markdown_to_pdf_bytes(self, markdown: str, title: str | None = None) -> bytes:
         text = (markdown or "").strip()
