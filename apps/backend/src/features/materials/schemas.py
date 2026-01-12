@@ -11,3 +11,18 @@ class MaterialListItem(BaseModel):
     description: str | None = None
     group: str
     mime_type: MaterialMimeType
+
+
+class MaterialAdminListItem(BaseModel):
+    id: str
+    slug: str
+    title: str
+    description: str | None = None
+    group: str
+    storage_bucket: str
+    storage_path: str
+    filename: str
+    mime_type: MaterialMimeType
+    is_published: bool
+    created_at: str
+    updated_at: str

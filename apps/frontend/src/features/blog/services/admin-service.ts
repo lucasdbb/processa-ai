@@ -65,6 +65,21 @@ export interface ListAdminPostsResponse {
   page_size: number
 }
 
+export interface AdminMaterialListItem {
+  id: string
+  slug: string
+  title: string
+  description?: string | null
+  group: string
+  storage_bucket: string
+  storage_path: string
+  filename: string
+  mime_type: 'pdf' | 'xls' | 'xlsx' | 'xlsm' | 'docx' | 'csv'
+  is_published: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface BlogPostDetail {
   id: string
   title: string
@@ -308,6 +323,82 @@ class AdminService {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.error || 'Erro ao atualizar role')
+    }
+
+    return response.json()
+  }
+
+  async listMaterials(): Promise<AdminMaterialListItem[]> {
+    const response = await fetchWithCredentials(`${API_URL}/materials/admin/list`)
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Erro ao listar materiais')
+    }
+
+    const raw = (await response.json()) as unknown
+    const items = Array.isArray(raw) ? raw : []
+    const allowedMime = ['pdf', 'xls', 'xlsx', 'xlsm', 'docx', 'csv'] as const
+    const isAllowedMime = (value: unknown): value is AdminMaterialListItem['mime_type'] =>
+      typeof value === 'string' && (allowedMime as readonly string[]).includes(value)
+
+    return items.map((m) => {
+      const record = typeof m === 'object' && m !== null ? (m as Record<string, unknown>) : {}
+      return {
+        id: toStringOrEmpty(record.id),
+        slug: toStringOrEmpty(record.slug),
+        title: toStringOrEmpty(record.title),
+        description: toStringOrNull(record.description),
+        group: toStringOrEmpty(record.group),
+        storage_bucket: toStringOrEmpty(record.storage_bucket) || 'materials',
+        storage_path: toStringOrEmpty(record.storage_path),
+        filename: toStringOrEmpty(record.filename),
+        mime_type: isAllowedMime(record.mime_type) ? record.mime_type : 'pdf',
+        is_published: toBoolean(record.is_published),
+        created_at:
+          typeof record.created_at === 'string' ? record.created_at : new Date().toISOString(),
+        updated_at:
+          typeof record.updated_at === 'string' ? record.updated_at : new Date().toISOString(),
+      }
+    })
+  }
+
+  async createMaterial(formData: FormData): Promise<AdminMaterialListItem> {
+    const response = await fetchWithCredentials(`${API_URL}/materials/admin`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Erro ao criar material')
+    }
+
+    return response.json()
+  }
+
+  async updateMaterial(materialId: string, formData: FormData): Promise<AdminMaterialListItem> {
+    const response = await fetchWithCredentials(`${API_URL}/materials/admin/${materialId}`, {
+      method: 'PATCH',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Erro ao atualizar material')
+    }
+
+    return response.json()
+  }
+
+  async deleteMaterial(materialId: string): Promise<{ id: string; deleted: boolean }> {
+    const response = await fetchWithCredentials(`${API_URL}/materials/admin/${materialId}`, {
+      method: 'DELETE',
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Erro ao deletar material')
     }
 
     return response.json()
