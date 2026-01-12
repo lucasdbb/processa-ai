@@ -135,11 +135,20 @@ class MaterialsService:
         mime_type: str | None = None,
     ) -> dict:
         if not title.strip():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Título é obrigatório")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Título é obrigatório",
+            )
         if not group.strip():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Grupo é obrigatório")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Grupo é obrigatório",
+            )
         if not file_bytes:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Arquivo é obrigatório")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Arquivo é obrigatório",
+            )
 
         resolved_slug = self._slugify(slug or title)
         exists = (
@@ -191,7 +200,12 @@ class MaterialsService:
                     detail="Falha ao salvar material",
                 )
             row = res.data[0] or {}
-            return {**payload, "id": str(row.get("id") or ""), "created_at": str(row.get("created_at") or ""), "updated_at": str(row.get("updated_at") or "")}
+            return {
+                **payload,
+                "id": str(row.get("id") or ""),
+                "created_at": str(row.get("created_at") or ""),
+                "updated_at": str(row.get("updated_at") or ""),
+            }
         except HTTPException:
             raise
         except Exception:
@@ -223,7 +237,10 @@ class MaterialsService:
             .execute()
         )
         if not current_res.data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Material não encontrado")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Material não encontrado",
+            )
         current = current_res.data[0] or {}
 
         updates: dict = {}
@@ -231,7 +248,10 @@ class MaterialsService:
         if title is not None:
             v = title.strip()
             if not v:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Título inválido")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Título inválido",
+                )
             updates["title"] = v
 
         if description is not None:
@@ -240,7 +260,10 @@ class MaterialsService:
         if group is not None:
             v = group.strip()
             if not v:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Grupo inválido")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Grupo inválido",
+                )
             updates["group"] = v
 
         if is_published is not None:
@@ -259,7 +282,10 @@ class MaterialsService:
                     .execute()
                 )
                 if exists.data:
-                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Slug já existe")
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Slug já existe",
+                    )
                 updates["slug"] = next_slug
 
         next_group = updates.get("group") or str(current.get("group") or "")
@@ -268,7 +294,10 @@ class MaterialsService:
         current_storage_path = str(current.get("storage_path") or "")
 
         if file_bytes is not None and original_filename is not None:
-            kind = self._infer_mime_type(original_filename, mime_type or str(current.get("mime_type") or ""))
+            kind = self._infer_mime_type(
+                original_filename,
+                mime_type or str(current.get("mime_type") or ""),
+            )
             new_storage_path = f"{folder}/{next_slug}.{kind}"
             try:
                 self.supabase.storage.from_(storage_bucket).upload(
@@ -312,9 +341,14 @@ class MaterialsService:
         if not updates:
             return {"updated": False}
 
-        res = self.supabase.table("materials").update(updates).eq("id", material_id).execute()
+        res = (
+            self.supabase.table("materials").update(updates).eq("id", material_id).execute()
+        )
         if not res.data:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Falha ao atualizar")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Falha ao atualizar",
+            )
         row = res.data[0] or {}
         merged = {**current, **row}
         return {
@@ -341,7 +375,10 @@ class MaterialsService:
             .execute()
         )
         if not res.data:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Material não encontrado")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Material não encontrado",
+            )
         row = res.data[0] or {}
         storage_bucket = str(row.get("storage_bucket") or "materials")
         storage_path = str(row.get("storage_path") or "")
