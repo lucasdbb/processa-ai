@@ -44,6 +44,11 @@ class Settings:
         self.MISTRAL_CHAT_MODEL: str = os.getenv("MISTRAL_CHAT_MODEL", "mistral-small-latest")
         self.MISTRAL_TIMEOUT_S: float = float(os.getenv("MISTRAL_TIMEOUT_S", "60"))
 
+        # OpenAI Assistants
+        self.OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+        self.OPENAI_ASSISTANT_ID: str | None = os.getenv("OPENAI_ASSISTANT_ID")
+        self.OPENAI_TIMEOUT_S: float = float(os.getenv("OPENAI_TIMEOUT_S", "60"))
+
         # AI / Storage
         self.AI_DOCUMENTS_BUCKET: str = os.getenv("AI_DOCUMENTS_BUCKET", "ai-documents")
 

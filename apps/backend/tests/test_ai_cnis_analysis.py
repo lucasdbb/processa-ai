@@ -217,3 +217,60 @@ def test_cnis_analysis_pdf_rejects_empty_markdown(monkeypatch):
     assert res.status_code == 400
 
     app.dependency_overrides.clear()
+
+
+def test_ai_chat_returns_response(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "test.test.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
+
+    from src.core.dependencies import get_current_user
+    from src.features.ai.service import AiService
+    from src.main import app
+
+    async def override_user():
+        return SimpleNamespace(id="user")
+
+    app.dependency_overrides[get_current_user] = override_user
+
+    async def fake_chat(self, *, message: str, user_id: str) -> str:
+        assert user_id == "user"
+        assert message == "Olá"
+        return "Resposta"
+
+    monkeypatch.setattr(AiService, "chat_openai_assistant", fake_chat, raising=True)
+
+    client = TestClient(app)
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "Olá"},
+    )
+
+    assert res.status_code == 200
+    assert res.json() == {"response": "Resposta"}
+
+    app.dependency_overrides.clear()
+
+
+def test_ai_chat_rejects_empty_message(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "test.test.test")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test.test.test")
+
+    from src.core.dependencies import get_current_user
+    from src.main import app
+
+    async def override_user():
+        return SimpleNamespace(id="user")
+
+    app.dependency_overrides[get_current_user] = override_user
+
+    client = TestClient(app)
+    res = client.post(
+        "/api/ai/chat",
+        json={"message": "   "},
+    )
+
+    assert res.status_code == 400
+
+    app.dependency_overrides.clear()

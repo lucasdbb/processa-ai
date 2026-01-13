@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from src.core.dependencies import get_current_user
 from src.features.ai.schemas import (
     AiToolResponse,
+    ChatRequest,
+    ChatResponse,
     CnisAnalysisResponse,
     MarkdownToPdfRequest,
     SignedPdfResponse,
@@ -44,3 +46,9 @@ async def list_ai_tools(
     _user=Depends(get_current_user),
 ):
     return await service.list_tools()
+
+
+@router.post("/chat", response_model=ChatResponse, status_code=status.HTTP_200_OK)
+async def chat_with_assistant(data: ChatRequest, user=Depends(get_current_user)):
+    text = await service.chat_openai_assistant(message=data.message, user_id=str(user.id))
+    return ChatResponse(response=text)

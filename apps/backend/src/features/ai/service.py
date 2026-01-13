@@ -1,6 +1,8 @@
 import base64
 import hashlib
 import re
+import asyncio
+import time
 from html import escape
 from io import BytesIO
 from urllib.parse import urlparse
@@ -299,6 +301,179 @@ class AiService:
                     parts.append(str(part["text"]))
             return "\n".join(parts).strip()
         return ""
+
+    def _extract_openai_message_text(self, content) -> str:
+        if isinstance(content, str):
+            return content.strip()
+
+        parts: list[str] = []
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text" and isinstance(part.get("text"), dict):
+                        value = part["text"].get("value")
+                        if isinstance(value, str) and value.strip():
+                            parts.append(value.strip())
+                    continue
+
+                part_type = getattr(part, "type", None)
+                if part_type == "text":
+                    text_obj = getattr(part, "text", None)
+                    value = getattr(text_obj, "value", None)
+                    if isinstance(value, str) and value.strip():
+                        parts.append(value.strip())
+
+        return "\n".join(parts).strip()
+
+    async def chat_openai_assistant(self, *, message: str, user_id: str) -> str:
+        text = (message or "").strip()
+        if not text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Mensagem vazia",
+            )
+
+        if not settings.OPENAI_API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="OPENAI_API_KEY não configurada",
+            )
+
+        if not settings.OPENAI_ASSISTANT_ID:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="OPENAI_ASSISTANT_ID não configurada",
+            )
+
+        kind = "chat:openai-assistant"
+        version = "1.0.0"
+        input_hash = self._sha256_text(text)
+
+        root_run_id: str | None = None
+        try:
+            inserted = (
+                self.supabase.table("ai_runs")
+                .insert(
+                    {
+                        "user_id": user_id,
+                        "kind": kind,
+                        "version": version,
+                        "status": "processing",
+                        "input_hash": input_hash,
+                        "input": {
+                            "message_chars": len(text),
+                        },
+                    }
+                )
+                .execute()
+            )
+            if inserted.data and inserted.data[0].get("id"):
+                root_run_id = str(inserted.data[0]["id"])
+        except Exception:
+            root_run_id = None
+
+        try:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=settings.OPENAI_TIMEOUT_S)
+
+            thread = await client.beta.threads.create()
+            await client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=text,
+            )
+
+            run = await client.beta.threads.runs.create(
+                thread_id=thread.id,
+                assistant_id=settings.OPENAI_ASSISTANT_ID,
+            )
+
+            deadline = time.monotonic() + float(settings.OPENAI_TIMEOUT_S)
+            while run.status in {"queued", "in_progress", "cancelling"}:
+                if time.monotonic() > deadline:
+                    raise HTTPException(
+                        status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                        detail="Tempo limite ao aguardar resposta da OpenAI",
+                    )
+                await asyncio.sleep(0.5)
+                run = await client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+
+            if run.status == "requires_action":
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Assistente requer ação de ferramenta não suportada",
+                )
+
+            if run.status != "completed":
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Execução do assistente falhou: {run.status}",
+                )
+
+            messages = await client.beta.threads.messages.list(thread_id=thread.id, order="desc", limit=10)
+            assistant_text = ""
+            for m in getattr(messages, "data", []) or []:
+                if getattr(m, "role", None) != "assistant":
+                    continue
+                assistant_text = self._extract_openai_message_text(getattr(m, "content", None))
+                if assistant_text:
+                    break
+
+            assistant_text = assistant_text.strip()
+            if not assistant_text:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Resposta vazia da OpenAI",
+                )
+
+            try:
+                if root_run_id:
+                    self.supabase.table("ai_runs").update(
+                        {
+                            "status": "completed",
+                            "output": {
+                                "text": assistant_text,
+                                "provider": "openai",
+                                "assistant_id": settings.OPENAI_ASSISTANT_ID,
+                                "thread_id": thread.id,
+                                "run_id": run.id,
+                            },
+                            "error": None,
+                        }
+                    ).eq("id", root_run_id).execute()
+            except Exception:
+                pass
+
+            return assistant_text
+        except HTTPException as e:
+            try:
+                if root_run_id:
+                    self.supabase.table("ai_runs").update(
+                        {
+                            "status": "failed",
+                            "error": str(getattr(e, "detail", None) or "Erro ao processar")[:1000],
+                        }
+                    ).eq("id", root_run_id).execute()
+            except Exception:
+                pass
+            raise
+        except Exception as e:
+            try:
+                if root_run_id:
+                    self.supabase.table("ai_runs").update(
+                        {
+                            "status": "failed",
+                            "error": str(e)[:1000],
+                        }
+                    ).eq("id", root_run_id).execute()
+            except Exception:
+                pass
+            logger.exception("Erro no chat OpenAI")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao processar mensagem com OpenAI",
+            )
 
     async def _call_mistral_cnis_agent(self, pdf_bytes: bytes) -> str:
         if not settings.MISTRAL_API_KEY:

@@ -31,3 +31,12 @@ class AiToolResponse(BaseModel):
     locked: bool
     order: int
     templates: list[AiToolTemplateResponse] = Field(default_factory=list)
+
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str | None = None
+
+
+class ChatResponse(BaseModel):
+    response: str
