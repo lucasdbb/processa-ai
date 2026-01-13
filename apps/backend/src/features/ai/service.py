@@ -26,6 +26,9 @@ class AiService:
     def _sha256_bytes(self, val: bytes) -> str:
         return hashlib.sha256(val).hexdigest()
 
+    def _sha256_text(self, val: str) -> str:
+        return self._sha256_bytes((val or "").encode("utf-8"))
+
     def _get_pipeline_version(self, pipeline_name: str) -> str:
         try:
             res = (
