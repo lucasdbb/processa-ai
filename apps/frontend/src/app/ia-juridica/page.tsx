@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, type ChangeEvent } from 'react'
 import {
   Brain,
@@ -21,6 +23,7 @@ import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { MarkdownPreview } from '@/components/markdown/markdown-preview'
+import { ChatInterface } from '@/features/ai-chat/components/chat-interface'
 
 type AiTool = {
   slug: string
@@ -65,11 +68,11 @@ export default function IAJuridicaPage() {
 
   const isCnisAnalysis = selectedTool === 'cnis-analysis'
   const aiEndpoint = selectedTool ? `${API_URL}/ai/${selectedTool}` : ''
-  const isChatTool = currentTool?.icon === 'message-square'
 
   const currentTool = tools.find((t) => t.slug === selectedTool) || null
   const markdownToRender = normalizeMarkdown(generatedText)
   const templates = currentTool?.templates || []
+  const isChatTool = currentTool?.icon === 'message-square'
 
   const resetToolState = useCallback(() => {
     setPrompt('')
@@ -216,43 +219,29 @@ export default function IAJuridicaPage() {
         return
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: prompt,
+        }),
+      })
 
-      const sampleText = `
-EXCELENTÍSSIMO SENHOR DOUTOR JUIZ DE DIREITO DA ${Math.floor(Math.random() * 20) + 1}ª VARA CÍVEL DA COMARCA DE SÃO PAULO/SP
+      if (!response.ok) {
+        let message = 'Erro ao gerar documento. Tente novamente.'
+        try {
+          const data = (await response.json()) as { detail?: string }
+          if (data?.detail) message = data.detail
+        } catch {
+          // ignore
+        }
+        throw new Error(message)
+      }
 
-${prompt.toUpperCase()}
-
-I - DOS FATOS
-
-Com base nas informações fornecidas, os fatos relevantes para o presente caso são os seguintes:
-
-[Aqui seria inserido o texto gerado pela IA com base no prompt fornecido, incluindo uma análise detalhada dos fatos, fundamentação jurídica e pedidos específicos]
-
-II - DO DIREITO
-
-A presente ação encontra amparo legal nos seguintes dispositivos:
-- Constituição Federal, artigos aplicáveis
-- Código Civil, disposições pertinentes
-- Legislação específica relacionada ao caso
-
-III - DOS PEDIDOS
-
-Diante do exposto, requer-se:
-
-a) A citação da parte requerida;
-b) A procedência total dos pedidos;
-c) A condenação em custas e honorários advocatícios.
-
-Termos em que pede deferimento.
-
-Local, ${new Date().toLocaleDateString('pt-BR')}.
-
-[Nome do Advogado]
-OAB/SP nº [número]
-`
-
-      setGeneratedText(sampleText)
+      const data = (await response.json()) as { response?: string }
+      setGeneratedText(data.response || '')
       toast.success('Documento gerado com sucesso!')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar documento. Tente novamente.')
@@ -460,7 +449,7 @@ OAB/SP nº [número]
             </div>
 
             {/* Templates */}
-            {templates.length ? (
+            {templates.length && !isChatTool ? (
               <div className="mt-8">
                 <h3 id="templates-heading" className="text-lg font-bold text-foreground mb-4 tracking-tight">
                   Templates
@@ -499,152 +488,157 @@ OAB/SP nº [número]
                 </div>
               </div>
 
-              {isCnisAnalysis ? (
+              {isChatTool ? (
                 <div className="mb-8">
-                  <label htmlFor="cnis-file" className="block text-sm font-bold text-foreground mb-3">
-                    Envie o CNIS (PDF) <span className="text-destructive">*</span>
-                  </label>
-
-                  <div className="border border-border rounded-2xl bg-muted/30 p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-sm font-bold text-foreground">Arquivo</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Aceita apenas PDF (até 10MB)
-                        </div>
-                      </div>
-
-                      {cnisFile ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCnisFile(null)
-                            setCnisFileInputKey((k) => k + 1)
-                            setGeneratedText('')
-                          }}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted transition-colors text-sm font-bold"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Remover
-                        </button>
-                      ) : null}
-                    </div>
-
-                    {cnisFile ? (
-                      <div className="mt-4 rounded-xl border border-border bg-card p-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-foreground truncate">{cnisFile.name}</div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {(cnisFile.size / (1024 * 1024)).toFixed(2)} MB
-                            </div>
-                          </div>
-                          <div className="text-xs font-bold text-muted-foreground">PDF</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-4">
-                        <input
-                          key={cnisFileInputKey}
-                          id="cnis-file"
-                          type="file"
-                          accept="application/pdf"
-                          onChange={handleCnisFileChange}
-                          className="hidden"
-                        />
-                        <label
-                          htmlFor="cnis-file"
-                          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-colors font-bold cursor-pointer"
-                        >
-                          <Upload className="h-5 w-5" />
-                          Selecionar PDF
-                        </label>
-                      </div>
-                    )}
-                  </div>
+                  <ChatInterface />
                 </div>
               ) : (
-                <div className="mb-8">
-                  <label htmlFor="prompt-input" className="block text-sm font-bold text-foreground mb-3">
-                    Descreva o que você precisa <span className="text-destructive">*</span>
-                  </label>
-                  <div className="rounded-2xl border border-input bg-muted/50 focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all duration-200">
-                    <textarea
-                      id="prompt-input"
-                      ref={promptTextareaRef}
-                      value={prompt}
-                      onChange={(e) => {
-                        setPrompt(e.target.value)
-                        resizePromptTextarea()
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Enter' || e.shiftKey) return
+                <>
+                  {isCnisAnalysis ? (
+                    <div className="mb-8">
+                      <label htmlFor="cnis-file" className="block text-sm font-bold text-foreground mb-3">
+                        Envie o CNIS (PDF) <span className="text-destructive">*</span>
+                      </label>
 
-                        e.preventDefault()
-                        if (isLoading) return
-                        if (!prompt.trim()) return
-                        void handleGenerate()
-                      }}
-                      placeholder="Ex: Criar uma petição inicial para ação de cobrança contra empresa que não pagou serviços prestados no valor de R$ 10.000,00..."
-                      className="w-full px-6 py-4 text-base bg-transparent focus:outline-none resize-none placeholder-muted-foreground text-foreground"
-                    />
-                    <div className="px-6 pb-4 flex items-center justify-between gap-4 text-xs text-muted-foreground font-medium">
-                      <span>Enter para gerar • Shift+Enter para quebra de linha</span>
-                      <span>{prompt.length} caracteres</span>
+                      <div className="border border-border rounded-2xl bg-muted/30 p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-sm font-bold text-foreground">Arquivo</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Aceita apenas PDF (até 10MB)
+                            </div>
+                          </div>
+
+                          {cnisFile ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCnisFile(null)
+                                setCnisFileInputKey((k) => k + 1)
+                                setGeneratedText('')
+                              }}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted transition-colors text-sm font-bold"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Remover
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {cnisFile ? (
+                          <div className="mt-4 rounded-xl border border-border bg-card p-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-foreground truncate">{cnisFile.name}</div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {(cnisFile.size / (1024 * 1024)).toFixed(2)} MB
+                                </div>
+                              </div>
+                              <div className="text-xs font-bold text-muted-foreground">PDF</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-4">
+                            <input
+                              key={cnisFileInputKey}
+                              id="cnis-file"
+                              type="file"
+                              accept="application/pdf"
+                              onChange={handleCnisFileChange}
+                              className="hidden"
+                            />
+                            <label
+                              htmlFor="cnis-file"
+                              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-colors font-bold cursor-pointer"
+                            >
+                              <Upload className="h-5 w-5" />
+                              Selecionar PDF
+                            </label>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex space-x-4 mb-8">
-                <button
-                  onClick={handleGenerate}
-                  disabled={
-                    isCnisAnalysis ? !cnisFile || isLoading : !prompt.trim() || isLoading
-                  }
-                  className="bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                      <span>{isCnisAnalysis ? 'Analisando CNIS...' : 'Gerando Documento...'}</span>
-                    </>
                   ) : (
-                    <>
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      <span>{isCnisAnalysis ? 'Analisar CNIS' : 'Gerar com IA'}</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                    <div className="mb-8">
+                      <label htmlFor="prompt-input" className="block text-sm font-bold text-foreground mb-3">
+                        Descreva o que você precisa <span className="text-destructive">*</span>
+                      </label>
+                      <div className="rounded-2xl border border-input bg-muted/50 focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all duration-200">
+                        <textarea
+                          id="prompt-input"
+                          ref={promptTextareaRef}
+                          value={prompt}
+                          onChange={(e) => {
+                            setPrompt(e.target.value)
+                            resizePromptTextarea()
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter' || e.shiftKey) return
 
-              {/* Resultado */}
-              {generatedText && (
-                <div role="region" aria-labelledby="result-heading">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 id="result-heading" className="text-lg font-bold text-foreground">
-                      {isCnisAnalysis ? 'Análise do CNIS' : 'Documento Gerado'}
-                    </h3>
-                    <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
-                      <button
-                        onClick={handleDownload}
-                        aria-label="Baixar como PDF"
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                        title="Baixar PDF"
-                      >
-                        <Download className="h-5 w-5" aria-hidden="true" />
-                      </button>
+                            e.preventDefault()
+                            if (isLoading) return
+                            if (!prompt.trim()) return
+                            void handleGenerate()
+                          }}
+                          placeholder="Ex: Criar uma petição inicial para ação de cobrança contra empresa que não pagou serviços prestados no valor de R$ 10.000,00..."
+                          className="w-full px-6 py-4 text-base bg-transparent focus:outline-none resize-none placeholder-muted-foreground text-foreground"
+                        />
+                        <div className="px-6 pb-4 flex items-center justify-between gap-4 text-xs text-muted-foreground font-medium">
+                          <span>Enter para gerar • Shift+Enter para quebra de linha</span>
+                          <span>{prompt.length} caracteres</span>
+                        </div>
+                      </div>
                     </div>
+                  )}
+
+                  <div className="flex space-x-4 mb-8">
+                    <button
+                      onClick={handleGenerate}
+                      disabled={isCnisAnalysis ? !cnisFile || isLoading : !prompt.trim() || isLoading}
+                      className="bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                          <span>{isCnisAnalysis ? 'Analisando CNIS...' : 'Gerando Documento...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-5 w-5 mr-2" />
+                          <span>{isCnisAnalysis ? 'Analisar CNIS' : 'Gerar com IA'}</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                  <div
-                    className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner"
-                    role="article"
-                    aria-label={isCnisAnalysis ? 'Análise do CNIS' : 'Documento gerado pela IA'}
-                    tabIndex={0}
-                  >
-                    <MarkdownPreview source={markdownToRender} className="text-sm" />
-                  </div>
-                </div>
+
+                  {generatedText && (
+                    <div role="region" aria-labelledby="result-heading">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 id="result-heading" className="text-lg font-bold text-foreground">
+                          {isCnisAnalysis ? 'Análise do CNIS' : 'Documento Gerado'}
+                        </h3>
+                        <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
+                          <button
+                            onClick={handleDownload}
+                            aria-label="Baixar como PDF"
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                            title="Baixar PDF"
+                          >
+                            <Download className="h-5 w-5" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner"
+                        role="article"
+                        aria-label={isCnisAnalysis ? 'Análise do CNIS' : 'Documento gerado pela IA'}
+                        tabIndex={0}
+                      >
+                        <MarkdownPreview source={markdownToRender} className="text-sm" />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

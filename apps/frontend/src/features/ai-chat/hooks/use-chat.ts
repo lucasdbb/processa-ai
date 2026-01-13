@@ -18,7 +18,7 @@ export function useChat() {
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages([userMessage])
     setIsLoading(true)
 
     try {
@@ -31,7 +31,7 @@ export function useChat() {
         timestamp: new Date(),
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
+      setMessages([userMessage, assistantMessage])
     } catch (error) {
       console.error('Error sending message:', error)
       const errorMessage: Message = {
@@ -40,7 +40,7 @@ export function useChat() {
         content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.',
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, errorMessage])
+      setMessages([userMessage, errorMessage])
     } finally {
       setIsLoading(false)
     }
