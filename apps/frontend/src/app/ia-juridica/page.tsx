@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, type ChangeEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, type ChangeEvent } from 'react'
 import {
   Brain,
   FileSearch,
@@ -57,6 +57,7 @@ export default function IAJuridicaPage() {
   const [isToolsLoading, setIsToolsLoading] = useState(true)
   const [selectedTool, setSelectedTool] = useState('')
   const [prompt, setPrompt] = useState('')
+  const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [cnisFile, setCnisFile] = useState<File | null>(null)
   const [cnisFileInputKey, setCnisFileInputKey] = useState(0)
   const [generatedText, setGeneratedText] = useState('')
@@ -64,6 +65,7 @@ export default function IAJuridicaPage() {
 
   const isCnisAnalysis = selectedTool === 'cnis-analysis'
   const aiEndpoint = selectedTool ? `${API_URL}/ai/${selectedTool}` : ''
+  const isChatTool = currentTool?.icon === 'message-square'
 
   const currentTool = tools.find((t) => t.slug === selectedTool) || null
   const markdownToRender = normalizeMarkdown(generatedText)
@@ -75,6 +77,24 @@ export default function IAJuridicaPage() {
     setCnisFileInputKey((k) => k + 1)
     setGeneratedText('')
   }, [])
+
+  const resizePromptTextarea = useCallback(() => {
+    const el = promptTextareaRef.current
+    if (!el) return
+
+    const minHeight = 100
+    const maxHeight = 300
+
+    el.style.height = 'auto'
+    const next = Math.min(el.scrollHeight, maxHeight)
+    el.style.height = `${Math.max(next, minHeight)}px`
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+  }, [])
+
+  useLayoutEffect(() => {
+    if (isCnisAnalysis) return
+    resizePromptTextarea()
+  }, [isCnisAnalysis, prompt, resizePromptTextarea])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -129,11 +149,11 @@ export default function IAJuridicaPage() {
       if (!cnisFile) return toast.error('Por favor, envie o CNIS em PDF')
     } else {
       if (!prompt.trim()) {
-        toast.error('Por favor, forneça uma descrição do documento')
+        toast.error(isChatTool ? 'Digite sua pergunta' : 'Por favor, forneça uma descrição do documento')
         return
       }
 
-      if (prompt.trim().length < 10) {
+      if (!isChatTool && prompt.trim().length < 10) {
         toast.error('Por favor, forneça mais detalhes (mínimo 10 caracteres)')
         return
       }
@@ -165,6 +185,34 @@ export default function IAJuridicaPage() {
         const data = (await response.json()) as { text?: string }
         setGeneratedText(data.text || '')
         toast.success('CNIS analisado com sucesso!')
+        return
+      }
+
+      if (isChatTool) {
+        const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: prompt,
+          }),
+        })
+
+        if (!response.ok) {
+          let message = 'Erro ao processar sua mensagem. Tente novamente.'
+          try {
+            const data = (await response.json()) as { detail?: string }
+            if (data?.detail) message = data.detail
+          } catch {
+            // ignore
+          }
+          throw new Error(message)
+        }
+
+        const data = (await response.json()) as { response?: string }
+        setGeneratedText(data.response || '')
+        toast.success('Resposta gerada com sucesso!')
         return
       }
 
@@ -211,7 +259,7 @@ OAB/SP nº [número]
     } finally {
       setIsLoading(false)
     }
-  }, [aiEndpoint, cnisFile, isCnisAnalysis, prompt, selectedTool])
+  }, [aiEndpoint, cnisFile, isCnisAnalysis, isChatTool, prompt, selectedTool])
 
   const handleDownload = useCallback(() => {
     if (!generatedText) return
@@ -520,16 +568,29 @@ OAB/SP nº [número]
                   <label htmlFor="prompt-input" className="block text-sm font-bold text-foreground mb-3">
                     Descreva o que você precisa <span className="text-destructive">*</span>
                   </label>
-                  <div className="relative">
+                  <div className="rounded-2xl border border-input bg-muted/50 focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all duration-200">
                     <textarea
                       id="prompt-input"
+                      ref={promptTextareaRef}
                       value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
+                      onChange={(e) => {
+                        setPrompt(e.target.value)
+                        resizePromptTextarea()
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' || e.shiftKey) return
+
+                        e.preventDefault()
+                        if (isLoading) return
+                        if (!prompt.trim()) return
+                        void handleGenerate()
+                      }}
                       placeholder="Ex: Criar uma petição inicial para ação de cobrança contra empresa que não pagou serviços prestados no valor de R$ 10.000,00..."
-                      className="w-full h-40 px-6 py-4 text-base border border-input rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all duration-200 bg-muted/50 placeholder-muted-foreground text-foreground"
+                      className="w-full px-6 py-4 text-base bg-transparent focus:outline-none resize-none placeholder-muted-foreground text-foreground"
                     />
-                    <div className="absolute bottom-4 right-4 text-xs text-muted-foreground font-medium">
-                      {prompt.length} caracteres
+                    <div className="px-6 pb-4 flex items-center justify-between gap-4 text-xs text-muted-foreground font-medium">
+                      <span>Enter para gerar • Shift+Enter para quebra de linha</span>
+                      <span>{prompt.length} caracteres</span>
                     </div>
                   </div>
                 </div>
