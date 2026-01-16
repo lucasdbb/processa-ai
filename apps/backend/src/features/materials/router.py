@@ -10,7 +10,7 @@ service = MaterialsService()
 
 
 @router.get("/list", response_model=list[MaterialListItem], status_code=status.HTTP_200_OK)
-async def list_materials(_user=Depends(get_current_user)):
+async def list_materials():
     return await service.list_materials()
 
 
