@@ -5,10 +5,10 @@ import { Download, FileSpreadsheet, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { ProtectedFeaturePreview } from '@/components/auth/protected-feature-preview'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { LoginModal } from '@/features/auth/components/login-modal'
 
 type Material = {
   slug: string
@@ -47,13 +47,18 @@ const toSafeFilename = (value: string): string =>
 
 export default function MaterialsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
   const [materials, setMaterials] = useState<Material[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [downloadingSlug, setDownloadingSlug] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!isAuthenticated) return
+  const openLoginModal = useCallback(() => {
+    setLoginModalView('register')
+    setIsLoginModalOpen(true)
+  }, [])
 
+  useEffect(() => {
     const load = async () => {
       setIsLoading(true)
       try {
@@ -70,7 +75,7 @@ export default function MaterialsPage() {
     }
 
     load()
-  }, [isAuthenticated])
+  }, [])
 
   const grouped = useMemo(() => {
     const map = new Map<string, Material[]>()
@@ -88,13 +93,24 @@ export default function MaterialsPage() {
   }, [materials])
 
   const handleDownload = useCallback(async (item: Material) => {
+    if (!isAuthenticated) {
+      openLoginModal()
+      return
+    }
+
     const slug = encodeURIComponent(item.slug)
     const url = `${API_URL}/materials/${slug}/download`
 
     setDownloadingSlug(item.slug)
     try {
       const res = await fetchWithCredentials(url, { method: 'GET' })
-      if (!res.ok) throw new Error('Falha ao iniciar download')
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          openLoginModal()
+          return
+        }
+        throw new Error('Falha ao iniciar download')
+      }
 
       const blob = await res.blob()
       const objectUrl = URL.createObjectURL(blob)
@@ -113,24 +129,10 @@ export default function MaterialsPage() {
     } finally {
       setDownloadingSlug(null)
     }
-  }, [])
+  }, [isAuthenticated, openLoginModal])
 
   if (isAuthLoading) {
     return <LoadingSpinner fullScreen size="lg" />
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <ProtectedFeaturePreview
-        title="Materiais Complementares"
-        description="Baixe materiais de apoio e modelos práticos para o dia a dia. Acesso exclusivo para usuários autenticados."
-        benefits={[
-          'Materiais organizados por categorias',
-          'Downloads diretos para usar no seu trabalho',
-          'Atualizações frequentes com novos conteúdos',
-        ]}
-      />
-    )
   }
 
   return (
@@ -216,7 +218,12 @@ export default function MaterialsPage() {
       </main>
 
       <Footer />
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        initialView={loginModalView}
+      />
     </div>
   )
 }
-

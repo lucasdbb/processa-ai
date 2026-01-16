@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ProtectedFeaturePreview } from '@/components/auth/protected-feature-preview'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { Calculator, DollarSign, Calendar, FileText, Download, Info } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { LoginModal } from '@/features/auth/components/login-modal'
 
 type CalculatorType = 'rescisao' | 'aposentadoria'
 
@@ -70,6 +70,8 @@ interface CalculatorConfig {
 
 export default function CalculadorasPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
   const [selectedCalculator, setSelectedCalculator] = useState<CalculatorType>('rescisao')
   const [formData, setFormData] = useState<CalculatorFormData>({
     // Rescisão
@@ -91,6 +93,11 @@ export default function CalculadorasPage() {
   })
 
   const [resultado, setResultado] = useState<Resultado | null>(null)
+
+  const openLoginModal = useCallback(() => {
+    setLoginModalView('register')
+    setIsLoginModalOpen(true)
+  }, [])
 
   const calculators: CalculatorConfig[] = [
     {
@@ -189,6 +196,11 @@ export default function CalculadorasPage() {
   }, [formData])
 
   const handleCalculate = useCallback(() => {
+    if (!isAuthenticated) {
+      openLoginModal()
+      return
+    }
+
     switch (selectedCalculator) {
       case 'rescisao':
         calcularRescisao()
@@ -199,7 +211,14 @@ export default function CalculadorasPage() {
       default:
         break
     }
-  }, [selectedCalculator, calcularRescisao, calcularAposentadoria])
+  }, [calcularAposentadoria, calcularRescisao, isAuthenticated, openLoginModal, selectedCalculator])
+
+  const handleProtectedResultAction = useCallback(() => {
+    if (!isAuthenticated) {
+      openLoginModal()
+      return
+    }
+  }, [isAuthenticated, openLoginModal])
 
   const handleCalculatorSelect = useCallback((calculatorId: CalculatorType) => {
     setSelectedCalculator(calculatorId)
@@ -559,25 +578,6 @@ export default function CalculadorasPage() {
     return <LoadingSpinner fullScreen size="lg" />
   }
 
-  // Show preview if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <ProtectedFeaturePreview
-        title="Calculadoras Jurídicas"
-        description="Ferramentas precisas para cálculos trabalhistas e previdenciários. Economize tempo e evite erros em seus cálculos."
-        benefits={[
-          "Cálculo preciso de rescisão trabalhista com todas as verbas",
-          "Simulação completa de aposentadoria (idade e tempo de contribuição)",
-          "Geração de relatórios em PDF para seus clientes",
-          "Histórico de cálculos salvos para consulta futura",
-          "Atualizações automáticas conforme mudanças na legislação",
-          "Interface intuitiva que economiza tempo no dia a dia",
-        ]}
-      />
-    )
-  }
-
-  // Show the full page if authenticated
   return (
     <div className="min-h-screen bg-background font-sans text-foreground selection:bg-slate-700 selection:text-white">
       <Header />
@@ -695,11 +695,19 @@ export default function CalculadorasPage() {
               <div className="mt-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
                 {renderResultado()}
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <button className="flex items-center space-x-2 px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-xl hover:bg-muted hover:border-muted-foreground/50 transition-all shadow-sm hover:shadow-md">
+                  <button
+                    type="button"
+                    onClick={handleProtectedResultAction}
+                    className="flex items-center space-x-2 px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-xl hover:bg-muted hover:border-muted-foreground/50 transition-all shadow-sm hover:shadow-md"
+                  >
                     <Download className="h-5 w-5" />
                     <span>Baixar Relatório PDF</span>
                   </button>
-                  <button className="flex items-center space-x-2 px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-xl hover:bg-muted hover:border-muted-foreground/50 transition-all shadow-sm hover:shadow-md">
+                  <button
+                    type="button"
+                    onClick={handleProtectedResultAction}
+                    className="flex items-center space-x-2 px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-xl hover:bg-muted hover:border-muted-foreground/50 transition-all shadow-sm hover:shadow-md"
+                  >
                     <FileText className="h-5 w-5" />
                     <span>Salvar Cálculo</span>
                   </button>
@@ -729,6 +737,12 @@ export default function CalculadorasPage() {
       </div>
 
       <Footer />
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        initialView={loginModalView}
+      />
     </div>
   )
 }

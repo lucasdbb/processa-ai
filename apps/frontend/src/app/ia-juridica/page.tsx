@@ -500,12 +500,14 @@ export default function IAJuridicaPage() {
                   <Brain className="h-8 w-8 text-white" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                    {currentTool?.name || 'Selecione uma ferramenta'}
-                  </h2>
-                  <p className="text-muted-foreground mt-1">
-                    {currentTool?.description || ''}
-                  </p>
+                  {currentTool?.name ? (
+                    <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                      {currentTool.name}
+                    </h2>
+                  ) : null}
+                  {currentTool?.description ? (
+                    <p className="text-muted-foreground mt-1">{currentTool.description}</p>
+                  ) : null}
                 </div>
               </div>
 
