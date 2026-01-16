@@ -1,7 +1,7 @@
+import asyncio
 import base64
 import hashlib
 import re
-import asyncio
 import time
 from html import escape
 from io import BytesIO
@@ -414,7 +414,11 @@ class AiService:
                     detail=f"Execução do assistente falhou: {run.status}",
                 )
 
-            messages = await client.beta.threads.messages.list(thread_id=thread.id, order="desc", limit=10)
+            messages = await client.beta.threads.messages.list(
+                thread_id=thread.id,
+                order="desc",
+                limit=10,
+            )
             assistant_text = ""
             for m in getattr(messages, "data", []) or []:
                 if getattr(m, "role", None) != "assistant":

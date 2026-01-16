@@ -17,13 +17,13 @@ import {
 } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { ProtectedFeaturePreview } from '@/components/auth/protected-feature-preview'
 import { toast } from 'sonner'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { MarkdownPreview } from '@/components/markdown/markdown-preview'
 import { ChatInterface } from '@/features/ai-chat/components/chat-interface'
+import { LoginModal } from '@/features/auth/components/login-modal'
 
 type AiTool = {
   slug: string
@@ -42,7 +42,6 @@ const ICONS = {
   'file-text': FileText,
 } as const
 
-
 const normalizeMarkdown = (value: string): string => {
   const text = value.trim()
   if (!text.startsWith('```')) return text
@@ -56,6 +55,8 @@ const normalizeMarkdown = (value: string): string => {
 
 export default function IAJuridicaPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
   const [tools, setTools] = useState<AiTool[]>([])
   const [isToolsLoading, setIsToolsLoading] = useState(true)
   const [selectedTool, setSelectedTool] = useState('')
@@ -100,28 +101,30 @@ export default function IAJuridicaPage() {
   }, [isCnisAnalysis, prompt, resizePromptTextarea])
 
   useEffect(() => {
-    if (!isAuthenticated) return
-
     const loadTools = async () => {
       setIsToolsLoading(true)
       try {
         const response = await fetchWithCredentials(`${API_URL}/ai/tools`)
+        
         if (!response.ok) throw new Error('Erro ao carregar ferramentas')
+
         const data = (await response.json()) as AiTool[]
         const sorted = [...data].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         setTools(sorted)
         setSelectedTool(
           (prev) => prev || sorted.find((t) => !t.locked)?.slug || sorted[0]?.slug || '',
         )
-      } catch {
+      } catch (error) {
         setTools([])
+        setSelectedTool('')
+        toast.error(error instanceof Error ? error.message : 'Erro ao carregar ferramentas')
       } finally {
         setIsToolsLoading(false)
       }
     }
 
     loadTools()
-  }, [isAuthenticated])
+  }, [])
 
   const handleCnisFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -143,6 +146,12 @@ export default function IAJuridicaPage() {
   }, [])
 
   const handleGenerate = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoginModalView('register')
+      setIsLoginModalOpen(true)
+      return
+    }
+
     if (!selectedTool) {
       toast.error('Selecione uma ferramenta')
       return
@@ -175,6 +184,12 @@ export default function IAJuridicaPage() {
         })
 
         if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            setLoginModalView('register')
+            setIsLoginModalOpen(true)
+            return
+          }
+
           let message = 'Erro ao analisar CNIS. Tente novamente.'
           try {
             const data = (await response.json()) as { detail?: string }
@@ -203,6 +218,12 @@ export default function IAJuridicaPage() {
         })
 
         if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            setLoginModalView('register')
+            setIsLoginModalOpen(true)
+            return
+          }
+
           let message = 'Erro ao processar sua mensagem. Tente novamente.'
           try {
             const data = (await response.json()) as { detail?: string }
@@ -230,6 +251,12 @@ export default function IAJuridicaPage() {
       })
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setLoginModalView('register')
+          setIsLoginModalOpen(true)
+          return
+        }
+
         let message = 'Erro ao gerar documento. Tente novamente.'
         try {
           const data = (await response.json()) as { detail?: string }
@@ -248,9 +275,15 @@ export default function IAJuridicaPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [aiEndpoint, cnisFile, isCnisAnalysis, isChatTool, prompt, selectedTool])
+  }, [aiEndpoint, cnisFile, isCnisAnalysis, isChatTool, isAuthenticated, prompt, selectedTool])
 
   const handleDownload = useCallback(() => {
+    if (!isAuthenticated) {
+      setLoginModalView('register')
+      setIsLoginModalOpen(true)
+      return
+    }
+
     if (!generatedText) return
 
     ;(async () => {
@@ -267,6 +300,12 @@ export default function IAJuridicaPage() {
         })
 
         if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            setLoginModalView('register')
+            setIsLoginModalOpen(true)
+            return
+          }
+
           let message = 'Erro ao gerar PDF. Tente novamente.'
           try {
             const data = (await response.json()) as { detail?: string }
@@ -311,29 +350,11 @@ export default function IAJuridicaPage() {
         toast.error(error instanceof Error ? error.message : 'Erro ao gerar PDF')
       }
     })()
-  }, [currentTool?.name, generatedText, markdownToRender])
+  }, [currentTool?.name, generatedText, isAuthenticated, markdownToRender])
 
   // Show loading while checking authentication
   if (isAuthLoading) {
     return <LoadingSpinner fullScreen size="lg" />
-  }
-
-  // Show preview if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <ProtectedFeaturePreview
-        title="IA Jurídica"
-        description="Crie documentos jurídicos profissionais com auxílio da inteligência artificial. Economize tempo e melhore a qualidade das suas peças processuais."
-        benefits={[
-          'Geração automática de petições iniciais, contestações e recursos',
-          'Criação de minutas de contratos personalizados',
-          'Templates prontos para diversos tipos de documentos',
-          'Análise de jurisprudência e fundamentação legal',
-          'Economia de até 70% do tempo na elaboração de peças',
-          'Sugestões inteligentes baseadas em milhares de casos',
-        ]}
-      />
-    )
   }
 
   // Show the full page if authenticated
@@ -490,7 +511,13 @@ export default function IAJuridicaPage() {
 
               {isChatTool ? (
                 <div className="mb-8">
-                  <ChatInterface />
+                  <ChatInterface
+                    isAuthenticated={isAuthenticated}
+                    onRequireAuth={() => {
+                      setLoginModalView('register')
+                      setIsLoginModalOpen(true)
+                    }}
+                  />
                 </div>
               ) : (
                 <>
@@ -676,6 +703,12 @@ export default function IAJuridicaPage() {
       </div>
 
       <Footer />
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        initialView={loginModalView}
+      />
     </div>
   )
 }

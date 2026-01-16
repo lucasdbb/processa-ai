@@ -8,13 +8,21 @@ import { Card } from '@/components/ui/card'
 import { useChat } from '../hooks/use-chat'
 import { useState } from 'react'
 
-export function ChatInterface() {
+type ChatInterfaceProps = {
+  isAuthenticated: boolean
+  onRequireAuth: () => void
+}
+
+export function ChatInterface({ isAuthenticated, onRequireAuth }: ChatInterfaceProps) {
   const { messages, isLoading, sendMessage } = useChat()
   const [input, setInput] = useState('')
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = messagesContainerRef.current
+    if (!container) return
+    container.scrollTop = container.scrollHeight
   }
 
   useEffect(() => {
@@ -23,6 +31,12 @@ export function ChatInterface() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!isAuthenticated) {
+      onRequireAuth()
+      return
+    }
+
     if (input.trim() && !isLoading) {
       sendMessage(input)
       setInput('')
@@ -30,9 +44,9 @@ export function ChatInterface() {
   }
 
   return (
-    <Card className="flex flex-col h-[600px]">
+    <Card className="flex flex-col max-h-[calc(100vh-18rem)]">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Bot className="h-16 w-16 text-slate-500 mb-4" />

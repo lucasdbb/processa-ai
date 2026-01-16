@@ -42,9 +42,7 @@ async def cnis_analysis_pdf(data: MarkdownToPdfRequest, user=Depends(get_current
 
 
 @router.get("/tools", response_model=list[AiToolResponse], status_code=status.HTTP_200_OK)
-async def list_ai_tools(
-    _user=Depends(get_current_user),
-):
+async def list_ai_tools():
     return await service.list_tools()
 
 
