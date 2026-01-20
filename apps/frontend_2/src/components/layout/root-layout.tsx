@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, useNavigation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigation } from 'react-router-dom'
 import { Header } from './header'
 import { Footer } from './footer'
 import { LoginModal } from '@/features/auth/components/login-modal'
@@ -45,9 +45,12 @@ function RouteLoadingBar() {
 export function RootLayout() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
   const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
+  const location = useLocation()
 
   // Initialize auth on app load
   useAuth()
+
+  const isAdminRoute = location.pathname.startsWith('/admin')
 
   const openLoginModal = () => {
     setLoginModalView('login')
@@ -62,11 +65,11 @@ export function RootLayout() {
   return (
     <div className="min-h-screen bg-background font-sans text-foreground selection:bg-slate-700 selection:text-white flex flex-col">
       <RouteLoadingBar />
-      <Header onLoginClick={openLoginModal} />
+      {isAdminRoute ? null : <Header onLoginClick={openLoginModal} />}
       <main className="flex-1">
         <Outlet context={{ openLoginModal, openRegisterModal } satisfies RootLayoutOutletContext} />
       </main>
-      <Footer />
+      {isAdminRoute ? null : <Footer />}
       {isLoginModalOpen ? (
         <LoginModal
           key={loginModalView}

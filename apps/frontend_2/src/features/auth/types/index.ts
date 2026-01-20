@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'author' | 'user'
+export type UserRole = 'admin' | 'author' | 'user' | 'premium'
 export type DocumentType = 'cpf' | 'cnpj'
 
 export interface User {
