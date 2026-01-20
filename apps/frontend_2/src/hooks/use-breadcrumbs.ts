@@ -38,7 +38,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
   const breadcrumbs: BreadcrumbItem[] = []
   let currentPath = ''
 
-  pathSegments.forEach((segment, index) => {
+  pathSegments.forEach((segment) => {
     currentPath += `/${segment}`
 
     // Get label from mapping, or capitalize the segment as fallback

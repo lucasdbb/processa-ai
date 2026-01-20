@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { ChevronRight, Home } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useBreadcrumbs } from '@/hooks/use-breadcrumbs'
 
 export function Breadcrumbs() {
@@ -29,7 +28,6 @@ export function Breadcrumbs() {
         {/* Render each breadcrumb */}
         {breadcrumbs.slice(1).map((breadcrumb, index) => {
           const isLast = index === breadcrumbs.length - 2
-          const isFirstAfterApp = breadcrumb.href === breadcrumbs[1]?.href
 
           return (
             <li key={breadcrumb.href} className="flex items-center gap-2">

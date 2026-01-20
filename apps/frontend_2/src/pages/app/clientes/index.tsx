@@ -3,7 +3,7 @@ import { Search, Plus, Filter, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // Dados mockados para demonstracao
-const mockClients = [
+export const mockClients = [
   {
     id: '1',
     name: 'Joao Silva',

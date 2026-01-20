@@ -65,14 +65,18 @@ export function AppHeader() {
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* Busca Global */}
+          {/* Busca Global - Abre Command Palette */}
           <button
             onClick={openCommandPalette}
-            className="flex items-center gap-2 h-10 px-4 rounded-lg bg-muted/50 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full max-w-xs lg:max-w-md"
+            className="group flex items-center gap-3 h-10 px-3 lg:px-4 rounded-lg bg-muted/50 border border-border text-muted-foreground hover:text-foreground hover:bg-accent hover:border-foreground/20 transition-all w-full max-w-xs lg:max-w-md cursor-pointer"
+            aria-label="Abrir busca (Cmd+K)"
           >
-            <Search className="h-4 w-4 shrink-0" />
-            <span className="text-sm hidden sm:inline">Buscar clientes, processos...</span>
-            <kbd className="hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
+            <Search className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform" />
+            <span className="text-sm flex-1 text-left truncate">
+              <span className="hidden sm:inline">Buscar ou pressione </span>
+              <span className="sm:hidden">Buscar</span>
+            </span>
+            <kbd className="hidden sm:inline-flex h-6 select-none items-center gap-0.5 rounded bg-background border border-border px-2 font-mono text-[11px] font-medium text-muted-foreground group-hover:border-foreground/30 transition-colors">
               <span className="text-xs">⌘</span>K
             </kbd>
           </button>

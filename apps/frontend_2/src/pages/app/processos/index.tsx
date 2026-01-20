@@ -3,7 +3,7 @@ import { Search, Plus, Filter, FolderKanban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // Dados mockados
-const mockProcesses = [
+export const mockProcesses = [
   {
     id: '1',
     number: '0001234-12.2025.5.02.0001',

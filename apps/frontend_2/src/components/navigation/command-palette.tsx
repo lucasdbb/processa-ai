@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
+import { useGlobalSearch, type SearchResult } from '@/hooks/use-global-search'
 import { cn } from '@/lib/utils'
 
 interface CommandItem {
@@ -31,6 +32,7 @@ export function CommandPalette() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const searchResults = useGlobalSearch(search)
 
   const closeAndReset = useCallback(() => {
     close()
@@ -215,6 +217,29 @@ export function CommandPalette() {
     return groups
   }, [filteredCommands])
 
+  // Flatten search results for navigation
+  const flatSearchResults = useMemo(() => {
+    return [
+      ...searchResults.clients,
+      ...searchResults.processes,
+      ...searchResults.calculations,
+    ]
+  }, [searchResults])
+
+  // Total items for keyboard navigation
+  const totalItems = useMemo(() => {
+    return flatSearchResults.length + filteredCommands.length
+  }, [flatSearchResults.length, filteredCommands.length])
+
+  // Has search results
+  const hasSearchResults = useMemo(() => {
+    return (
+      searchResults.clients.length > 0 ||
+      searchResults.processes.length > 0 ||
+      searchResults.calculations.length > 0
+    )
+  }, [searchResults])
+
   // Keyboard navigation
   useEffect(() => {
     if (!isOpen) return
@@ -223,16 +248,25 @@ export function CommandPalette() {
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
-          setSelectedIndex((i) => (i + 1) % filteredCommands.length)
+          setSelectedIndex((i) => (i + 1) % totalItems)
           break
         case 'ArrowUp':
           e.preventDefault()
-          setSelectedIndex((i) => (i - 1 + filteredCommands.length) % filteredCommands.length)
+          setSelectedIndex((i) => (i - 1 + totalItems) % totalItems)
           break
         case 'Enter':
           e.preventDefault()
-          if (filteredCommands[selectedIndex]) {
-            filteredCommands[selectedIndex].action()
+          // Check if selecting a search result
+          if (selectedIndex < flatSearchResults.length) {
+            const result = flatSearchResults[selectedIndex]
+            navigate(result.href)
+            closeAndReset()
+          } else {
+            // Selecting a command
+            const commandIndex = selectedIndex - flatSearchResults.length
+            if (filteredCommands[commandIndex]) {
+              filteredCommands[commandIndex].action()
+            }
           }
           break
         case 'Escape':
@@ -244,7 +278,7 @@ export function CommandPalette() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, filteredCommands, selectedIndex, closeAndReset])
+  }, [isOpen, totalItems, flatSearchResults, filteredCommands, selectedIndex, closeAndReset, navigate])
 
   const renderGroup = (title: string, items: CommandItem[], startIndex: number) => {
     if (items.length === 0) return null
@@ -284,14 +318,66 @@ export function CommandPalette() {
     )
   }
 
+  const renderSearchGroup = (title: string, items: SearchResult[], startIndex: number) => {
+    if (items.length === 0) return null
+
+    return (
+      <div className="py-2">
+        <div className="px-3 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          {title} ({items.length})
+        </div>
+        {items.map((item, idx) => {
+          const globalIndex = startIndex + idx
+          const Icon = item.icon
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                navigate(item.href)
+                closeAndReset()
+              }}
+              onMouseEnter={() => setSelectedIndex(globalIndex)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-colors',
+                globalIndex === selectedIndex
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              )}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium">{item.title}</div>
+                {item.subtitle && (
+                  <div className="text-xs text-muted-foreground truncate">{item.subtitle}</div>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // Calculate indices for keyboard navigation
   let currentIndex = 0
+
+  // Search results come first
+  const clientsStartIndex = currentIndex
+  currentIndex += searchResults.clients.length
+  const processesStartIndex = currentIndex
+  currentIndex += searchResults.processes.length
+  const calculationsStartIndex = currentIndex
+  currentIndex += searchResults.calculations.length
+
+  // Then commands
   const actionStartIndex = currentIndex
   currentIndex += groupedCommands.action.length
   const navigationStartIndex = currentIndex
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeAndReset()}>
-      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden" showCloseButton={false}>
         <DialogHeader className="sr-only">
           <DialogTitle>Paleta de comandos</DialogTitle>
         </DialogHeader>
@@ -305,23 +391,33 @@ export function CommandPalette() {
               setSearch(e.target.value)
               setSelectedIndex(0)
             }}
-            placeholder="Digite um comando ou busque..."
+            placeholder="Buscar clientes, processos, cálculos ou digite um comando"
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             autoFocus
           />
-          <kbd className="hidden sm:flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-            Esc
-          </kbd>
         </div>
 
         {/* Results */}
         <div className="max-h-80 overflow-y-auto px-2 py-1">
-          {filteredCommands.length === 0 ? (
+          {!hasSearchResults && filteredCommands.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               Nenhum resultado encontrado
             </div>
           ) : (
             <>
+              {/* Search Results */}
+              {renderSearchGroup('Clientes', searchResults.clients, clientsStartIndex)}
+              {renderSearchGroup('Processos', searchResults.processes, processesStartIndex)}
+              {renderSearchGroup('Calculos', searchResults.calculations, calculationsStartIndex)}
+
+              {/* Separator if both search results and commands exist */}
+              {hasSearchResults && filteredCommands.length > 0 && (
+                <div className="px-3 py-2">
+                  <div className="border-t border-border" />
+                </div>
+              )}
+
+              {/* Commands */}
               {renderGroup('Acoes Rapidas', groupedCommands.action, actionStartIndex)}
               {renderGroup('Navegacao', groupedCommands.navigation, navigationStartIndex)}
             </>
