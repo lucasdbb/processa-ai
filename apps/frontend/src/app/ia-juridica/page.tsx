@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, type ChangeEvent } from 'react'
+import { useLayoutEffect, useRef, useState, useCallback, type ChangeEvent } from 'react'
 import {
   Brain,
   FileSearch,
@@ -14,6 +14,7 @@ import {
   Upload,
   Trash2,
   MessageSquare,
+  type LucideIcon,
 } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
@@ -29,18 +30,59 @@ type AiTool = {
   slug: string
   name: string
   description: string
-  icon: 'file-search' | 'edit-3' | 'message-square' | 'file-text' | (string & {})
+  icon: LucideIcon
   locked: boolean
   order: number
   templates: { label: string; prompt: string }[]
 }
 
-const ICONS = {
-  'file-search': FileSearch,
-  'edit-3': Edit3,
-  'message-square': MessageSquare,
-  'file-text': FileText,
-} as const
+const AI_TOOLS: AiTool[] = [
+  {
+    slug: 'chat-juridico',
+    name: 'Chat Jurídico',
+    description: 'Converse com a IA para tirar dúvidas e estruturar ideias.',
+    icon: MessageSquare,
+    locked: false,
+    order: 1,
+    templates: [],
+  },
+  {
+    slug: 'initial-petition',
+    name: 'Petição Inicial',
+    description: 'Gere uma petição inicial a partir do seu caso.',
+    icon: FileText,
+    locked: false,
+    order: 2,
+    templates: [],
+  },
+  {
+    slug: 'contract',
+    name: 'Contrato',
+    description: 'Crie minutas de contratos com cláusulas essenciais.',
+    icon: Edit3,
+    locked: false,
+    order: 3,
+    templates: [],
+  },
+  {
+    slug: 'defense',
+    name: 'Contestação / Defesa',
+    description: 'Estruture uma defesa com base nos fatos e pedidos.',
+    icon: FileSearch,
+    locked: false,
+    order: 4,
+    templates: [],
+  },
+  {
+    slug: 'cnis-analysis',
+    name: 'Análise de CNIS',
+    description: 'Envie seu CNIS em PDF para receber uma análise estruturada.',
+    icon: FileSearch,
+    locked: false,
+    order: 5,
+    templates: [],
+  },
+]
 
 const normalizeMarkdown = (value: string): string => {
   const text = value.trim()
@@ -57,9 +99,10 @@ export default function IAJuridicaPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
   const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
-  const [tools, setTools] = useState<AiTool[]>([])
-  const [isToolsLoading, setIsToolsLoading] = useState(true)
-  const [selectedTool, setSelectedTool] = useState('')
+  const tools = AI_TOOLS
+  const [selectedTool, setSelectedTool] = useState(
+    () => tools.find((t) => !t.locked)?.slug || tools[0]?.slug || '',
+  )
   const [prompt, setPrompt] = useState('')
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [cnisFile, setCnisFile] = useState<File | null>(null)
@@ -73,7 +116,7 @@ export default function IAJuridicaPage() {
   const currentTool = tools.find((t) => t.slug === selectedTool) || null
   const markdownToRender = normalizeMarkdown(generatedText)
   const templates = currentTool?.templates || []
-  const isChatTool = currentTool?.icon === 'message-square'
+  const isChatTool = currentTool?.icon === MessageSquare
 
   const resetToolState = useCallback(() => {
     setPrompt('')
@@ -99,32 +142,6 @@ export default function IAJuridicaPage() {
     if (isCnisAnalysis) return
     resizePromptTextarea()
   }, [isCnisAnalysis, prompt, resizePromptTextarea])
-
-  useEffect(() => {
-    const loadTools = async () => {
-      setIsToolsLoading(true)
-      try {
-        const response = await fetchWithCredentials(`${API_URL}/ai/tools`)
-        
-        if (!response.ok) throw new Error('Erro ao carregar ferramentas')
-
-        const data = (await response.json()) as AiTool[]
-        const sorted = [...data].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        setTools(sorted)
-        setSelectedTool(
-          (prev) => prev || sorted.find((t) => !t.locked)?.slug || sorted[0]?.slug || '',
-        )
-      } catch (error) {
-        setTools([])
-        setSelectedTool('')
-        toast.error(error instanceof Error ? error.message : 'Erro ao carregar ferramentas')
-      } finally {
-        setIsToolsLoading(false)
-      }
-    }
-
-    loadTools()
-  }, [])
 
   const handleCnisFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -390,13 +407,9 @@ export default function IAJuridicaPage() {
               Ferramentas
             </h2>
             <div className="space-y-4" role="radiogroup" aria-labelledby="tools-heading">
-              {isToolsLoading ? (
-                <div className="py-8 flex justify-center">
-                  <LoadingSpinner size="md" />
-                </div>
-              ) : tools.length ? (
+              {tools.length ? (
                 tools.map((tool) => {
-                  const ToolIcon = ICONS[tool.icon as keyof typeof ICONS] ?? FileText
+                  const ToolIcon = tool.icon
 
                   return (
                     <button
