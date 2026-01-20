@@ -36,7 +36,7 @@ type Resultado =
 const calculators = [
   {
     id: 'rescisao',
-    name: 'Rescisao Trabalhista',
+    name: 'Rescisão Trabalhista',
     description: 'Calcule todas as verbas rescisórias: saldo de salário, aviso prévio, férias, 13°, FGTS e multa.',
     icon: DollarSign,
     href: '/app/calculadoras/rescisao',
@@ -45,7 +45,7 @@ const calculators = [
   },
   {
     id: 'aposentadoria',
-    name: 'Simulacao de Aposentadoria',
+    name: 'Simulação de Aposentadoria',
     description: 'Simule tempo de contribuição, idade mínima e valor do benefício com as regras de transição.',
     icon: Calendar,
     href: '/app/calculadoras/aposentadoria',
@@ -54,7 +54,7 @@ const calculators = [
   },
   {
     id: 'correcao',
-    name: 'Correcao Monetaria',
+    name: 'Correção Monetária',
     description: 'Atualize valores com IPCA-E, INPC, Taxa Selic, TR ou IGP-M de forma automática.',
     icon: TrendingUp,
     href: '/app/calculadoras/correcao',

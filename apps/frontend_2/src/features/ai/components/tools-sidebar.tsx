@@ -1,4 +1,4 @@
-import { Info, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 
 import type { AiTool, ToolTemplate } from '../types'
 
@@ -21,43 +21,9 @@ export function ToolsSidebar({
 }: ToolsSidebarProps) {
   return (
     <div className="lg:col-span-1">
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <h2 id="tools-heading" className="text-xl font-bold text-foreground tracking-tight">
-          Ferramentas
-        </h2>
-
-        <details className="relative">
-          <summary className="cursor-pointer list-none inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background [&::-webkit-details-marker]:hidden">
-            <Info className="h-5 w-5" aria-hidden="true" />
-            <span className="sr-only">Dicas para melhores resultados</span>
-          </summary>
-          <div className="absolute right-0 mt-3 w-[320px] rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-xl p-4 z-20">
-            <div className="text-sm font-bold text-foreground mb-3">Dicas para melhores resultados</div>
-            <ul className="grid gap-2 text-sm text-muted-foreground">
-              <li className="flex items-start">
-                <span className="mr-2 text-muted-foreground/60">•</span>
-                Seja específico sobre os fatos do caso, incluindo datas e valores
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-muted-foreground/60">•</span>
-                Identifique claramente as partes envolvidas (requerente e requerido)
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-muted-foreground/60">•</span>
-                Mencione a legislação aplicável ou jurisprudência se souber
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-muted-foreground/60">•</span>
-                Use os templates sugeridos para estruturar melhor seu pedido
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-muted-foreground/60">•</span>
-                Sempre revise o texto gerado por um profissional qualificado
-              </li>
-            </ul>
-          </div>
-        </details>
-      </div>
+      <h2 id="tools-heading" className="text-xl font-bold text-foreground tracking-tight mb-6">
+        Ferramentas
+      </h2>
 
       <div className="space-y-4" role="radiogroup" aria-labelledby="tools-heading">
         {tools.length ? (
