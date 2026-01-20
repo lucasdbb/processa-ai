@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Clock, User } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { Button } from '@/components/ui/button'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import MarkdownPreview from '@uiw/react-markdown-preview'
+import '@uiw/react-markdown-preview/markdown.css'
+import { useTheme } from 'next-themes'
 
 interface Post {
   id: string
@@ -44,6 +45,7 @@ export default function BlogPostPage() {
   const { id } = useParams<{ id: string }>()
   const [post, setPost] = useState<Post | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const { resolvedTheme } = useTheme()
 
   useEffect(() => {
     const loadPost = async () => {
@@ -72,10 +74,7 @@ export default function BlogPostPage() {
     return `${minutes} min de leitura`
   }
 
-  const htmlContent = useMemo(() => {
-    if (!post?.content) return ''
-    return DOMPurify.sanitize(marked.parse(post.content) as string)
-  }, [post?.content])
+  const dataColorMode = resolvedTheme === 'dark' ? 'dark' : 'light'
 
   if (isLoading) {
     return (
@@ -275,9 +274,10 @@ export default function BlogPostPage() {
         )}
 
         <div className="mb-12">
-          <div
+          <MarkdownPreview
+            source={post.content}
             className="prose prose-lg max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
+            wrapperElement={{ 'data-color-mode': dataColorMode }}
           />
         </div>
 

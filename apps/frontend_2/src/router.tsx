@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, redirect } from 'react-router-dom'
 import { RootLayout } from '@/components/layout/root-layout'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AuthGuard } from '@/components/auth/auth-guard'
@@ -28,6 +28,14 @@ import AdminNewPostPage from '@/pages/admin-new-post'
 import AdminEditPostPage from '@/pages/admin-edit-post'
 
 export const router = createBrowserRouter([
+  {
+    path: '/apps/*',
+    loader: ({ request }) => {
+      const url = new URL(request.url)
+      const nextPathname = url.pathname.replace(/^\/apps\b/, '/app')
+      throw redirect(`${nextPathname}${url.search}`)
+    },
+  },
   // Public routes (marketing site)
   {
     path: '/',
@@ -90,8 +98,20 @@ export const router = createBrowserRouter([
         element: <CalculadorasAppPage />,
       },
       {
+        path: 'calculadoras/:calculatorId',
+        element: <CalculadorasAppPage />,
+      },
+      {
         path: 'ia',
         element: <IAAppPage />,
+      },
+      {
+        path: 'ia/:toolId',
+        element: <IAAppPage />,
+      },
+      {
+        path: 'materiais',
+        element: <MaterialsPage />,
       },
       {
         path: 'documentos',

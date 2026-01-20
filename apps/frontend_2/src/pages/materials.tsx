@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { Download, FileSpreadsheet, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -44,7 +44,23 @@ const toSafeFilename = (value: string): string =>
 
 export default function MaterialsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
-  const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
+  const outletContext = useOutletContext<RootLayoutOutletContext | null>()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isAppRoute = location.pathname.startsWith('/app/')
+
+  const groupTitleClassName = isAppRoute
+    ? 'text-lg font-semibold tracking-tight text-foreground'
+    : 'text-2xl font-bold tracking-tight'
+
+  const requestAuth = useCallback(() => {
+    if (outletContext?.openRegisterModal) {
+      outletContext.openRegisterModal()
+      return
+    }
+
+    navigate(`/?redirect=${encodeURIComponent(location.pathname)}`, { replace: true })
+  }, [location.pathname, navigate, outletContext])
   const [materials, setMaterials] = useState<Material[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [downloadingSlug, setDownloadingSlug] = useState<string | null>(null)
@@ -86,7 +102,7 @@ export default function MaterialsPage() {
   const handleDownload = useCallback(
     async (item: Material) => {
       if (!isAuthenticated) {
-        openRegisterModal()
+        requestAuth()
         return
       }
 
@@ -98,7 +114,7 @@ export default function MaterialsPage() {
         const res = await fetchWithCredentials(url, { method: 'GET' })
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
-            openRegisterModal()
+            requestAuth()
             return
           }
           throw new Error('Falha ao iniciar download')
@@ -122,11 +138,83 @@ export default function MaterialsPage() {
         setDownloadingSlug(null)
       }
     },
-    [isAuthenticated, openRegisterModal]
+    [isAuthenticated, requestAuth]
   )
 
   if (isAuthLoading) {
     return <LoadingSpinner fullScreen size="lg" />
+  }
+
+  const content = isLoading ? (
+    <div className="py-12 flex justify-center">
+      <LoadingSpinner size="lg" />
+    </div>
+  ) : materials.length === 0 ? (
+    <div className="rounded-xl border border-border bg-card p-8 text-center">
+      <p className="text-muted-foreground">Nenhum material disponível no momento.</p>
+    </div>
+  ) : (
+    <div className="space-y-10">
+      {grouped.map(([groupName, items]) => (
+        <section key={groupName} className="space-y-4">
+          <h2 className={groupTitleClassName}>{groupName}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {items.map((item) => {
+              const Icon = ICON_BY_MIME[item.mime_type] || FileText
+
+              return (
+                <button
+                  key={item.slug}
+                  type="button"
+                  onClick={() => handleDownload(item)}
+                  disabled={downloadingSlug === item.slug}
+                  className="text-left rounded-xl border border-border bg-card p-5 hover:bg-muted/30 transition-colors disabled:opacity-60"
+                  title={item.title}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 text-muted-foreground">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="font-semibold truncate">{item.title}</h3>
+                        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                          {downloadingSlug === item.slug ? (
+                            <LoadingSpinner size="sm" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </span>
+                      </div>
+                      {item.description ? (
+                        <p className="mt-2 text-sm text-muted-foreground line-clamp-3">
+                          {item.description}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+
+  if (isAppRoute) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Materiais</h1>
+          <p className="text-muted-foreground mt-1">
+            Materiais complementares organizados por tema, com download direto.
+          </p>
+        </div>
+
+        {content}
+      </div>
+    )
   }
 
   return (
@@ -149,62 +237,7 @@ export default function MaterialsPage() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 relative z-10">
-        {isLoading ? (
-          <div className="py-12 flex justify-center">
-            <LoadingSpinner size="lg" />
-          </div>
-        ) : materials.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <p className="text-muted-foreground">Nenhum material disponível no momento.</p>
-          </div>
-        ) : (
-          <div className="space-y-10">
-            {grouped.map(([groupName, items]) => (
-              <section key={groupName} className="space-y-4">
-                <h2 className="text-2xl font-bold tracking-tight">{groupName}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {items.map((item) => {
-                    const Icon = ICON_BY_MIME[item.mime_type] || FileText
-
-                    return (
-                      <button
-                        key={item.slug}
-                        type="button"
-                        onClick={() => handleDownload(item)}
-                        disabled={downloadingSlug === item.slug}
-                        className="text-left rounded-xl border border-border bg-card p-5 hover:bg-muted/30 transition-colors disabled:opacity-60"
-                        title={item.title}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1 text-muted-foreground">
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-3">
-                              <h3 className="font-semibold truncate">{item.title}</h3>
-                              <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                                {downloadingSlug === item.slug ? (
-                                  <LoadingSpinner size="sm" />
-                                ) : (
-                                  <Download className="h-4 w-4" />
-                                )}
-                              </span>
-                            </div>
-                            {item.description ? (
-                              <p className="mt-2 text-sm text-muted-foreground line-clamp-3">
-                                {item.description}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
+        {content}
       </div>
     </div>
   )
