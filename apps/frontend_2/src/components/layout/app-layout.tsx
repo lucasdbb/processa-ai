@@ -4,6 +4,7 @@ import { Sidebar } from './sidebar'
 import { AppHeader } from './app-header'
 import { BottomNav } from './bottom-nav'
 import { CommandPalette } from '@/components/navigation/command-palette'
+import { Breadcrumbs } from '@/components/navigation/breadcrumbs'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
 import { useAuth } from '@/features/auth/hooks/use-auth'
@@ -66,7 +67,8 @@ export function AppLayout() {
           isExpanded ? 'lg:pl-64' : 'lg:pl-[72px]'
         )}
       >
-        <div className="p-4 lg:p-6">
+        <div className="p-4 lg:p-6 space-y-6">
+          <Breadcrumbs />
           <Outlet />
         </div>
       </main>
