@@ -1,4 +1,4 @@
-import { User as UserIcon, LogOut, Shield, ChevronDown } from 'lucide-react'
+import { LogOut, Shield, ChevronDown, LayoutDashboard } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -12,8 +12,6 @@ import {
 import { useAuth } from '../hooks/use-auth'
 import type { User } from '../types'
 import { useState } from 'react'
-import { ProfileModal } from './profile-modal'
-import { useAuthStore } from '../store/auth-store'
 import { useTheme } from 'next-themes'
 
 interface UserMenuProps {
@@ -23,8 +21,6 @@ interface UserMenuProps {
 export function UserMenu({ user }: UserMenuProps) {
   const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
-  const setUser = useAuthStore((state) => state.setUser)
 
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -49,15 +45,6 @@ export function UserMenu({ user }: UserMenuProps) {
     } catch (error) {
       console.error('Logout error:', error)
     }
-  }
-
-  const handleProfileClick = () => {
-    setIsOpen(false)
-    setIsProfileModalOpen(true)
-  }
-
-  const handleUpdateProfile = (updatedUser: User) => {
-    setUser(updatedUser)
   }
 
   return (
@@ -92,13 +79,13 @@ export function UserMenu({ user }: UserMenuProps) {
         </DropdownMenuLabel>
         <div className="py-1">
           <DropdownMenuItem asChild className="rounded-none p-0 focus:bg-transparent">
-            <button
-              onClick={handleProfileClick}
+            <Link
+              to="/app"
               className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150 cursor-pointer focus:outline-none"
             >
-              <UserIcon className="w-4 h-4 mr-3 text-muted-foreground" />
-              <span>Perfil</span>
-            </button>
+              <LayoutDashboard className="w-4 h-4 mr-3 text-muted-foreground" />
+              <span>Meu Painel</span>
+            </Link>
           </DropdownMenuItem>
           {(user.role === 'admin' || user.role === 'author') && (
             <DropdownMenuItem asChild className="rounded-none p-0 focus:bg-transparent">
@@ -134,12 +121,6 @@ export function UserMenu({ user }: UserMenuProps) {
           <span>Sair</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        user={user}
-        onUpdateProfile={handleUpdateProfile}
-      />
     </DropdownMenu>
   )
 }
