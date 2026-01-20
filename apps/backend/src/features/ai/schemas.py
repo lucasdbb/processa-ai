@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class CnisAnalysisResponse(BaseModel):
@@ -16,21 +16,6 @@ class SignedPdfResponse(BaseModel):
     document_id: str
     storage_path: str
     pipeline_version: str
-
-
-class AiToolTemplateResponse(BaseModel):
-    label: str
-    prompt: str
-
-
-class AiToolResponse(BaseModel):
-    slug: str
-    name: str
-    description: str
-    icon: str
-    locked: bool
-    order: int
-    templates: list[AiToolTemplateResponse] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):

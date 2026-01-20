@@ -786,56 +786,6 @@ class AiService:
 
         return text
 
-    async def list_tools(self):
-        response = (
-            self.supabase.table("ai_tools")
-            .select("slug,name,description,icon,locked,order")
-            .order("order")
-            .execute()
-        )
-
-        tools = response.data or []
-
-        tool_slugs = [str(t.get("slug")) for t in tools if t and t.get("slug")]
-        templates_by_tool: dict[str, list[dict[str, str]]] = {}
-
-        if tool_slugs:
-            templates_res = (
-                self.supabase.table("ai_tool_templates")
-                .select("tool_slug,template,prompt,sort_order")
-                .in_("tool_slug", tool_slugs)
-                .order("tool_slug")
-                .order("sort_order")
-                .execute()
-            )
-
-            for row in templates_res.data or []:
-                tool_slug = str(row.get("tool_slug") or "").strip()
-                label = str(row.get("template") or "").strip()
-                prompt = str(row.get("prompt") or "").strip()
-                if not tool_slug or not label or not prompt:
-                    continue
-                templates_by_tool.setdefault(tool_slug, []).append(
-                    {
-                        "label": label,
-                        "prompt": prompt,
-                    }
-                )
-
-        out: list[dict] = []
-        for tool in tools:
-            payload = tool or {}
-            slug = str(payload.get("slug") or "")
-            templates = templates_by_tool.get(slug, [])
-            out.append(
-                {
-                    **payload,
-                    "templates": templates,
-                }
-            )
-
-        return out
-
     def markdown_to_pdf_bytes(self, markdown: str, title: str | None = None) -> bytes:
         text = (markdown or "").strip()
         if not text:

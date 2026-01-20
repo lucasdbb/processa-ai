@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from src.core.dependencies import get_current_user
 from src.features.ai.schemas import (
-    AiToolResponse,
     ChatRequest,
     ChatResponse,
     CnisAnalysisResponse,
@@ -39,11 +38,6 @@ async def cnis_analysis_pdf(data: MarkdownToPdfRequest, user=Depends(get_current
         title=data.filename or "cnis-analise",
     )
     return SignedPdfResponse(**result)
-
-
-@router.get("/tools", response_model=list[AiToolResponse], status_code=status.HTTP_200_OK)
-async def list_ai_tools():
-    return await service.list_tools()
 
 
 @router.post("/chat", response_model=ChatResponse, status_code=status.HTTP_200_OK)
