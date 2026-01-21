@@ -10,6 +10,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  preview: {
+    // Allow custom domains (safe for production)
+    allowedHosts: [
+      'www.oprocessai.com.br',
+      'oprocessai.com.br',
+      '.railway.app', // Railway subdomains
+    ],
+  },
   build: {
     rollupOptions: {
       output: {
