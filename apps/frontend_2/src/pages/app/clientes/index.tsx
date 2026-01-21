@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -121,11 +122,8 @@ export default function ClientesPage() {
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="divide-y divide-border">
             {filteredClients.map((client) => (
-              <div
-                key={client.id}
-                className="p-4 sm:p-5 hover:bg-muted/50 transition-colors cursor-pointer"
-              >
-                <div className="flex items-start justify-between gap-4">
+              <Link key={client.id} to={`/app/clientes/${client.id}`}>
+                <div className="p-4 sm:p-5 hover:bg-accent/50 transition-all duration-200 cursor-pointer border-l-2 border-transparent hover:border-primary">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center text-sm font-medium shrink-0">
                       {client.name
@@ -135,7 +133,7 @@ export default function ClientesPage() {
                         .toUpperCase()
                         .slice(0, 2)}
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium text-foreground">{client.name}</h3>
                         <span
@@ -158,16 +156,8 @@ export default function ClientesPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button className="px-3 py-1.5 text-sm font-medium text-foreground bg-muted rounded-lg hover:bg-muted/80 transition-colors">
-                      Ver
-                    </button>
-                    <button className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                      Editar
-                    </button>
-                  </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

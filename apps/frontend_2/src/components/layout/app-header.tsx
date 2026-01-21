@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, Moon, Sun } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -16,6 +16,40 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 
+// Mock notifications data
+const mockNotifications = [
+  {
+    id: '1',
+    type: 'deadline',
+    title: 'Prazo vencendo hoje',
+    description: 'Contestação - Processo 0001234-12.2025.5.02.0001',
+    time: 'há 2 horas',
+    read: false,
+    icon: AlertCircle,
+    iconColor: 'text-destructive',
+  },
+  {
+    id: '2',
+    type: 'process',
+    title: 'Movimentação processual',
+    description: 'Processo 0005678-34.2025.5.02.0002 - Nova sentença',
+    time: 'há 5 horas',
+    read: false,
+    icon: FolderKanban,
+    iconColor: 'text-blue-500',
+  },
+  {
+    id: '3',
+    type: 'calculation',
+    title: 'Cálculo concluído',
+    description: 'Rescisão Trabalhista - João Silva',
+    time: 'ontem',
+    read: true,
+    icon: Calculator,
+    iconColor: 'text-green-500',
+  },
+]
+
 export function AppHeader() {
   const { isExpanded, setMobileOpen } = useSidebarStore()
   const { open: openCommandPalette } = useCommandPaletteStore()
@@ -29,6 +63,8 @@ export function AppHeader() {
     logout()
     window.location.href = '/'
   }
+
+  const unreadCount = mockNotifications.filter((n) => !n.read).length
 
   const getInitials = (name?: string | null, email?: string | null) => {
     if (name) {
@@ -101,15 +137,90 @@ export function AppHeader() {
                 aria-label="Notificacoes"
               >
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
+                )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notificacoes</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Nenhuma notificacao no momento
+            <DropdownMenuContent align="end" className="w-96">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <h3 className="font-semibold text-sm">Notificações</h3>
+                  {unreadCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {unreadCount} não {unreadCount === 1 ? 'lida' : 'lidas'}
+                    </p>
+                  )}
+                </div>
+                {mockNotifications.length > 0 && (
+                  <button className="text-xs text-primary hover:underline">
+                    Marcar todas como lidas
+                  </button>
+                )}
               </div>
+              <DropdownMenuSeparator />
+
+              {mockNotifications.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  Nenhuma notificação no momento
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  {mockNotifications.map((notification) => {
+                    const Icon = notification.icon
+                    return (
+                      <div
+                        key={notification.id}
+                        className={cn(
+                          'flex gap-3 px-4 py-3 hover:bg-accent transition-colors cursor-pointer border-l-2',
+                          notification.read
+                            ? 'border-transparent'
+                            : 'border-primary bg-accent/50'
+                        )}
+                      >
+                        <div className={cn('shrink-0 mt-0.5', notification.iconColor)}>
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-foreground line-clamp-1">
+                              {notification.title}
+                            </p>
+                            {!notification.read && (
+                              <button
+                                className="shrink-0 h-5 w-5 flex items-center justify-center rounded hover:bg-background transition-colors"
+                                aria-label="Marcar como lida"
+                              >
+                                <Check className="h-3 w-3 text-muted-foreground" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {notification.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {notification.time}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {mockNotifications.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="p-2">
+                    <Link
+                      to="/app/notificacoes"
+                      className="block w-full text-center text-sm text-primary hover:underline py-2"
+                    >
+                      Ver todas as notificações
+                    </Link>
+                  </div>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

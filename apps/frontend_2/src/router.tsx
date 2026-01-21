@@ -15,12 +15,16 @@ import MaterialsPage from '@/pages/materials'
 // App pages
 import DashboardPage from '@/pages/app/dashboard'
 import ClientesPage from '@/pages/app/clientes'
+import ClienteDetalhePage from '@/pages/app/clientes/[id]'
 import ProcessosPage from '@/pages/app/processos'
+import ProcessoDetalhePage from '@/pages/app/processos/[id]'
 import PrazosPage from '@/pages/app/prazos'
 import CalculadorasAppPage from '@/pages/app/calculadoras'
 import IAAppPage from '@/pages/app/ia'
 import DocumentosPage from '@/pages/app/documentos'
+import NotificacoesPage from '@/pages/app/notificacoes'
 import ConfiguracoesPage from '@/pages/app/configuracoes'
+import AjudaPage from '@/pages/app/ajuda'
 
 // Admin pages
 import AdminPage from '@/pages/admin'
@@ -86,8 +90,20 @@ export const router = createBrowserRouter([
         element: <ClientesPage />,
       },
       {
+        path: 'clientes/:id',
+        element: <ClienteDetalhePage />,
+      },
+      {
         path: 'processos',
         element: <ProcessosPage />,
+      },
+      {
+        path: 'processos/:id',
+        element: <ProcessoDetalhePage />,
+      },
+      {
+        path: 'notificacoes',
+        element: <NotificacoesPage />,
       },
       {
         path: 'prazos',
@@ -120,6 +136,10 @@ export const router = createBrowserRouter([
       {
         path: 'configuracoes',
         element: <ConfiguracoesPage />,
+      },
+      {
+        path: 'ajuda',
+        element: <AjudaPage />,
       },
     ],
   },

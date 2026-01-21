@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, FolderKanban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -128,58 +129,57 @@ export default function ProcessosPage() {
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="divide-y divide-border">
             {filteredProcesses.map((process) => (
-              <div
-                key={process.id}
-                className="p-4 sm:p-5 hover:bg-muted/50 transition-colors cursor-pointer"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-muted rounded-lg shrink-0">
-                        <FolderKanban className="h-5 w-5 text-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-mono text-sm font-medium text-foreground">
-                            {process.number}
-                          </h3>
-                          <span
-                            className={cn(
-                              'px-1.5 py-0.5 text-[10px] font-bold uppercase rounded',
-                              process.status === 'active'
-                                ? 'bg-green-500/10 text-green-600'
-                                : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            {process.status === 'active' ? 'Ativo' : 'Arquivado'}
-                          </span>
+              <Link key={process.id} to={`/app/processos/${process.id}`}>
+                <div className="p-4 sm:p-5 hover:bg-accent/50 transition-all duration-200 cursor-pointer border-l-2 border-transparent hover:border-primary">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-muted rounded-lg shrink-0">
+                          <FolderKanban className="h-5 w-5 text-foreground" />
                         </div>
-                        <p className="text-sm font-medium text-foreground mt-1">{process.type}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {process.court}
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          <span className="text-foreground">{process.client}</span> vs{' '}
-                          {process.defendant}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-mono text-sm font-medium text-foreground">
+                              {process.number}
+                            </h3>
+                            <span
+                              className={cn(
+                                'px-1.5 py-0.5 text-[10px] font-bold uppercase rounded',
+                                process.status === 'active'
+                                  ? 'bg-green-500/10 text-green-600'
+                                  : 'bg-muted text-muted-foreground'
+                              )}
+                            >
+                              {process.status === 'active' ? 'Ativo' : 'Arquivado'}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-foreground mt-1">{process.type}</p>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            {process.court}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            <span className="text-foreground">{process.client}</span> vs{' '}
+                            {process.defendant}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-4 sm:gap-2">
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-foreground">
-                        {formatCurrency(process.value)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Valor da causa</p>
-                    </div>
-                    {process.nextDeadline && (
-                      <div className="px-2 py-1 bg-yellow-500/10 text-yellow-600 rounded text-xs font-medium">
-                        Prazo em {process.nextDeadline}
+                    <div className="flex flex-row sm:flex-col items-center sm:items-end gap-4 sm:gap-2">
+                      <div className="text-right">
+                        <p className="text-lg font-semibold text-foreground">
+                          {formatCurrency(process.value)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Valor da causa</p>
                       </div>
-                    )}
+                      {process.nextDeadline && (
+                        <div className="px-2 py-1 bg-yellow-500/10 text-yellow-600 rounded text-xs font-medium">
+                          Prazo em {process.nextDeadline}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
