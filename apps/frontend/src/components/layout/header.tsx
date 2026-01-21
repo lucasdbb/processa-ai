@@ -1,24 +1,69 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, Moon, Sun, Calculator, Bot, BookOpen, ArrowRight, ChevronDown } from 'lucide-react'
+import { Menu, X, Moon, Sun, Calculator, Bot, BookOpen, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { UserMenu } from '@/features/auth/components/user-menu'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
+import { AI_TOOLS } from '@/features/ai/ai-tools'
 
-// Ferramentas principais - o que o usuário pode FAZER
-const ferramentas = [
+// Calculadoras disponíveis
+const CALCULATORS = [
   {
-    name: 'IA Juridica',
-    description: 'Chat, analise de CNIS, peticoes e mais',
-    href: '/app/ia',
+    id: 'aposentadoria',
+    name: 'Aposentadoria',
+    description: 'Cálculo de tempo de contribuição',
+    href: '/app/calculadoras/aposentadoria',
+  },
+  {
+    id: 'correcao-monetaria',
+    name: 'Correção Monetária',
+    description: 'Em desenvolvimento',
+    href: '#',
+    locked: true,
+  },
+  {
+    id: 'honorarios',
+    name: 'Honorários Advocatícios',
+    description: 'Em desenvolvimento',
+    href: '#',
+    locked: true,
+  },
+  {
+    id: 'juros',
+    name: 'Juros e Multa',
+    description: 'Em desenvolvimento',
+    href: '#',
+    locked: true,
+  },
+  {
+    id: 'rescisao',
+    name: 'Rescisão Trabalhista',
+    description: 'Cálculo de verbas rescisórias',
+    href: '/app/calculadoras/rescisao',
+  },
+].sort((a, b) => a.name.localeCompare(b.name))
+
+// Recursos principais - o que o usuário pode ACESSAR
+const recursos = [
+  {
+    name: 'IA Jurídica',
+    description: 'Ferramentas de inteligência artificial',
     icon: Bot,
+    subitems: AI_TOOLS.filter(t => !t.locked)
+      .map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        href: `/app/ia?tool=${tool.slug}`,
+        icon: tool.icon,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   },
   {
     name: 'Calculadoras',
-    description: 'Trabalhista e previdenciaria',
-    href: '/app/calculadoras',
+    description: 'Trabalhista e previdenciária',
     icon: Calculator,
+    subitems: CALCULATORS,
   },
   {
     name: 'Materiais Complementares',
@@ -34,9 +79,10 @@ interface HeaderProps {
 
 export function Header({ onLoginClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [ferramentasOpen, setFerramentasOpen] = useState(false)
+  const [recursosOpen, setRecursosOpen] = useState(false)
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
-  const ferramentasRef = useRef<HTMLDivElement>(null)
+  const recursosRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { user, isAuthenticated, isLoading } = useUser()
   const { resolvedTheme, setTheme } = useTheme()
@@ -52,8 +98,9 @@ export function Header({ onLoginClick }: HeaderProps) {
   // Fechar dropdown ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (ferramentasRef.current && !ferramentasRef.current.contains(event.target as Node)) {
-        setFerramentasOpen(false)
+      if (recursosRef.current && !recursosRef.current.contains(event.target as Node)) {
+        setRecursosOpen(false)
+        setActiveSubmenu(null)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -64,7 +111,8 @@ export function Header({ onLoginClick }: HeaderProps) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenuOpen(false)
-    setFerramentasOpen(false)
+    setRecursosOpen(false)
+    setActiveSubmenu(null)
   }, [location.pathname])
 
   const isDark = resolvedTheme === 'dark'
@@ -119,45 +167,128 @@ export function Header({ onLoginClick }: HeaderProps) {
               Blog
             </Link>
 
-            {/* Dropdown Ferramentas */}
-            <div className="relative" ref={ferramentasRef}>
+            {/* Dropdown Recursos com Mega Menu Lateral */}
+            <div className="relative" ref={recursosRef}>
               <button
-                onClick={() => setFerramentasOpen(!ferramentasOpen)}
-                onMouseEnter={() => setFerramentasOpen(true)}
+                onClick={() => setRecursosOpen(!recursosOpen)}
+                onMouseEnter={() => setRecursosOpen(true)}
                 className={cn(
                   'flex items-center gap-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                  ferramentasOpen
+                  recursosOpen
                     ? 'text-foreground bg-muted'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 )}
               >
-                Ferramentas
-                <ChevronDown className={cn('h-4 w-4 transition-transform', ferramentasOpen && 'rotate-180')} />
+                Recursos
+                <ChevronDown className={cn('h-4 w-4 transition-transform', recursosOpen && 'rotate-180')} />
               </button>
 
-              {ferramentasOpen && (
+              {recursosOpen && (
                 <div
-                  className="absolute top-full left-0 mt-1 w-72 bg-background border border-border rounded-xl shadow-xl py-2"
-                  onMouseLeave={() => setFerramentasOpen(false)}
+                  className="absolute top-full left-0 mt-1"
+                  onMouseLeave={() => {
+                    setRecursosOpen(false)
+                    setActiveSubmenu(null)
+                  }}
                 >
-                  {ferramentas.map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <Link
-                        key={item.name}
-                        to={item.href}
-                        className="flex items-start gap-3 px-4 py-3 hover:bg-muted transition-colors"
-                      >
-                        <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                          <Icon className="h-5 w-5 text-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </div>
-                      </Link>
-                    )
-                  })}
+                  {/* Menu Principal */}
+                  <div className="w-72 py-2 bg-background border border-border rounded-xl shadow-xl">
+                    {recursos.map((item) => {
+                      const Icon = item.icon
+                      const hasSubitems = item.subitems && item.subitems.length > 0
+                      
+                      if (hasSubitems) {
+                        return (
+                          <button
+                            key={item.name}
+                            onMouseEnter={() => setActiveSubmenu(item.name)}
+                            onMouseLeave={(e) => {
+                              // Só fecha se estiver saindo completamente do menu
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              const movingRight = e.clientX > rect.right
+                              if (!movingRight) {
+                                setActiveSubmenu(null)
+                              }
+                            }}
+                            className={cn(
+                              'w-full flex items-start justify-between gap-3 px-4 py-3 hover:bg-muted transition-colors',
+                              activeSubmenu === item.name && 'bg-muted'
+                            )}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                                <Icon className="h-5 w-5 text-foreground" />
+                              </div>
+                              <div className="text-left">
+                                <p className="text-sm font-medium text-foreground">{item.name}</p>
+                                <p className="text-xs text-muted-foreground">{item.description}</p>
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-3" />
+                          </button>
+                        )
+                      }
+                      
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href!}
+                          className="flex items-start gap-3 px-4 py-3 hover:bg-muted transition-colors"
+                        >
+                          <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                            <Icon className="h-5 w-5 text-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+
+                  {/* Submenu Lateral Independente */}
+                  {activeSubmenu && (
+                    <div 
+                      className="absolute left-full top-0 ml-1 w-64 py-2 bg-background border border-border rounded-xl shadow-xl"
+                      onMouseEnter={() => setActiveSubmenu(activeSubmenu)}
+                      onMouseLeave={() => setActiveSubmenu(null)}
+                    >
+                      {recursos
+                        .find((r) => r.name === activeSubmenu)
+                        ?.subitems?.map((subitem: any) => {
+                          const isLocked = subitem.locked
+                          
+                          if (isLocked) {
+                            return (
+                              <div
+                                key={subitem.name}
+                                className="px-4 py-3 opacity-60 cursor-not-allowed"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-medium text-foreground">{subitem.name}</p>
+                                  <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+                                    Em breve
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">{subitem.description}</p>
+                              </div>
+                            )
+                          }
+                          
+                          return (
+                            <Link
+                              key={subitem.name}
+                              to={subitem.href}
+                              className="block px-4 py-3 hover:bg-muted transition-colors"
+                            >
+                              <p className="text-sm font-medium text-foreground">{subitem.name}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{subitem.description}</p>
+                            </Link>
+                          )
+                        })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
