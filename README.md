@@ -1,15 +1,15 @@
 # Processa AI - Monorepo
 
-Uma plataforma completa de tecnologia jurídica para cálculos trabalhistas, assistência com IA e blog especializado, desenvolvida com Next.js 15 + React 19 (frontend) e Python 3.13 + FastAPI (backend), utilizando Supabase.
+Uma plataforma completa de tecnologia jurídica para cálculos trabalhistas, assistência com IA e blog especializado, desenvolvida com Vite + React 19 (frontend) e Python 3.13 + FastAPI (backend), utilizando Supabase.
 
 ## 🏗️ Estrutura do Monorepo
 
 ```
 processa-ai/
 ├── apps/
-│   ├── frontend/           # Frontend Next.js 15 + React 19 + TypeScript
+│   ├── frontend/           # Frontend Vite 7 + React 19 + TypeScript
 │   │   ├── src/            # Código fonte
-│   │   ├── Dockerfile      # Container Next.js
+│   │   ├── Dockerfile      # Container Vite
 │   │   └── package.json
 │   └── backend/            # Backend Python 3.13 + FastAPI
 │       ├── src/            # Código fonte
@@ -39,14 +39,14 @@ processa-ai/
 ## 🛠️ Tecnologias
 
 ### Frontend (apps/frontend)
-- **Framework**: Next.js 15.5.9 com App Router
-- **UI Library**: React 19.2.1 com Server Components
-- **Language**: TypeScript 5
+- **Framework**: Vite 7
+- **UI Library**: React 19 + TypeScript 5.9
+- **Routing**: React Router 7
 - **Styling**: Tailwind CSS 4
 - **Components**: shadcn/ui (Radix UI primitives)
 - **State**: Zustand 5.0
 - **Forms**: react-hook-form + Zod
-- **Auth**: Supabase SSR (@supabase/ssr)
+- **Auth**: Supabase JS (@supabase/supabase-js)
 - **Icons**: lucide-react
 - **Markdown**: @uiw/react-md-editor
 
@@ -70,7 +70,7 @@ cd processa-ai
 
 ### 2. Instale as dependências
 
-**Frontend (Next.js):**
+**Frontend (Vite + React):**
 ```bash
 cd apps/frontend
 npm install
@@ -89,8 +89,8 @@ uv sync
 
 **Frontend (.env.local):**
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-anon
 ```
 
 **Backend (.env):**
@@ -153,9 +153,9 @@ uv run uvicorn src.main:app --reload
 ### Frontend
 ```bash
 cd apps/frontend
-npm run dev              # Servidor de desenvolvimento (porta 3000)
+npm run dev              # Servidor de desenvolvimento (porta 5173)
 npm run build           # Build de produção
-npm run start           # Serve build de produção
+npm run preview         # Preview do build
 npm run lint            # ESLint
 ```
 
@@ -170,10 +170,10 @@ uv run ruff format src/               # Formatar código
 
 ## 🌐 Ambientes de Desenvolvimento
 
-### Frontend - Next.js
-- **URL**: http://localhost:3000
-- **Hot Reload**: Automático (Fast Refresh)
-- **Server Components**: Renderização no servidor por padrão
+### Frontend - Vite
+- **URL**: http://localhost:5173
+- **Hot Reload**: Automático (HMR ultrarrrápido)
+- **Build Tool**: Vite com esbuild
 
 ### Backend - FastAPI
 - **URL**: http://localhost:8000
@@ -183,12 +183,12 @@ uv run ruff format src/               # Formatar código
 
 ## 📱 Rotas da Aplicação
 
-### Frontend (Next.js App Router)
+### Frontend (React Router)
 - **`/`** - Landing page (público)
 - **`/blog`** - Lista de posts do blog (público)
-- **`/blog/[slug]`** - Post individual (público)
-- **`/ia-juridica`** - Chat com IA (requer autenticação)
-- **`/calculadoras`** - Calculadoras trabalhistas (requer autenticação)
+- **`/blog/:id`** - Post individual (público)
+- **`/app/ia`** - Ferramentas de IA (requer autenticação)
+- **`/app/calculadoras`** - Calculadoras trabalhistas (requer autenticação)
 - **`/planos`** - Planos e preços (público)
 - **`/sobre`** - Sobre a plataforma (público)
 - **`/admin`** - Dashboard administrativo (requer role admin)
@@ -229,12 +229,12 @@ uv run ruff format src/               # Formatar código
 
 Sistema robusto de autenticação com Supabase:
 
-### Frontend (Direct Supabase SSR)
-- **Cliente Supabase SSR** (`@supabase/ssr`)
-- **Sessões via cookies** (httpOnly, secure, sameSite)
-- **Middleware Next.js** para proteção de rotas
+### Frontend (Direct Supabase JS)
+- **Cliente Supabase JS** (`@supabase/supabase-js`)
+- **Sessões via localStorage** com JWT
+- **Route guards** (AuthGuard, AdminGuard) para proteção de rotas
 - **Refresh automático** de sessão
-- **Role-based access control** (user, admin)
+- **Role-based access control** (client, author, admin)
 
 ### Backend (FastAPI + Supabase)
 - **Endpoints de autenticação** disponíveis via API
@@ -250,7 +250,7 @@ O projeto inclui configuração Docker Compose para facilitar o desenvolvimento:
 
 **Estrutura:**
 - `docker-compose.yml` - Orquestração dos serviços
-- `apps/frontend/Dockerfile` - Container Next.js
+- `apps/frontend/Dockerfile` - Container Vite
 - `apps/backend/Dockerfile` - Container FastAPI
 
 **Benefícios:**
