@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ArrowLeft, Mail, Phone, FileText, Calculator, FolderKanban, DollarSign, StickyNote, Edit } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -71,7 +71,6 @@ const mockClient = {
 type Tab = 'resumo' | 'processos' | 'calculos' | 'documentos' | 'honorarios' | 'notas'
 
 export default function ClienteDetalhePage() {
-  const { id: _id } = useParams()
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
 
   const getInitials = (name: string) => {

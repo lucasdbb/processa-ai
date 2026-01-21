@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, Moon, Sun, Calculator, Bot, BookOpen, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { UserMenu } from '@/features/auth/components/user-menu'
 import { useUser } from '@/features/auth/hooks/use-user'
@@ -7,8 +8,25 @@ import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { AI_TOOLS } from '@/features/ai/ai-tools'
 
+type HeaderSubitem = {
+  id?: string
+  name: string
+  description: string
+  href: string
+  locked?: boolean
+  icon?: LucideIcon
+}
+
+type HeaderResourceItem = {
+  name: string
+  description: string
+  icon: LucideIcon
+  href?: string
+  subitems?: HeaderSubitem[]
+}
+
 // Calculadoras disponíveis
-const CALCULATORS = [
+const CALCULATORS: HeaderSubitem[] = [
   {
     id: 'aposentadoria',
     name: 'Aposentadoria',
@@ -45,13 +63,13 @@ const CALCULATORS = [
 ].sort((a, b) => a.name.localeCompare(b.name))
 
 // Recursos principais - o que o usuário pode ACESSAR
-const recursos = [
+const recursos: HeaderResourceItem[] = [
   {
     name: 'IA Jurídica',
     description: 'Ferramentas de inteligência artificial',
     icon: Bot,
-    subitems: AI_TOOLS.filter(t => !t.locked)
-      .map(tool => ({
+    subitems: AI_TOOLS.filter((t) => !t.locked)
+      .map((tool) => ({
         name: tool.name,
         description: tool.description,
         href: `/app/ia?tool=${tool.slug}`,
@@ -256,7 +274,7 @@ export function Header({ onLoginClick }: HeaderProps) {
                     >
                       {recursos
                         .find((r) => r.name === activeSubmenu)
-                        ?.subitems?.map((subitem: any) => {
+                        ?.subitems?.map((subitem) => {
                           const isLocked = subitem.locked
                           
                           if (isLocked) {
@@ -399,7 +417,7 @@ export function Header({ onLoginClick }: HeaderProps) {
                           </div>
                         </div>
                         <div className="ml-6 space-y-1">
-                          {item.subitems.map((subitem: any) => (
+                          {item.subitems.map((subitem) => (
                             <Link
                               key={subitem.name}
                               to={subitem.href}

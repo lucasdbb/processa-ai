@@ -1,7 +1,77 @@
 import { useMemo } from 'react'
 import { Users, FolderKanban, Calculator } from 'lucide-react'
-import { mockClients } from '@/pages/app/clientes'
-import { mockProcesses } from '@/pages/app/processos'
+
+export const mockClients = [
+  {
+    id: '1',
+    name: 'Joao Silva',
+    cpf: '123.456.789-00',
+    phone: '(11) 99999-0000',
+    email: 'joao@email.com',
+    processes: 2,
+    calculations: 5,
+    status: 'active' as const,
+    lastActivity: 'ha 2 dias',
+  },
+  {
+    id: '2',
+    name: 'Maria Oliveira',
+    cpf: '987.654.321-00',
+    phone: '(11) 98888-0000',
+    email: 'maria@email.com',
+    processes: 1,
+    calculations: 3,
+    status: 'active' as const,
+    lastActivity: 'ha 1 semana',
+  },
+  {
+    id: '3',
+    name: 'Carlos Santos',
+    cpf: '111.222.333-00',
+    phone: '(11) 97777-0000',
+    email: 'carlos@email.com',
+    processes: 1,
+    calculations: 2,
+    status: 'archived' as const,
+    lastActivity: 'ha 1 mes',
+  },
+]
+
+export const mockProcesses = [
+  {
+    id: '1',
+    number: '0001234-12.2025.5.02.0001',
+    type: 'Reclamacao Trabalhista',
+    court: '2a Vara do Trabalho de Sao Paulo',
+    client: 'Joao Silva',
+    defendant: 'Empresa ABC Ltda',
+    value: 45000,
+    status: 'active' as const,
+    nextDeadline: '3 dias',
+  },
+  {
+    id: '2',
+    number: '0005678-34.2025.5.02.0002',
+    type: 'Recurso Ordinario',
+    court: 'TRT 2a Regiao',
+    client: 'Maria Oliveira',
+    defendant: 'Empresa XYZ S.A.',
+    value: 120000,
+    status: 'active' as const,
+    nextDeadline: '7 dias',
+  },
+  {
+    id: '3',
+    number: '1000567-89.2024.8.26.0100',
+    type: 'Acao de Cobranca',
+    court: '5a Vara Civel de Sao Paulo',
+    client: 'Carlos Santos',
+    defendant: 'Empresa DEF Ltda',
+    value: 35000,
+    status: 'archived' as const,
+    nextDeadline: null,
+  },
+]
 
 export interface SearchResult {
   id: string

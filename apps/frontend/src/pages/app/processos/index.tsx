@@ -1,66 +1,23 @@
-import { useState } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, FolderKanban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
-
-// Dados mockados
-export const mockProcesses = [
-  {
-    id: '1',
-    number: '0001234-12.2025.5.02.0001',
-    type: 'Reclamacao Trabalhista',
-    court: '2a Vara do Trabalho de Sao Paulo',
-    client: 'Joao Silva',
-    defendant: 'Empresa ABC Ltda',
-    value: 45000,
-    status: 'active',
-    nextDeadline: '3 dias',
-  },
-  {
-    id: '2',
-    number: '0005678-34.2025.5.02.0002',
-    type: 'Recurso Ordinario',
-    court: 'TRT 2a Regiao',
-    client: 'Maria Oliveira',
-    defendant: 'Empresa XYZ S.A.',
-    value: 120000,
-    status: 'active',
-    nextDeadline: '7 dias',
-  },
-  {
-    id: '3',
-    number: '1000567-89.2024.8.26.0100',
-    type: 'Acao de Cobranca',
-    court: '5a Vara Civel de Sao Paulo',
-    client: 'Carlos Santos',
-    defendant: 'Empresa DEF Ltda',
-    value: 35000,
-    status: 'archived',
-    nextDeadline: null,
-  },
-]
+import { mockProcesses } from '@/hooks/use-global-search'
 
 export default function ProcessosPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingProcess, setEditingProcess] = useState<
-    | {
-        id: string
-        number: string
-        type: string
-        court: string
-        client: string
-        defendant: string
-        value: number
-        status: 'active' | 'archived'
-        nextDeadline?: string | null
-      }
-    | undefined
-  >(undefined)
 
-  const handleSaveProcess = (processData: any) => {
+  type EditingProcess =
+    | (NonNullable<ComponentProps<typeof ProcessFormDialog>['process']> & { nextDeadline?: string | null })
+    | undefined
+  type SaveProcessPayload = Parameters<ComponentProps<typeof ProcessFormDialog>['onSave']>[0]
+
+  const [editingProcess, setEditingProcess] = useState<EditingProcess>(undefined)
+
+  const handleSaveProcess = (processData: SaveProcessPayload) => {
     console.log('Salvando processo:', processData)
     // Aqui você implementaria a lógica de salvar no backend
   }

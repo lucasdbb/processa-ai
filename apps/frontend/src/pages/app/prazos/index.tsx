@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { CalendarClock, AlertTriangle, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DeadlineFormDialog } from '@/components/forms/deadline-form-dialog'
@@ -42,9 +42,13 @@ const mockDeadlines = [
 export default function PrazosPage() {
   const [currentDate] = useState(new Date(2026, 0, 20))
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingDeadline, setEditingDeadline] = useState<any>(undefined)
 
-  const handleSaveDeadline = (deadlineData: any) => {
+  type EditingDeadline = ComponentProps<typeof DeadlineFormDialog>['deadline']
+  type SaveDeadlinePayload = Parameters<ComponentProps<typeof DeadlineFormDialog>['onSave']>[0]
+
+  const [editingDeadline, setEditingDeadline] = useState<EditingDeadline>(undefined)
+
+  const handleSaveDeadline = (deadlineData: SaveDeadlinePayload) => {
     console.log('Salvando prazo:', deadlineData)
     // Aqui você implementaria a lógica de salvar no backend
   }

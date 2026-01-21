@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAuthStore } from '../store/auth-store'
 import { authService } from '../services/auth-service'
 import type { LoginCredentials, RegisterData, UpdateProfileData } from '../types'
+import { createClient } from '@/lib/supabase/client'
 
 export function useAuth() {
   const {
@@ -36,8 +37,14 @@ export function useAuth() {
   const login = async (credentials: LoginCredentials) => {
     setLoading(true)
     try {
-      await authService.login(credentials)
-      const currentUser = await authService.getCurrentUser()
+      const tokenResponse = await authService.login(credentials)
+
+      await createClient().auth.setSession({
+        access_token: tokenResponse.access_token,
+        refresh_token: tokenResponse.refresh_token,
+      })
+
+      const currentUser = await authService.getCurrentUser(tokenResponse.access_token)
       setUser(currentUser)
 
       if (!currentUser) {
@@ -53,8 +60,16 @@ export function useAuth() {
   const register = async (data: RegisterData) => {
     setLoading(true)
     try {
-      await authService.register(data)
-      const currentUser = await authService.getCurrentUser()
+      const result = await authService.register(data)
+
+      if ('access_token' in result && 'refresh_token' in result) {
+        await createClient().auth.setSession({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+        })
+      }
+
+      const currentUser = await authService.getCurrentUser('access_token' in result ? result.access_token : undefined)
       setUser(currentUser)
 
       if (!currentUser) {
@@ -76,6 +91,7 @@ export function useAuth() {
       console.error('Logout failed:', error)
       clearUser()
     } finally {
+      await createClient().auth.signOut()
       setLoading(false)
     }
   }

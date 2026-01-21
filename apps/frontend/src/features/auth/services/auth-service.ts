@@ -4,11 +4,13 @@ import type {
   User,
   UpdateProfileData,
   ResetPasswordData,
+  AuthTokenResponse,
+  EmailConfirmationResponse,
 } from '../types'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 
 export const authService = {
-  async login(credentials: LoginCredentials): Promise<{ user: User }> {
+  async login(credentials: LoginCredentials): Promise<AuthTokenResponse> {
     const response = await fetchWithCredentials(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -23,7 +25,7 @@ export const authService = {
     return response.json()
   },
 
-  async register(data: RegisterData): Promise<{ user: User }> {
+  async register(data: RegisterData): Promise<AuthTokenResponse | EmailConfirmationResponse> {
     const response = await fetchWithCredentials(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -52,9 +54,11 @@ export const authService = {
     }
   },
 
-  async getCurrentUser(): Promise<User | null> {
+  async getCurrentUser(accessToken?: string): Promise<User | null> {
     try {
-      const response = await fetchWithCredentials(`${API_URL}/auth/me`)
+      const response = await fetchWithCredentials(`${API_URL}/auth/me`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      })
 
       if (!response.ok) return null
 

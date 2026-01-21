@@ -15,7 +15,7 @@ export default defineConfig({
     allowedHosts: [
       'www.oprocessai.com.br',
       'oprocessai.com.br',
-      '.railway.app', // Railway subdomains
+      'processa-ai.up.railway.app',
     ],
   },
   build: {

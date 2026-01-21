@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
@@ -22,56 +22,33 @@ interface DeadlineFormDialogProps {
   onSave: (deadline: Omit<Deadline, 'id'> & { id?: string }) => void
 }
 
-export function DeadlineFormDialog({
-  isOpen,
-  onClose,
+const getInitialFormData = (deadline?: Deadline) => ({
+  title: deadline?.title ?? '',
+  processNumber: deadline?.processNumber ?? '',
+  processId: deadline?.processId ?? '',
+  date: deadline?.date ?? '',
+  time: deadline?.time ?? '',
+  type:
+    deadline?.type ??
+    ('outros' as 'contestacao' | 'recurso' | 'audiencia' | 'pericia' | 'outros'),
+  priority: deadline?.priority ?? ('media' as 'alta' | 'media' | 'baixa'),
+  description: deadline?.description ?? '',
+  notifyBefore: deadline?.notifyBefore ?? 3,
+})
+
+function DeadlineFormDialogBody({
   deadline,
+  isEditing,
+  onClose,
   onSave,
-}: DeadlineFormDialogProps) {
-  const isEditing = !!deadline
-
-  const [formData, setFormData] = useState({
-    title: '',
-    processNumber: '',
-    processId: '',
-    date: '',
-    time: '',
-    type: 'outros' as 'contestacao' | 'recurso' | 'audiencia' | 'pericia' | 'outros',
-    priority: 'media' as 'alta' | 'media' | 'baixa',
-    description: '',
-    notifyBefore: 3,
-  })
-
+}: {
+  deadline?: Deadline
+  isEditing: boolean
+  onClose: () => void
+  onSave: (deadline: Omit<Deadline, 'id'> & { id?: string }) => void
+}) {
+  const [formData, setFormData] = useState(() => getInitialFormData(deadline))
   const [errors, setErrors] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    if (deadline) {
-      setFormData({
-        title: deadline.title,
-        processNumber: deadline.processNumber,
-        processId: deadline.processId || '',
-        date: deadline.date,
-        time: deadline.time || '',
-        type: deadline.type,
-        priority: deadline.priority,
-        description: deadline.description || '',
-        notifyBefore: deadline.notifyBefore || 3,
-      })
-    } else {
-      setFormData({
-        title: '',
-        processNumber: '',
-        processId: '',
-        date: '',
-        time: '',
-        type: 'outros',
-        priority: 'media',
-        description: '',
-        notifyBefore: 3,
-      })
-    }
-    setErrors({})
-  }, [deadline, isOpen])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -101,7 +78,7 @@ export function DeadlineFormDialog({
 
     const deadlineData = {
       ...formData,
-      ...(isEditing && { id: deadline.id }),
+      ...(deadline ? { id: deadline.id } : {}),
     }
 
     onSave(deadlineData)
@@ -110,7 +87,6 @@ export function DeadlineFormDialog({
 
   const handleChange = (field: keyof typeof formData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: '' }))
     }
@@ -139,13 +115,12 @@ export function DeadlineFormDialog({
   ]
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar Prazo' : 'Novo Prazo'}</DialogTitle>
-        </DialogHeader>
+    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>{isEditing ? 'Editar Prazo' : 'Novo Prazo'}</DialogTitle>
+      </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informações Básicas */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Informações do Prazo</h3>
@@ -314,8 +289,25 @@ export function DeadlineFormDialog({
               {isEditing ? 'Salvar Alterações' : 'Criar Prazo'}
             </button>
           </div>
-        </form>
-      </DialogContent>
+      </form>
+    </DialogContent>
+  )
+}
+
+export function DeadlineFormDialog({ isOpen, onClose, deadline, onSave }: DeadlineFormDialogProps) {
+  const isEditing = !!deadline
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      {isOpen && (
+        <DeadlineFormDialogBody
+          key={deadline?.id ?? 'new'}
+          deadline={deadline}
+          isEditing={isEditing}
+          onClose={onClose}
+          onSave={onSave}
+        />
+      )}
     </Dialog>
   )
 }

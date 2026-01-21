@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   ArrowLeft,
   Calendar,
@@ -90,7 +90,6 @@ const mockProcess = {
 type Tab = 'resumo' | 'andamentos' | 'prazos' | 'documentos'
 
 export default function ProcessoDetalhePage() {
-  const { id: _id } = useParams()
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
 
   const formatCurrency = (value: number) => {

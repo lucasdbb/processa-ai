@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
@@ -22,51 +22,31 @@ interface ProcessFormDialogProps {
   onSave: (process: Omit<Process, 'id'> & { id?: string }) => void
 }
 
-export function ProcessFormDialog({ isOpen, onClose, process, onSave }: ProcessFormDialogProps) {
-  const isEditing = !!process
+const getInitialFormData = (process?: Process) => ({
+  number: process?.number ?? '',
+  type: process?.type ?? '',
+  court: process?.court ?? '',
+  client: process?.client ?? '',
+  defendant: process?.defendant ?? '',
+  value: process?.value ? process.value.toString() : '',
+  status: process?.status ?? ('active' as 'active' | 'archived'),
+  distributionDate: process?.distributionDate ?? '',
+  description: process?.description ?? '',
+})
 
-  const [formData, setFormData] = useState({
-    number: '',
-    type: '',
-    court: '',
-    client: '',
-    defendant: '',
-    value: '',
-    status: 'active' as 'active' | 'archived',
-    distributionDate: '',
-    description: '',
-  })
-
+function ProcessFormDialogBody({
+  process,
+  isEditing,
+  onClose,
+  onSave,
+}: {
+  process?: Process
+  isEditing: boolean
+  onClose: () => void
+  onSave: (process: Omit<Process, 'id'> & { id?: string }) => void
+}) {
+  const [formData, setFormData] = useState(() => getInitialFormData(process))
   const [errors, setErrors] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    if (process) {
-      setFormData({
-        number: process.number,
-        type: process.type,
-        court: process.court,
-        client: process.client,
-        defendant: process.defendant,
-        value: process.value.toString(),
-        status: process.status,
-        distributionDate: process.distributionDate || '',
-        description: process.description || '',
-      })
-    } else {
-      setFormData({
-        number: '',
-        type: '',
-        court: '',
-        client: '',
-        defendant: '',
-        value: '',
-        status: 'active',
-        distributionDate: '',
-        description: '',
-      })
-    }
-    setErrors({})
-  }, [process, isOpen])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -111,7 +91,7 @@ export function ProcessFormDialog({ isOpen, onClose, process, onSave }: ProcessF
     const processData = {
       ...formData,
       value: Number(formData.value),
-      ...(isEditing && { id: process.id }),
+      ...(process ? { id: process.id } : {}),
     }
 
     onSave(processData)
@@ -120,7 +100,6 @@ export function ProcessFormDialog({ isOpen, onClose, process, onSave }: ProcessF
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: '' }))
     }
@@ -138,13 +117,12 @@ export function ProcessFormDialog({ isOpen, onClose, process, onSave }: ProcessF
   ]
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar Processo' : 'Novo Processo'}</DialogTitle>
-        </DialogHeader>
+    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>{isEditing ? 'Editar Processo' : 'Novo Processo'}</DialogTitle>
+      </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informações Básicas */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Informações do Processo</h3>
@@ -327,8 +305,25 @@ export function ProcessFormDialog({ isOpen, onClose, process, onSave }: ProcessF
               {isEditing ? 'Salvar Alterações' : 'Criar Processo'}
             </button>
           </div>
-        </form>
-      </DialogContent>
+      </form>
+    </DialogContent>
+  )
+}
+
+export function ProcessFormDialog({ isOpen, onClose, process, onSave }: ProcessFormDialogProps) {
+  const isEditing = !!process
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      {isOpen && (
+        <ProcessFormDialogBody
+          key={process?.id ?? 'new'}
+          process={process}
+          isEditing={isEditing}
+          onClose={onClose}
+          onSave={onSave}
+        />
+      )}
     </Dialog>
   )
 }

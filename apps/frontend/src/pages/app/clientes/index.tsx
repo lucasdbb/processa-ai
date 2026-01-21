@@ -1,65 +1,20 @@
-import { useState } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientFormDialog } from '@/components/forms/client-form-dialog'
-
-interface Client {
-  id: string
-  name: string
-  email: string
-  phone: string
-  cpf: string
-  status: 'active' | 'inactive'
-  processes?: number
-  calculations?: number
-  lastActivity?: string
-}
-
-// Dados mockados para demonstracao
-export const mockClients = [
-  {
-    id: '1',
-    name: 'Joao Silva',
-    cpf: '123.456.789-00',
-    phone: '(11) 99999-0000',
-    email: 'joao@email.com',
-    processes: 2,
-    calculations: 5,
-    status: 'active',
-    lastActivity: 'ha 2 dias',
-  },
-  {
-    id: '2',
-    name: 'Maria Oliveira',
-    cpf: '987.654.321-00',
-    phone: '(11) 98888-0000',
-    email: 'maria@email.com',
-    processes: 1,
-    calculations: 3,
-    status: 'active',
-    lastActivity: 'ha 1 semana',
-  },
-  {
-    id: '3',
-    name: 'Carlos Santos',
-    cpf: '111.222.333-00',
-    phone: '(11) 97777-0000',
-    email: 'carlos@email.com',
-    processes: 1,
-    calculations: 2,
-    status: 'archived',
-    lastActivity: 'ha 1 mes',
-  },
-]
+import { mockClients } from '@/hooks/use-global-search'
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingClient, setEditingClient] = useState<typeof mockClients[0] | undefined>(undefined)
+  type EditingClient = ComponentProps<typeof ClientFormDialog>['client']
+  type SaveClientPayload = Parameters<ComponentProps<typeof ClientFormDialog>['onSave']>[0]
 
-  const handleSaveClient = (clientData: any) => {
+  const [editingClient, setEditingClient] = useState<EditingClient>(undefined)
+
+  const handleSaveClient = (clientData: SaveClientPayload) => {
     console.log('Salvando cliente:', clientData)
     // Aqui você implementaria a lógica de salvar no backend
   }
@@ -200,7 +155,7 @@ export default function ClientesPage() {
       <ClientFormDialog
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        client={editingClient as Client | undefined}
+        client={editingClient}
         onSave={handleSaveClient}
       />
     </div>
