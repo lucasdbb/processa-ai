@@ -1,9 +1,6 @@
-'use client'
-
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
-import Image from 'next/image'
 import type { User, DocumentType } from '../types'
 import {
   phoneMask,
@@ -25,10 +22,6 @@ interface ProfileModalProps {
   onUpdateProfile: (updatedUser: User) => void
 }
 
-/**
- * Profile modal component for viewing and editing user information
- * Includes avatar upload functionality and form validation
- */
 export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: ProfileModalProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -47,19 +40,15 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
   const fileInputRef = useRef<HTMLInputElement>(null)
   const newsletterCheckboxRef = useRef<HTMLInputElement>(null)
 
-  // Update checkbox when modal opens or user data changes
   useEffect(() => {
     if (newsletterCheckboxRef.current && isOpen) {
       newsletterCheckboxRef.current.checked = user.newsletter_opt_in || false
     }
   }, [isOpen, user.newsletter_opt_in])
 
-  // Close modal on escape key and lock scroll
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
-        onClose()
-      }
+      if (event.key === 'Escape' && isOpen) onClose()
     }
 
     if (isOpen) {
@@ -76,7 +65,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const { name, value } = e.target
 
-      // Aplica máscara apropriada dependendo do campo
       let processedValue = value
       if (name === 'phone') {
         processedValue = phoneMask(value)
@@ -84,40 +72,30 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
         processedValue = documentType === 'cpf' ? cpfMask(value) : cnpjMask(value)
       }
 
-      setFormData((prev) => ({
-        ...prev,
-        [name]: processedValue,
-      }))
+      setFormData((prev) => ({ ...prev, [name]: processedValue }))
     },
     [documentType]
   )
 
   const handleDocumentTypeChange = useCallback((type: DocumentType) => {
     setDocumentType(type)
-    // Limpa o campo de documento ao trocar o tipo
-    setFormData((prev) => ({
-      ...prev,
-      documentNumber: '',
-    }))
+    setFormData((prev) => ({ ...prev, documentNumber: '' }))
   }, [])
 
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('Por favor, selecione apenas arquivos de imagem.')
         return
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('O arquivo deve ter no máximo 5MB.')
         return
       }
 
       try {
-        // Convert to optimized base64 (400x400, quality 0.8)
         const base64 = await fileToBase64(file, 400, 400, 0.8)
         setAvatarPreview(base64)
       } catch (error) {
@@ -133,7 +111,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
       setIsLoading(true)
 
       try {
-        // Remove as máscaras antes de enviar
         const cleanPhone = removePhoneMask(formData.phone)
         const cleanDocument = removeDocumentMask(formData.documentNumber)
 
@@ -175,7 +152,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
         : '',
     })
     setAvatarPreview(null)
-    // Reset checkbox value
     if (newsletterCheckboxRef.current) {
       newsletterCheckboxRef.current.checked = user.newsletter_opt_in || false
     }
@@ -203,15 +179,14 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300">
       <div className="bg-card text-card-foreground rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200 border border-border">
-        {/* Header Compacto com Avatar */}
         <div className="flex items-center justify-between p-5 border-b border-border bg-muted/30">
           <div className="flex items-center gap-4">
             <div className="relative group">
               <div className="relative w-14 h-14 bg-slate-900 text-white rounded-full flex items-center justify-center text-lg font-bold overflow-hidden shadow-md ring-2 ring-muted">
                 {avatarPreview ? (
-                  <Image src={avatarPreview} alt="Preview" fill className="object-cover" unoptimized />
+                  <img src={avatarPreview} alt="Preview" className="object-cover w-full h-full" />
                 ) : user.avatar_url ? (
-                  <Image src={user.avatar_url} alt="Avatar" fill className="object-cover" unoptimized />
+                  <img src={user.avatar_url} alt="Avatar" className="object-cover w-full h-full" />
                 ) : (
                   getInitials(user.name || user.email)
                 )}
@@ -236,13 +211,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
               <p className="text-xs text-muted-foreground font-medium">{user.email}</p>
             </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarChange}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
           </div>
 
           <button
@@ -254,17 +223,11 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-5">
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Name Field */}
               <div className="md:col-span-2">
-                <label
-                  htmlFor="name"
-                  className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5"
-                >
+                <label htmlFor="name" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Nome Completo
                 </label>
                 <input
@@ -281,12 +244,8 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                 />
               </div>
 
-              {/* Phone Field */}
               <div>
-                <label
-                  htmlFor="phone"
-                  className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5"
-                >
+                <label htmlFor="phone" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Telefone
                 </label>
                 <input
@@ -297,11 +256,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                   onChange={handleInputChange}
                   disabled={!isEditing}
                   placeholder="(11) 99999-9999"
-                  title={
-                    isEditing && formData.phone && !isValidPhone(formData.phone)
-                      ? 'Telefone inválido'
-                      : ''
-                  }
                   className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
                     !isEditing
                       ? 'bg-muted text-muted-foreground border-input'
@@ -314,12 +268,10 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                 />
               </div>
 
-              {/* Document Field */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Documento
                 </label>
-
                 <div className="flex gap-2">
                   {isEditing && (
                     <div className="flex bg-muted p-0.5 rounded-lg">
@@ -327,9 +279,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                         type="button"
                         onClick={() => handleDocumentTypeChange('cpf')}
                         className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
-                          documentType === 'cpf'
-                            ? 'bg-background text-foreground shadow-sm'
-                            : 'text-muted-foreground'
+                          documentType === 'cpf' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
                         }`}
                       >
                         CPF
@@ -338,16 +288,13 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                         type="button"
                         onClick={() => handleDocumentTypeChange('cnpj')}
                         className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
-                          documentType === 'cnpj'
-                            ? 'bg-background text-foreground shadow-sm'
-                            : 'text-muted-foreground'
+                          documentType === 'cnpj' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
                         }`}
                       >
                         CNPJ
                       </button>
                     </div>
                   )}
-
                   <input
                     type="text"
                     id="documentNumber"
@@ -356,29 +303,12 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-                    title={
-                      isEditing &&
-                      formData.documentNumber &&
-                      (documentType === 'cpf'
-                        ? !isValidCpf(formData.documentNumber)
-                        : !isValidCnpj(formData.documentNumber))
-                        ? documentType === 'cpf'
-                          ? 'CPF inválido'
-                          : 'CNPJ inválido'
-                        : ''
-                    }
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all flex-1 ${
                       !isEditing
                         ? 'bg-muted text-muted-foreground border-input'
-                        : formData.documentNumber &&
-                            (documentType === 'cpf'
-                              ? !isValidCpf(formData.documentNumber)
-                              : !isValidCnpj(formData.documentNumber))
+                        : formData.documentNumber && (documentType === 'cpf' ? !isValidCpf(formData.documentNumber) : !isValidCnpj(formData.documentNumber))
                           ? 'border-destructive focus:ring-destructive'
-                          : formData.documentNumber &&
-                              (documentType === 'cpf'
-                                ? isValidCpf(formData.documentNumber)
-                                : isValidCnpj(formData.documentNumber))
+                          : formData.documentNumber && (documentType === 'cpf' ? isValidCpf(formData.documentNumber) : isValidCnpj(formData.documentNumber))
                             ? 'border-green-500 focus:ring-green-500'
                             : 'border-input focus:ring-primary'
                     }`}
@@ -386,7 +316,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                 </div>
               </div>
 
-              {/* Created At Field (Read-only) */}
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Membro desde
@@ -400,7 +329,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
               </div>
             </div>
 
-            {/* Newsletter Checkbox */}
             <div className="flex items-center space-x-3 pt-2 bg-muted p-3 rounded-xl">
               <input
                 type="checkbox"
@@ -419,7 +347,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
               </label>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-3 pt-2 border-t border-border mt-4">
               {!isEditing ? (
                 <button

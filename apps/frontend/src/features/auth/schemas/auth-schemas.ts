@@ -1,10 +1,5 @@
 import { z } from 'zod'
 
-/**
- * Validation schemas for authentication forms using Zod
- * These provide runtime type validation and error messages
- */
-
 export const loginSchema = z.object({
   email: z
     .string()
@@ -64,11 +59,8 @@ export const resetPasswordSchema = z.object({
   path: ['confirmPassword'],
 })
 
-// CPF validation (simplified)
 const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/
 const cpfUnmaskedRegex = /^\d{11}$/
-
-// CNPJ validation (simplified)
 const cnpjRegex = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/
 const cnpjUnmaskedRegex = /^\d{14}$/
 
@@ -109,7 +101,6 @@ export const updateProfileSchema = z.object({
   path: ['document_number'],
 })
 
-// Type inference from schemas
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>

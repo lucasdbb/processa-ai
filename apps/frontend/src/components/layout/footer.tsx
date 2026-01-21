@@ -1,20 +1,9 @@
-'use client'
-
-import Link from 'next/link'
-import Image from 'next/image'
-import { Linkedin } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
 
 export function Footer() {
   const { resolvedTheme } = useTheme()
-  const [hasMounted, setHasMounted] = useState(false)
-
-  useEffect(() => {
-    setHasMounted(true)
-  }, [])
-
-  const isDark = hasMounted && resolvedTheme === 'dark'
+  const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
 
   const scrollToTop = () => {
@@ -25,18 +14,15 @@ export function Footer() {
     <footer className="bg-background border-t border-border py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          {/* Brand & Copyright */}
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              to="/"
               onClick={scrollToTop}
               className="flex items-center gap-2 group"
             >
-              <Image
+              <img
                 src={logoSrc}
                 alt=""
-                width={96}
-                height={24}
                 className="h-8 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
               />
             </Link>
@@ -46,40 +32,21 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Minimal Links */}
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link
-              href="/termos"
+              to="/termos"
               onClick={scrollToTop}
               className="hover:text-foreground transition-colors"
             >
               Termos
             </Link>
             <Link
-              href="/privacidade"
+              to="/privacidade"
               onClick={scrollToTop}
               className="hover:text-foreground transition-colors"
             >
               Privacidade
             </Link>
-            <Link
-              href="/contato"
-              onClick={scrollToTop}
-              className="hover:text-foreground transition-colors"
-            >
-              Contato
-            </Link>
-          </div>
-
-          {/* Social Icons Minimal */}
-          <div className="flex gap-4">
-            <a
-              href="#"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="LinkedIn"
-            >
-              <Linkedin className="w-5 h-5" />
-            </a>
           </div>
         </div>
       </div>

@@ -1,5 +1,4 @@
-export type UserRole = 'admin' | 'author' | 'user'
-
+export type UserRole = 'admin' | 'author' | 'user' | 'premium'
 export type DocumentType = 'cpf' | 'cnpj'
 
 export interface User {
@@ -14,13 +13,6 @@ export interface User {
   role: UserRole
   created_at: string
   updated_at?: string
-}
-
-export interface AuthSession {
-  user: User
-  access_token: string
-  refresh_token: string
-  expires_at: number
 }
 
 export interface LoginCredentials {

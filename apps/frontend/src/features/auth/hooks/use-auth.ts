@@ -1,18 +1,8 @@
-"use client";
+import { useEffect } from 'react'
+import { useAuthStore } from '../store/auth-store'
+import { authService } from '../services/auth-service'
+import type { LoginCredentials, RegisterData, UpdateProfileData } from '../types'
 
-import { useEffect } from "react";
-import { useAuthStore } from "../store/auth-store";
-import { authService } from "../services/auth-service";
-import type {
-  LoginCredentials,
-  RegisterData,
-  UpdateProfileData,
-} from "../types";
-
-/**
- * Custom hook for authentication operations
- * Uses httpOnly cookies - no manual token management needed
- */
 export function useAuth() {
   const {
     user,
@@ -22,100 +12,94 @@ export function useAuth() {
     setLoading,
     setInitialized,
     logout: clearUser,
-  } = useAuthStore();
+  } = useAuthStore()
 
-  // Initialize auth state on mount - check if user is logged in via cookies
   useEffect(() => {
     if (!isInitialized) {
       const initAuth = async () => {
         try {
-          // Call /auth/me - if user has valid cookie, backend returns user
-          const currentUser = await authService.getCurrentUser();
-          setUser(currentUser);
+          const currentUser = await authService.getCurrentUser()
+          setUser(currentUser)
         } catch (error) {
-          console.error("Failed to initialize auth:", error);
-          setUser(null);
+          console.error('Failed to initialize auth:', error)
+          setUser(null)
         } finally {
-          setLoading(false);
-          setInitialized(true);
+          setLoading(false)
+          setInitialized(true)
         }
-      };
+      }
 
-      initAuth();
+      initAuth()
     }
-  }, [isInitialized, setUser, setLoading, setInitialized]);
+  }, [isInitialized, setUser, setLoading, setInitialized])
 
   const login = async (credentials: LoginCredentials) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      await authService.login(credentials);
-
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
+      await authService.login(credentials)
+      const currentUser = await authService.getCurrentUser()
+      setUser(currentUser)
 
       if (!currentUser) {
-        throw new Error("Falha ao carregar usuário após login");
+        throw new Error('Falha ao carregar usuário após login')
       }
 
-      return currentUser;
+      return currentUser
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const register = async (data: RegisterData) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      await authService.register(data);
-
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
+      await authService.register(data)
+      const currentUser = await authService.getCurrentUser()
+      setUser(currentUser)
 
       if (!currentUser) {
-        throw new Error("Falha ao carregar usuário após cadastro");
+        throw new Error('Falha ao carregar usuário após cadastro')
       }
 
-      return currentUser;
+      return currentUser
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const logout = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      // Backend clears httpOnly cookies automatically
-      await authService.logout();
-      clearUser();
+      await authService.logout()
+      clearUser()
     } catch (error) {
-      console.error("Logout failed:", error);
-      // Clear user anyway
-      clearUser();
+      console.error('Logout failed:', error)
+      clearUser()
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const updateProfile = async (data: UpdateProfileData) => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const updatedUser = await authService.updateProfile(data);
-      setUser(updatedUser);
-      return updatedUser;
+      const updatedUser = await authService.updateProfile(data)
+      setUser(updatedUser)
+      return updatedUser
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === "admin",
-    isAuthor: user?.role === "author" || user?.role === "admin",
+    isAdmin: user?.role === 'admin',
+    isAuthor: user?.role === 'author' || user?.role === 'admin',
     login,
     register,
     logout,
     updateProfile,
-  };
+  }
 }

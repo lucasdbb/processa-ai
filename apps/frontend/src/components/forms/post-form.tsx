@@ -1,8 +1,5 @@
-'use client'
-
 import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
+import { Link } from 'react-router-dom'
 import { ArrowLeft, Save, Upload, X, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { MarkdownEditor } from '@/components/editor/markdown-editor'
@@ -152,8 +149,9 @@ export function PostForm({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
-                href="/admin?tab=posts"
+                to="/admin?tab=posts"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Voltar"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </Link>
@@ -252,13 +250,10 @@ export function PostForm({
               {formData.cover_image_url && !isCoverPreviewHidden && (
                 <div className="relative">
                   <div className="relative w-full max-w-md h-48 rounded-lg border border-gray-200 overflow-hidden">
-                    <Image
+                    <img
                       src={formData.cover_image_url}
                       alt="Preview"
-                      fill
-                      sizes="(max-width: 768px) 100vw, 448px"
-                      className="object-cover"
-                      unoptimized
+                      className="w-full h-full object-cover"
                       onError={() => setIsCoverPreviewHidden(true)}
                     />
                   </div>

@@ -1,11 +1,5 @@
-'use client'
-
 import { useAuthStore } from '../store/auth-store'
 
-/**
- * Simplified hook to get current user
- * Use this when you only need user data, not auth operations
- */
 export function useUser() {
   const user = useAuthStore((state) => state.user)
   const isLoading = useAuthStore((state) => state.isLoading)

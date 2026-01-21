@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -31,58 +29,33 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { email: '', password: '' },
   })
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      newsletter_opt_in: false,
-    },
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '', newsletter_opt_in: false },
   })
 
   const currentForm = isLogin ? loginForm : registerForm
   const isLoading = currentForm.formState.isSubmitting
 
-  // Reset form when modal opens/closes or mode changes
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-      setIsLogin(initialView === 'login')
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-
-    setApiError('')
-    setSuccessMessage('')
-    loginForm.reset()
-    registerForm.reset()
-
+    document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen, initialView, loginForm, registerForm])
+  }, [])
 
-  // Focus management
   useEffect(() => {
     if (isOpen && firstInputRef.current) {
       firstInputRef.current.focus()
     }
   }, [isOpen, isLogin])
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
+      if (e.key === 'Escape') onClose()
     }
 
     if (isOpen) {
@@ -137,9 +110,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
   }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose()
-    }
+    if (e.target === e.currentTarget) onClose()
   }
 
   if (!isOpen) return null
@@ -157,7 +128,6 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
         className="bg-card text-card-foreground rounded-3xl shadow-2xl max-w-md w-full p-6 relative border border-border"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Botão Fechar */}
         <button
           onClick={onClose}
           className="absolute top-5 right-5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
@@ -166,7 +136,6 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
 
-        {/* Título */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-10 h-10 bg-slate-900 rounded-xl mb-3 text-white">
             <User className="h-5 w-5" />
@@ -179,51 +148,32 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
           </p>
         </div>
 
-        {/* Mensagens de Erro e Sucesso */}
         {apiError && (
-          <div
-            className="bg-destructive/15 border border-destructive/20 rounded-xl p-4 flex items-start gap-3 mb-6"
-            role="alert"
-          >
+          <div className="bg-destructive/15 border border-destructive/20 rounded-xl p-4 flex items-start gap-3 mb-6" role="alert">
             <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" aria-hidden="true" />
             <p className="text-sm text-destructive font-medium">{apiError}</p>
           </div>
         )}
 
         {successMessage && (
-          <div
-            className="bg-green-500/15 border border-green-500/20 rounded-xl p-4 flex items-start gap-3 mb-6"
-            role="alert"
-          >
-            <AlertCircle
-              className="h-5 w-5 text-[hsl(var(--success))] flex-shrink-0 mt-0.5"
-              aria-hidden="true"
-            />
+          <div className="bg-green-500/15 border border-green-500/20 rounded-xl p-4 flex items-start gap-3 mb-6" role="alert">
+            <AlertCircle className="h-5 w-5 text-[hsl(var(--success))] flex-shrink-0 mt-0.5" aria-hidden="true" />
             <p className="text-sm text-[hsl(var(--success-strong))] font-medium">{successMessage}</p>
           </div>
         )}
 
-        {/* Formulário */}
         <form
-          onSubmit={
-            isLogin
-              ? loginForm.handleSubmit(handleLogin)
-              : registerForm.handleSubmit(handleRegister)
-          }
+          onSubmit={isLogin ? loginForm.handleSubmit(handleLogin) : registerForm.handleSubmit(handleRegister)}
           className="space-y-4"
           noValidate
         >
-          {/* Nome - Apenas no registro */}
           {!isLogin && (
             <div>
               <label htmlFor="name" className="block text-sm font-semibold text-foreground mb-1.5">
                 Nome Completo
               </label>
               <div className="relative">
-                <User
-                  className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5"
-                  aria-hidden="true"
-                />
+                <User className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" aria-hidden="true" />
                 <input
                   {...(!isLogin ? { ref: firstInputRef } : {})}
                   type="text"
@@ -231,9 +181,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
                   placeholder="Seu nome completo"
                   {...registerForm.register('name')}
                   className={`w-full bg-background border border-input text-foreground text-sm rounded-xl focus:ring-primary focus:border-primary block pl-10 p-2.5 transition-colors ${
-                    registerForm.formState.errors.name
-                      ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5'
-                      : ''
+                    registerForm.formState.errors.name ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5' : ''
                   }`}
                   aria-invalid={!!registerForm.formState.errors.name}
                 />
@@ -246,16 +194,12 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
             </div>
           )}
 
-          {/* E-mail */}
           <div>
             <label htmlFor="email" className="block text-sm font-semibold text-foreground mb-1.5">
               E-mail
             </label>
             <div className="relative">
-              <Mail
-                className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5"
-                aria-hidden="true"
-              />
+              <Mail className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" aria-hidden="true" />
               <input
                 {...(isLogin ? { ref: firstInputRef } : {})}
                 type="email"
@@ -263,9 +207,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
                 placeholder="seu@email.com"
                 {...(isLogin ? loginForm.register('email') : registerForm.register('email'))}
                 className={`w-full bg-background border border-input text-foreground text-sm rounded-xl focus:ring-primary focus:border-primary block pl-10 p-2.5 transition-colors ${
-                  currentForm.formState.errors.email
-                    ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5'
-                    : ''
+                  currentForm.formState.errors.email ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5' : ''
                 }`}
                 autoComplete="email"
                 aria-invalid={!!currentForm.formState.errors.email}
@@ -278,25 +220,19 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
             )}
           </div>
 
-          {/* Senha */}
           <div>
             <label htmlFor="password" className="block text-sm font-semibold text-foreground mb-1.5">
               Senha
             </label>
             <div className="relative">
-              <Lock
-                className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5"
-                aria-hidden="true"
-              />
+              <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" aria-hidden="true" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 placeholder="••••••••"
                 {...(isLogin ? loginForm.register('password') : registerForm.register('password'))}
                 className={`w-full bg-background border border-input text-foreground text-sm rounded-xl focus:ring-primary focus:border-primary block pl-10 pr-10 p-2.5 transition-colors ${
-                  currentForm.formState.errors.password
-                    ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5'
-                    : ''
+                  currentForm.formState.errors.password ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5' : ''
                 }`}
                 autoComplete={isLogin ? 'current-password' : 'new-password'}
                 aria-invalid={!!currentForm.formState.errors.password}
@@ -307,11 +243,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-5 w-5" aria-hidden="true" />
-                )}
+                {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
               </button>
             </div>
             {currentForm.formState.errors.password && (
@@ -320,35 +252,24 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
               </p>
             )}
             {!currentForm.formState.errors.password && !isLogin && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Mínimo 8 caracteres, maiúscula, minúscula e número
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Mínimo 8 caracteres, maiúscula, minúscula e número</p>
             )}
           </div>
 
-          {/* Confirmar Senha - Apenas no registro */}
           {!isLogin && (
             <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-semibold text-foreground mb-1.5"
-              >
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-foreground mb-1.5">
                 Confirmar Senha
               </label>
               <div className="relative">
-                <Lock
-                  className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5"
-                  aria-hidden="true"
-                />
+                <Lock className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" aria-hidden="true" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="confirmPassword"
                   placeholder="••••••••"
                   {...registerForm.register('confirmPassword')}
                   className={`w-full bg-background border border-input text-foreground text-sm rounded-xl focus:ring-primary focus:border-primary block pl-10 p-2.5 transition-colors ${
-                    registerForm.formState.errors.confirmPassword
-                      ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5'
-                      : ''
+                    registerForm.formState.errors.confirmPassword ? 'border-destructive focus:ring-destructive focus:border-destructive bg-destructive/5' : ''
                   }`}
                   autoComplete="new-password"
                   aria-invalid={!!registerForm.formState.errors.confirmPassword}
@@ -362,7 +283,6 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
             </div>
           )}
 
-          {/* Newsletter - Apenas no registro */}
           {!isLogin && (
             <div className="flex items-center space-x-2">
               <input
@@ -383,17 +303,11 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl focus:outline-none focus:ring-4 focus:ring-ring/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-900/20 !mt-6"
           >
             {isLoading && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
-            {isLoading
-              ? 'Processando...'
-              : isLogin
-                ? 'Entrar na Plataforma'
-                : 'Criar Conta Gratuita'}
+            {isLoading ? 'Processando...' : isLogin ? 'Entrar na Plataforma' : 'Criar Conta Gratuita'}
           </button>
         </form>
 
-        {/* Footer Actions */}
         <div className="mt-4 space-y-4">
-          {/* Forgot Password */}
           {isLogin && (
             <div className="text-center">
               <button
@@ -405,14 +319,10 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
             </div>
           )}
 
-          {/* Toggle Login/Registro */}
           <div className="text-center pt-4 border-t border-border">
             <p className="text-muted-foreground text-sm">
               {isLogin ? 'Ainda não tem uma conta?' : 'Já possui cadastro?'}
-              <button
-                onClick={handleModeToggle}
-                className="text-primary hover:text-primary/80 font-bold ml-1.5 transition-colors"
-              >
+              <button onClick={handleModeToggle} className="text-primary hover:text-primary/80 font-bold ml-1.5 transition-colors">
                 {isLogin ? 'Cadastre-se gratuitamente' : 'Fazer login'}
               </button>
             </p>

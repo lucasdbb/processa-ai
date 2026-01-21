@@ -7,23 +7,11 @@ import type {
 } from '../types'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 
-/**
- * Authentication Service
- * Handles all API calls related to authentication
- * Uses httpOnly cookies for secure token management
- * No localStorage needed - cookies are automatically sent with requests
- */
 export const authService = {
-  /**
-   * Login user with email and password
-   * Backend sets httpOnly cookies automatically
-   */
-  async login(credentials: LoginCredentials): Promise<{ user: User; access_token: string; refresh_token: string; token_type: string; expires_in: number }> {
+  async login(credentials: LoginCredentials): Promise<{ user: User }> {
     const response = await fetchWithCredentials(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     })
 
@@ -35,16 +23,10 @@ export const authService = {
     return response.json()
   },
 
-  /**
-   * Register new user
-   * Backend sets httpOnly cookies automatically
-   */
-  async register(data: RegisterData): Promise<{ user: User; access_token: string; refresh_token: string; token_type: string; expires_in: number }> {
+  async register(data: RegisterData): Promise<{ user: User }> {
     const response = await fetchWithCredentials(`${API_URL}/auth/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: data.email,
         password: data.password,
@@ -60,10 +42,6 @@ export const authService = {
     return response.json()
   },
 
-  /**
-   * Logout current user
-   * Backend clears httpOnly cookies automatically
-   */
   async logout(): Promise<void> {
     const response = await fetchWithCredentials(`${API_URL}/auth/logout`, {
       method: 'POST',
@@ -74,37 +52,22 @@ export const authService = {
     }
   },
 
-  /**
-   * Get current user via /auth/me endpoint
-   * Uses httpOnly cookie automatically sent by browser
-   */
   async getCurrentUser(): Promise<User | null> {
     try {
-      const response = await fetchWithCredentials(`${API_URL}/auth/me`, {
-        method: 'GET',
-      })
+      const response = await fetchWithCredentials(`${API_URL}/auth/me`)
 
-      if (!response.ok) {
-        return null
-      }
+      if (!response.ok) return null
 
       return response.json()
-    } catch (error) {
-      console.error('Error getting current user:', error)
+    } catch {
       return null
     }
   },
 
-  /**
-   * Update user profile
-   * Uses httpOnly cookie automatically sent by browser
-   */
   async updateProfile(data: UpdateProfileData): Promise<User> {
     const response = await fetchWithCredentials(`${API_URL}/users/profile`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
 
@@ -116,15 +79,10 @@ export const authService = {
     return response.json()
   },
 
-  /**
-   * Request password reset
-   */
   async forgotPassword(email: string): Promise<void> {
     const response = await fetchWithCredentials(`${API_URL}/auth/forgot-password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     })
 
@@ -134,15 +92,10 @@ export const authService = {
     }
   },
 
-  /**
-   * Reset password with token
-   */
   async resetPassword(data: ResetPasswordData): Promise<void> {
     const response = await fetchWithCredentials(`${API_URL}/auth/reset-password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         token: data.access_token,
         new_password: data.password,
@@ -154,5 +107,4 @@ export const authService = {
       throw new Error(error.detail || 'Erro ao redefinir senha')
     }
   },
-
 }

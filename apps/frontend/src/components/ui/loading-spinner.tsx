@@ -1,16 +1,16 @@
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from "lucide-react"
 
 interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg'
+  size?: "sm" | "md" | "lg"
   text?: string
   fullScreen?: boolean
 }
 
-export function LoadingSpinner({ size = 'md', text, fullScreen = false }: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "md", text, fullScreen = false }: LoadingSpinnerProps) {
   const sizeClasses = {
-    sm: 'h-5 w-5',
-    md: 'h-8 w-8',
-    lg: 'h-12 w-12',
+    sm: "h-5 w-5",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
   }
 
   const spinner = (
@@ -30,3 +30,4 @@ export function LoadingSpinner({ size = 'md', text, fullScreen = false }: Loadin
 
   return spinner
 }
+

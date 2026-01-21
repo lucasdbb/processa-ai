@@ -1,10 +1,8 @@
-'use client'
-
-import dynamic from 'next/dynamic'
+import { useEffect, useRef, useState } from 'react'
 import '@uiw/react-md-editor/markdown-editor.css'
 import '@uiw/react-markdown-preview/markdown.css'
 
-const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false })
+let MDEditor: typeof import('@uiw/react-md-editor').default | null = null
 
 interface MarkdownEditorProps {
   value: string
@@ -19,11 +17,33 @@ export function MarkdownEditor({
   placeholder = 'Escreva o conteúdo aqui...',
   minHeight = '500px',
 }: MarkdownEditorProps) {
+  const editorRef = useRef<HTMLDivElement>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    // Lazy load the editor component
+    import('@uiw/react-md-editor').then((mod) => {
+      MDEditor = mod.default
+      setIsLoaded(true)
+    })
+  }, [])
+
+  if (!isLoaded) {
+    return (
+      <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-50 p-4">
+        <p className="text-sm text-gray-500">Carregando editor...</p>
+      </div>
+    )
+  }
+
+  const Editor = MDEditor
+  if (!Editor) return null
+
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden" data-color-mode="light">
-      <MDEditor
+    <div className="border border-gray-300 rounded-lg overflow-hidden" data-color-mode="light" ref={editorRef}>
+      <Editor
         value={value}
-        onChange={(val) => onChange(val || '')}
+        onChange={(val?: string) => onChange(val || '')}
         preview="live"
         height={minHeight}
         textareaProps={{

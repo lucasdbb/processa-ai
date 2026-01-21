@@ -1,7 +1,5 @@
-'use client'
-
-import { User as UserIcon, LogOut, Shield, ChevronDown } from 'lucide-react'
-import Link from 'next/link'
+import { LogOut, Shield, ChevronDown, LayoutDashboard } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -13,9 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '../hooks/use-auth'
 import type { User } from '../types'
-import { useEffect, useState } from 'react'
-import { ProfileModal } from './profile-modal'
-import { useAuthStore } from '../store/auth-store'
+import { useState } from 'react'
 import { useTheme } from 'next-themes'
 
 interface UserMenuProps {
@@ -25,17 +21,9 @@ interface UserMenuProps {
 export function UserMenu({ user }: UserMenuProps) {
   const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
-  const setUser = useAuthStore((state) => state.setUser)
 
   const { resolvedTheme } = useTheme()
-  const [hasMounted, setHasMounted] = useState(false)
-
-  useEffect(() => {
-    setHasMounted(true)
-  }, [])
-
-  const isDark = hasMounted && resolvedTheme === 'dark'
+  const isDark = resolvedTheme === 'dark'
 
   const getInitials = () => {
     if (user.name) {
@@ -57,15 +45,6 @@ export function UserMenu({ user }: UserMenuProps) {
     } catch (error) {
       console.error('Logout error:', error)
     }
-  }
-
-  const handleProfileClick = () => {
-    setIsOpen(false)
-    setIsProfileModalOpen(true)
-  }
-
-  const handleUpdateProfile = (updatedUser: User) => {
-    setUser(updatedUser)
   }
 
   return (
@@ -90,39 +69,42 @@ export function UserMenu({ user }: UserMenuProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-56 bg-transparent text-card-foreground rounded-lg border border-border p-0 font-sans"
-        style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
+        className="w-56 bg-background/95 backdrop-blur-md text-card-foreground rounded-lg border border-border p-0 font-sans"
       >
         <DropdownMenuLabel className="px-4 py-3 border-b border-border font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
-            <p className="text-sm text-muted-foreground truncate">
-              {user.email}
-            </p>
+            <p className="text-sm text-muted-foreground truncate">{user.email}</p>
           </div>
         </DropdownMenuLabel>
         <div className="py-1">
           <DropdownMenuItem asChild className="rounded-none p-0 focus:bg-transparent">
-            <button onClick={handleProfileClick} className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150 cursor-pointer focus:outline-none">
-              <UserIcon className="w-4 h-4 mr-3 text-muted-foreground" />
-              <span>Perfil</span>
-            </button>
+            <Link
+              to="/app"
+              className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150 cursor-pointer focus:outline-none"
+            >
+              <LayoutDashboard className="w-4 h-4 mr-3 text-muted-foreground" />
+              <span>Meu Painel</span>
+            </Link>
           </DropdownMenuItem>
           {(user.role === 'admin' || user.role === 'author') && (
             <DropdownMenuItem asChild className="rounded-none p-0 focus:bg-transparent">
-              <Link href="/admin" className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150 cursor-pointer focus:outline-none">
+              <Link
+                to="/admin"
+                className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150 cursor-pointer focus:outline-none"
+              >
                 <Shield className="w-4 h-4 mr-3 text-red-500" />
-                  <span className="flex items-center gap-2">
-                    Painel Admin
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      Admin
-                    </span>
+                <span className="flex items-center gap-2">
+                  Painel Admin
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    Admin
                   </span>
-                </Link>
+                </span>
+              </Link>
             </DropdownMenuItem>
           )}
         </div>
@@ -139,12 +121,6 @@ export function UserMenu({ user }: UserMenuProps) {
           <span>Sair</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        user={user}
-        onUpdateProfile={handleUpdateProfile}
-      />
     </DropdownMenu>
   )
 }
