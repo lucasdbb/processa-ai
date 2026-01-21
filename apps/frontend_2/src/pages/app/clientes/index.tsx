@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ClientFormDialog } from '@/components/forms/client-form-dialog'
 
 // Dados mockados para demonstracao
 export const mockClients = [
@@ -43,6 +44,18 @@ export const mockClients = [
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingClient, setEditingClient] = useState<typeof mockClients[0] | undefined>(undefined)
+
+  const handleSaveClient = (clientData: any) => {
+    console.log('Salvando cliente:', clientData)
+    // Aqui você implementaria a lógica de salvar no backend
+  }
+
+  const handleNewClient = () => {
+    setEditingClient(undefined)
+    setIsFormOpen(true)
+  }
 
   const filteredClients = mockClients.filter((client) => {
     const matchesSearch =
@@ -66,7 +79,10 @@ export default function ClientesPage() {
           <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
           <p className="text-muted-foreground mt-1">Gerencie seus clientes e seus dados.</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors">
+        <button
+          onClick={handleNewClient}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
+        >
           <Plus className="h-4 w-4" />
           Novo Cliente
         </button>
@@ -167,6 +183,14 @@ export default function ClientesPage() {
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>Mostrando {filteredClients.length} de {mockClients.length} clientes</span>
       </div>
+
+      {/* Client Form Dialog */}
+      <ClientFormDialog
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        client={editingClient}
+        onSave={handleSaveClient}
+      />
     </div>
   )
 }

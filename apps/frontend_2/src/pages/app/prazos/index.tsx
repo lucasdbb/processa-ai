@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CalendarClock, AlertTriangle, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DeadlineFormDialog } from '@/components/forms/deadline-form-dialog'
 
 // Dados mockados
 const mockDeadlines = [
@@ -40,6 +41,18 @@ const mockDeadlines = [
 
 export default function PrazosPage() {
   const [currentDate] = useState(new Date(2026, 0, 20))
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingDeadline, setEditingDeadline] = useState<any>(undefined)
+
+  const handleSaveDeadline = (deadlineData: any) => {
+    console.log('Salvando prazo:', deadlineData)
+    // Aqui você implementaria a lógica de salvar no backend
+  }
+
+  const handleNewDeadline = () => {
+    setEditingDeadline(undefined)
+    setIsFormOpen(true)
+  }
 
   const getDaysUntil = (date: Date) => {
     const diff = date.getTime() - currentDate.getTime()
@@ -67,7 +80,10 @@ export default function PrazosPage() {
             Acompanhe seus prazos processuais e audiencias.
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors">
+        <button
+          onClick={handleNewDeadline}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
+        >
           <Plus className="h-4 w-4" />
           Novo Prazo
         </button>
@@ -195,6 +211,14 @@ export default function PrazosPage() {
           })}
         </div>
       </div>
+
+      {/* Deadline Form Dialog */}
+      <DeadlineFormDialog
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        deadline={editingDeadline}
+        onSave={handleSaveDeadline}
+      />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, FolderKanban } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 
 // Dados mockados
 export const mockProcesses = [
@@ -43,6 +44,31 @@ export const mockProcesses = [
 export default function ProcessosPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingProcess, setEditingProcess] = useState<
+    | {
+        id: string
+        number: string
+        type: string
+        court: string
+        client: string
+        defendant: string
+        value: number
+        status: 'active' | 'archived'
+        nextDeadline?: string | null
+      }
+    | undefined
+  >(undefined)
+
+  const handleSaveProcess = (processData: any) => {
+    console.log('Salvando processo:', processData)
+    // Aqui você implementaria a lógica de salvar no backend
+  }
+
+  const handleNewProcess = () => {
+    setEditingProcess(undefined)
+    setIsFormOpen(true)
+  }
 
   const filteredProcesses = mockProcesses.filter((process) => {
     const matchesSearch =
@@ -73,7 +99,10 @@ export default function ProcessosPage() {
           <h1 className="text-2xl font-bold text-foreground">Processos</h1>
           <p className="text-muted-foreground mt-1">Acompanhe seus processos e prazos.</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors">
+        <button
+          onClick={handleNewProcess}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
+        >
           <Plus className="h-4 w-4" />
           Novo Processo
         </button>
@@ -189,6 +218,14 @@ export default function ProcessosPage() {
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>Mostrando {filteredProcesses.length} de {mockProcesses.length} processos</span>
       </div>
+
+      {/* Process Form Dialog */}
+      <ProcessFormDialog
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        process={editingProcess}
+        onSave={handleSaveProcess}
+      />
     </div>
   )
 }

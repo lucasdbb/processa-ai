@@ -192,7 +192,7 @@ export default function AjudaPage() {
             className={cn(
               'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               selectedCategory === category.value
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-slate-900 text-white'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             )}
           >
@@ -254,7 +254,7 @@ export default function AjudaPage() {
         <div className="grid sm:grid-cols-3 gap-4">
           <a
             href="mailto:suporte@processa.ai"
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-slate-900/5 hover:border-slate-900/10 border border-transparent transition-all hover:shadow-sm"
           >
             <div className="p-2 bg-primary/10 rounded-lg">
               <Mail className="h-5 w-5 text-primary" />
@@ -268,7 +268,7 @@ export default function AjudaPage() {
             href="https://wa.me/5511999999999"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-green-50 hover:border-green-200 border border-transparent transition-all hover:shadow-sm"
           >
             <div className="p-2 bg-green-500/10 rounded-lg">
               <MessageCircle className="h-5 w-5 text-green-600" />
@@ -280,7 +280,7 @@ export default function AjudaPage() {
           </a>
           <a
             href="tel:+551133333333"
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-blue-50 hover:border-blue-200 border border-transparent transition-all hover:shadow-sm"
           >
             <div className="p-2 bg-blue-500/10 rounded-lg">
               <Phone className="h-5 w-5 text-blue-600" />

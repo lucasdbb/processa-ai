@@ -166,7 +166,7 @@ export default function ProcessoDetalhePage() {
             <p className="text-lg text-muted-foreground">{mockProcess.type}</p>
             <p className="text-sm text-muted-foreground">{mockProcess.court}</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">
             <Edit className="h-4 w-4" />
             Editar
           </button>
