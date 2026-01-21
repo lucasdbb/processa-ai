@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 

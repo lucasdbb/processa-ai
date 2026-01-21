@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, X } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'

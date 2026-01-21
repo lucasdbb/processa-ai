@@ -4,6 +4,18 @@ import { Search, Plus, Filter, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientFormDialog } from '@/components/forms/client-form-dialog'
 
+interface Client {
+  id: string
+  name: string
+  email: string
+  phone: string
+  cpf: string
+  status: 'active' | 'inactive'
+  processes?: number
+  calculations?: number
+  lastActivity?: string
+}
+
 // Dados mockados para demonstracao
 export const mockClients = [
   {
@@ -188,7 +200,7 @@ export default function ClientesPage() {
       <ClientFormDialog
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        client={editingClient}
+        client={editingClient as Client | undefined}
         onSave={handleSaveClient}
       />
     </div>

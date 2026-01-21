@@ -90,7 +90,7 @@ const mockProcess = {
 type Tab = 'resumo' | 'andamentos' | 'prazos' | 'documentos'
 
 export default function ProcessoDetalhePage() {
-  const { id } = useParams()
+  const { id: _id } = useParams()
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
 
   const formatCurrency = (value: number) => {

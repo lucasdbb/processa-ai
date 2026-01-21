@@ -71,7 +71,7 @@ const mockClient = {
 type Tab = 'resumo' | 'processos' | 'calculos' | 'documentos' | 'honorarios' | 'notas'
 
 export default function ClienteDetalhePage() {
-  const { id } = useParams()
+  const { id: _id } = useParams()
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
 
   const getInitials = (name: string) => {
