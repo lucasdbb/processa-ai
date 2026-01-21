@@ -379,18 +379,50 @@ export function Header({ onLoginClick }: HeaderProps) {
               Inicio
             </Link>
 
-            {/* Ferramentas */}
+            {/* Recursos */}
             <div>
               <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Ferramentas
+                Recursos
               </p>
               <div className="space-y-1">
-                {ferramentas.map((item) => {
+                {recursos.map((item) => {
                   const Icon = item.icon
+
+                  // Se tiver subitems, renderizar com submenu
+                  if (item.subitems && item.subitems.length > 0) {
+                    return (
+                      <div key={item.name} className="space-y-1">
+                        <div className="px-3 py-2 text-sm font-medium text-foreground">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <span>{item.name}</span>
+                          </div>
+                        </div>
+                        <div className="ml-6 space-y-1">
+                          {item.subitems.map((subitem: any) => (
+                            <Link
+                              key={subitem.name}
+                              to={subitem.href}
+                              className={cn(
+                                "block px-3 py-2 rounded-lg text-sm transition-colors",
+                                subitem.locked
+                                  ? "text-muted-foreground opacity-60 cursor-not-allowed"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              )}
+                            >
+                              {subitem.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Se não tiver subitems, renderizar como link simples
                   return (
                     <Link
                       key={item.name}
-                      to={item.href}
+                      to={item.href!}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:bg-muted transition-colors"
                     >
                       <Icon className="h-5 w-5 text-muted-foreground" />
