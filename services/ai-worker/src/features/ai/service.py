@@ -373,6 +373,7 @@ class AiService:
                 expires_in=signed_url_expires_in,
             )
             stored["audit_score"] = result.get("audit_score")
+            stored["markdown"] = markdown
             return stored
 
         title = inferred_filename
@@ -383,4 +384,5 @@ class AiService:
         return {
             "content": content,
             "audit_score": result.get("audit_score"),
+            "markdown": markdown,
         }

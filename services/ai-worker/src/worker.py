@@ -164,6 +164,14 @@ async def _handle_job(job: dict) -> None:
         status["result"] = {"audit_score": audit_score}
         result_payload["audit_score"] = audit_score
 
+    markdown = result.get("markdown")
+    if isinstance(markdown, str) and markdown.strip():
+        status["result"] = {
+            **(status.get("result") or {}),
+            "markdown": markdown,
+        }
+        result_payload["markdown"] = markdown
+
     if store_pdf:
         status["result"] = {
             **(status.get("result") or {}),
