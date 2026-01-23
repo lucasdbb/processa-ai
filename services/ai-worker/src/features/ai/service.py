@@ -1,0 +1,386 @@
+import hashlib
+import io
+import re
+from urllib.parse import unquote, urlparse
+
+import httpx
+from fastapi import HTTPException, status
+from markdown_pdf import MarkdownPdf, Section
+
+from src.core.config import settings
+from src.core.logging import logger
+
+
+class AiService:
+    def _sanitize_path_segment(self, value: str | None, *, default: str) -> str:
+        v = (value or "").strip()
+        if not v:
+            return default
+
+        cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "-", v).strip("-._")
+        return cleaned or default
+
+    def _slugify_filename(self, filename: str) -> str:
+        name = (filename or "document").strip()
+        if name.lower().endswith(".pdf"):
+            name = name[:-4]
+        name = name.strip() or "document"
+        name = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip("-._")
+        return name or "document"
+
+    def _infer_pdf_filename_from_url(self, file_url: str) -> str:
+        parsed = urlparse((file_url or "").strip())
+        path = unquote(parsed.path or "")
+        name = (path.rsplit("/", 1)[-1] or "").strip() or "document.pdf"
+        if not name.lower().endswith(".pdf"):
+            name = f"{name}.pdf"
+        return name
+
+    async def _upload_pdf_to_supabase(
+        self,
+        *,
+        pdf_bytes: bytes,
+        user_id: str,
+        client_id: str | None,
+        endpoint: str,
+        filename: str,
+        expires_in: int,
+    ) -> dict:
+        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
+        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
+        bucket = (settings.SUPABASE_OUTPUTS_BUCKET or "").strip()
+        if not base_url or not api_key or not bucket:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Supabase Storage não configurado",
+            )
+
+        sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
+        slug = self._slugify_filename(filename)
+        storage_filename = f"{sha}_{slug}.pdf"
+        uid = self._sanitize_path_segment(user_id, default="unknown-user")
+        cid = self._sanitize_path_segment(client_id, default="no_client")
+        ep = self._sanitize_path_segment(endpoint, default="unknown")
+        storage_path = f"{uid}/{cid}/{ep}/{storage_filename}"
+
+        upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
+        headers = {
+            "apikey": api_key,
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/pdf",
+            "x-upsert": "true",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(upload_url, headers=headers, content=pdf_bytes)
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao subir PDF para storage",
+            )
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro de conexão ao subir PDF para storage",
+            )
+
+        if resp.status_code >= 400:
+            body = (resp.text or "").strip()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Falha ao subir PDF para storage"
+                    + (f" (status {resp.status_code})" if resp.status_code else "")
+                    + (f": {body[:200]}" if body else "")
+                ),
+            )
+
+        sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                signed = await client.post(
+                    sign_url,
+                    headers={
+                        "apikey": api_key,
+                        "Authorization": f"Bearer {api_key}",
+                    },
+                    json={"expiresIn": int(expires_in)},
+                )
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao gerar URL assinada",
+            )
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro de conexão ao gerar URL assinada",
+            )
+
+        if signed.status_code >= 400:
+            body = (signed.text or "").strip()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Falha ao gerar URL assinada"
+                    + (f" (status {signed.status_code})" if signed.status_code else "")
+                    + (f": {body[:200]}" if body else "")
+                ),
+            )
+
+        try:
+            data = signed.json()
+        except Exception:
+            data = None
+
+        signed_url = None
+        if isinstance(data, dict):
+            signed_url = data.get("signedURL") or data.get("signedUrl")
+        if not signed_url or not isinstance(signed_url, str):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta inválida ao gerar URL assinada",
+            )
+
+        if signed_url.startswith("http"):
+            download_url = signed_url
+        else:
+            download_url = f"{base_url}/storage/v1{signed_url}"
+
+        return {
+            "bucket": bucket,
+            "storage_path": storage_path,
+            "download_url": download_url,
+        }
+
+    async def _markdown_to_pdf_and_store(
+        self,
+        *,
+        markdown: str,
+        filename: str,
+        user_id: str,
+        client_id: str | None,
+        endpoint: str,
+        expires_in: int,
+    ) -> dict:
+        title = str(filename)
+        if title.lower().endswith(".pdf"):
+            title = title[:-4]
+
+        pdf_bytes = self._markdown_to_pdf_bytes(markdown, title=title)
+        uploaded = await self._upload_pdf_to_supabase(
+            pdf_bytes=pdf_bytes,
+            user_id=user_id,
+            client_id=client_id,
+            endpoint=endpoint,
+            filename=filename,
+            expires_in=expires_in,
+        )
+
+        return {
+            "content": pdf_bytes,
+            **uploaded,
+        }
+
+    def _markdown_to_pdf_bytes(self, markdown: str, *, title: str | None = None) -> bytes:
+        text = (markdown or "").strip()
+        if not text:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta vazia do n8n",
+            )
+
+        try:
+            pdf = MarkdownPdf(toc_level=2, optimize=True)
+            if title:
+                pdf.meta["title"] = title
+            pdf.add_section(Section(text))
+
+            out = io.BytesIO()
+            pdf.save_bytes(out)
+            pdf_bytes = out.getvalue()
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Falha ao gerar PDF do markdown", exc_info=e)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Falha ao gerar PDF",
+            )
+
+        if not pdf_bytes.lstrip().startswith(b"%PDF"):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Falha ao gerar PDF",
+            )
+
+        return pdf_bytes
+
+    async def _download_pdf_bytes(self, file_url: str) -> bytes:
+        url = (file_url or "").strip()
+        if not url:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file_url inválido")
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
+                resp = await client.get(url)
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao baixar o arquivo",
+            )
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao baixar o arquivo",
+            )
+
+        if resp.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Falha ao baixar o arquivo",
+            )
+
+        pdf_bytes = resp.content
+
+        content_type = (resp.headers.get("content-type") or "").lower()
+        looks_like_pdf = pdf_bytes.lstrip().startswith(b"%PDF")
+        if "application/pdf" not in content_type and not looks_like_pdf:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Envie um arquivo PDF",
+            )
+
+        return pdf_bytes
+
+    async def _call_n8n_cnis_workflow(self, *, pdf_bytes: bytes, file_url: str) -> dict:
+        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{settings.N8N_CNIS_WORKFLOW_ID}"
+
+        auth = None
+        if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:
+            auth = (settings.N8N_AUTH_USER, settings.N8N_AUTH_PASSWORD)
+
+        file_field_name = (settings.N8N_FILE_FIELD_NAME or "file").strip() or "file"
+        filename = self._infer_pdf_filename_from_url(file_url)
+        files = {
+            file_field_name: (filename, pdf_bytes, "application/pdf"),
+        }
+
+        try:
+            logger.info(f"Chamando workflow {webhook_url} com {file_field_name}={filename}")
+
+            async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
+                resp = await client.post(
+                    webhook_url,
+                    files=files,
+                    auth=auth,
+                )
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao aguardar resposta do n8n",
+            )
+        except httpx.RequestError as e:
+            logger.error("Erro de conexão com n8n", exc_info=e)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro de conexão com o serviço de análise",
+            )
+
+        try:
+            data = resp.json()
+        except Exception:
+            content_type = (resp.headers.get("content-type") or "").lower()
+            body_preview = ""
+            if "application/json" not in content_type:
+                body_preview = (resp.text or "").strip().replace("\n", " ")[:300]
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Resposta inválida do n8n"
+                    + (f" (status {resp.status_code})" if resp.status_code else "")
+                    + (f": {body_preview}" if body_preview else "")
+                ),
+            )
+
+        if resp.status_code >= 400:
+            detail = "Erro ao processar CNIS"
+            if isinstance(data, dict):
+                detail = data.get("message") or detail
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+        if not isinstance(data, dict):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta inválida do n8n",
+            )
+
+        if data.get("status") == "error":
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=data.get("message", "Erro no processamento do CNIS"),
+            )
+
+        markdown = data.get("text")
+        if not markdown:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Resposta do n8n não contém 'text'. "
+                    "Verifique a configuração de resposta do Webhook/Respond to Webhook no n8n "
+                    "para retornar o payload final."
+                ),
+            )
+
+        return {
+            "markdown": str(markdown),
+            "audit_score": data.get("audit_score"),
+        }
+
+    async def analyze_cnis(
+        self,
+        *,
+        file_url: str,
+        user_id: str,
+        client_id: str | None,
+        store_pdf: bool = False,
+        signed_url_expires_in: int = 600,
+    ) -> dict:
+        pdf_bytes = await self._download_pdf_bytes(file_url)
+        inferred_filename = self._infer_pdf_filename_from_url(file_url)
+        result = await self._call_n8n_cnis_workflow(pdf_bytes=pdf_bytes, file_url=file_url)
+        markdown = (result.get("markdown") or "").strip()
+        if not markdown:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta inválida do n8n",
+            )
+
+        if store_pdf:
+            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="SUPABASE_SERVICE_ROLE_KEY não configurada",
+                )
+
+            stored = await self._markdown_to_pdf_and_store(
+                markdown=markdown,
+                filename=inferred_filename,
+                user_id=user_id,
+                client_id=client_id,
+                endpoint="cnis_analysis",
+                expires_in=signed_url_expires_in,
+            )
+            stored["audit_score"] = result.get("audit_score")
+            return stored
+
+        title = inferred_filename
+        if title.lower().endswith(".pdf"):
+            title = title[:-4]
+
+        content = self._markdown_to_pdf_bytes(markdown, title=title)
+        return {
+            "content": content,
+            "audit_score": result.get("audit_score"),
+        }

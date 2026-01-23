@@ -1,0 +1,93 @@
+{
+  "info": {
+    "_postman_id": "2b0ff7bf-4c2f-49cb-81c3-2e2c27a2d9ea",
+    "name": "processa-ai",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Coleção para testar o ai-worker localmente. Ajuste as variáveis (baseUrl, internalToken, userId, fileUrl) conforme seu ambiente."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8001",
+      "type": "string"
+    },
+    {
+      "key": "internalToken",
+      "value": "changeme",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "local-user",
+      "type": "string"
+    },
+    {
+      "key": "fileUrl",
+      "value": "https://example.com/document.pdf",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "ai-worker",
+      "description": "Endpoints do serviço ai-worker. Atenção: as rotas de API ficam sob /api.",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/"
+          }
+        },
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "POST /api/v1/ai/analyses/cnis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Internal-Token",
+                "value": "{{internalToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"file_url\": \"{{fileUrl}}\",\n  \"user_id\": \"{{userId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/ai/analyses/cnis"
+          }
+        },
+        {
+          "name": "GET /api/v1/ai/jobs/{job_id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Internal-Token",
+                "value": "{{internalToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ai/jobs/{{jobId}}"
+          }
+        }
+      ]
+    }
+  ]
+}
