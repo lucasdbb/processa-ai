@@ -47,10 +47,9 @@ def run_migrations_online() -> None:
 
         context.configure(connection=connection, version_table_schema="ai_worker")
 
-        with context.begin_transaction():
-            context.run_migrations()
-
-        connection.commit()  # Commit final das migrations
+        with connection.begin():  # Transação explícita
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 if context.is_offline_mode():
