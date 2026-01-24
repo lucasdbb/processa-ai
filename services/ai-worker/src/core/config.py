@@ -23,6 +23,8 @@ class Settings:
 
         self.N8N_CNIS_WORKFLOW_ID: str = os.getenv("N8N_CNIS_WORKFLOW_ID")
 
+        self.AI_WORKER_CALLBACK_BASE_URL: str = os.getenv("AI_WORKER_CALLBACK_BASE_URL", "")
+
         self.SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
         self.SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
         self.SUPABASE_OUTPUTS_BUCKET: str = os.getenv("SUPABASE_OUTPUTS_BUCKET", "")

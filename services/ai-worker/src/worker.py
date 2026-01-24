@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import hashlib
+import os
 import uuid
 
 from src.core.ai_worker_store import (
@@ -11,6 +12,7 @@ from src.core.ai_worker_store import (
     mark_job_processing,
     parse_job_uuid,
 )
+from src.core.config import settings
 from src.core.db import init_db
 from src.core.logging import logger
 from src.core.queue import dequeue_job, set_job_status
@@ -129,12 +131,22 @@ async def _handle_job(job: dict) -> None:
             logger.exception("Failed to persist job processing in database")
 
     try:
+        # Gerar callback_url para n8n fazer updates de progresso
+        # Usar 127.0.0.1 explícito ao invés de localhost para evitar problemas com IPv6
+        callback_base_url = (settings.AI_WORKER_CALLBACK_BASE_URL or "").strip().rstrip("/")
+        if not callback_base_url:
+            host = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
+            callback_base_url = f"http://{host}:{settings.PORT}"
+        callback_url = f"{callback_base_url}/api/v1/ai/jobs/progress"
+
         result = await service.analyze_cnis(
             file_url=file_url,
             user_id=user_id,
             client_id=str(client_id) if client_id is not None else None,
             store_pdf=store_pdf,
             signed_url_expires_in=expires_in,
+            job_id=job_id,
+            callback_url=callback_url,
         )
     except Exception as e:
         err = str(getattr(e, "detail", None) or str(e) or "Erro")
@@ -158,6 +170,11 @@ async def _handle_job(job: dict) -> None:
     status: dict = {"job_id": job_id, "status": "completed", "progress": 100}
 
     result_payload: dict = {}
+
+    # Salvar input_hash para cache funcionar
+    input_hash = result.get("input_hash")
+    if input_hash:
+        result_payload["input_hash"] = input_hash
 
     audit_score = result.get("audit_score")
     if audit_score is not None:

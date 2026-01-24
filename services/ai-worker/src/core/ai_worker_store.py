@@ -134,6 +134,17 @@ async def mark_job_processing(*, job_uuid: uuid.UUID, progress: int) -> None:
             )
 
 
+async def update_job_progress(*, job_uuid: uuid.UUID, progress: int) -> None:
+    """Atualiza apenas o progresso de um job sem alterar status."""
+    pool = get_db_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "update ai_worker.jobs set progress = %s where id = %s",
+                (int(progress), job_uuid),
+            )
+
+
 async def mark_job_completed(*, job_uuid: uuid.UUID, result_payload: dict) -> None:
     pool = get_db_pool()
     async with pool.connection() as conn:

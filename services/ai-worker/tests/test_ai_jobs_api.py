@@ -43,6 +43,24 @@ def test_enqueue_job_returns_job_id(monkeypatch) -> None:
     assert data["job_id"].startswith("ai:")
 
 
+def test_enqueue_job_rejects_job_id_in_request() -> None:
+    app = _load_app()
+
+    from fastapi.testclient import TestClient
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/v1/ai/analyses/cnis",
+        headers={"X-Internal-Token": "test-token"},
+        json={
+            "job_id": "ai:123e4567-e89b-12d3-a456-426614174000",
+            "file_url": "x",
+            "user_id": "u1",
+        },
+    )
+    assert resp.status_code == 422
+
+
 def test_get_job_status_falls_back_to_db(monkeypatch) -> None:
     app = _load_app()
 

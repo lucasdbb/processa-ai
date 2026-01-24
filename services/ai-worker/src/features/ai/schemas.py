@@ -2,7 +2,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class CnisAnalysisRequest(BaseModel):
-    job_id: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
     file_url: str
     user_id: str
     client_id: str | None = None
@@ -21,6 +22,14 @@ class JobStatusResponse(BaseModel):
     progress: int = 0
     result: dict | None = None
     error: str | None = None
+
+
+class JobProgressCallback(BaseModel):
+    """Schema para callback de progresso do n8n."""
+
+    job_id: str
+    progress: int
+    message: str | None = None
 
 
 class CnisAnalysisResponse(BaseModel):

@@ -8,10 +8,45 @@ from fastapi import HTTPException, status
 from markdown_pdf import MarkdownPdf, Section
 
 from src.core.config import settings
+from src.core.db import get_db_pool
 from src.core.logging import logger
 
 
 class AiService:
+    async def _check_cache(self, *, input_hash: str, endpoint_key: str) -> dict | None:
+        """Verifica se existe análise em cache para o hash fornecido."""
+        pool = get_db_pool()
+        if not pool:
+            return None
+
+        try:
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT result_payload, created_at
+                        FROM ai_worker.jobs
+                        WHERE endpoint_key = %s
+                          AND status = 'completed'
+                          AND result_payload->>'input_hash' = %s
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """,
+                        (endpoint_key, input_hash),
+                    )
+                    row = await cur.fetchone()
+                    if not row:
+                        return None
+
+                    result_payload, created_at = row
+                    logger.info(
+                        f"Cache hit para hash {input_hash[:16]}... (criado em {created_at})"
+                    )
+                    return result_payload or {}
+        except Exception:
+            logger.exception("Erro ao verificar cache")
+            return None
+
     def _sanitize_path_segment(self, value: str | None, *, default: str) -> str:
         v = (value or "").strip()
         if not v:
@@ -254,26 +289,32 @@ class AiService:
 
         return pdf_bytes
 
-    async def _call_n8n_cnis_workflow(self, *, pdf_bytes: bytes, file_url: str) -> dict:
+    async def _call_n8n_cnis_workflow(
+        self,
+        *,
+        pdf_url: str,
+        job_id: str | None = None,
+        callback_url: str | None = None,
+    ) -> dict:
         webhook_url = f"{settings.N8N_BASE_URL}/webhook/{settings.N8N_CNIS_WORKFLOW_ID}"
 
         auth = None
         if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:
             auth = (settings.N8N_AUTH_USER, settings.N8N_AUTH_PASSWORD)
 
-        file_field_name = (settings.N8N_FILE_FIELD_NAME or "file").strip() or "file"
-        filename = self._infer_pdf_filename_from_url(file_url)
-        files = {
-            file_field_name: (filename, pdf_bytes, "application/pdf"),
+        payload = {
+            "pdf_url": pdf_url,
+            "job_id": job_id,
+            "callback_url": callback_url,
         }
 
         try:
-            logger.info(f"Chamando workflow {webhook_url} com {file_field_name}={filename}")
+            logger.info(f"Chamando workflow {webhook_url} (job_id={job_id})")
 
             async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
                 resp = await client.post(
                     webhook_url,
-                    files=files,
+                    json=payload,
                     auth=auth,
                 )
         except httpx.TimeoutException:
@@ -322,20 +363,24 @@ class AiService:
                 detail=data.get("message", "Erro no processamento do CNIS"),
             )
 
+        if data.get("status") != "ok":
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Status inesperado do n8n: {data.get('status')}",
+            )
+
         markdown = data.get("text")
         if not markdown:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=(
-                    "Resposta do n8n não contém 'text'. "
-                    "Verifique a configuração de resposta do Webhook/Respond to Webhook no n8n "
-                    "para retornar o payload final."
-                ),
+                detail="Resposta do n8n não contém 'text'",
             )
 
+        metadata = data.get("metadata", {})
         return {
             "markdown": str(markdown),
-            "audit_score": data.get("audit_score"),
+            "audit_score": metadata.get("audit_score"),
+            "metadata": metadata,
         }
 
     async def analyze_cnis(
@@ -346,10 +391,34 @@ class AiService:
         client_id: str | None,
         store_pdf: bool = False,
         signed_url_expires_in: int = 600,
+        job_id: str | None = None,
+        callback_url: str | None = None,
     ) -> dict:
         pdf_bytes = await self._download_pdf_bytes(file_url)
         inferred_filename = self._infer_pdf_filename_from_url(file_url)
-        result = await self._call_n8n_cnis_workflow(pdf_bytes=pdf_bytes, file_url=file_url)
+
+        # Verificar cache baseado no hash do arquivo
+        input_hash = hashlib.sha256(pdf_bytes).hexdigest()
+        cached = await self._check_cache(input_hash=input_hash, endpoint_key="cnis_analysis")
+        if cached and cached.get("markdown"):
+            logger.info(f"Retornando resultado do cache para hash {input_hash[:16]}...")
+            cached["cached"] = True
+            if store_pdf and not cached.get("storage_path"):
+                # Gerar PDF do cache se necessário
+                stored = await self._markdown_to_pdf_and_store(
+                    markdown=cached["markdown"],
+                    filename=inferred_filename,
+                    user_id=user_id,
+                    client_id=client_id,
+                    endpoint="cnis_analysis",
+                    expires_in=signed_url_expires_in,
+                )
+                cached.update(stored)
+            return cached
+
+        result = await self._call_n8n_cnis_workflow(
+            pdf_url=file_url, job_id=job_id, callback_url=callback_url
+        )
         markdown = (result.get("markdown") or "").strip()
         if not markdown:
             raise HTTPException(
@@ -374,6 +443,7 @@ class AiService:
             )
             stored["audit_score"] = result.get("audit_score")
             stored["markdown"] = markdown
+            stored["input_hash"] = input_hash
             return stored
 
         title = inferred_filename
@@ -385,4 +455,5 @@ class AiService:
             "content": content,
             "audit_score": result.get("audit_score"),
             "markdown": markdown,
+            "input_hash": input_hash,
         }
