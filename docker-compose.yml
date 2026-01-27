@@ -21,19 +21,26 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - CORE_API_BASE_URL=http://core-api:8004
+      - CORE_API_INTERNAL_TOKEN=${CORE_API_INTERNAL_TOKEN}
       - AI_WORKER_BASE_URL=http://ai-jobs-api:8001
       - AI_WORKER_INTERNAL_TOKEN=${AI_WORKER_INTERNAL_TOKEN}
       - CALC_ENGINE_BASE_URL=http://calc-engine:8002
       - CALC_ENGINE_INTERNAL_TOKEN=${CALC_ENGINE_INTERNAL_TOKEN}
       - OFFICE_API_BASE_URL=http://office-api:8003
       - OFFICE_API_INTERNAL_TOKEN=${OFFICE_API_INTERNAL_TOKEN}
+      - BILLING_API_BASE_URL=http://billing-api:8005
+      - BILLING_API_INTERNAL_TOKEN=${BILLING_API_INTERNAL_TOKEN}
       - UPSTREAM_TIMEOUT_S=${UPSTREAM_TIMEOUT_S:-300}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
     networks:
       - processa-network
     depends_on:
+      - core-api
       - ai-jobs-api
       - calc-engine
       - office-api
+      - billing-api
 
   # Frontend - Vite + React
   # frontend:
@@ -171,6 +178,43 @@ services:
       - processa-network
     depends_on:
       - redis
+
+  # Core API - FastAPI (profiles, blog, materials, newsletter, support)
+  core-api:
+    build:
+      context: ./services/core-api
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - PORT=8004
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - CORE_API_INTERNAL_TOKEN=${CORE_API_INTERNAL_TOKEN:-changeme}
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET}
+    networks:
+      - processa-network
+
+  # Billing API - FastAPI (Stripe integration)
+  billing-api:
+    build:
+      context: ./services/billing-api
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - BILLING_API_INTERNAL_TOKEN=${BILLING_API_INTERNAL_TOKEN:-changeme}
+      - DATABASE_URL=${DATABASE_URL}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    networks:
+      - processa-network
 
   # ai-jobs-worker - Worker do AI Jobs API
   ai-jobs-worker:
