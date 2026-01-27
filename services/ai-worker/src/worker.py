@@ -116,7 +116,12 @@ async def _handle_job(job: dict) -> None:
 
     client_id = payload.get("client_id")
     store_pdf = bool(payload.get("store_pdf"))
+    store_input_pdf = bool(payload.get("store_input_pdf", True))  # Default: True
     expires_in = int(payload.get("signed_url_expires_in") or 600)
+    
+    # Se o input já foi salvo (upload multipart), usar o ID
+    input_document_id = payload.get("input_document_id")
+    input_storage_path = payload.get("input_storage_path")
 
     await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 10})
     if job_uuid:
@@ -144,6 +149,7 @@ async def _handle_job(job: dict) -> None:
             user_id=user_id,
             client_id=str(client_id) if client_id is not None else None,
             store_pdf=store_pdf,
+            store_input_pdf=store_input_pdf,
             signed_url_expires_in=expires_in,
             job_id=job_id,
             callback_url=callback_url,
@@ -189,14 +195,44 @@ async def _handle_job(job: dict) -> None:
         }
         result_payload["markdown"] = markdown
 
-    if store_pdf:
-        status["result"] = {
-            **(status.get("result") or {}),
-            "bucket": result.get("bucket"),
-            "storage_path": result.get("storage_path"),
-            "download_url": result.get("download_url"),
-        }
+    # Salvar documento de input se existir e ainda não tiver sido salvo
+    input_doc_id = input_document_id  # Usar o ID do upload se disponível
+    
+    # Se não veio do upload, salvar agora (modo legado)
+    if not input_doc_id:
+        input_storage = result.get("input_storage")
+        if job_uuid and isinstance(input_storage, dict):
+            input_bucket = input_storage.get("bucket")
+            input_path = input_storage.get("storage_path")
+            if isinstance(input_bucket, str) and isinstance(input_path, str):
+                filename = input_path.rsplit("/", 1)[-1] if "/" in input_path else input_path
+                try:
+                    input_doc_id = await create_document(
+                        job_uuid=job_uuid,
+                        user_id=user_id,
+                        client_id=str(client_id) if client_id is not None else None,
+                        document_type="input",
+                        bucket=input_bucket,
+                        storage_path=input_path,
+                        filename=filename,
+                        checksum_sha256=input_hash,
+                        size_bytes=None,  # Não temos o tamanho aqui
+                        metadata={"endpoint": "cnis_analysis"},
+                    )
+                    if input_doc_id:
+                        logger.info(f"Input document saved: {input_doc_id}")
+                except Exception:
+                    logger.exception("Failed to persist input document in database")
 
+    if store_pdf:
+        status["result"] = {output",
+                    bucket=bucket,
+                    storage_path=storage_path,
+                    filename=filename,
+                    checksum_sha256=checksum,
+                    size_bytes=size_bytes,
+                    metadata={"endpoint": "cnis_analysis", "audit_score": audit_score},
+                    linked_document_id=input_doc_id,  # Link output ao input
         bucket = result.get("bucket")
         storage_path = result.get("storage_path")
         pdf_bytes = result.get("content")

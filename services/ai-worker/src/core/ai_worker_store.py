@@ -187,6 +187,7 @@ async def create_document(
     size_bytes: int | None,
     mime_type: str = "application/pdf",
     metadata: dict | None = None,
+    linked_document_id: uuid.UUID | None = None,
 ) -> uuid.UUID | None:
     pool = get_db_pool()
     async with pool.connection() as conn:
@@ -201,8 +202,8 @@ async def create_document(
                 (
                     "insert into ai_worker.documents "
                     "(job_id, user_id, client_id, document_type, bucket, storage_path, filename, "
-                    "checksum_sha256, size_bytes, mime_type, metadata) "
-                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "checksum_sha256, size_bytes, mime_type, metadata, linked_document_id) "
+                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                     "on conflict (bucket, storage_path) do update set "
                     "job_id = excluded.job_id, "
                     "user_id = excluded.user_id, "
@@ -212,7 +213,8 @@ async def create_document(
                     "checksum_sha256 = excluded.checksum_sha256, "
                     "size_bytes = excluded.size_bytes, "
                     "mime_type = excluded.mime_type, "
-                    "metadata = excluded.metadata "
+                    "metadata = excluded.metadata, "
+                    "linked_document_id = excluded.linked_document_id "
                     "returning id"
                 ),
                 (
@@ -227,6 +229,7 @@ async def create_document(
                     size_bytes,
                     mime_type,
                     _to_jsonb(metadata) if metadata is not None else None,
+                    linked_document_id,
                 ),
             )
             row = await cur.fetchone()
@@ -280,3 +283,75 @@ def now_iso(dt: datetime | None) -> str | None:
         return dt.isoformat()
     except Exception:
         return None
+
+
+async def get_user_analysis_history(
+    *, user_id: str, endpoint_key: str = "cnis_analysis", limit: int = 50, offset: int = 0
+) -> list[dict]:
+    """Busca histórico de análises de um usuário com input e output documents."""
+    pool = get_db_pool()
+    async with pool.connection() as conn:
+        row_factory = _get_dict_row()
+        if row_factory:
+            cur_cm = conn.cursor(row_factory=row_factory)
+        else:
+            cur_cm = conn.cursor()
+
+        async with cur_cm as cur:
+            await cur.execute(
+                """
+                select 
+                    j.id as job_id,
+                    j.status,
+                    j.created_at,
+                    j.finished_at,
+                    j.result_payload,
+                    d_input.id as input_doc_id,
+                    d_input.filename as input_filename,
+                    d_input.size_bytes as input_size,
+                    d_input.storage_path as input_storage_path,
+                    d_input.bucket as input_bucket,
+                    d_input.created_at as input_created_at,
+                    d_output.id as output_doc_id,
+                    d_output.filename as output_filename,
+                    d_output.size_bytes as output_size,
+                    d_output.storage_path as output_storage_path,
+                    d_output.bucket as output_bucket,
+                    d_output.created_at as output_created_at
+                from ai_worker.jobs j
+                left join ai_worker.documents d_input 
+                    on d_input.job_id = j.id and d_input.document_type = 'input'
+                left join ai_worker.documents d_output 
+                    on d_output.job_id = j.id and d_output.document_type = 'output'
+                where j.user_id = %s and j.endpoint_key = %s
+                order by j.created_at desc
+                limit %s offset %s
+                """,
+                (user_id, endpoint_key, limit, offset),
+            )
+            rows = await cur.fetchall()
+            return [dict(row) for row in rows] if rows else []
+
+
+async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
+    """Busca documento por ID."""
+    pool = get_db_pool()
+    async with pool.connection() as conn:
+        row_factory = _get_dict_row()
+        if row_factory:
+            cur_cm = conn.cursor(row_factory=row_factory)
+        else:
+            cur_cm = conn.cursor()
+
+        async with cur_cm as cur:
+            await cur.execute(
+                """
+                select id, user_id, document_type, bucket, storage_path, 
+                       filename, size_bytes, created_at
+                from ai_worker.documents
+                where id = %s
+                """,
+                (document_id,),
+            )
+            row = await cur.fetchone()
+            return dict(row) if row else None

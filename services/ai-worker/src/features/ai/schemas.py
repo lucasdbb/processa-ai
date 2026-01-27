@@ -8,6 +8,7 @@ class CnisAnalysisRequest(BaseModel):
     user_id: str
     client_id: str | None = None
     store_pdf: bool = False
+    store_input_pdf: bool = True  # Sempre salvar input para histórico
     signed_url_expires_in: int = 600
 
 
@@ -40,3 +41,34 @@ class CnisAnalysisResponse(BaseModel):
     download_url: str | None = None
     storage_path: str | None = None
     bucket: str | None = None
+
+
+class DocumentResponse(BaseModel):
+    id: str
+    document_type: str  # 'input' ou 'output'
+    filename: str
+    size_bytes: int | None = None
+    created_at: str
+    download_url: str | None = None
+
+
+class AnalysisHistoryItem(BaseModel):
+    job_id: str
+    status: str
+    created_at: str
+    finished_at: str | None = None
+    input_document: DocumentResponse | None = None
+    output_document: DocumentResponse | None = None
+    audit_score: float | None = None
+
+
+class AnalysisHistoryResponse(BaseModel):
+    items: list[AnalysisHistoryItem]
+    total: int
+
+
+class DocumentDownloadResponse(BaseModel):
+    document_id: str
+    download_url: str
+    expires_in: int
+    filename: str

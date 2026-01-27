@@ -71,6 +71,169 @@ class AiService:
             name = f"{name}.pdf"
         return name
 
+    async def _generate_signed_url(self, *, bucket: str, storage_path: str, expires_in: int) -> str:
+        """Gera uma signed URL para um arquivo no Supabase Storage."""
+        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
+        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
+
+        if not base_url or not api_key:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Supabase Storage não configurado",
+            )
+
+        sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                signed = await client.post(
+                    sign_url,
+                    headers={
+                        "apikey": api_key,
+                        "Authorization": f"Bearer {api_key}",
+                    },
+                    json={"expiresIn": int(expires_in)},
+                )
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao gerar URL assinada",
+            )
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro de conexão ao gerar URL assinada",
+            )
+
+        if signed.status_code >= 400:
+            body = (signed.text or "").strip()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Falha ao gerar URL assinada"
+                    + (f" (status {signed.status_code})" if signed.status_code else "")
+                    + (f": {body[:200]}" if body else "")
+                ),
+            )
+
+        try:
+            data = signed.json()
+        except Exception:
+            data = None
+
+        signed_url = None
+        if isinstance(data, dict):
+            signed_url = data.get("signedURL") or data.get("signedUrl")
+        if not signed_url or not isinstance(signed_url, str):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta inválida ao gerar URL assinada",
+            )
+
+        return signed_url
+
+    async def upload_input_pdf(
+        self,
+        *,
+        pdf_bytes: bytes,
+        filename: str,
+        user_id: str,
+        client_id: str | None,
+        endpoint: str,
+        expires_in: int,
+    ) -> dict:
+        """
+        Faz upload de um PDF de input para o Supabase Storage.
+        
+        Retorna:
+        - bucket: nome do bucket
+        - storage_path: caminho no storage
+        - signed_url: URL assinada para acesso
+        - document_id: ID do documento no banco (opcional)
+        """
+        from src.core.ai_worker_store import create_document
+        
+        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
+        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
+        bucket = (settings.SUPABASE_OUTPUTS_BUCKET or "").strip()
+        if not base_url or not api_key or not bucket:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Supabase Storage não configurado",
+            )
+
+        # Gera hash e path de armazenamento
+        sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
+        slug = self._slugify_filename(filename)
+        storage_filename = f"{sha}_{slug}.pdf"
+        uid = self._sanitize_path_segment(user_id, default="unknown-user")
+        cid = self._sanitize_path_segment(client_id, default="no_client")
+        ep = self._sanitize_path_segment(endpoint, default="unknown")
+        
+        # Upload vai para pasta input/
+        storage_path = f"{uid}/{cid}/{ep}/input/{storage_filename}"
+
+        upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
+        headers = {
+            "apikey": api_key,
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/pdf",
+            "x-upsert": "true",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(upload_url, headers=headers, content=pdf_bytes)
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao subir PDF para storage",
+            )
+        except httpx.RequestError:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro de conexão ao subir PDF para storage",
+            )
+
+        if resp.status_code >= 400:
+            body = (resp.text or "").strip()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Falha ao subir PDF para storage"
+                    + (f" (status {resp.status_code})" if resp.status_code else "")
+                    + (f": {body[:200]}" if body else "")
+                ),
+            )
+
+        # Gera signed URL
+        signed_url = await self._generate_signed_url(
+            bucket=bucket, storage_path=storage_path, expires_in=expires_in
+        )
+
+        # Salva registro no banco
+        document_id = None
+        try:
+            document_id = await create_document(
+                user_id=user_id,
+                client_id=client_id,
+                document_type="input",
+                filename=filename,
+                storage_path=storage_path,
+                bucket=bucket,
+                size_bytes=len(pdf_bytes),
+                linked_document_id=None,  # Input não tem documento linkado
+            )
+            logger.info(f"Input document saved: {document_id}")
+        except Exception:
+            logger.exception("Failed to save input document in database")
+
+        return {
+            "bucket": bucket,
+            "storage_path": storage_path,
+            "signed_url": signed_url,
+            "document_id": str(document_id) if document_id else None,
+        }
+
     async def _upload_pdf_to_supabase(
         self,
         *,
@@ -131,52 +294,10 @@ class AiService:
                 ),
             )
 
-        sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                signed = await client.post(
-                    sign_url,
-                    headers={
-                        "apikey": api_key,
-                        "Authorization": f"Bearer {api_key}",
-                    },
-                    json={"expiresIn": int(expires_in)},
-                )
-        except httpx.TimeoutException:
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="Tempo limite ao gerar URL assinada",
-            )
-        except httpx.RequestError:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Erro de conexão ao gerar URL assinada",
-            )
-
-        if signed.status_code >= 400:
-            body = (signed.text or "").strip()
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=(
-                    "Falha ao gerar URL assinada"
-                    + (f" (status {signed.status_code})" if signed.status_code else "")
-                    + (f": {body[:200]}" if body else "")
-                ),
-            )
-
-        try:
-            data = signed.json()
-        except Exception:
-            data = None
-
-        signed_url = None
-        if isinstance(data, dict):
-            signed_url = data.get("signedURL") or data.get("signedUrl")
-        if not signed_url or not isinstance(signed_url, str):
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Resposta inválida ao gerar URL assinada",
-            )
+        # Usar método extraído para gerar signed URL
+        signed_url = await self._generate_signed_url(
+            bucket=bucket, storage_path=storage_path, expires_in=expires_in
+        )
 
         if signed_url.startswith("http"):
             download_url = signed_url
@@ -390,6 +511,7 @@ class AiService:
         user_id: str,
         client_id: str | None,
         store_pdf: bool = False,
+        store_input_pdf: bool = True,
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
         callback_url: str | None = None,
@@ -399,10 +521,25 @@ class AiService:
 
         # Verificar cache baseado no hash do arquivo
         input_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+        # Salvar PDF de input para histórico (se solicitado)
+        input_storage = None
+        if store_input_pdf:
+            input_storage = await self._upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes,
+                user_id=user_id,
+                client_id=client_id,
+                endpoint="cnis_analysis/input",
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+            )
+
         cached = await self._check_cache(input_hash=input_hash, endpoint_key="cnis_analysis")
         if cached and cached.get("markdown"):
             logger.info(f"Retornando resultado do cache para hash {input_hash[:16]}...")
             cached["cached"] = True
+            if input_storage:
+                cached["input_storage"] = input_storage
             if store_pdf and not cached.get("storage_path"):
                 # Gerar PDF do cache se necessário
                 stored = await self._markdown_to_pdf_and_store(
@@ -410,7 +547,7 @@ class AiService:
                     filename=inferred_filename,
                     user_id=user_id,
                     client_id=client_id,
-                    endpoint="cnis_analysis",
+                    endpoint="cnis_analysis/output",
                     expires_in=signed_url_expires_in,
                 )
                 cached.update(stored)
@@ -426,6 +563,15 @@ class AiService:
                 detail="Resposta inválida do n8n",
             )
 
+        response = {
+            "audit_score": result.get("audit_score"),
+            "markdown": markdown,
+            "input_hash": input_hash,
+        }
+
+        if input_storage:
+            response["input_storage"] = input_storage
+
         if store_pdf:
             if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
                 raise HTTPException(
@@ -438,22 +584,16 @@ class AiService:
                 filename=inferred_filename,
                 user_id=user_id,
                 client_id=client_id,
-                endpoint="cnis_analysis",
+                endpoint="cnis_analysis/output",
                 expires_in=signed_url_expires_in,
             )
-            stored["audit_score"] = result.get("audit_score")
-            stored["markdown"] = markdown
-            stored["input_hash"] = input_hash
-            return stored
+            response.update(stored)
+            return response
 
         title = inferred_filename
         if title.lower().endswith(".pdf"):
             title = title[:-4]
 
         content = self._markdown_to_pdf_bytes(markdown, title=title)
-        return {
-            "content": content,
-            "audit_score": result.get("audit_score"),
-            "markdown": markdown,
-            "input_hash": input_hash,
-        }
+        response["content"] = content
+        return response
