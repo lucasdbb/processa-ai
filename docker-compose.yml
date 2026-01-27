@@ -7,6 +7,34 @@ services:
     networks:
       - processa-network
 
+  # Gateway - API Gateway (ponto de entrada para todos os microserviços)
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - AI_WORKER_BASE_URL=http://ai-jobs-api:8001
+      - AI_WORKER_INTERNAL_TOKEN=${AI_WORKER_INTERNAL_TOKEN}
+      - CALC_ENGINE_BASE_URL=http://calc-engine:8002
+      - CALC_ENGINE_INTERNAL_TOKEN=${CALC_ENGINE_INTERNAL_TOKEN}
+      - OFFICE_API_BASE_URL=http://office-api:8003
+      - OFFICE_API_INTERNAL_TOKEN=${OFFICE_API_INTERNAL_TOKEN}
+      - UPSTREAM_TIMEOUT_S=${UPSTREAM_TIMEOUT_S:-300}
+    networks:
+      - processa-network
+    depends_on:
+      - ai-jobs-api
+      - calc-engine
+      - office-api
+
   # Frontend - Vite + React
   # frontend:
   #   build:
@@ -120,6 +148,30 @@ services:
     networks:
       - processa-network
 
+  # Office API - FastAPI (gestao de escritorio + Google Calendar)
+  office-api:
+    build:
+      context: ./services/office-api
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - OFFICE_API_INTERNAL_TOKEN=${OFFICE_API_INTERNAL_TOKEN:-changeme}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/2}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/office/calendar/callback}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - WEBHOOK_BASE_URL=${WEBHOOK_BASE_URL}
+    networks:
+      - processa-network
+    depends_on:
+      - redis
+
   # ai-jobs-worker - Worker do AI Jobs API
   ai-jobs-worker:
     build:
@@ -128,6 +180,7 @@ services:
     command: python -m src.worker
     environment:
       - AI_WORKER_INTERNAL_TOKEN=${AI_WORKER_INTERNAL_TOKEN:-changeme}
+      - AI_WORKER_CALLBACK_BASE_URL=http://host.docker.internal:8001
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
