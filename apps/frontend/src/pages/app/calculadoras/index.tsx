@@ -1,7 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Calculator, DollarSign, Calendar, TrendingUp, Clock, ArrowRight } from 'lucide-react'
+import { Calculator, DollarSign, Calendar, TrendingUp, Clock, ArrowRight, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { useUser } from '@/features/auth/hooks/use-user'
 
 type RescisaoDetalhes = {
   saldoSalario: number
@@ -93,7 +96,10 @@ export default function CalculadorasHubPage() {
     return calculators.find((c) => c.id === selectedCalculator) || null
   }, [selectedCalculator])
 
+  const { user } = useUser()
+  const [selectedCategory, setSelectedCategory] = useState('all')
   const [resultado, setResultado] = useState<Resultado | null>(null)
+  const [isCalculating, setIsCalculating] = useState(false)
   const [formData, setFormData] = useState({
     salario: '',
     dataAdmissao: '',
@@ -121,36 +127,67 @@ export default function CalculadorasHubPage() {
     []
   )
 
-  const calcularRescisao = useCallback(() => {
-    const salario = parseFloat(formData.salario) || 0
-    const dataAdm = new Date(formData.dataAdmissao)
-    const dataResc = new Date(formData.dataRescisao)
+  const calcularRescisao = useCallback(async () => {
+    if (!user?.id) {
+      toast.error('Usuário não autenticado')
+      return
+    }
 
-    const mesesTrabalhados = Math.max(0, (dataResc.getTime() - dataAdm.getTime()) / (1000 * 60 * 60 * 24 * 30))
-    const saldoSalario = salario * 0.5
-    const avisoPrevio = formData.avisoPrevio ? salario : 0
-    const feriasVencidasDias = parseInt(formData.feriasVencidas) || 0
-    const feriasVencidas = (salario / 30) * feriasVencidasDias * (4 / 3)
-    const feriasProporcionais = formData.feriasProporcionais ? (salario / 12) * (mesesTrabalhados % 12) : 0
-    const decimoTerceiro = formData.decimoTerceiro ? (salario / 12) * (mesesTrabalhados % 12) : 0
-    const fgts = salario * 0.08 * mesesTrabalhados
-    const multaFgts = formData.tipoRescisao === 'sem_justa_causa' ? fgts * 0.4 : 0
-    const total = saldoSalario + avisoPrevio + feriasVencidas + feriasProporcionais + decimoTerceiro + fgts + multaFgts
+    setIsCalculating(true)
+    try {
+      const res = await fetchWithCredentials(`${API_URL}/calculators/trabalhista/rescisao-trabalhista`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          salario_mensal: parseFloat(formData.salario) || 0,
+          data_admissao: formData.dataAdmissao,
+          data_rescisao: formData.dataRescisao,
+          tipo_rescisao: formData.tipoRescisao,
+          aviso_previo: formData.avisoPrevio,
+          ferias_vencidas: parseInt(formData.feriasVencidas) || 0,
+          ferias_proporcionais: formData.feriasProporcionais,
+          decimo_terceiro: formData.decimoTerceiro,
+        }),
+      })
 
-    setResultado({
-      tipo: 'rescisao',
-      detalhes: {
-        saldoSalario,
-        avisoPrevio,
-        feriasVencidas,
-        feriasProporcionais,
-        decimoTerceiro,
-        fgts,
-        multaFgts,
-        total,
-      },
-    })
-  }, [formData])
+      if (!res.ok) {
+        const error = await res.json().catch(() => null)
+        throw new Error((error as { detail?: string } | null)?.detail || 'Erro ao calcular rescisão')
+      }
+
+      const data = await res.json() as {
+        detalhes: {
+          saldo_salario: number
+          aviso_previo: number
+          ferias_vencidas: number
+          ferias_proporcionais: number
+          decimo_terceiro: number
+          fgts: number
+          multa_fgts: number
+          total: number
+        }
+      }
+
+      setResultado({
+        tipo: 'rescisao',
+        detalhes: {
+          saldoSalario: data.detalhes.saldo_salario,
+          avisoPrevio: data.detalhes.aviso_previo,
+          feriasVencidas: data.detalhes.ferias_vencidas,
+          feriasProporcionais: data.detalhes.ferias_proporcionais,
+          decimoTerceiro: data.detalhes.decimo_terceiro,
+          fgts: data.detalhes.fgts,
+          multaFgts: data.detalhes.multa_fgts,
+          total: data.detalhes.total,
+        },
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao calcular rescisão')
+    } finally {
+      setIsCalculating(false)
+    }
+  }, [formData, user])
 
   const calcularAposentadoria = useCallback(() => {
     const idade = parseInt(formData.idade) || 0
@@ -179,10 +216,10 @@ export default function CalculadorasHubPage() {
     })
   }, [formData])
 
-  const handleCalculate = useCallback(() => {
+  const handleCalculate = useCallback(async () => {
     setResultado(null)
     if (selectedCalculator === 'rescisao') {
-      calcularRescisao()
+      await calcularRescisao()
       return
     }
 
@@ -426,10 +463,15 @@ export default function CalculadorasHubPage() {
                 <button
                   type="button"
                   onClick={handleCalculate}
-                  className="bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
+                  disabled={isCalculating}
+                  className="bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Calculator className="h-5 w-5 mr-2" />
-                  <span>Calcular</span>
+                  {isCalculating ? (
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  ) : (
+                    <Calculator className="h-5 w-5 mr-2" />
+                  )}
+                  <span>{isCalculating ? 'Calculando...' : 'Calcular'}</span>
                 </button>
               </div>
             </div>
@@ -556,9 +598,10 @@ export default function CalculadorasHubPage() {
         {categories.map((category) => (
           <button
             key={category.id}
+            onClick={() => setSelectedCategory(category.id)}
             className={cn(
               'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
-              category.id === 'all'
+              category.id === selectedCategory
                 ? 'bg-slate-900 text-white'
                 : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
             )}
@@ -570,7 +613,7 @@ export default function CalculadorasHubPage() {
 
       {/* Calculator Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {calculators.map((calc) => {
+        {calculators.filter((calc) => selectedCategory === 'all' || calc.category === selectedCategory).map((calc) => {
           const Icon = calc.icon
 
           return (

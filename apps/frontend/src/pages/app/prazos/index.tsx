@@ -1,52 +1,73 @@
-import { useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { CalendarClock, AlertTriangle, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { DeadlineFormDialog } from '@/components/forms/deadline-form-dialog'
 
-// Dados mockados
-const mockDeadlines = [
-  {
-    id: '1',
-    type: 'Contestacao',
-    process: '0001234-12.2025.5.02.0001',
-    client: 'Joao Silva',
-    date: new Date(2026, 0, 20),
-    status: 'pending',
-  },
-  {
-    id: '2',
-    type: 'Recurso Ordinario',
-    process: '0005678-34.2025.5.02.0002',
-    client: 'Maria Oliveira',
-    date: new Date(2026, 0, 22),
-    status: 'pending',
-  },
-  {
-    id: '3',
-    type: 'Manifestacao',
-    process: '0009012-56.2025.8.26.0100',
-    client: 'Pedro Santos',
-    date: new Date(2026, 0, 25),
-    status: 'pending',
-  },
-  {
-    id: '4',
-    type: 'Audiencia',
-    process: '0003456-78.2025.5.02.0003',
-    client: 'Ana Costa',
-    date: new Date(2026, 0, 28),
-    status: 'pending',
-  },
-]
+type Deadline = {
+  id: string
+  type: string
+  process_id: string
+  process_number: string
+  client_name: string
+  date: string
+  description: string | null
+  status: 'pending' | 'completed' | 'overdue'
+  days_until: number
+}
+
+type DeadlineListResponse = {
+  deadlines: Deadline[]
+  total: number
+  today_count: number
+  week_count: number
+  overdue_count: number
+}
 
 export default function PrazosPage() {
-  const [currentDate] = useState(new Date(2026, 0, 20))
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   type EditingDeadline = ComponentProps<typeof DeadlineFormDialog>['deadline']
   type SaveDeadlinePayload = Parameters<ComponentProps<typeof DeadlineFormDialog>['onSave']>[0]
 
   const [editingDeadline, setEditingDeadline] = useState<EditingDeadline>(undefined)
+
+  const [deadlines, setDeadlines] = useState<Deadline[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [todayCount, setTodayCount] = useState(0)
+  const [weekCount, setWeekCount] = useState(0)
+  const [overdueCount, setOverdueCount] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+
+  const fetchDeadlines = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const res = await fetchWithCredentials(`${API_URL}/office/deadlines`)
+      if (!res.ok) throw new Error('Erro ao carregar prazos')
+
+      const data = (await res.json()) as DeadlineListResponse
+      setDeadlines(data.deadlines)
+      setTodayCount(data.today_count)
+      setWeekCount(data.week_count)
+      setOverdueCount(data.overdue_count)
+      setTotalCount(data.total)
+    } catch {
+      setDeadlines([])
+      setTodayCount(0)
+      setWeekCount(0)
+      setOverdueCount(0)
+      setTotalCount(0)
+      toast.error('Erro ao carregar prazos')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchDeadlines()
+  }, [fetchDeadlines])
 
   const handleSaveDeadline = (deadlineData: SaveDeadlinePayload) => {
     console.log('Salvando prazo:', deadlineData)
@@ -58,11 +79,6 @@ export default function PrazosPage() {
     setIsFormOpen(true)
   }
 
-  const getDaysUntil = (date: Date) => {
-    const diff = date.getTime() - currentDate.getTime()
-    return Math.ceil(diff / (1000 * 60 * 60 * 24))
-  }
-
   const getUrgencyLevel = (daysUntil: number) => {
     if (daysUntil <= 0) return 'critical'
     if (daysUntil <= 2) return 'urgent'
@@ -70,9 +86,20 @@ export default function PrazosPage() {
     return 'normal'
   }
 
-  const sortedDeadlines = [...mockDeadlines].sort(
-    (a, b) => a.date.getTime() - b.date.getTime()
-  )
+  const formatDeadlineDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+    })
+  }
+
+  const formatDaysUntil = (daysUntil: number) => {
+    if (daysUntil === 0) return 'Hoje'
+    if (daysUntil === 1) return 'Amanha'
+    if (daysUntil < 0) return `${Math.abs(daysUntil)} dias atras`
+    return `em ${daysUntil} dias`
+  }
 
   return (
     <div className="space-y-6">
@@ -98,11 +125,9 @@ export default function PrazosPage() {
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
           <div className="flex items-center gap-2 text-red-600">
             <AlertTriangle className="h-5 w-5" />
-            <span className="font-semibold">Hoje</span>
+            <span className="font-semibold">Hoje / Atrasados</span>
           </div>
-          <p className="text-2xl font-bold text-red-600 mt-2">
-            {sortedDeadlines.filter((d) => getDaysUntil(d.date) === 0).length}
-          </p>
+          <p className="text-2xl font-bold text-red-600 mt-2">{todayCount + overdueCount}</p>
         </div>
         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
           <div className="flex items-center gap-2 text-yellow-600">
@@ -110,7 +135,7 @@ export default function PrazosPage() {
             <span className="font-semibold">Proximos 3 dias</span>
           </div>
           <p className="text-2xl font-bold text-yellow-600 mt-2">
-            {sortedDeadlines.filter((d) => getDaysUntil(d.date) > 0 && getDaysUntil(d.date) <= 3).length}
+            {deadlines.filter((d) => d.days_until > 0 && d.days_until <= 3).length}
           </p>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
@@ -118,23 +143,21 @@ export default function PrazosPage() {
             <CalendarClock className="h-5 w-5" />
             <span className="font-semibold">Esta semana</span>
           </div>
-          <p className="text-2xl font-bold text-blue-600 mt-2">
-            {sortedDeadlines.filter((d) => getDaysUntil(d.date) > 0 && getDaysUntil(d.date) <= 7).length}
-          </p>
+          <p className="text-2xl font-bold text-blue-600 mt-2">{weekCount}</p>
         </div>
         <div className="bg-muted border border-border rounded-xl p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <CalendarClock className="h-5 w-5" />
             <span className="font-semibold">Total</span>
           </div>
-          <p className="text-2xl font-bold text-foreground mt-2">{sortedDeadlines.length}</p>
+          <p className="text-2xl font-bold text-foreground mt-2">{totalCount}</p>
         </div>
       </div>
 
       {/* Calendar Header */}
       <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-foreground">Janeiro 2026</h2>
+          <h2 className="font-semibold text-foreground">Prazos</h2>
           <div className="flex items-center gap-2">
             <button className="p-2 hover:bg-muted rounded-lg transition-colors">
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
@@ -148,72 +171,75 @@ export default function PrazosPage() {
           </div>
         </div>
 
-        {/* Simple List View */}
-        <div className="space-y-2">
-          {sortedDeadlines.map((deadline) => {
-            const daysUntil = getDaysUntil(deadline.date)
-            const urgency = getUrgencyLevel(daysUntil)
+        {/* List View */}
+        {isLoading ? (
+          <div className="py-12 flex justify-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        ) : deadlines.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground text-sm">
+            <CalendarClock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>Nenhum prazo encontrado.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {deadlines.map((deadline) => {
+              const urgency = getUrgencyLevel(deadline.days_until)
 
-            return (
-              <div
-                key={deadline.id}
-                className={cn(
-                  'flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer',
-                  urgency === 'critical' && 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10',
-                  urgency === 'urgent' && 'bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10',
-                  urgency === 'warning' && 'bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10',
-                  urgency === 'normal' && 'bg-muted/30 border-border hover:bg-muted/50'
-                )}
-              >
+              return (
                 <div
+                  key={deadline.id}
                   className={cn(
-                    'w-2 h-2 rounded-full shrink-0',
-                    urgency === 'critical' && 'bg-red-500',
-                    urgency === 'urgent' && 'bg-yellow-500',
-                    urgency === 'warning' && 'bg-yellow-500',
-                    urgency === 'normal' && 'bg-green-500'
+                    'flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer',
+                    urgency === 'critical' && 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10',
+                    urgency === 'urgent' && 'bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10',
+                    urgency === 'warning' && 'bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10',
+                    urgency === 'normal' && 'bg-muted/30 border-border hover:bg-muted/50'
                   )}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{deadline.type}</span>
-                    {urgency === 'critical' && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-500/10 text-red-600 rounded">
-                        HOJE
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {deadline.process} - {deadline.client}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-medium text-foreground">
-                    {deadline.date.toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: 'short',
-                    })}
-                  </p>
-                  <p
+                >
+                  <div
                     className={cn(
-                      'text-xs',
-                      urgency === 'critical' && 'text-red-600',
-                      urgency === 'urgent' && 'text-yellow-600',
-                      urgency === 'warning' && 'text-yellow-600',
-                      urgency === 'normal' && 'text-muted-foreground'
+                      'w-2 h-2 rounded-full shrink-0',
+                      urgency === 'critical' && 'bg-red-500',
+                      urgency === 'urgent' && 'bg-yellow-500',
+                      urgency === 'warning' && 'bg-yellow-500',
+                      urgency === 'normal' && 'bg-green-500'
                     )}
-                  >
-                    {daysUntil === 0
-                      ? 'Hoje'
-                      : daysUntil === 1
-                        ? 'Amanha'
-                        : `em ${daysUntil} dias`}
-                  </p>
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground">{deadline.type}</span>
+                      {urgency === 'critical' && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-500/10 text-red-600 rounded">
+                          HOJE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {deadline.process_number} - {deadline.client_name}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-medium text-foreground">
+                      {formatDeadlineDate(deadline.date)}
+                    </p>
+                    <p
+                      className={cn(
+                        'text-xs',
+                        urgency === 'critical' && 'text-red-600',
+                        urgency === 'urgent' && 'text-yellow-600',
+                        urgency === 'warning' && 'text-yellow-600',
+                        urgency === 'normal' && 'text-muted-foreground'
+                      )}
+                    >
+                      {formatDaysUntil(deadline.days_until)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Deadline Form Dialog */}

@@ -11,7 +11,7 @@ type Material = {
   slug: string
   title: string
   description?: string | null
-  group: string
+  category: string
   mime_type: 'pdf' | 'xls' | 'xlsx' | 'xlsm' | 'docx' | 'csv'
 }
 
@@ -87,7 +87,7 @@ export default function MaterialsPage() {
   const grouped = useMemo(() => {
     const map = new Map<string, Material[]>()
     for (const item of materials) {
-      const key = item.group || 'Outros'
+      const key = item.category || 'Outros'
       const arr = map.get(key) || []
       arr.push(item)
       map.set(key, arr)

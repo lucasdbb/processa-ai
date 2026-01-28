@@ -1,9 +1,29 @@
-import { useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, FolderKanban } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
-import { mockProcesses } from '@/hooks/use-global-search'
+
+type Process = {
+  id: string
+  number: string
+  type: string
+  court: string
+  client_id: string
+  client_name: string
+  defendant: string
+  value: number
+  status: 'active' | 'archived'
+  next_deadline: string | null
+}
+
+type ProcessListResponse = {
+  processes: Process[]
+  total: number
+}
 
 export default function ProcessosPage() {
   const [search, setSearch] = useState('')
@@ -17,6 +37,42 @@ export default function ProcessosPage() {
 
   const [editingProcess, setEditingProcess] = useState<EditingProcess>(undefined)
 
+  const [processes, setProcesses] = useState<Process[]>([])
+  const [total, setTotal] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string) => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (searchQuery.trim()) params.set('search', searchQuery.trim())
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      params.set('limit', '50')
+      params.set('offset', '0')
+
+      const res = await fetchWithCredentials(`${API_URL}/office/processes?${params.toString()}`)
+      if (!res.ok) throw new Error('Erro ao carregar processos')
+
+      const data = (await res.json()) as ProcessListResponse
+      setProcesses(data.processes)
+      setTotal(data.total)
+    } catch {
+      setProcesses([])
+      setTotal(0)
+      toast.error('Erro ao carregar processos')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      void fetchProcesses(search, filter)
+    }, search ? 300 : 0)
+
+    return () => clearTimeout(timeout)
+  }, [search, filter, fetchProcesses])
+
   const handleSaveProcess = (processData: SaveProcessPayload) => {
     console.log('Salvando processo:', processData)
     // Aqui você implementaria a lógica de salvar no backend
@@ -26,20 +82,6 @@ export default function ProcessosPage() {
     setEditingProcess(undefined)
     setIsFormOpen(true)
   }
-
-  const filteredProcesses = mockProcesses.filter((process) => {
-    const matchesSearch =
-      process.number.includes(search) ||
-      process.client.toLowerCase().includes(search.toLowerCase()) ||
-      process.type.toLowerCase().includes(search.toLowerCase())
-
-    const matchesFilter =
-      filter === 'all' ||
-      (filter === 'active' && process.status === 'active') ||
-      (filter === 'archived' && process.status === 'archived')
-
-    return matchesSearch && matchesFilter
-  })
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -99,7 +141,11 @@ export default function ProcessosPage() {
       </div>
 
       {/* Process List */}
-      {filteredProcesses.length === 0 ? (
+      {isLoading ? (
+        <div className="py-12 flex justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : processes.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
             <FolderKanban className="h-6 w-6 text-muted-foreground" />
@@ -114,7 +160,7 @@ export default function ProcessosPage() {
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="divide-y divide-border">
-            {filteredProcesses.map((process) => (
+            {processes.map((process) => (
               <Link key={process.id} to={`/app/processos/${process.id}`}>
                 <div className="p-4 sm:p-5 hover:bg-accent/50 transition-all duration-200 cursor-pointer border-l-2 border-transparent hover:border-primary">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -144,7 +190,7 @@ export default function ProcessosPage() {
                             {process.court}
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            <span className="text-foreground">{process.client}</span> vs{' '}
+                            <span className="text-foreground">{process.client_name}</span> vs{' '}
                             {process.defendant}
                           </p>
                         </div>
@@ -157,9 +203,9 @@ export default function ProcessosPage() {
                         </p>
                         <p className="text-xs text-muted-foreground">Valor da causa</p>
                       </div>
-                      {process.nextDeadline && (
+                      {process.next_deadline && (
                         <div className="px-2 py-1 bg-yellow-500/10 text-yellow-600 rounded text-xs font-medium">
-                          Prazo em {process.nextDeadline}
+                          Prazo em {process.next_deadline}
                         </div>
                       )}
                     </div>
@@ -173,7 +219,7 @@ export default function ProcessosPage() {
 
       {/* Pagination placeholder */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>Mostrando {filteredProcesses.length} de {mockProcesses.length} processos</span>
+        <span>Mostrando {processes.length} de {total} processos</span>
       </div>
 
       {/* Process Form Dialog */}

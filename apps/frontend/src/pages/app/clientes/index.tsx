@@ -1,9 +1,28 @@
-import { useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, Users } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ClientFormDialog } from '@/components/forms/client-form-dialog'
-import { mockClients } from '@/hooks/use-global-search'
+
+type Client = {
+  id: string
+  name: string
+  cpf: string
+  phone: string | null
+  email: string | null
+  status: 'active' | 'archived'
+  processes_count: number
+  calculations_count: number
+  last_activity: string | null
+}
+
+type ClientListResponse = {
+  clients: Client[]
+  total: number
+}
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
@@ -13,6 +32,42 @@ export default function ClientesPage() {
   type SaveClientPayload = Parameters<ComponentProps<typeof ClientFormDialog>['onSave']>[0]
 
   const [editingClient, setEditingClient] = useState<EditingClient>(undefined)
+
+  const [clients, setClients] = useState<Client[]>([])
+  const [total, setTotal] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const fetchClients = useCallback(async (searchQuery: string, statusFilter: string) => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (searchQuery.trim()) params.set('search', searchQuery.trim())
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      params.set('limit', '50')
+      params.set('offset', '0')
+
+      const res = await fetchWithCredentials(`${API_URL}/office/clients?${params.toString()}`)
+      if (!res.ok) throw new Error('Erro ao carregar clientes')
+
+      const data = (await res.json()) as ClientListResponse
+      setClients(data.clients)
+      setTotal(data.total)
+    } catch {
+      setClients([])
+      setTotal(0)
+      toast.error('Erro ao carregar clientes')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      void fetchClients(search, filter)
+    }, search ? 300 : 0)
+
+    return () => clearTimeout(timeout)
+  }, [search, filter, fetchClients])
 
   const handleSaveClient = (clientData: SaveClientPayload) => {
     console.log('Salvando cliente:', clientData)
@@ -24,19 +79,18 @@ export default function ClientesPage() {
     setIsFormOpen(true)
   }
 
-  const filteredClients = mockClients.filter((client) => {
-    const matchesSearch =
-      client.name.toLowerCase().includes(search.toLowerCase()) ||
-      client.cpf.includes(search) ||
-      client.email.toLowerCase().includes(search.toLowerCase())
-
-    const matchesFilter =
-      filter === 'all' ||
-      (filter === 'active' && client.status === 'active') ||
-      (filter === 'archived' && client.status === 'archived')
-
-    return matchesSearch && matchesFilter
-  })
+  const formatLastActivity = (dateStr: string | null) => {
+    if (!dateStr) return 'Sem atividade'
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    if (diffDays === 0) return 'hoje'
+    if (diffDays === 1) return 'ha 1 dia'
+    if (diffDays < 7) return `ha ${diffDays} dias`
+    if (diffDays < 30) return `ha ${Math.floor(diffDays / 7)} semana(s)`
+    return `ha ${Math.floor(diffDays / 30)} mes(es)`
+  }
 
   return (
     <div className="space-y-6">
@@ -89,7 +143,11 @@ export default function ClientesPage() {
       </div>
 
       {/* Client List */}
-      {filteredClients.length === 0 ? (
+      {isLoading ? (
+        <div className="py-12 flex justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : clients.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
             <Users className="h-6 w-6 text-muted-foreground" />
@@ -104,7 +162,7 @@ export default function ClientesPage() {
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="divide-y divide-border">
-            {filteredClients.map((client) => (
+            {clients.map((client) => (
               <Link key={client.id} to={`/app/clientes/${client.id}`}>
                 <div className="p-4 sm:p-5 hover:bg-accent/50 transition-all duration-200 cursor-pointer border-l-2 border-transparent hover:border-primary">
                   <div className="flex items-start gap-4">
@@ -131,11 +189,11 @@ export default function ClientesPage() {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-0.5">
-                        CPF: {client.cpf} &middot; {client.phone}
+                        CPF: {client.cpf} &middot; {client.phone || 'Sem telefone'}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {client.processes} processos &middot; {client.calculations} calculos
-                        &middot; Ultimo acesso: {client.lastActivity}
+                        {client.processes_count} processos &middot; {client.calculations_count} calculos
+                        &middot; Ultimo acesso: {formatLastActivity(client.last_activity)}
                       </p>
                     </div>
                   </div>
@@ -148,7 +206,7 @@ export default function ClientesPage() {
 
       {/* Pagination placeholder */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>Mostrando {filteredClients.length} de {mockClients.length} clientes</span>
+        <span>Mostrando {clients.length} de {total} clientes</span>
       </div>
 
       {/* Client Form Dialog */}
