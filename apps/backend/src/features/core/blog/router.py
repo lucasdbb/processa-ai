@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
 from src.core.auth import get_user_id, get_user_role, verify_internal_token
 from src.features.core.blog.schemas import (
@@ -81,22 +81,22 @@ async def add_coauthor(
 @router.patch("/posts/{post_id}/publish")
 async def publish_post(
     post_id: str,
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.publish(x_user_role, post_id)
+    return await service.publish(user_role, post_id)
 
 
 @router.patch("/posts/{post_id}/restore")
 async def restore_post(
     post_id: str,
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.restore(x_user_role, post_id)
+    return await service.restore(user_role, post_id)
 
 
 @router.delete("/posts/{post_id}")
 async def delete_post(
     post_id: str,
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.delete_post(x_user_role, post_id)
+    return await service.delete_post(user_role, post_id)

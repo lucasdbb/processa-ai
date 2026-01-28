@@ -31,6 +31,7 @@ api_router = APIRouter()
 
 # Core features
 api_router.include_router(profiles_router, prefix="/profiles", tags=["Profiles"])
+api_router.include_router(profiles_router, prefix="/users", tags=["Users"])  # Alias
 api_router.include_router(blog_router, prefix="/blog", tags=["Blog"])
 api_router.include_router(newsletter_router, prefix="/newsletter", tags=["Newsletter"])
 api_router.include_router(support_router, prefix="/support", tags=["Support"])

@@ -55,14 +55,9 @@ class BlogService:
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
-            pr = (
-                self.supabase.table("profiles")
-                .select("id,full_name")
-                .in_("id", author_ids)
-                .execute()
-            )
+            pr = self.supabase.table("profiles").select("id,name").in_("id", author_ids).execute()
             for p in pr.data or []:
-                profiles[p["id"]] = p.get("full_name")
+                profiles[p["id"]] = p.get("name")
 
         # Fetch categories
         category_ids = list({row["category_id"] for row in data if row.get("category_id")})
@@ -134,14 +129,9 @@ class BlogService:
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
-            pr = (
-                self.supabase.table("profiles")
-                .select("id,full_name")
-                .in_("id", author_ids)
-                .execute()
-            )
+            pr = self.supabase.table("profiles").select("id,name").in_("id", author_ids).execute()
             for p in pr.data or []:
-                profiles[p["id"]] = p.get("full_name")
+                profiles[p["id"]] = p.get("name")
         items = []
         for row in data:
             items.append(
@@ -212,24 +202,28 @@ class BlogService:
                 tags = [t["name"] for t in tags_res.data or []]
 
         authors_ids = {post.get("author_id")}
-        co = (
-            self.supabase.table("blog_post_authors")
-            .select("user_id,role")
-            .eq("post_id", post["id"])
-            .execute()
-        )
-        for a in co.data or []:
-            authors_ids.add(a["user_id"])
+        try:
+            co = (
+                self.supabase.table("blog_post_authors")
+                .select("user_id,role")
+                .eq("post_id", post["id"])
+                .execute()
+            )
+            for a in co.data or []:
+                authors_ids.add(a["user_id"])
+        except Exception:
+            # Tabela blog_post_authors não existe ainda
+            pass
         profiles = []
         if authors_ids:
             pr = (
                 self.supabase.table("profiles")
-                .select("id,full_name")
+                .select("id,name")
                 .in_("id", list(authors_ids))
                 .execute()
             )
             profiles = pr.data or []
-        authors = [{"id": str(p["id"]), "name": p.get("full_name")} for p in profiles]
+        authors = [{"id": str(p["id"]), "name": p.get("name")} for p in profiles]
 
         return {
             "id": str(post.get("id")),
@@ -294,24 +288,28 @@ class BlogService:
 
         # Fetch authors
         authors_ids = {post.get("author_id")}
-        co = (
-            self.supabase.table("blog_post_authors")
-            .select("user_id,role")
-            .eq("post_id", post["id"])
-            .execute()
-        )
-        for a in co.data or []:
-            authors_ids.add(a["user_id"])
+        try:
+            co = (
+                self.supabase.table("blog_post_authors")
+                .select("user_id,role")
+                .eq("post_id", post["id"])
+                .execute()
+            )
+            for a in co.data or []:
+                authors_ids.add(a["user_id"])
+        except Exception:
+            # Tabela blog_post_authors não existe ainda
+            pass
         profiles = []
         if authors_ids:
             pr = (
                 self.supabase.table("profiles")
-                .select("id,full_name")
+                .select("id,name")
                 .in_("id", list(authors_ids))
                 .execute()
             )
             profiles = pr.data or []
-        authors = [{"id": str(p["id"]), "name": p.get("full_name")} for p in profiles]
+        authors = [{"id": str(p["id"]), "name": p.get("name")} for p in profiles]
 
         return {
             "id": str(post.get("id")),
@@ -431,15 +429,19 @@ class BlogService:
         post = rows[0]
         is_author = post.get("author_id") == user_id
         if not is_author:
-            co = (
-                self.supabase.table("blog_post_authors")
-                .select("user_id")
-                .eq("post_id", post_id)
-                .eq("user_id", user_id)
-                .limit(1)
-                .execute()
-            )
-            is_author = bool(co.data)
+            try:
+                co = (
+                    self.supabase.table("blog_post_authors")
+                    .select("user_id")
+                    .eq("post_id", post_id)
+                    .eq("user_id", user_id)
+                    .limit(1)
+                    .execute()
+                )
+                is_author = bool(co.data)
+            except Exception:
+                # Tabela blog_post_authors não existe ainda
+                pass
         if not is_author:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
         updates = {}

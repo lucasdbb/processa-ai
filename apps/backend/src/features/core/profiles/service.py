@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 
-from src.features.core.profiles.schemas import UpdateProfile
 from src.core.supabase import get_supabase
+from src.features.core.profiles.schemas import UpdateProfile
 
 
 class ProfilesService:
@@ -15,7 +15,7 @@ class ProfilesService:
         try:
             profile_response = (
                 self.supabase.table("profiles")
-                .select("id, email, full_name, role, avatar_url, created_at")
+                .select("id, email, name, role, avatar_url, created_at")
                 .eq("id", user_id)
                 .execute()
             )
@@ -55,7 +55,7 @@ class ProfilesService:
             return {
                 "id": profile["id"],
                 "email": profile["email"],
-                "name": profile.get("full_name") or profile["email"].split("@")[0],
+                "name": profile.get("name") or profile["email"].split("@")[0],
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
                 "phone": None,
@@ -88,7 +88,7 @@ class ProfilesService:
             # Map frontend fields to database fields
             db_update = {}
             if "name" in update_data:
-                db_update["full_name"] = update_data["name"]
+                db_update["name"] = update_data["name"]
             if "avatar_url" in update_data:
                 db_update["avatar_url"] = update_data["avatar_url"]
             if "phone" in update_data:
@@ -124,7 +124,7 @@ class ProfilesService:
             return {
                 "id": profile["id"],
                 "email": profile["email"],
-                "name": profile.get("full_name", profile["email"].split("@")[0]),
+                "name": profile.get("name", profile["email"].split("@")[0]),
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
                 "phone": profile.get("phone"),
@@ -145,8 +145,8 @@ class ProfilesService:
         """List all user profiles (admin only)."""
         try:
             fields = (
-                "id, email, full_name, role, avatar_url, phone, "
-                "document_type, document_number, status, created_at"
+                "id, email, name, role, avatar_url, phone, "
+                "status, bio, company, created_at, updated_at"
             )
             response = (
                 self.supabase.table("profiles")
@@ -161,15 +161,17 @@ class ProfilesService:
                 {
                     "id": p["id"],
                     "email": p["email"],
-                    "name": p.get("full_name") or "",
-                    "role": p.get("role", "user"),
+                    "name": p.get("name") or "",
+                    "role": p.get("role", "client"),
                     "avatar_url": p.get("avatar_url"),
                     "phone": p.get("phone"),
-                    "document_type": p.get("document_type"),
-                    "document_number": p.get("document_number"),
+                    "status": p.get("status", "active"),
+                    "bio": p.get("bio"),
+                    "company": p.get("company"),
                     "newsletter_opt_in": False,
                     "confirmed_at": None,
                     "created_at": p["created_at"],
+                    "updated_at": p.get("updated_at"),
                 }
                 for p in data
             ]

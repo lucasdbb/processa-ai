@@ -4,8 +4,8 @@ import stripe
 from fastapi import HTTPException, status
 
 from src.core.config import settings
-from src.core.supabase import get_supabase
 from src.core.logging import logger
+from src.core.supabase import get_supabase
 
 # Initialize Stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -35,7 +35,7 @@ class SubscriptionsService:
         try:
             profile_res = (
                 self.supabase.table("profiles")
-                .select("email, full_name")
+                .select("email, name")
                 .eq("id", user_id)
                 .limit(1)
                 .execute()
@@ -59,7 +59,7 @@ class SubscriptionsService:
         try:
             customer = stripe.Customer.create(
                 email=profile["email"],
-                name=profile.get("full_name"),
+                name=profile.get("name"),
                 metadata={"user_id": user_id},
             )
         except stripe.StripeError as e:
