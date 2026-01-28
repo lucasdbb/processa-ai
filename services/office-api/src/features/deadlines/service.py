@@ -85,8 +85,7 @@ class DeadlinesService:
         # Filter by status
         if params.status:
             deadlines = [
-                d for d in deadlines
-                if self._get_status(d["date"], d["status"]) == params.status
+                d for d in deadlines if self._get_status(d["date"], d["status"]) == params.status
             ]
 
         # Filter by process
@@ -105,7 +104,7 @@ class DeadlinesService:
         total = len(deadlines)
 
         # Pagination
-        deadlines = deadlines[params.offset:params.offset + params.limit]
+        deadlines = deadlines[params.offset : params.offset + params.limit]
 
         now_ts = datetime.now(timezone.utc)
         responses = [

@@ -143,7 +143,7 @@ class AiService:
     ) -> dict:
         """
         Faz upload de um PDF de input para o Supabase Storage.
-        
+
         Retorna:
         - bucket: nome do bucket
         - storage_path: caminho no storage
@@ -151,7 +151,7 @@ class AiService:
         - document_id: ID do documento no banco (opcional)
         """
         from src.core.ai_worker_store import create_document
-        
+
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
         bucket = (settings.SUPABASE_OUTPUTS_BUCKET or "").strip()
@@ -168,7 +168,7 @@ class AiService:
         uid = self._sanitize_path_segment(user_id, default="unknown-user")
         cid = self._sanitize_path_segment(client_id, default="no_client")
         ep = self._sanitize_path_segment(endpoint, default="unknown")
-        
+
         # Upload vai para pasta input/
         storage_path = f"{uid}/{cid}/{ep}/input/{storage_filename}"
 

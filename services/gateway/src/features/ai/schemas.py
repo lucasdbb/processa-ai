@@ -1,4 +1,5 @@
 """Schemas for AI endpoints"""
+
 from pydantic import BaseModel
 
 

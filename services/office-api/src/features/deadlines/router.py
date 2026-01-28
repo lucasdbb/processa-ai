@@ -35,9 +35,13 @@ async def list_deadlines(
         limit=limit,
         offset=offset,
     )
-    deadlines, total, today_count, week_count, overdue_count = (
-        await deadlines_service.list_deadlines(user_id, params)
-    )
+    (
+        deadlines,
+        total,
+        today_count,
+        week_count,
+        overdue_count,
+    ) = await deadlines_service.list_deadlines(user_id, params)
     return DeadlineListResponse(
         deadlines=deadlines,
         total=total,

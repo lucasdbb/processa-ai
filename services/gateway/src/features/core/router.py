@@ -165,7 +165,9 @@ async def create_blog_post(request: Request, user=Depends(get_current_user)):
 
 
 @router.patch("/blog/posts/{post_id}")
-async def update_blog_post(post_id: str, request: Request, user=Depends(get_current_user)):
+async def update_blog_post(
+    post_id: str, request: Request, user=Depends(get_current_user)
+):
     """Update a blog post."""
     body = await request.json()
     return await proxy_request(

@@ -16,27 +16,27 @@ async def get_current_user(
     Por enquanto apenas extrai o token - validação completa será feita pelos microserviços.
     """
     token = None
-    
+
     # 1. Tentar header Authorization Bearer
     if credentials:
         token = credentials.credentials
-    
+
     # 2. Tentar cookie (fallback)
     if not token:
         token = request.cookies.get("access_token")
-    
+
     # 3. Tentar header Authorization sem Bearer
     if not token:
         auth_header = request.headers.get("authorization", "")
         if auth_header.lower().startswith("bearer "):
             token = auth_header[7:].strip()
-    
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token de autenticação não fornecido",
         )
-    
+
     # Retorna token para ser repassado aos microserviços
     return {"token": token}
 

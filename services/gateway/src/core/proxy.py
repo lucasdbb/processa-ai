@@ -58,13 +58,19 @@ async def proxy_request(
                 resp = await client.get(url, headers=headers, params=params)
             elif method == "POST":
                 if files:
-                    resp = await client.post(url, headers=headers, files=files, data=data)
+                    resp = await client.post(
+                        url, headers=headers, files=files, data=data
+                    )
                 else:
-                    resp = await client.post(url, headers=headers, json=json, params=params)
+                    resp = await client.post(
+                        url, headers=headers, json=json, params=params
+                    )
             elif method == "PUT":
                 resp = await client.put(url, headers=headers, json=json, params=params)
             elif method == "PATCH":
-                resp = await client.patch(url, headers=headers, json=json, params=params)
+                resp = await client.patch(
+                    url, headers=headers, json=json, params=params
+                )
             elif method == "DELETE":
                 resp = await client.delete(url, headers=headers, params=params)
             else:

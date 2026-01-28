@@ -64,7 +64,8 @@ class ClientsService:
         if params.search:
             search = params.search.lower()
             clients = [
-                c for c in clients
+                c
+                for c in clients
                 if search in c["name"].lower()
                 or search in c["cpf"]
                 or (c["email"] and search in c["email"].lower())
@@ -77,7 +78,7 @@ class ClientsService:
         total = len(clients)
 
         # Pagination
-        clients = clients[params.offset:params.offset + params.limit]
+        clients = clients[params.offset : params.offset + params.limit]
 
         now = datetime.now()
         return [

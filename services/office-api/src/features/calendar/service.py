@@ -262,7 +262,7 @@ class CalendarService:
 
         query = f"""
             UPDATE office_api.events
-            SET {', '.join(updates)}
+            SET {", ".join(updates)}
             WHERE id = %s AND user_id = %s
             RETURNING
                 id, user_id, calendar_id, google_event_id,

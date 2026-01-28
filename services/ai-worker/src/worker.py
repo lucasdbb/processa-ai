@@ -118,7 +118,7 @@ async def _handle_job(job: dict) -> None:
     store_pdf = bool(payload.get("store_pdf"))
     store_input_pdf = bool(payload.get("store_input_pdf", True))  # Default: True
     expires_in = int(payload.get("signed_url_expires_in") or 600)
-    
+
     # Se o input já foi salvo (upload multipart), usar o ID
     input_document_id = payload.get("input_document_id")
     input_storage_path = payload.get("input_storage_path")
@@ -197,7 +197,7 @@ async def _handle_job(job: dict) -> None:
 
     # Salvar documento de input se existir e ainda não tiver sido salvo
     input_doc_id = input_document_id  # Usar o ID do upload se disponível
-    
+
     # Se não veio do upload, salvar agora (modo legado)
     if not input_doc_id:
         input_storage = result.get("input_storage")

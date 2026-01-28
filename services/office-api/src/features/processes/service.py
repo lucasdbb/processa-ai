@@ -64,7 +64,8 @@ class ProcessesService:
         if params.search:
             search = params.search.lower()
             processes = [
-                p for p in processes
+                p
+                for p in processes
                 if search in p["number"].lower()
                 or search in p["type"].lower()
                 or search in p["client_name"].lower()
@@ -82,7 +83,7 @@ class ProcessesService:
         total = len(processes)
 
         # Pagination
-        processes = processes[params.offset:params.offset + params.limit]
+        processes = processes[params.offset : params.offset + params.limit]
 
         now = datetime.now()
         return [

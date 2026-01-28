@@ -24,7 +24,8 @@ class DocumentsService:
         if params.search:
             search = params.search.lower()
             documents = [
-                d for d in documents
+                d
+                for d in documents
                 if search in d["name"].lower()
                 or (d["description"] and search in d["description"].lower())
             ]
@@ -48,7 +49,7 @@ class DocumentsService:
         total = len(documents)
 
         # Pagination
-        documents = documents[params.offset:params.offset + params.limit]
+        documents = documents[params.offset : params.offset + params.limit]
 
         now = datetime.now()
         return [
