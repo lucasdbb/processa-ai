@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 DocumentType = Literal["ai_analysis", "calculation", "petition", "contract", "other"]
 DocumentStatus = Literal["draft", "final", "archived"]
 

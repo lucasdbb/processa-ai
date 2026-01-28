@@ -96,7 +96,6 @@ class DeadlinesService:
         deadlines = sorted(deadlines, key=lambda d: d["date"])
 
         # Calculate counts
-        now = datetime.now(timezone.utc)
         today_count = sum(1 for d in deadlines if self._calculate_days_until(d["date"]) == 0)
         week_count = sum(1 for d in deadlines if 0 < self._calculate_days_until(d["date"]) <= 7)
         overdue_count = sum(1 for d in deadlines if self._calculate_days_until(d["date"]) < 0)

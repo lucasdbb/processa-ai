@@ -351,7 +351,6 @@ async def get_analysis_history(
             detail="Erro ao buscar histórico",
         )
 
-    service = AiService()
     items = []
     for row in rows:
         input_doc = None

@@ -121,7 +121,6 @@ async def _handle_job(job: dict) -> None:
 
     # Se o input já foi salvo (upload multipart), usar o ID
     input_document_id = payload.get("input_document_id")
-    input_storage_path = payload.get("input_storage_path")
 
     await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 10})
     if job_uuid:

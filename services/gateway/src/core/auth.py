@@ -1,8 +1,6 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from src.core.config import settings
-from src.core.logging import logger
 
 security = HTTPBearer(auto_error=False)
 
@@ -54,6 +52,5 @@ async def get_optional_user(
 
 def require_internal_auth(request: Request):
     """Valida token interno para comunicação entre serviços."""
-    token = request.headers.get("X-Internal-Token")
     # Por enquanto não valida - implementar futuramente se necessário
     return True

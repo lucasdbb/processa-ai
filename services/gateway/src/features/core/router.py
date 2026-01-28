@@ -1,6 +1,6 @@
 """Core API proxy router - Routes requests to the Core API microservice."""
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, Query, Request
 
 from src.core.auth import get_current_user
 from src.core.config import settings

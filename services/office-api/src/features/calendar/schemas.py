@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 # === Event Types ===
 EventType = Literal["audiencia", "prazo", "reuniao", "other"]
 EventStatus = Literal["confirmed", "tentative", "cancelled"]

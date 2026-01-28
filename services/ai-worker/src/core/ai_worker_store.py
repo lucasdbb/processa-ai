@@ -300,7 +300,7 @@ async def get_user_analysis_history(
         async with cur_cm as cur:
             await cur.execute(
                 """
-                select 
+                select
                     j.id as job_id,
                     j.status,
                     j.created_at,
@@ -319,9 +319,9 @@ async def get_user_analysis_history(
                     d_output.bucket as output_bucket,
                     d_output.created_at as output_created_at
                 from ai_worker.jobs j
-                left join ai_worker.documents d_input 
+                left join ai_worker.documents d_input
                     on d_input.job_id = j.id and d_input.document_type = 'input'
-                left join ai_worker.documents d_output 
+                left join ai_worker.documents d_output
                     on d_output.job_id = j.id and d_output.document_type = 'output'
                 where j.user_id = %s and j.endpoint_key = %s
                 order by j.created_at desc
@@ -346,7 +346,7 @@ async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
         async with cur_cm as cur:
             await cur.execute(
                 """
-                select id, user_id, document_type, bucket, storage_path, 
+                select id, user_id, document_type, bucket, storage_path,
                        filename, size_bytes, created_at
                 from ai_worker.documents
                 where id = %s

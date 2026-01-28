@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 DeadlineStatus = Literal["pending", "completed", "overdue"]
 DeadlineType = Literal["contestacao", "recurso", "manifestacao", "audiencia", "other"]
 
