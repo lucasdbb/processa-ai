@@ -1,63 +1,14 @@
-
 services:
+  # =============================================================================
+  # INFRASTRUCTURE
+  # =============================================================================
+
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
     networks:
       - processa-network
-
-  # Gateway - API Gateway (ponto de entrada para todos os microserviços)
-  gateway:
-    build:
-      context: ./services/gateway
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - PORT=8080
-      - HOST=0.0.0.0
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - CORE_API_BASE_URL=http://core-api:8004
-      - CORE_API_INTERNAL_TOKEN=${CORE_API_INTERNAL_TOKEN}
-      - AI_WORKER_BASE_URL=http://ai-jobs-api:8001
-      - AI_WORKER_INTERNAL_TOKEN=${AI_WORKER_INTERNAL_TOKEN}
-      - CALC_ENGINE_BASE_URL=http://calc-engine:8002
-      - CALC_ENGINE_INTERNAL_TOKEN=${CALC_ENGINE_INTERNAL_TOKEN}
-      - OFFICE_API_BASE_URL=http://office-api:8003
-      - OFFICE_API_INTERNAL_TOKEN=${OFFICE_API_INTERNAL_TOKEN}
-      - BILLING_API_BASE_URL=http://billing-api:8005
-      - BILLING_API_INTERNAL_TOKEN=${BILLING_API_INTERNAL_TOKEN}
-      - UPSTREAM_TIMEOUT_S=${UPSTREAM_TIMEOUT_S:-300}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
-    networks:
-      - processa-network
-    depends_on:
-      - core-api
-      - ai-jobs-api
-      - calc-engine
-      - office-api
-      - billing-api
-
-  # Frontend - Vite + React
-  # frontend:
-  #   build:
-  #     context: ./apps/frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5173:80"
-  #   environment:
-  #     - NODE_ENV=development
-  #     - VITE_SUPABASE_URL=${SUPABASE_URL}
-  #     - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-  #     - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:8000}
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - processa-network
 
   # n8n - Workflow engine
   n8n:
@@ -72,7 +23,6 @@ services:
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-}
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Sao_Paulo}
-
       - N8N_RUNNERS_ENABLED=true
       - N8N_RUNNERS_MODE=external
       - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
@@ -82,8 +32,8 @@ services:
       - 'D:\Docker\n8n_data:/home/node/.n8n'
     networks:
       - processa-network
-  
-  # n8n runners - Executores externos
+
+  # n8n runners - External task runners
   n8n-runners:
     image: n8nio/runners:latest
     environment:
@@ -95,131 +45,103 @@ services:
     depends_on:
       - n8n
 
-  # AI Jobs API - FastAPI (serviço interno)
-  ai-jobs-api:
-    build:
-      context: ./services/ai-worker
-      dockerfile: Dockerfile
-    ports:
-      - "8001:8001"
-    environment:
-      - AI_WORKER_INTERNAL_TOKEN=${AI_WORKER_INTERNAL_TOKEN:-changeme}
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
-      - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
-      - N8N_CNIS_WORKFLOW_ID=${N8N_CNIS_WORKFLOW_ID}
-    networks:
-      - processa-network
-    depends_on:
-      - redis
-      - n8n
+  # =============================================================================
+  # APPLICATIONS
+  # =============================================================================
 
-  # Calc Engine - FastAPI (serviço interno síncrono)
-  calc-engine:
+  # Backend - Unified FastAPI application
+  backend:
     build:
-      context: ./services/calc-engine
+      context: ./apps/backend
       dockerfile: Dockerfile
     ports:
-      - "8002:8002"
+      - "8000:8000"
     environment:
+      - PORT=8000
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      - CALC_ENGINE_INTERNAL_TOKEN=${CALC_ENGINE_INTERNAL_TOKEN:-changeme}
+      # Database
       - DATABASE_URL=${DATABASE_URL}
+      # Supabase
       - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET}
-    networks:
-      - processa-network
-
-  # Office API - FastAPI (gestao de escritorio + Google Calendar)
-  office-api:
-    build:
-      context: ./services/office-api
-      dockerfile: Dockerfile
-    ports:
-      - "8003:8003"
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - OFFICE_API_INTERNAL_TOKEN=${OFFICE_API_INTERNAL_TOKEN:-changeme}
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/2}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/office/calendar/callback}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - WEBHOOK_BASE_URL=${WEBHOOK_BASE_URL}
-    networks:
-      - processa-network
-    depends_on:
-      - redis
-
-  # Core API - FastAPI (profiles, blog, materials, newsletter, support)
-  core-api:
-    build:
-      context: ./services/core-api
-      dockerfile: Dockerfile
-    ports:
-      - "8004:8004"
-    environment:
-      - PORT=8004
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - CORE_API_INTERNAL_TOKEN=${CORE_API_INTERNAL_TOKEN:-changeme}
-      - DATABASE_URL=${DATABASE_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET}
-    networks:
-      - processa-network
-
-  # Billing API - FastAPI (Stripe integration)
-  billing-api:
-    build:
-      context: ./services/billing-api
-      dockerfile: Dockerfile
-    ports:
-      - "8005:8005"
-    environment:
-      - PORT=8005
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - BILLING_API_INTERNAL_TOKEN=${BILLING_API_INTERNAL_TOKEN:-changeme}
-      - DATABASE_URL=${DATABASE_URL}
+      # Stripe
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-    networks:
-      - processa-network
-
-  # ai-jobs-worker - Worker do AI Jobs API
-  ai-jobs-worker:
-    build:
-      context: ./services/ai-worker
-      dockerfile: Dockerfile
-    command: python -m src.worker
-    environment:
-      - AI_WORKER_INTERNAL_TOKEN=${AI_WORKER_INTERNAL_TOKEN:-changeme}
-      - AI_WORKER_CALLBACK_BASE_URL=http://host.docker.internal:8001
-      - DATABASE_URL=${DATABASE_URL}
+      - STRIPE_PRICE_ID_PRO=${STRIPE_PRICE_ID_PRO}
+      - STRIPE_PRICE_ID_ENTERPRISE=${STRIPE_PRICE_ID_ENTERPRISE}
+      # Redis
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
       - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
+      # n8n
       - N8N_BASE_URL=http://n8n:5678
       - N8N_CNIS_WORKFLOW_ID=${N8N_CNIS_WORKFLOW_ID}
       - N8N_FILE_FIELD_NAME=${N8N_FILE_FIELD_NAME:-data}
       - N8N_AUTH_USER=${N8N_AUTH_USER}
       - N8N_AUTH_PASSWORD=${N8N_AUTH_PASSWORD}
       - N8N_TIMEOUT_S=${N8N_TIMEOUT_S:-120}
+      # Google
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/v1/calendar/callback}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      # Frontend
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      # Email
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_FROM=${SENDGRID_FROM}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      # Webhook
+      - WEBHOOK_BASE_URL=${WEBHOOK_BASE_URL}
+    networks:
+      - processa-network
+    depends_on:
+      - redis
+
+  # =============================================================================
+  # SERVICES
+  # =============================================================================
+
+  # Worker - Async job processor
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    environment:
+      # Database
+      - DATABASE_URL=${DATABASE_URL}
+      # Supabase
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET}
+      # Redis
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
+      - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
+      # n8n
+      - N8N_BASE_URL=http://n8n:5678
+      - N8N_CNIS_WORKFLOW_ID=${N8N_CNIS_WORKFLOW_ID}
+      - N8N_FILE_FIELD_NAME=${N8N_FILE_FIELD_NAME:-data}
+      - N8N_AUTH_USER=${N8N_AUTH_USER}
+      - N8N_AUTH_PASSWORD=${N8N_AUTH_PASSWORD}
+      - N8N_TIMEOUT_S=${N8N_TIMEOUT_S:-120}
+      # Google (for office jobs)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      # Callback
+      - AI_WORKER_CALLBACK_BASE_URL=http://backend:8000
+      - PORT=8001
     networks:
       - processa-network
     depends_on:
       - redis
       - n8n
+    deploy:
+      replicas: 1  # Can be scaled horizontally
 
 networks:
   processa-network:
