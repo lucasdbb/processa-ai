@@ -10,6 +10,7 @@ from src.api.router import api_router
 from src.core.config import settings
 from src.core.db import close_db, init_db
 from src.core.logging import logger
+from src.core.middleware import SupabaseAuthMiddleware
 
 
 @asynccontextmanager
@@ -55,6 +56,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Supabase JWT Auth Middleware
+app.add_middleware(SupabaseAuthMiddleware)
 
 
 @app.get("/")

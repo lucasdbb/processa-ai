@@ -67,9 +67,9 @@ class MaterialsService:
     async def list_materials(self) -> list[dict]:
         res = (
             self.supabase.table("materials")
-            .select('slug,title,description,"group",mime_type')
+            .select("slug,title,description,category,mime_type")
             .eq("is_published", True)
-            .order('"group"', desc=False)
+            .order("category", desc=False)
             .order("title", desc=False)
             .execute()
         )
@@ -83,7 +83,7 @@ class MaterialsService:
                     "slug": str(row.get("slug") or ""),
                     "title": str(row.get("title") or ""),
                     "description": row.get("description"),
-                    "group": str(row.get("group") or ""),
+                    "category": str(row.get("category") or ""),
                     "mime_type": str(row.get("mime_type") or "pdf"),
                 }
             )
@@ -93,9 +93,9 @@ class MaterialsService:
         res = (
             self.supabase.table("materials")
             .select(
-                'id,slug,title,description,"group",storage_bucket,storage_path,filename,mime_type,is_published,created_at,updated_at'
+                "id,slug,title,description,category,storage_bucket,storage_path,filename,mime_type,is_published,created_at,updated_at"
             )
-            .order('"group"', desc=False)
+            .order("category", desc=False)
             .order("title", desc=False)
             .execute()
         )
@@ -110,7 +110,7 @@ class MaterialsService:
                     "slug": str(row.get("slug") or ""),
                     "title": str(row.get("title") or ""),
                     "description": row.get("description"),
-                    "group": str(row.get("group") or ""),
+                    "category": str(row.get("category") or ""),
                     "storage_bucket": str(row.get("storage_bucket") or "materials"),
                     "storage_path": str(row.get("storage_path") or ""),
                     "filename": str(row.get("filename") or ""),
@@ -126,7 +126,7 @@ class MaterialsService:
         self,
         *,
         title: str,
-        group: str,
+        category: str,
         file_bytes: bytes,
         original_filename: str,
         slug: str | None = None,
@@ -139,10 +139,10 @@ class MaterialsService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Título é obrigatório",
             )
-        if not group.strip():
+        if not category.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Grupo é obrigatório",
+                detail="Categoria é obrigatória",
             )
         if not file_bytes:
             raise HTTPException(
@@ -221,7 +221,7 @@ class MaterialsService:
         title: str | None = None,
         slug: str | None = None,
         description: str | None = None,
-        group: str | None = None,
+        category: str | None = None,
         is_published: bool | None = None,
         mime_type: str | None = None,
         file_bytes: bytes | None = None,
@@ -230,7 +230,7 @@ class MaterialsService:
         current_res = (
             self.supabase.table("materials")
             .select(
-                'id,slug,title,description,"group",storage_bucket,storage_path,filename,mime_type,is_published,created_at,updated_at'
+                "id,slug,title,description,category,storage_bucket,storage_path,filename,mime_type,is_published,created_at,updated_at"
             )
             .eq("id", material_id)
             .limit(1)
@@ -257,14 +257,14 @@ class MaterialsService:
         if description is not None:
             updates["description"] = (description or "").strip() or None
 
-        if group is not None:
-            v = group.strip()
+        if category is not None:
+            v = category.strip()
             if not v:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Grupo inválido",
+                    detail="Categoria inválida",
                 )
-            updates["group"] = v
+            updates["category"] = v
 
         if is_published is not None:
             updates["is_published"] = bool(is_published)
@@ -288,8 +288,8 @@ class MaterialsService:
                     )
                 updates["slug"] = next_slug
 
-        next_group = updates.get("group") or str(current.get("group") or "")
-        folder = self._folderify(next_group)
+        next_category = updates.get("category") or str(current.get("category") or "")
+        folder = self._folderify(next_category)
         storage_bucket = str(current.get("storage_bucket") or "materials")
         current_storage_path = str(current.get("storage_path") or "")
 

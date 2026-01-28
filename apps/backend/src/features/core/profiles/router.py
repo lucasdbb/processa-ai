@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Query
 
-from src.core.auth import get_user_id, verify_internal_token
+from src.core.auth import get_user_id, get_user_role, verify_internal_token
 from src.features.core.profiles.schemas import UpdateProfile, UpdateRoleRequest, UserProfile
 from src.features.core.profiles.service import profiles_service
 
@@ -26,10 +26,10 @@ async def update_my_profile(
 async def list_profiles(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
     """List all profiles (admin only)."""
-    if x_user_role != "admin":
+    if user_role != "admin":
         from fastapi import HTTPException, status
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
@@ -39,10 +39,10 @@ async def list_profiles(
 @router.patch("/role")
 async def update_role(
     data: UpdateRoleRequest,
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
     """Update user role (admin only)."""
-    if x_user_role != "admin":
+    if user_role != "admin":
         from fastapi import HTTPException, status
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, Header, UploadFile, status
 from starlette.responses import RedirectResponse
 
-from src.core.auth import get_user_id, verify_internal_token
+from src.core.auth import get_user_id, get_user_role, verify_internal_token
 from src.features.core.materials.schemas import MaterialAdminListItem, MaterialListItem
 from src.features.core.materials.service import MaterialsService
 
@@ -19,8 +19,8 @@ async def list_materials():
     response_model=list[MaterialAdminListItem],
     status_code=status.HTTP_200_OK,
 )
-async def list_admin_materials(x_user_role: str = Header("user")):
-    if x_user_role != "admin":
+async def list_admin_materials(user_role: str = Depends(get_user_role)):
+    if user_role != "admin":
         from fastapi import HTTPException
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
@@ -34,15 +34,15 @@ async def list_admin_materials(x_user_role: str = Header("user")):
 )
 async def create_material(
     title: str = Form(...),
-    group: str = Form(...),
+    category: str = Form(...),
     file: UploadFile = File(...),
     slug: str | None = Form(None),
     description: str | None = Form(None),
     is_published: bool = Form(True),
     mime_type: str | None = Form(None),
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    if x_user_role != "admin":
+    if user_role != "admin":
         from fastapi import HTTPException
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
@@ -50,7 +50,7 @@ async def create_material(
     file_bytes = await file.read()
     return await service.create_material(
         title=title,
-        group=group,
+        category=category,
         file_bytes=file_bytes,
         original_filename=file.filename or "",
         slug=slug,
@@ -68,15 +68,15 @@ async def create_material(
 async def update_material(
     material_id: str,
     title: str | None = Form(None),
-    group: str | None = Form(None),
+    category: str | None = Form(None),
     slug: str | None = Form(None),
     description: str | None = Form(None),
     is_published: bool | None = Form(None),
     mime_type: str | None = Form(None),
     file: UploadFile | None = File(None),
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    if x_user_role != "admin":
+    if user_role != "admin":
         from fastapi import HTTPException
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
@@ -91,7 +91,7 @@ async def update_material(
         title=title,
         slug=slug,
         description=description,
-        group=group,
+        category=category,
         is_published=is_published,
         mime_type=mime_type,
         file_bytes=file_bytes,

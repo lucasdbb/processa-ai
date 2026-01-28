@@ -14,6 +14,7 @@ dependencies = [
     "python-multipart>=0.0.12",
     "httpx>=0.28.1",
     "email-validator>=2.0.0",
+    "pyjwt>=2.8.0",
     # Database
     "psycopg[binary,pool]>=3.2.4",
     "sqlalchemy>=2.0.46",

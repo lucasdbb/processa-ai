@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Header, Query, status
 
-from src.core.auth import get_user_id, verify_internal_token
+from src.core.auth import get_user_id, get_user_role, verify_internal_token
 from src.features.core.blog.schemas import (
     AddCoauthorRequest,
     BlogPostCreate,
@@ -21,18 +21,18 @@ async def list_admin_posts(
     search: str | None = None,
     status: str | None = None,
     user_id: str = Depends(get_user_id),
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.list_all(user_id, x_user_role, page, page_size, search, status)
+    return await service.list_all(user_id, user_role, page, page_size, search, status)
 
 
 @router.get("/admin/posts/{post_id}", response_model=BlogPostDetailResponse)
 async def get_admin_post(
     post_id: str,
     user_id: str = Depends(get_user_id),
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.get_admin_post(user_id, x_user_role, post_id)
+    return await service.get_admin_post(user_id, user_role, post_id)
 
 
 @router.get("/posts", response_model=BlogPostListResponse)
@@ -54,9 +54,9 @@ async def get_post(slug: str):
 async def create_post(
     data: BlogPostCreate,
     user_id: str = Depends(get_user_id),
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.create_draft(user_id, x_user_role, data)
+    return await service.create_draft(user_id, user_role, data)
 
 
 @router.patch("/posts/{post_id}")
@@ -73,9 +73,9 @@ async def add_coauthor(
     post_id: str,
     data: AddCoauthorRequest,
     user_id: str = Depends(get_user_id),
-    x_user_role: str = Header("user"),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.add_coauthor(user_id, x_user_role, post_id, data.user_id)
+    return await service.add_coauthor(user_id, user_role, post_id, data.user_id)
 
 
 @router.patch("/posts/{post_id}/publish")

@@ -9,7 +9,7 @@ class MaterialListItem(BaseModel):
     slug: str
     title: str
     description: str | None = None
-    group: str
+    category: str
     mime_type: MaterialMimeType
 
 
@@ -18,7 +18,7 @@ class MaterialAdminListItem(BaseModel):
     slug: str
     title: str
     description: str | None = None
-    group: str
+    category: str
     storage_bucket: str
     storage_path: str
     filename: str
