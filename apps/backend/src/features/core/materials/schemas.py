@@ -2,7 +2,14 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-MaterialMimeType = Literal["pdf", "xls", "xlsx", "xlsm", "docx", "csv"]
+MaterialMimeType = Literal[
+    "application/pdf",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel.sheet.macroEnabled.12",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/csv",
+]
 
 
 class MaterialListItem(BaseModel):

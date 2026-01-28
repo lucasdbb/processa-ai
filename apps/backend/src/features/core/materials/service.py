@@ -28,18 +28,38 @@ class MaterialsService:
         return s or "outros"
 
     def _infer_mime_type(self, filename: str | None, mime_type: str | None) -> str:
-        allowed = {"pdf", "xls", "xlsx", "xlsm", "docx", "csv"}
+        allowed_extensions = {"pdf", "xls", "xlsx", "xlsm", "docx", "csv"}
+        mime_type_mapping = {
+            "pdf": "application/pdf",
+            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "xls": "application/vnd.ms-excel",
+            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "xlsm": "application/vnd.ms-excel.sheet.macroEnabled.12",
+            "csv": "text/csv",
+        }
+
         if mime_type:
             v = str(mime_type).strip().lower()
-            if v in allowed:
+            # Se já é um MIME type completo, retorna
+            if v.startswith(("application/", "text/", "image/")):
                 return v
+            # Se é uma extensão, converte para MIME type
+            if v in allowed_extensions:
+                return mime_type_mapping.get(v, "application/octet-stream")
+
         if filename and "." in filename:
             ext = filename.rsplit(".", 1)[-1].lower().strip()
-            if ext in allowed:
-                return ext
-        return "pdf"
+            if ext in allowed_extensions:
+                return mime_type_mapping.get(ext, "application/octet-stream")
+
+        return "application/pdf"
 
     def _content_type_for(self, kind: str) -> str:
+        # Se já é um MIME type completo, retorna direto
+        if kind.startswith(("application/", "text/", "image/")):
+            return kind
+
+        # Se é uma extensão, converte
         mapping = {
             "pdf": "application/pdf",
             "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -49,6 +69,18 @@ class MaterialsService:
             "csv": "text/csv",
         }
         return mapping.get(kind, "application/octet-stream")
+
+    def _mime_type_to_extension(self, mime_type: str) -> str:
+        """Converte MIME type para extensão de arquivo"""
+        mapping = {
+            "application/pdf": "pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+            "application/vnd.ms-excel": "xls",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+            "application/vnd.ms-excel.sheet.macroEnabled.12": "xlsm",
+            "text/csv": "csv",
+        }
+        return mapping.get(mime_type, "pdf")
 
     def _extract_signed_url(self, signed) -> str | None:
         if isinstance(signed, dict):
@@ -84,7 +116,7 @@ class MaterialsService:
                     "title": str(row.get("title") or ""),
                     "description": row.get("description"),
                     "category": str(row.get("category") or ""),
-                    "mime_type": str(row.get("mime_type") or "pdf"),
+                    "mime_type": str(row.get("mime_type") or "application/pdf"),
                 }
             )
         return out
@@ -114,7 +146,7 @@ class MaterialsService:
                     "storage_bucket": str(row.get("storage_bucket") or "materials"),
                     "storage_path": str(row.get("storage_path") or ""),
                     "filename": str(row.get("filename") or ""),
-                    "mime_type": str(row.get("mime_type") or "pdf"),
+                    "mime_type": str(row.get("mime_type") or "application/pdf"),
                     "is_published": bool(row.get("is_published")),
                     "created_at": str(row.get("created_at") or ""),
                     "updated_at": str(row.get("updated_at") or ""),
@@ -161,17 +193,18 @@ class MaterialsService:
         if exists.data:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Slug já existe")
 
-        kind = self._infer_mime_type(original_filename, mime_type)
-        folder = self._folderify(group)
+        mime = self._infer_mime_type(original_filename, mime_type)
+        ext = self._mime_type_to_extension(mime)
+        folder = self._folderify(category)
         storage_bucket = "materials"
-        storage_path = f"{folder}/{resolved_slug}.{kind}"
-        filename = original_filename.strip() or f"{resolved_slug}.{kind}"
+        storage_path = f"{folder}/{resolved_slug}.{ext}"
+        filename = original_filename.strip() or f"{resolved_slug}.{ext}"
 
         try:
             self.supabase.storage.from_(storage_bucket).upload(
                 storage_path,
                 file_bytes,
-                {"content-type": self._content_type_for(kind), "upsert": "true"},
+                {"content-type": self._content_type_for(mime), "upsert": "true"},
             )
         except Exception as e:
             msg = str(e).strip()
@@ -184,11 +217,11 @@ class MaterialsService:
             "slug": resolved_slug,
             "title": title.strip(),
             "description": (description or "").strip() or None,
-            "group": group.strip(),
+            "category": category.strip(),
             "storage_bucket": storage_bucket,
             "storage_path": storage_path,
             "filename": filename,
-            "mime_type": kind,
+            "mime_type": mime,
             "is_published": bool(is_published),
         }
 
@@ -208,10 +241,11 @@ class MaterialsService:
             }
         except HTTPException:
             raise
-        except Exception:
+        except Exception as e:
+            error_msg = str(e).strip()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Falha ao salvar material",
+                detail=f"Falha ao salvar material: {error_msg}",
             )
 
     async def update_material(
@@ -294,16 +328,17 @@ class MaterialsService:
         current_storage_path = str(current.get("storage_path") or "")
 
         if file_bytes is not None and original_filename is not None:
-            kind = self._infer_mime_type(
+            mime = self._infer_mime_type(
                 original_filename,
                 mime_type or str(current.get("mime_type") or ""),
             )
-            new_storage_path = f"{folder}/{next_slug}.{kind}"
+            ext = self._mime_type_to_extension(mime)
+            new_storage_path = f"{folder}/{next_slug}.{ext}"
             try:
                 self.supabase.storage.from_(storage_bucket).upload(
                     new_storage_path,
                     file_bytes,
-                    {"content-type": self._content_type_for(kind), "upsert": "true"},
+                    {"content-type": self._content_type_for(mime), "upsert": "true"},
                 )
             except Exception as e:
                 msg = str(e).strip()
@@ -313,8 +348,8 @@ class MaterialsService:
                 )
 
             updates["storage_path"] = new_storage_path
-            updates["filename"] = original_filename.strip() or f"{next_slug}.{kind}"
-            updates["mime_type"] = kind
+            updates["filename"] = original_filename.strip() or f"{next_slug}.{ext}"
+            updates["mime_type"] = mime
 
             if current_storage_path and current_storage_path != new_storage_path:
                 try:
@@ -323,12 +358,15 @@ class MaterialsService:
                     pass
         else:
             if mime_type is not None:
-                kind = self._infer_mime_type(str(current.get("filename") or ""), mime_type)
-                updates["mime_type"] = kind
+                mime = self._infer_mime_type(str(current.get("filename") or ""), mime_type)
+                updates["mime_type"] = mime
 
-            if ("slug" in updates or "group" in updates) and current_storage_path:
-                current_kind = str(updates.get("mime_type") or current.get("mime_type") or "pdf")
-                new_storage_path = f"{folder}/{next_slug}.{current_kind}"
+            if ("slug" in updates or "category" in updates) and current_storage_path:
+                current_mime = str(
+                    updates.get("mime_type") or current.get("mime_type") or "application/pdf"
+                )
+                current_ext = self._mime_type_to_extension(current_mime)
+                new_storage_path = f"{folder}/{next_slug}.{current_ext}"
                 if new_storage_path != current_storage_path:
                     try:
                         move_fn = getattr(self.supabase.storage.from_(storage_bucket), "move", None)
@@ -354,11 +392,11 @@ class MaterialsService:
             "slug": str(merged.get("slug") or ""),
             "title": str(merged.get("title") or ""),
             "description": merged.get("description"),
-            "group": str(merged.get("group") or ""),
+            "category": str(merged.get("category") or ""),
             "storage_bucket": str(merged.get("storage_bucket") or "materials"),
             "storage_path": str(merged.get("storage_path") or ""),
             "filename": str(merged.get("filename") or ""),
-            "mime_type": str(merged.get("mime_type") or "pdf"),
+            "mime_type": str(merged.get("mime_type") or "application/pdf"),
             "is_published": bool(merged.get("is_published")),
             "created_at": str(merged.get("created_at") or ""),
             "updated_at": str(merged.get("updated_at") or ""),

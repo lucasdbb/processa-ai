@@ -68,7 +68,7 @@ interface UserListItem {
   id: string
   email: string
   name: string
-  role: 'user' | 'author' | 'admin' | 'premium'
+  role: 'client' | 'author' | 'admin'
   avatar_url?: string | null
   created_at: string
   confirmed_at?: string | null
@@ -81,7 +81,7 @@ interface AdminMaterialListItem {
   slug: string
   title: string
   description?: string | null
-  group: string
+  category: string
   filename: string
   mime_type: MaterialMimeType
   is_published: boolean
@@ -107,9 +107,8 @@ const postStatusBadgeClass: Record<PostStatus, string> = {
 }
 
 const roleLabel: Record<UserListItem['role'], string> = {
-  user: 'Usuário',
+  client: 'Cliente',
   author: 'Autor',
-  premium: 'Premium',
   admin: 'Admin',
 }
 
@@ -119,8 +118,6 @@ const getRoleIcon = (role: UserListItem['role']) => {
       return <Shield className="w-4 h-4 text-red-600 dark:text-red-400" />
     case 'author':
       return <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-    case 'premium':
-      return <Crown className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
     default:
       return <Users className="w-4 h-4 text-muted-foreground" />
   }
@@ -132,8 +129,6 @@ const getRoleBadgeClass = (role: UserListItem['role']) => {
       return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-900/50'
     case 'author':
       return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-900/50'
-    case 'premium':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-900/50'
     default:
       return 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800'
   }
@@ -175,7 +170,7 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | UserListItem['role']>('all')
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null)
-  const [selectedUserRole, setSelectedUserRole] = useState<UserListItem['role']>('user')
+  const [selectedUserRole, setSelectedUserRole] = useState<UserListItem['role']>('client')
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false)
   const [isUpdatingRole, setIsUpdatingRole] = useState(false)
 
@@ -418,7 +413,7 @@ export default function AdminPage() {
     try {
       const formData = new FormData()
       formData.append('title', data.title)
-      formData.append('group', data.group)
+      formData.append('category', data.group)
       if (data.slug) formData.append('slug', data.slug)
       formData.append('description', data.description ?? '')
       formData.append('is_published', String(data.is_published))
@@ -497,7 +492,7 @@ export default function AdminPage() {
       return (
         m.title.toLowerCase().includes(q) ||
         m.slug.toLowerCase().includes(q) ||
-        m.group.toLowerCase().includes(q)
+        m.category.toLowerCase().includes(q)
       )
     })
   }, [materials, materialsSearch])
@@ -505,7 +500,7 @@ export default function AdminPage() {
   const materialGroupOptions = useMemo(() => {
     const set = new Set<string>()
     for (const m of materials) {
-      if (m.group?.trim()) set.add(m.group.trim())
+      if (m.category?.trim()) set.add(m.category.trim())
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
   }, [materials])
@@ -868,11 +863,9 @@ export default function AdminPage() {
                               </td>
                               <td className="px-6 py-4 text-muted-foreground">{formatDate(u.created_at)}</td>
                               <td className="px-6 py-4 text-right">
-                                {u.id !== user?.id ? (
-                                  <Button variant="outline" size="sm" onClick={() => openRoleDialog(u)}>
-                                    Editar Role
-                                  </Button>
-                                ) : null}
+                                <Button variant="outline" size="sm" onClick={() => openRoleDialog(u)} disabled={u.id === user?.id}>
+                                  Editar Role
+                                </Button>
                               </td>
                             </tr>
                           ))}
@@ -906,9 +899,8 @@ export default function AdminPage() {
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="client">Cliente</SelectItem>
                         <SelectItem value="author">Autor</SelectItem>
-                        <SelectItem value="premium">Premium</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1017,7 +1009,7 @@ export default function AdminPage() {
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 text-muted-foreground">
-                                  {formatDate(post.published_at || post.created_at || '')}
+                                  {post.published_at ? formatDate(post.published_at) : post.created_at ? formatDate(post.created_at) : '-'}
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                   <div className="flex items-center justify-end gap-2">
@@ -1126,7 +1118,7 @@ export default function AdminPage() {
                                   <span className="text-xs text-muted-foreground">{m.slug}</span>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 text-muted-foreground">{m.group}</td>
+                              <td className="px-6 py-4 text-muted-foreground">{m.category}</td>
                               <td className="px-6 py-4">
                                 <span
                                   className={cn(
@@ -1212,7 +1204,7 @@ function MaterialModal({
 
   const [title, setTitle] = useState(() => (mode === 'edit' && initial ? initial.title : ''))
   const [slug, setSlug] = useState(() => (mode === 'edit' && initial ? initial.slug : ''))
-  const [group, setGroup] = useState(() => (mode === 'edit' && initial ? initial.group : ''))
+  const [group, setGroup] = useState(() => (mode === 'edit' && initial ? initial.category : ''))
   const [description, setDescription] = useState(() =>
     mode === 'edit' && initial ? initial.description || '' : ''
   )
