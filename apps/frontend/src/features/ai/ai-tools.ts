@@ -7,13 +7,24 @@ import { PromptTool } from './components/prompt-tool'
 
 export const AI_TOOLS: AiTool[] = [
   {
+    slug: 'cnis-analysis',
+    name: 'Análise de CNIS',
+    description: 'Analise vínculos, contribuições e possíveis lacunas no CNIS.',
+    icon: FileSearch,
+    variant: 'cnis',
+    locked: false,
+    order: 0,
+    templates: [],
+    Component: CnisAnalysisTool,
+  },
+  {
     slug: 'chat',
     name: 'Chat Jurídico',
     description: 'Converse com a IA para tirar dúvidas e estruturar ideias.',
     icon: MessageSquare,
     variant: 'chat',
-    locked: false,
-    order: 0,
+    locked: true, // TODO: Implementar endpoint no backend
+    order: 1,
     templates: [],
     Component: ChatJuridicoTool,
   },
@@ -23,21 +34,10 @@ export const AI_TOOLS: AiTool[] = [
     description: 'Gere uma petição inicial a partir do seu caso.',
     icon: FileText,
     variant: 'prompt',
-    locked: false,
-    order: 1,
-    templates: [],
-    Component: PromptTool,
-  },
-  {
-    slug: 'cnis-analysis',
-    name: 'Análise de CNIS',
-    description: 'Analise vínculos, contribuições e possíveis lacunas no CNIS.',
-    icon: FileSearch,
-    variant: 'cnis',
-    locked: false,
+    locked: true, // TODO: Implementar endpoint no backend
     order: 2,
     templates: [],
-    Component: CnisAnalysisTool,
+    Component: PromptTool,
   },
   {
     slug: 'defense',
@@ -45,7 +45,7 @@ export const AI_TOOLS: AiTool[] = [
     description: 'Elabore contestações e defesas processuais.',
     icon: MessageSquare,
     variant: 'prompt',
-    locked: true,
+    locked: true, // TODO: Implementar endpoint no backend
     order: 3,
     templates: [],
     Component: PromptTool,

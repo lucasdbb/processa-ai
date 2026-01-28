@@ -117,7 +117,8 @@ export default function CalculadorasPage() {
 
     const saldoSalario = salario * 0.5
     const avisoPrevio = formData.avisoPrevio ? salario : 0
-    const feriasVencidas = parseFloat(formData.feriasVencidas) || 0
+    const feriasVencidasDias = parseInt(formData.feriasVencidas) || 0
+    const feriasVencidas = (salario / 30) * feriasVencidasDias * (4 / 3)
     const feriasProporcionais = formData.feriasProporcionais
       ? (salario / 12) * (mesesTrabalhados % 12)
       : 0

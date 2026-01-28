@@ -1,8 +1,11 @@
-import { useEffect } from 'react'
-import { useAuthStore } from '../store/auth-store'
-import { authService } from '../services/auth-service'
-import type { LoginCredentials, RegisterData, UpdateProfileData } from '../types'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect } from "react";
+import { useAuthStore } from "../store/auth-store";
+import type {
+  LoginCredentials,
+  RegisterData,
+  UpdateProfileData,
+} from "../types";
+import { createClient } from "@/lib/supabase/client";
 
 export function useAuth() {
   const {
@@ -13,109 +16,205 @@ export function useAuth() {
     setLoading,
     setInitialized,
     logout: clearUser,
-  } = useAuthStore()
+  } = useAuthStore();
 
   useEffect(() => {
     if (!isInitialized) {
       const initAuth = async () => {
         try {
-          const currentUser = await authService.getCurrentUser()
-          setUser(currentUser)
+          const supabase = createClient();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", session.user.id)
+              .single();
+
+            if (profile) {
+              setUser({
+                id: session.user.id,
+                email: session.user.email!,
+                name: profile.name,
+                role: profile.role,
+                avatar_url: profile.avatar_url,
+                created_at: profile.created_at,
+              });
+            } else {
+              setUser(null);
+            }
+          } else {
+            setUser(null);
+          }
         } catch (error) {
-          console.error('Failed to initialize auth:', error)
-          setUser(null)
+          console.error("Failed to initialize auth:", error);
+          setUser(null);
         } finally {
-          setLoading(false)
-          setInitialized(true)
+          setLoading(false);
+          setInitialized(true);
+        }
+      };
+
+      initAuth();
+    }
+  }, [isInitialized, setUser, setLoading, setInitialized]);
+
+  const login = async (credentials: LoginCredentials) => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.user) {
+        throw new Error("Falha ao carregar usuário após login");
+      }
+
+      // Buscar perfil do usuário
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError) {
+        throw new Error("Falha ao carregar perfil do usuário");
+      }
+
+      const currentUser = {
+        id: data.user.id,
+        email: data.user.email!,
+        name: profile.name,
+        role: profile.role,
+        avatar_url: profile.avatar_url,
+        created_at: profile.created_at,
+      };
+
+      setUser(currentUser);
+      return currentUser;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (data: RegisterData) => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            newsletter_opt_in: data.newsletter_opt_in,
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!authData.user) {
+        throw new Error("Falha ao criar usuário");
+      }
+
+      // O trigger handle_new_user criará o perfil automaticamente
+      // Se o usuário foi criado mas precisa confirmar email, retornar null
+      if (authData.session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authData.user.id)
+          .single();
+
+        if (profile) {
+          const currentUser = {
+            id: authData.user.id,
+            email: authData.user.email!,
+            name: profile.name,
+            role: profile.role,
+            avatar_url: profile.avatar_url,
+            created_at: profile.created_at,
+          };
+          setUser(currentUser);
+          return currentUser;
         }
       }
 
-      initAuth()
-    }
-  }, [isInitialized, setUser, setLoading, setInitialized])
-
-  const login = async (credentials: LoginCredentials) => {
-    setLoading(true)
-    try {
-      const tokenResponse = await authService.login(credentials)
-
-      await createClient().auth.setSession({
-        access_token: tokenResponse.access_token,
-        refresh_token: tokenResponse.refresh_token,
-      })
-
-      const currentUser = await authService.getCurrentUser(tokenResponse.access_token)
-      setUser(currentUser)
-
-      if (!currentUser) {
-        throw new Error('Falha ao carregar usuário após login')
-      }
-
-      return currentUser
+      // Email confirmation required
+      setUser(null);
+      return null;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-
-  const register = async (data: RegisterData) => {
-    setLoading(true)
-    try {
-      const result = await authService.register(data)
-
-      if ('access_token' in result && 'refresh_token' in result) {
-        await createClient().auth.setSession({
-          access_token: result.access_token,
-          refresh_token: result.refresh_token,
-        })
-      }
-
-      const currentUser = await authService.getCurrentUser('access_token' in result ? result.access_token : undefined)
-      setUser(currentUser)
-
-      if (!currentUser) {
-        throw new Error('Falha ao carregar usuário após cadastro')
-      }
-
-      return currentUser
-    } finally {
-      setLoading(false)
-    }
-  }
+  };
 
   const logout = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await authService.logout()
-      clearUser()
+      await createClient().auth.signOut();
+      clearUser();
     } catch (error) {
-      console.error('Logout failed:', error)
-      clearUser()
+      console.error("Logout failed:", error);
+      clearUser();
     } finally {
-      await createClient().auth.signOut()
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const updateProfile = async (data: UpdateProfileData) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const updatedUser = await authService.updateProfile(data)
-      setUser(updatedUser)
-      return updatedUser
+      const supabase = createClient();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .update({
+          name: data.name,
+          avatar_url: data.avatar_url,
+        })
+        .eq("id", user.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const updatedUser = {
+        ...user,
+        name: profile.name,
+        avatar_url: profile.avatar_url,
+      };
+
+      setUser(updatedUser);
+      return updatedUser;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    isAuthor: user?.role === 'author' || user?.role === 'admin',
+    isAdmin: user?.role === "admin",
+    isAuthor: user?.role === "author" || user?.role === "admin",
     login,
     register,
     logout,
     updateProfile,
-  }
+  };
 }

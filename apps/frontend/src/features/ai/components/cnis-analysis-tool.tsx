@@ -1,6 +1,7 @@
 import { Download, Sparkles, Trash2, Upload } from 'lucide-react'
 
 import type { ToolComponentProps } from '../types'
+import { Progress } from '@/components/ui/progress'
 
 export function CnisAnalysisTool({
   cnisFile,
@@ -8,9 +9,9 @@ export function CnisAnalysisTool({
   onCnisFileChange,
   onClearCnisFile,
   isGenerating,
+  progress,
   onGenerate,
-  generatedText,
-  previewHtml,
+  generatedPdfUrl,
   onDownload,
 }: ToolComponentProps) {
   return (
@@ -91,7 +92,19 @@ export function CnisAnalysisTool({
         </button>
       </div>
 
-      {generatedText ? (
+      {isGenerating && (
+        <div className="mb-8 space-y-2 bg-muted/50 border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium text-foreground">
+              {progress === 0 ? 'Iniciando análise...' : 'Processando análise...'}
+            </span>
+            <span className="text-muted-foreground font-mono">{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-3" />
+        </div>
+      )}
+
+      {generatedPdfUrl ? (
         <div role="region" aria-labelledby="result-heading">
           <div className="flex items-center justify-between mb-4">
             <h3 id="result-heading" className="text-lg font-bold text-foreground">
@@ -114,7 +127,7 @@ export function CnisAnalysisTool({
             aria-label="Análise do CNIS"
             tabIndex={0}
           >
-            <div className="prose prose-lg max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            <iframe title="Análise do CNIS" src={generatedPdfUrl} className="w-full h-[70vh] rounded-xl border border-border bg-background" />
           </div>
         </div>
       ) : null}

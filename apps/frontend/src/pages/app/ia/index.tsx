@@ -40,9 +40,12 @@ export default function IAHubPage() {
 
   const [cnisFile, setCnisFile] = useState<File | null>(null)
   const [cnisFileInputKey, setCnisFileInputKey] = useState(0)
+  const cnisPdfUrlRef = useRef<string | null>(null)
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
 
   const [generatedText, setGeneratedText] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -54,7 +57,6 @@ export default function IAHubPage() {
   }, [activeSlug, allTools])
 
   const isCnisAnalysis = currentTool?.variant === 'cnis'
-  const aiEndpoint = isCnisAnalysis ? `${API_URL}/ai/cnis-analysis` : `${API_URL}/ai/chat`
   const markdownToRender = normalizeMarkdown(generatedText)
 
   const previewHtml = useMemo(() => {
@@ -62,16 +64,26 @@ export default function IAHubPage() {
     return DOMPurify.sanitize(marked.parse(markdownToRender) as string)
   }, [markdownToRender])
 
+  const setCnisPdfUrl = useCallback((next: string) => {
+    if (cnisPdfUrlRef.current) {
+      URL.revokeObjectURL(cnisPdfUrlRef.current)
+    }
+    cnisPdfUrlRef.current = next || null
+    setGeneratedPdfUrl(next)
+  }, [])
+
   const resetToolState = useCallback(() => {
     setPrompt('')
     setCnisFile(null)
     setCnisFileInputKey((k) => k + 1)
     setGeneratedText('')
+    setCnisPdfUrl('')
+    setProgress(0)
     setChatMessages([])
     setChatInput('')
     setIsGenerating(false)
     setIsChatLoading(false)
-  }, [])
+  }, [setCnisPdfUrl])
 
   useLayoutEffect(() => {
     resetToolState()
@@ -113,13 +125,15 @@ export default function IAHubPage() {
 
     setCnisFile(file)
     setGeneratedText('')
-  }, [])
+    setCnisPdfUrl('')
+  }, [setCnisPdfUrl])
 
   const clearCnisFile = useCallback(() => {
     setCnisFile(null)
     setCnisFileInputKey((k) => k + 1)
     setGeneratedText('')
-  }, [])
+    setCnisPdfUrl('')
+  }, [setCnisPdfUrl])
 
   const handleGenerate = useCallback(async () => {
     if (!currentTool) return
@@ -145,18 +159,28 @@ export default function IAHubPage() {
 
     try {
       if (isCnisAnalysis) {
+        // Get user from Supabase session
+        const supabase = (await import('@/lib/supabase/client')).createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          throw new Error('Usuário não autenticado')
+        }
+
+        // 1. Submit job to backend
         const formData = new FormData()
         formData.append('file', cnisFile as File)
+        formData.append('user_id', user.id)
+        formData.append('store_pdf', 'true')
 
-        const response = await fetchWithCredentials(aiEndpoint, {
+        const submitResponse = await fetchWithCredentials(`${API_URL}/ai/analyses/cnis-upload`, {
           method: 'POST',
           body: formData,
         })
 
-        if (!response.ok) {
-          let message = 'Erro ao analisar CNIS. Tente novamente.'
+        if (!submitResponse.ok) {
+          let message = 'Erro ao enviar CNIS. Tente novamente.'
           try {
-            const data = (await response.json()) as { detail?: string }
+            const data = (await submitResponse.json()) as { detail?: string }
             if (data?.detail) message = data.detail
           } catch {
             void 0
@@ -164,10 +188,69 @@ export default function IAHubPage() {
           throw new Error(message)
         }
 
-        const data = (await response.json()) as { text?: string }
-        setGeneratedText(data.text || '')
-        toast.success('CNIS analisado com sucesso!')
-        return
+        const submitData = (await submitResponse.json()) as { job_id: string }
+        if (!submitData.job_id) {
+          throw new Error('Resposta inválida do servidor')
+        }
+
+        // 2. Poll for job completion
+        const jobId = submitData.job_id
+        const maxAttempts = 120 // 2 minutes max
+        const pollInterval = 2000 // 2 seconds
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, pollInterval))
+
+          const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+
+          if (!statusResponse.ok) {
+            continue // Retry on error
+          }
+
+          const statusData = (await statusResponse.json()) as {
+            status: string
+            progress: number
+            result?: { download_url?: string; content?: string }
+            error?: string
+          }
+
+          // Update progress bar
+          setProgress(statusData.progress || 0)
+
+          if (statusData.status === 'failed') {
+            throw new Error(statusData.error || 'Erro ao processar CNIS')
+          }
+
+          if (statusData.status === 'completed') {
+            // Job completed - get the result
+            if (statusData.result?.download_url) {
+              // Download from signed URL
+              const pdfResponse = await fetch(statusData.result.download_url)
+              if (!pdfResponse.ok) {
+                throw new Error('Erro ao baixar PDF')
+              }
+              const blob = await pdfResponse.blob()
+              setCnisPdfUrl(URL.createObjectURL(blob))
+            } else if (statusData.result?.content) {
+              // Base64 content
+              const binary = atob(statusData.result.content)
+              const bytes = new Uint8Array(binary.length)
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+              const blob = new Blob([bytes], { type: 'application/pdf' })
+              setCnisPdfUrl(URL.createObjectURL(blob))
+            } else {
+              throw new Error('Resultado inválido do servidor')
+            }
+
+            setGeneratedText('')
+            toast.success('CNIS analisado com sucesso!')
+            return
+          }
+
+          // Still processing - continue polling
+        }
+
+        throw new Error('Tempo esgotado. Tente novamente.')
       }
 
       const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
@@ -199,66 +282,39 @@ export default function IAHubPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [aiEndpoint, cnisFile, currentTool, isCnisAnalysis, prompt])
+  }, [cnisFile, currentTool, isCnisAnalysis, prompt, setCnisPdfUrl])
 
   const handleDownload = useCallback(() => {
+    if (isCnisAnalysis) {
+      if (!generatedPdfUrl) return
+
+      const element = document.createElement('a')
+      const baseName = (currentTool?.name || 'cnis').toLowerCase().replaceAll(' ', '_')
+      element.href = generatedPdfUrl
+      element.download = `${baseName}_${Date.now()}.pdf`
+      document.body.appendChild(element)
+      element.click()
+      document.body.removeChild(element)
+      return
+    }
+
     if (!generatedText) return
 
-    void (async () => {
-      try {
-        const response = await fetchWithCredentials(`${API_URL}/ai/cnis-analysis/pdf`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            markdown: markdownToRender,
-            filename: (currentTool?.name || 'documento').toLowerCase().replaceAll(' ', '_'),
-          }),
-        })
+    // Download markdown as text file for prompt tools
+    const blob = new Blob([generatedText], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const element = document.createElement('a')
+    const baseName = (currentTool?.name || 'documento').toLowerCase().replaceAll(' ', '_')
 
-        if (!response.ok) {
-          let message = 'Erro ao gerar PDF. Tente novamente.'
-          try {
-            const data = (await response.json()) as { detail?: string }
-            if (data?.detail) message = data.detail
-          } catch {
-            void 0
-          }
-          throw new Error(message)
-        }
+    element.href = url
+    element.download = `${baseName}_${Date.now()}.md`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+    URL.revokeObjectURL(url)
 
-        const payload = (await response.json()) as {
-          download_url?: string
-        }
-
-        if (!payload.download_url) {
-          throw new Error('URL de download inválida')
-        }
-
-        const signedRes = await fetch(payload.download_url)
-        if (!signedRes.ok) {
-          throw new Error('Erro ao baixar PDF')
-        }
-
-        const blob = await signedRes.blob()
-        const url = URL.createObjectURL(blob)
-        const element = document.createElement('a')
-        const baseName = (currentTool?.name || 'documento').toLowerCase().replaceAll(' ', '_')
-
-        element.href = url
-        element.download = `${baseName}_${Date.now()}.pdf`
-        document.body.appendChild(element)
-        element.click()
-        document.body.removeChild(element)
-        URL.revokeObjectURL(url)
-
-        toast.success('PDF gerado com sucesso!')
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Erro ao gerar PDF')
-      }
-    })()
-  }, [currentTool?.name, generatedText, markdownToRender])
+    toast.success('Documento baixado com sucesso!')
+  }, [currentTool?.name, generatedPdfUrl, generatedText, isCnisAnalysis])
 
   const sendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || isChatLoading) return
@@ -388,6 +444,7 @@ export default function IAHubPage() {
             promptTextareaRef={promptTextareaRef}
             resizePromptTextarea={resizePromptTextarea}
             isGenerating={isGenerating}
+            progress={progress}
             onGenerate={handleGenerate}
             cnisFile={cnisFile}
             cnisFileInputKey={cnisFileInputKey}
@@ -395,6 +452,7 @@ export default function IAHubPage() {
             onClearCnisFile={clearCnisFile}
             generatedText={generatedText}
             previewHtml={previewHtml}
+            generatedPdfUrl={generatedPdfUrl}
             onDownload={handleDownload}
             chatMessages={chatMessages}
             chatInput={chatInput}

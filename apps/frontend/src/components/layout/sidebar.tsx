@@ -58,7 +58,7 @@ const navigation: NavGroup[] = [
         icon: Calculator,
         children: [
           { name: 'Rescisao', href: '/app/calculadoras/rescisao' },
-          { name: 'Aposentadoria', href: '/app/calculadoras/aposentadoria' },
+          // Aposentadoria ainda não implementada
         ],
       },
       {
@@ -66,9 +66,8 @@ const navigation: NavGroup[] = [
         href: '/app/ia',
         icon: Bot,
         children: [
-          { name: 'Chat', href: '/app/ia/chat' },
-          { name: 'Peticao', href: '/app/ia/peticao' },
-          { name: 'Analise CNIS', href: '/app/ia/cnis' },
+          { name: 'Analise CNIS', href: '/app/ia/cnis-analysis' },
+          // Chat e Petição ainda não implementados
         ],
       },
     ],

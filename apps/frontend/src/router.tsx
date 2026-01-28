@@ -12,6 +12,7 @@ import BlogPostPage from '@/pages/blog-post'
 import PlanosPage from '@/pages/planos'
 import SobrePage from '@/pages/sobre'
 import MaterialsPage from '@/pages/materials'
+import CallbackPage from '@/pages/auth/CallbackPage'
 
 // App pages (eager loading - frequently accessed)
 import DashboardPage from '@/pages/app/dashboard'
@@ -27,6 +28,7 @@ import AjudaPage from '@/pages/app/ajuda'
 
 // App pages (lazy loading - less frequently accessed)
 const CalculadorasAppPage = lazy(() => import('@/pages/app/calculadoras'))
+const IAJuridicaHubPage = lazy(() => import('@/pages/app/ia-juridica'))
 const IAAppPage = lazy(() => import('@/pages/app/ia'))
 
 // Admin pages (lazy loading - restricted access + heavy markdown editor)
@@ -79,6 +81,10 @@ export const router = createBrowserRouter([
       {
         path: 'materiais',
         element: <MaterialsPage />,
+      },
+      {
+        path: 'auth/callback',
+        element: <CallbackPage />,
       },
     ],
   },
@@ -140,7 +146,7 @@ export const router = createBrowserRouter([
         path: 'ia',
         element: (
           <Suspense fallback={<LoadingFallback />}>
-            <IAAppPage />
+            <IAJuridicaHubPage />
           </Suspense>
         ),
       },
