@@ -1,6 +1,7 @@
 """Core API - Main application entry point"""
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
@@ -27,9 +28,24 @@ app = FastAPI(
 )
 
 
+@app.get("/")
+async def root():
+    return {
+        "service": "processa-ai-core-api",
+        "description": "Core API for profiles, billing, and content management",
+        "version": app.version,
+    }
+
+
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "core-api"}
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return {
+        "status": "healthy",
+        "service": "processa-ai-core-api",
+        "version": app.version,
+        "timestamp": now,
+    }
 
 
 app.include_router(api_router, prefix="/api/v1")

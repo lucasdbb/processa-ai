@@ -1,6 +1,7 @@
 """Billing API - Main application entry point"""
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
@@ -27,9 +28,24 @@ app = FastAPI(
 )
 
 
+@app.get("/")
+async def root():
+    return {
+        "service": "processa-ai-billing-api",
+        "description": "Billing API for subscriptions and Stripe integration",
+        "version": app.version,
+    }
+
+
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "billing-api"}
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return {
+        "status": "healthy",
+        "service": "processa-ai-billing-api",
+        "version": app.version,
+        "timestamp": now,
+    }
 
 
 app.include_router(api_router, prefix="/api/v1")
