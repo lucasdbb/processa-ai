@@ -59,29 +59,6 @@ services:
   #   networks:
   #     - processa-network
 
-  # Backend - FastAPI
-  # backend:
-  #   build:
-  #     context: ./apps/backend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     - SUPABASE_URL=${SUPABASE_URL}
-  #     - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-  #     - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-  #     - AI_DOCUMENTS_BUCKET=${AI_DOCUMENTS_BUCKET:-ai-documents}
-  #     - AI_WORKER_BASE_URL=${AI_WORKER_BASE_URL:-http://ai-jobs-api:8001}
-  #     - AI_WORKER_INTERNAL_TOKEN=${AI_WORKER_INTERNAL_TOKEN}
-  #     - AI_WORKER_TIMEOUT_S=${AI_WORKER_TIMEOUT_S:-120}
-  #     - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
-  #     - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
-  #   command: uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-  #   networks:
-  #     - processa-network
-  #   depends_on:
-  #     - ai-jobs-api
-
   # n8n - Workflow engine
   n8n:
     image: n8nio/n8n:latest
