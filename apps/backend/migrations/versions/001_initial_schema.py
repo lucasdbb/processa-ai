@@ -50,10 +50,10 @@ def upgrade() -> None:
     """)
 
     op.execute("""
-        CREATE POLICY IF NOT EXISTS "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
-        CREATE POLICY IF NOT EXISTS "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-        CREATE POLICY IF NOT EXISTS "Admins can view all profiles" ON public.profiles FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
-        CREATE POLICY IF NOT EXISTS "Admins can manage all profiles" ON public.profiles FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+        CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+        CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can manage all profiles" ON public.profiles FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
     """)
 
     # 2. Blog Categories
@@ -75,8 +75,8 @@ def upgrade() -> None:
     """)
 
     op.execute("""
-        CREATE POLICY IF NOT EXISTS "Anyone can view visible categories" ON public.blog_categories FOR SELECT USING (is_visible = true);
-        CREATE POLICY IF NOT EXISTS "Admins can manage categories" ON public.blog_categories FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Anyone can view visible categories" ON public.blog_categories FOR SELECT USING (is_visible = true);
+        CREATE POLICY "Admins can manage categories" ON public.blog_categories FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
     """)
 
     # 3. Blog Posts
@@ -115,12 +115,12 @@ def upgrade() -> None:
     """)
 
     op.execute("""
-        CREATE POLICY IF NOT EXISTS "Anyone can view published posts" ON public.blog_posts FOR SELECT USING (status = 'published' AND published_at <= NOW());
-        CREATE POLICY IF NOT EXISTS "Authors can view own posts" ON public.blog_posts FOR SELECT USING (author_id = auth.uid());
-        CREATE POLICY IF NOT EXISTS "Admins can view all posts" ON public.blog_posts FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
-        CREATE POLICY IF NOT EXISTS "Authors can create posts" ON public.blog_posts FOR INSERT WITH CHECK (auth.uid() = author_id AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('author', 'admin')));
-        CREATE POLICY IF NOT EXISTS "Authors can update own posts" ON public.blog_posts FOR UPDATE USING (author_id = auth.uid() AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('author', 'admin')));
-        CREATE POLICY IF NOT EXISTS "Admins can delete posts" ON public.blog_posts FOR DELETE USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Anyone can view published posts" ON public.blog_posts FOR SELECT USING (status = 'published' AND published_at <= NOW());
+        CREATE POLICY "Authors can view own posts" ON public.blog_posts FOR SELECT USING (author_id = auth.uid());
+        CREATE POLICY "Admins can view all posts" ON public.blog_posts FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Authors can create posts" ON public.blog_posts FOR INSERT WITH CHECK (auth.uid() = author_id AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('author', 'admin')));
+        CREATE POLICY "Authors can update own posts" ON public.blog_posts FOR UPDATE USING (author_id = auth.uid() AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('author', 'admin')));
+        CREATE POLICY "Admins can delete posts" ON public.blog_posts FOR DELETE USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
     """)
 
     # 4. Blog Tags
@@ -135,8 +135,8 @@ def upgrade() -> None:
         CREATE INDEX IF NOT EXISTS idx_blog_tags_slug ON public.blog_tags(slug);
         ALTER TABLE public.blog_tags ENABLE ROW LEVEL SECURITY;
 
-        CREATE POLICY IF NOT EXISTS "Anyone can view tags" ON public.blog_tags FOR SELECT USING (true);
-        CREATE POLICY IF NOT EXISTS "Admins can manage tags" ON public.blog_tags FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Anyone can view tags" ON public.blog_tags FOR SELECT USING (true);
+        CREATE POLICY "Admins can manage tags" ON public.blog_tags FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
     """)
 
     # 5. Blog Post Tags
@@ -151,8 +151,8 @@ def upgrade() -> None:
         CREATE INDEX IF NOT EXISTS idx_blog_post_tags_tag ON public.blog_post_tags(tag_id);
         ALTER TABLE public.blog_post_tags ENABLE ROW LEVEL SECURITY;
 
-        CREATE POLICY IF NOT EXISTS "Anyone can view post tags" ON public.blog_post_tags FOR SELECT USING (true);
-        CREATE POLICY IF NOT EXISTS "Authors can manage tags on own posts" ON public.blog_post_tags FOR ALL USING (EXISTS (SELECT 1 FROM public.blog_posts p WHERE p.id = post_id AND p.author_id = auth.uid()));
+        CREATE POLICY "Anyone can view post tags" ON public.blog_post_tags FOR SELECT USING (true);
+        CREATE POLICY "Authors can manage tags on own posts" ON public.blog_post_tags FOR ALL USING (EXISTS (SELECT 1 FROM public.blog_posts p WHERE p.id = post_id AND p.author_id = auth.uid()));
     """)
 
     # 6. Newsletter Subscriptions
@@ -199,8 +199,8 @@ def upgrade() -> None:
         CREATE INDEX IF NOT EXISTS idx_support_email ON public.support_requests(LOWER(email));
         ALTER TABLE public.support_requests ENABLE ROW LEVEL SECURITY;
 
-        CREATE POLICY IF NOT EXISTS "Admins can view all support requests" ON public.support_requests FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
-        CREATE POLICY IF NOT EXISTS "Admins can manage support requests" ON public.support_requests FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can view all support requests" ON public.support_requests FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can manage support requests" ON public.support_requests FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
     """)
 
     # 8. Materials
@@ -229,9 +229,9 @@ def upgrade() -> None:
         CREATE INDEX IF NOT EXISTS idx_materials_category ON public.materials(category) WHERE is_published = true;
         ALTER TABLE public.materials ENABLE ROW LEVEL SECURITY;
 
-        CREATE POLICY IF NOT EXISTS "Anyone can view published public materials" ON public.materials FOR SELECT USING (is_published = true AND requires_auth = false);
-        CREATE POLICY IF NOT EXISTS "Authenticated can view published auth-required materials" ON public.materials FOR SELECT USING (is_published = true AND requires_auth = true AND auth.role() = 'authenticated');
-        CREATE POLICY IF NOT EXISTS "Admins can manage materials" ON public.materials FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Anyone can view published public materials" ON public.materials FOR SELECT USING (is_published = true AND requires_auth = false);
+        CREATE POLICY "Authenticated can view published auth-required materials" ON public.materials FOR SELECT USING (is_published = true AND requires_auth = true AND auth.role() = 'authenticated');
+        CREATE POLICY "Admins can manage materials" ON public.materials FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
     """)
 
     # 9. Material Downloads
@@ -273,8 +273,8 @@ def upgrade() -> None:
         CREATE INDEX IF NOT EXISTS idx_billing_plans_stripe ON public.billing_plans(stripe_price_id) WHERE stripe_price_id IS NOT NULL;
         ALTER TABLE public.billing_plans ENABLE ROW LEVEL SECURITY;
 
-        CREATE POLICY IF NOT EXISTS "Anyone can view visible plans" ON public.billing_plans FOR SELECT USING (is_visible = true);
-        CREATE POLICY IF NOT EXISTS "Admins can manage plans" ON public.billing_plans FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Anyone can view visible plans" ON public.billing_plans FOR SELECT USING (is_visible = true);
+        CREATE POLICY "Admins can manage plans" ON public.billing_plans FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
     """)
 
     # 11. Functions and Triggers for public schema
@@ -553,19 +553,19 @@ def upgrade() -> None:
         ALTER TABLE office_api.event_reminders ENABLE ROW LEVEL SECURITY;
         ALTER TABLE office_api.user_notification_preferences ENABLE ROW LEVEL SECURITY;
 
-        CREATE POLICY IF NOT EXISTS "Users can manage own connections" ON office_api.google_connections FOR ALL USING (auth.uid() = user_id);
-        CREATE POLICY IF NOT EXISTS "Users can manage own calendars" ON office_api.calendars FOR ALL USING (auth.uid() = user_id);
-        CREATE POLICY IF NOT EXISTS "Users can manage own events" ON office_api.events FOR ALL USING (auth.uid() = user_id);
-        CREATE POLICY IF NOT EXISTS "Users can manage own webhook channels" ON office_api.webhook_channels FOR ALL USING (auth.uid() = user_id);
-        CREATE POLICY IF NOT EXISTS "Users can manage own reminders" ON office_api.event_reminders FOR ALL USING (auth.uid() = user_id);
-        CREATE POLICY IF NOT EXISTS "Users can manage own notification preferences" ON office_api.user_notification_preferences FOR ALL USING (auth.uid() = user_id);
+        CREATE POLICY "Users can manage own connections" ON office_api.google_connections FOR ALL USING (auth.uid() = user_id);
+        CREATE POLICY "Users can manage own calendars" ON office_api.calendars FOR ALL USING (auth.uid() = user_id);
+        CREATE POLICY "Users can manage own events" ON office_api.events FOR ALL USING (auth.uid() = user_id);
+        CREATE POLICY "Users can manage own webhook channels" ON office_api.webhook_channels FOR ALL USING (auth.uid() = user_id);
+        CREATE POLICY "Users can manage own reminders" ON office_api.event_reminders FOR ALL USING (auth.uid() = user_id);
+        CREATE POLICY "Users can manage own notification preferences" ON office_api.user_notification_preferences FOR ALL USING (auth.uid() = user_id);
 
-        CREATE POLICY IF NOT EXISTS "Service role can manage all connections" ON office_api.google_connections FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
-        CREATE POLICY IF NOT EXISTS "Service role can manage all calendars" ON office_api.calendars FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
-        CREATE POLICY IF NOT EXISTS "Service role can manage all events" ON office_api.events FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
-        CREATE POLICY IF NOT EXISTS "Service role can manage all webhook channels" ON office_api.webhook_channels FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
-        CREATE POLICY IF NOT EXISTS "Service role can manage all reminders" ON office_api.event_reminders FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
-        CREATE POLICY IF NOT EXISTS "Service role can manage all notification preferences" ON office_api.user_notification_preferences FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+        CREATE POLICY "Service role can manage all connections" ON office_api.google_connections FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+        CREATE POLICY "Service role can manage all calendars" ON office_api.calendars FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+        CREATE POLICY "Service role can manage all events" ON office_api.events FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+        CREATE POLICY "Service role can manage all webhook channels" ON office_api.webhook_channels FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+        CREATE POLICY "Service role can manage all reminders" ON office_api.event_reminders FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+        CREATE POLICY "Service role can manage all notification preferences" ON office_api.user_notification_preferences FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
     """)
 
     # Triggers for office_api
@@ -681,3 +681,4 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS public.blog_posts CASCADE")
     op.execute("DROP TABLE IF EXISTS public.blog_categories CASCADE")
     op.execute("DROP TABLE IF EXISTS public.profiles CASCADE")
+

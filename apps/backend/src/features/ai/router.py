@@ -30,7 +30,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/v1/ai/analyses/cnis",
+    "/analyses/cnis",
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
@@ -95,7 +95,7 @@ async def cnis_analysis(
 
 
 @router.post(
-    "/v1/ai/analyses/cnis-upload",
+    "/analyses/cnis-upload",
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
@@ -221,7 +221,7 @@ async def cnis_analysis_upload(
 
 
 @router.get(
-    "/v1/ai/jobs/{job_id}",
+    "/jobs/{job_id}",
     response_model=JobStatusResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -268,7 +268,7 @@ async def get_ai_job(
 
 
 @router.post(
-    "/v1/ai/jobs/progress",
+    "/jobs/progress",
     status_code=status.HTTP_200_OK,
 )
 async def update_job_progress_callback(
@@ -326,7 +326,7 @@ async def update_job_progress_callback(
 
 
 @router.get(
-    "/v1/ai/analyses/history",
+    "/analyses/history",
     response_model=AnalysisHistoryResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -396,7 +396,7 @@ async def get_analysis_history(
 
 
 @router.get(
-    "/v1/ai/documents/{document_id}/download",
+    "/documents/{document_id}/download",
     response_model=DocumentDownloadResponse,
     status_code=status.HTTP_200_OK,
 )

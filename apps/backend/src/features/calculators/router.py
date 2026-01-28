@@ -12,7 +12,7 @@ from src.core.auth import require_internal_auth
 from src.features.calculators.schemas import RescisaoTrabalhistaRequest, RescisaoTrabalhistaResponse
 from src.features.calculators.service import CalculatorsService
 
-router = APIRouter(prefix="/v1/calculators")
+router = APIRouter()
 
 service = CalculatorsService()
 

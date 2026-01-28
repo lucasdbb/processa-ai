@@ -1,8 +1,12 @@
 import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from alembic import context
 from sqlalchemy import create_engine
+
+# Load environment variables from .env file
+load_dotenv()
 
 config = context.config
 
@@ -13,7 +17,11 @@ target_metadata = None
 
 
 def get_url() -> str:
-    return os.environ.get("DATABASE_URL", "")
+    database_url = os.environ.get("DATABASE_URL", "")
+    # Convert postgresql:// to postgresql+psycopg:// if needed
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return database_url
 
 
 def run_migrations_offline() -> None:
