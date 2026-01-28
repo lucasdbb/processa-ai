@@ -222,15 +222,17 @@ class SubscriptionsService:
 
         items = []
         for inv in invoices.data:
-            items.append({
-                "id": inv.id,
-                "amount": inv.amount_paid,
-                "currency": inv.currency,
-                "status": inv.status,
-                "created": datetime.fromtimestamp(inv.created, tz=timezone.utc),
-                "invoice_url": inv.hosted_invoice_url,
-                "invoice_pdf": inv.invoice_pdf,
-            })
+            items.append(
+                {
+                    "id": inv.id,
+                    "amount": inv.amount_paid,
+                    "currency": inv.currency,
+                    "status": inv.status,
+                    "created": datetime.fromtimestamp(inv.created, tz=timezone.utc),
+                    "invoice_url": inv.hosted_invoice_url,
+                    "invoice_pdf": inv.invoice_pdf,
+                }
+            )
 
         return {"invoices": items, "has_more": invoices.has_more}
 

@@ -78,9 +78,7 @@ class WebhooksService:
             logger.error(f"Failed to retrieve subscription: {e}")
             return
 
-        plan_id = self._get_plan_id_from_price(
-            subscription["items"]["data"][0]["price"]["id"]
-        )
+        plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
 
         try:
             self.supabase.table("subscriptions").upsert(
@@ -139,9 +137,9 @@ class WebhooksService:
             return
 
         try:
-            self.supabase.table("subscriptions").update(
-                {"status": "past_due"}
-            ).eq("stripe_subscription_id", subscription_id).execute()
+            self.supabase.table("subscriptions").update({"status": "past_due"}).eq(
+                "stripe_subscription_id", subscription_id
+            ).execute()
             logger.warning(f"Subscription payment failed: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription on invoice.failed: {e}")
@@ -152,9 +150,7 @@ class WebhooksService:
         if not subscription_id:
             return
 
-        plan_id = self._get_plan_id_from_price(
-            subscription["items"]["data"][0]["price"]["id"]
-        )
+        plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
 
         try:
             self.supabase.table("subscriptions").update(

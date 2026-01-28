@@ -31,6 +31,7 @@ async def list_profiles(
     """List all profiles (admin only)."""
     if x_user_role != "admin":
         from fastapi import HTTPException, status
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return await profiles_service.list_profiles(limit=limit, offset=offset)
 
@@ -43,5 +44,6 @@ async def update_role(
     """Update user role (admin only)."""
     if x_user_role != "admin":
         from fastapi import HTTPException, status
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return await profiles_service.update_role(data.user_id, data.role)

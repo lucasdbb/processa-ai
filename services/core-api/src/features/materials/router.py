@@ -22,6 +22,7 @@ async def list_materials():
 async def list_admin_materials(x_user_role: str = Header("user")):
     if x_user_role != "admin":
         from fastapi import HTTPException
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return await service.list_admin_materials()
 
@@ -43,6 +44,7 @@ async def create_material(
 ):
     if x_user_role != "admin":
         from fastapi import HTTPException
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
 
     file_bytes = await file.read()
@@ -76,6 +78,7 @@ async def update_material(
 ):
     if x_user_role != "admin":
         from fastapi import HTTPException
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
 
     file_bytes: bytes | None = None
@@ -100,6 +103,7 @@ async def update_material(
 async def delete_material(material_id: str, x_user_role: str = Header("user")):
     if x_user_role != "admin":
         from fastapi import HTTPException
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return await service.delete_material(material_id)
 

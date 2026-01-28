@@ -231,9 +231,7 @@ class ProfilesService:
         except Exception:
             return False
 
-    async def _update_newsletter_status(
-        self, user_id: str, email: str, opt_in: bool
-    ) -> None:
+    async def _update_newsletter_status(self, user_id: str, email: str, opt_in: bool) -> None:
         """Update newsletter subscription status."""
         try:
             if opt_in:
