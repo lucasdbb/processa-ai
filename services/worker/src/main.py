@@ -100,7 +100,50 @@ async def _handle_ai_job(job: dict) -> None:
         return
 
     file_url = str(payload.get("file_url") or "").strip()
+    bucket = str(payload.get("bucket") or "").strip()
+    storage_path = str(payload.get("storage_path") or "").strip()
     user_id = str(payload.get("user_id") or "").strip()
+
+    # Se temos bucket e storage_path, gerar signed URL com service role key
+    # Isso substitui qualquer file_url que possa ter vindo no payload
+    if bucket and storage_path:
+        try:
+            import httpx
+
+            base_url = settings.SUPABASE_URL.rstrip("/")
+            api_key = settings.SUPABASE_SERVICE_ROLE_KEY
+
+            sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
+            logger.info(f"Generating signed URL from bucket={bucket}, path={storage_path[:50]}...")
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    sign_url,
+                    headers={
+                        "apikey": api_key,
+                        "Authorization": f"Bearer {api_key}",
+                    },
+                    json={"expiresIn": 3600},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    signed_path = data.get("signedURL") or ""
+                    # Se a resposta for um caminho relativo, construir URL completa
+                    if signed_path.startswith("/"):
+                        file_url = f"{base_url}{signed_path}"
+                    else:
+                        file_url = signed_path
+                    logger.info(f"Generated signed URL successfully: {file_url[:100]}")
+                else:
+                    logger.error(
+                        f"Failed to generate signed URL: status {resp.status_code}, body: {resp.text[:200]}"
+                    )
+        except Exception as e:
+            logger.error(f"Failed to generate signed URL: {e}", exc_info=True)
+
+    logger.info(f"Job {job_id} - file_url: {file_url[:100] if file_url else 'EMPTY'}")
+    logger.info(f"Job {job_id} - user_id: {user_id}")
+
     if not file_url or not user_id:
         await _safe_set_job_status(
             job_id,

@@ -249,10 +249,18 @@ class AiService:
         pdf_bytes: bytes,
         user_id: str,
         client_id: str | None,
-        endpoint: str,
+        job_uuid: str,
         filename: str,
         expires_in: int,
+        output: bool = False,
     ) -> dict:
+        """
+        Faz upload de PDF para o Supabase Storage.
+        Estrutura: user_id/client_id/job_uuid/hash_[input|output].pdf
+
+        Args:
+            output: Se True, usa sufixo "_output", senão "_input"
+        """
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
         bucket = (settings.SUPABASE_OUTPUTS_BUCKET or "").strip()
@@ -263,12 +271,12 @@ class AiService:
             )
 
         sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
-        slug = self._slugify_filename(filename)
-        storage_filename = f"{sha}_{slug}.pdf"
+        suffix = "_output" if output else "_input"
+        storage_filename = f"{sha}{suffix}.pdf"
         uid = self._sanitize_path_segment(user_id, default="unknown-user")
         cid = self._sanitize_path_segment(client_id, default="no_client")
-        ep = self._sanitize_path_segment(endpoint, default="unknown")
-        storage_path = f"{uid}/{cid}/{ep}/{storage_filename}"
+        jid = self._sanitize_path_segment(job_uuid, default="unknown-job")
+        storage_path = f"{uid}/{cid}/{jid}/{storage_filename}"
 
         upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
         headers = {
@@ -326,7 +334,7 @@ class AiService:
         filename: str,
         user_id: str,
         client_id: str | None,
-        endpoint: str,
+        job_uuid: str,
         expires_in: int,
     ) -> dict:
         title = str(filename)
@@ -338,9 +346,10 @@ class AiService:
             pdf_bytes=pdf_bytes,
             user_id=user_id,
             client_id=client_id,
-            endpoint=endpoint,
+            job_uuid=job_uuid,
             filename=filename,
             expires_in=expires_in,
+            output=True,
         )
 
         return {
@@ -533,14 +542,17 @@ class AiService:
 
         # Salvar PDF de input para histórico (se solicitado)
         input_storage = None
-        if store_input_pdf:
+        if store_input_pdf and job_id:
+            # Extrai o UUID do job_id (formato: "ai:uuid")
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
             input_storage = await self._upload_pdf_to_supabase(
                 pdf_bytes=pdf_bytes,
                 user_id=user_id,
                 client_id=client_id,
-                endpoint="cnis_analysis/input",
+                job_uuid=job_uuid_str,
                 filename=inferred_filename,
                 expires_in=signed_url_expires_in,
+                output=False,
             )
 
         cached = await self._check_cache(input_hash=input_hash, endpoint_key="cnis_analysis")
@@ -549,14 +561,15 @@ class AiService:
             cached["cached"] = True
             if input_storage:
                 cached["input_storage"] = input_storage
-            if store_pdf and not cached.get("storage_path"):
+            if store_pdf and not cached.get("storage_path") and job_id:
                 # Gerar PDF do cache se necessário
+                job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
                 stored = await self._markdown_to_pdf_and_store(
                     markdown=cached["markdown"],
                     filename=inferred_filename,
                     user_id=user_id,
                     client_id=client_id,
-                    endpoint="cnis_analysis/output",
+                    job_uuid=job_uuid_str,
                     expires_in=signed_url_expires_in,
                 )
                 cached.update(stored)
@@ -581,19 +594,20 @@ class AiService:
         if input_storage:
             response["input_storage"] = input_storage
 
-        if store_pdf:
+        if store_pdf and job_id:
             if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
                 raise WorkerException(
                     status_code=400,
                     detail="SUPABASE_SERVICE_ROLE_KEY não configurada",
                 )
 
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
             stored = await self._markdown_to_pdf_and_store(
                 markdown=markdown,
                 filename=inferred_filename,
                 user_id=user_id,
                 client_id=client_id,
-                endpoint="cnis_analysis/output",
+                job_uuid=job_uuid_str,
                 expires_in=signed_url_expires_in,
             )
             response.update(stored)
