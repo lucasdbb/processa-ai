@@ -225,19 +225,21 @@ async def _handle_job(job: dict) -> None:
                     logger.exception("Failed to persist input document in database")
 
     if store_pdf:
-        status["result"] = {output",
-                    bucket=bucket,
-                    storage_path=storage_path,
-                    filename=filename,
-                    checksum_sha256=checksum,
-                    size_bytes=size_bytes,
-                    metadata={"endpoint": "cnis_analysis", "audit_score": audit_score},
-                    linked_document_id=input_doc_id,  # Link output ao input
         bucket = result.get("bucket")
         storage_path = result.get("storage_path")
+        download_url = result.get("download_url")
         pdf_bytes = result.get("content")
+
+        status["result"] = {**(status.get("result") or {})}
+        if isinstance(bucket, str):
+            status["result"]["bucket"] = bucket
+        if isinstance(storage_path, str):
+            status["result"]["storage_path"] = storage_path
+        if isinstance(download_url, str):
+            status["result"]["download_url"] = download_url
         if isinstance(pdf_bytes, (bytes, bytearray)):
             status["result"]["content"] = _encode_bytes(bytes(pdf_bytes))
+
         if job_uuid and isinstance(bucket, str) and isinstance(storage_path, str):
             checksum = None
             size_bytes = None
@@ -259,6 +261,7 @@ async def _handle_job(job: dict) -> None:
                     checksum_sha256=checksum,
                     size_bytes=size_bytes,
                     metadata={"endpoint": "cnis_analysis", "audit_score": audit_score},
+                    linked_document_id=input_doc_id,
                 )
             except Exception:
                 logger.exception("Failed to persist document in database")
@@ -271,7 +274,6 @@ async def _handle_job(job: dict) -> None:
             result_payload["bucket"] = bucket
         if isinstance(storage_path, str):
             result_payload["storage_path"] = storage_path
-        download_url = result.get("download_url")
         if isinstance(download_url, str):
             result_payload["download_url"] = download_url
     else:
