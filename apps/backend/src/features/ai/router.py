@@ -147,7 +147,11 @@ async def cnis_analysis_upload(
             detail="Arquivo vazio",
         )
 
-    # Upload direto para Supabase Storage
+    # Gera job_id primeiro para usar na estrutura de pastas
+    job_uuid = uuid4()
+    job_id = f"ai:{job_uuid}"
+
+    # Upload direto para Supabase Storage usando job_uuid na estrutura de pastas
     service = AiService()
     try:
         upload_result = await service.upload_input_pdf(
@@ -155,7 +159,7 @@ async def cnis_analysis_upload(
             filename=file.filename,
             user_id=user_id,
             client_id=client_id.strip() if client_id else None,
-            endpoint="cnis_analysis",
+            job_uuid=str(job_uuid),
             expires_in=signed_url_expires_in,
         )
     except HTTPException:
@@ -166,10 +170,6 @@ async def cnis_analysis_upload(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao fazer upload: {str(e)}",
         )
-
-    # Enfileira job
-    job_uuid = uuid4()
-    job_id = f"ai:{job_uuid}"
 
     try:
         await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
@@ -184,12 +184,12 @@ async def cnis_analysis_upload(
             client_id=client_id.strip() if client_id else None,
             request_payload={
                 "job_id": job_id,
-                "file_url": upload_result["signed_url"],
+                "bucket": upload_result["bucket"],
+                "storage_path": upload_result["storage_path"],
                 "user_id": user_id,
                 "client_id": client_id.strip() if client_id else None,
                 "store_pdf": bool(store_pdf),
                 "signed_url_expires_in": int(signed_url_expires_in),
-                "input_document_id": upload_result.get("document_id"),
                 "input_storage_path": upload_result.get("storage_path"),
             },
         )

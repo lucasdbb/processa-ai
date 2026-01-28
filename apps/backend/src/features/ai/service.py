@@ -121,15 +121,28 @@ class AiService:
         except Exception:
             data = None
 
-        signed_url = None
+        signed_path = None
         if isinstance(data, dict):
-            signed_url = data.get("signedURL") or data.get("signedUrl")
-        if not signed_url or not isinstance(signed_url, str):
+            signed_path = data.get("signedURL") or data.get("signedUrl")
+        if not signed_path or not isinstance(signed_path, str):
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Resposta inválida ao gerar URL assinada",
             )
 
+        logger.info(f"Supabase signed URL response: {signed_path[:150]}")
+
+        # A API do Supabase retorna um caminho relativo, precisamos adicionar a base_url
+        if signed_path.startswith("/"):
+            # Se começa com /object/sign, adicionar /storage/v1 antes
+            if signed_path.startswith("/object/"):
+                signed_url = f"{base_url}/storage/v1{signed_path}"
+            else:
+                signed_url = f"{base_url}{signed_path}"
+        else:
+            signed_url = signed_path
+
+        logger.info(f"Final signed URL: {signed_url[:150]}")
         return signed_url
 
     async def upload_input_pdf(
@@ -139,11 +152,12 @@ class AiService:
         filename: str,
         user_id: str,
         client_id: str | None,
-        endpoint: str,
+        job_uuid: str,
         expires_in: int,
     ) -> dict:
         """
         Faz upload de um PDF de input para o Supabase Storage.
+        Estrutura: user_id/client_id/job_uuid/document_input.pdf
 
         Retorna:
         - bucket: nome do bucket
@@ -151,7 +165,6 @@ class AiService:
         - signed_url: URL assinada para acesso
         - document_id: ID do documento no banco (opcional)
         """
-        from src.core.ai_worker_store import create_document
 
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
@@ -162,16 +175,15 @@ class AiService:
                 detail="Supabase Storage não configurado",
             )
 
-        # Gera hash e path de armazenamento
+        # Gera hash e path de armazenamento (usando apenas hash para privacidade)
         sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
-        slug = self._slugify_filename(filename)
-        storage_filename = f"{sha}_{slug}.pdf"
+        storage_filename = f"{sha}_input.pdf"
         uid = self._sanitize_path_segment(user_id, default="unknown-user")
         cid = self._sanitize_path_segment(client_id, default="no_client")
-        ep = self._sanitize_path_segment(endpoint, default="unknown")
+        jid = self._sanitize_path_segment(job_uuid, default="unknown-job")
 
-        # Upload vai para pasta input/
-        storage_path = f"{uid}/{cid}/{ep}/input/{storage_filename}"
+        # Estrutura: user_id/client_id/job_uuid/hash_input.pdf
+        storage_path = f"{uid}/{cid}/{jid}/{storage_filename}"
 
         upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
         headers = {
@@ -211,28 +223,11 @@ class AiService:
             bucket=bucket, storage_path=storage_path, expires_in=expires_in
         )
 
-        # Salva registro no banco
-        document_id = None
-        try:
-            document_id = await create_document(
-                user_id=user_id,
-                client_id=client_id,
-                document_type="input",
-                filename=filename,
-                storage_path=storage_path,
-                bucket=bucket,
-                size_bytes=len(pdf_bytes),
-                linked_document_id=None,  # Input não tem documento linkado
-            )
-            logger.info(f"Input document saved: {document_id}")
-        except Exception:
-            logger.exception("Failed to save input document in database")
-
         return {
             "bucket": bucket,
             "storage_path": storage_path,
             "signed_url": signed_url,
-            "document_id": str(document_id) if document_id else None,
+            "checksum_sha256": hashlib.sha256(pdf_bytes).hexdigest(),
         }
 
     async def _upload_pdf_to_supabase(
@@ -241,10 +236,18 @@ class AiService:
         pdf_bytes: bytes,
         user_id: str,
         client_id: str | None,
-        endpoint: str,
+        job_uuid: str,
         filename: str,
         expires_in: int,
+        output: bool = False,
     ) -> dict:
+        """
+        Faz upload de PDF para o Supabase Storage.
+        Estrutura: user_id/client_id/job_uuid/hash_[input|output].pdf
+
+        Args:
+            output: Se True, usa sufixo "_output", senão "_input"
+        """
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
         bucket = (settings.SUPABASE_OUTPUTS_BUCKET or "").strip()
@@ -255,12 +258,12 @@ class AiService:
             )
 
         sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
-        slug = self._slugify_filename(filename)
-        storage_filename = f"{sha}_{slug}.pdf"
+        suffix = "_output" if output else "_input"
+        storage_filename = f"{sha}{suffix}.pdf"
         uid = self._sanitize_path_segment(user_id, default="unknown-user")
         cid = self._sanitize_path_segment(client_id, default="no_client")
-        ep = self._sanitize_path_segment(endpoint, default="unknown")
-        storage_path = f"{uid}/{cid}/{ep}/{storage_filename}"
+        jid = self._sanitize_path_segment(job_uuid, default="unknown-job")
+        storage_path = f"{uid}/{cid}/{jid}/{storage_filename}"
 
         upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
         headers = {
@@ -383,14 +386,16 @@ class AiService:
             async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
                 resp = await client.get(url)
         except httpx.TimeoutException:
+            logger.exception(f"Timeout ao baixar arquivo de {url}")
             raise HTTPException(
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 detail="Tempo limite ao baixar o arquivo",
             )
-        except httpx.RequestError:
+        except httpx.RequestError as e:
+            logger.exception(f"Erro de conexão ao baixar arquivo de {url}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Erro ao baixar o arquivo",
+                detail=f"Erro ao baixar o arquivo: {type(e).__name__}",
             )
 
         if resp.status_code >= 400:

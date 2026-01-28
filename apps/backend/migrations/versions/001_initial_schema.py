@@ -49,11 +49,34 @@ def upgrade() -> None:
         ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
     """)
 
+    # Criar funções helper para verificar roles (evita recursão infinita em RLS)
+    op.execute("""
+        CREATE OR REPLACE FUNCTION public.is_admin()
+        RETURNS BOOLEAN AS $$
+        BEGIN
+            RETURN EXISTS (
+                SELECT 1 FROM public.profiles 
+                WHERE id = auth.uid() AND role = 'admin'
+            );
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+        CREATE OR REPLACE FUNCTION public.is_author_or_admin()
+        RETURNS BOOLEAN AS $$
+        BEGIN
+            RETURN EXISTS (
+                SELECT 1 FROM public.profiles 
+                WHERE id = auth.uid() AND role IN ('author', 'admin')
+            );
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+    """)
+
     op.execute("""
         CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
         CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-        CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
-        CREATE POLICY "Admins can manage all profiles" ON public.profiles FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (public.is_admin());
+        CREATE POLICY "Admins can manage all profiles" ON public.profiles FOR ALL USING (public.is_admin());
     """)
 
     # 2. Blog Categories
@@ -76,7 +99,7 @@ def upgrade() -> None:
 
     op.execute("""
         CREATE POLICY "Anyone can view visible categories" ON public.blog_categories FOR SELECT USING (is_visible = true);
-        CREATE POLICY "Admins can manage categories" ON public.blog_categories FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can manage categories" ON public.blog_categories FOR ALL USING (public.is_admin());
     """)
 
     # 3. Blog Posts
@@ -117,10 +140,10 @@ def upgrade() -> None:
     op.execute("""
         CREATE POLICY "Anyone can view published posts" ON public.blog_posts FOR SELECT USING (status = 'published' AND published_at <= NOW());
         CREATE POLICY "Authors can view own posts" ON public.blog_posts FOR SELECT USING (author_id = auth.uid());
-        CREATE POLICY "Admins can view all posts" ON public.blog_posts FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
-        CREATE POLICY "Authors can create posts" ON public.blog_posts FOR INSERT WITH CHECK (auth.uid() = author_id AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('author', 'admin')));
-        CREATE POLICY "Authors can update own posts" ON public.blog_posts FOR UPDATE USING (author_id = auth.uid() AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('author', 'admin')));
-        CREATE POLICY "Admins can delete posts" ON public.blog_posts FOR DELETE USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can view all posts" ON public.blog_posts FOR SELECT USING (public.is_admin());
+        CREATE POLICY "Authors can create posts" ON public.blog_posts FOR INSERT WITH CHECK (auth.uid() = author_id AND public.is_author_or_admin());
+        CREATE POLICY "Authors can update own posts" ON public.blog_posts FOR UPDATE USING (author_id = auth.uid() AND public.is_author_or_admin());
+        CREATE POLICY "Admins can delete posts" ON public.blog_posts FOR DELETE USING (public.is_admin());
     """)
 
     # 4. Blog Tags
@@ -136,7 +159,7 @@ def upgrade() -> None:
         ALTER TABLE public.blog_tags ENABLE ROW LEVEL SECURITY;
 
         CREATE POLICY "Anyone can view tags" ON public.blog_tags FOR SELECT USING (true);
-        CREATE POLICY "Admins can manage tags" ON public.blog_tags FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can manage tags" ON public.blog_tags FOR ALL USING (public.is_admin());
     """)
 
     # 5. Blog Post Tags
@@ -199,8 +222,8 @@ def upgrade() -> None:
         CREATE INDEX IF NOT EXISTS idx_support_email ON public.support_requests(LOWER(email));
         ALTER TABLE public.support_requests ENABLE ROW LEVEL SECURITY;
 
-        CREATE POLICY "Admins can view all support requests" ON public.support_requests FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
-        CREATE POLICY "Admins can manage support requests" ON public.support_requests FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can view all support requests" ON public.support_requests FOR SELECT USING (public.is_admin());
+        CREATE POLICY "Admins can manage support requests" ON public.support_requests FOR ALL USING (public.is_admin());
     """)
 
     # 8. Materials
@@ -231,7 +254,7 @@ def upgrade() -> None:
 
         CREATE POLICY "Anyone can view published public materials" ON public.materials FOR SELECT USING (is_published = true AND requires_auth = false);
         CREATE POLICY "Authenticated can view published auth-required materials" ON public.materials FOR SELECT USING (is_published = true AND requires_auth = true AND auth.role() = 'authenticated');
-        CREATE POLICY "Admins can manage materials" ON public.materials FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can manage materials" ON public.materials FOR ALL USING (public.is_admin());
     """)
 
     # 9. Material Downloads
@@ -274,7 +297,7 @@ def upgrade() -> None:
         ALTER TABLE public.billing_plans ENABLE ROW LEVEL SECURITY;
 
         CREATE POLICY "Anyone can view visible plans" ON public.billing_plans FOR SELECT USING (is_visible = true);
-        CREATE POLICY "Admins can manage plans" ON public.billing_plans FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+        CREATE POLICY "Admins can manage plans" ON public.billing_plans FOR ALL USING (public.is_admin());
     """)
 
     # 11. Functions and Triggers for public schema
@@ -358,6 +381,14 @@ def upgrade() -> None:
         );
 
         CREATE INDEX IF NOT EXISTS ix_ai_worker_endpoints_is_active ON ai_worker.endpoints (is_active);
+
+        -- Seed data: endpoints
+        INSERT INTO ai_worker.endpoints (key, path, description, n8n_workflow_id)
+        VALUES 
+            ('cnis_analysis', '/api/v1/ai/analyses/cnis-upload', 'Análise de CNIS', 'cnis-analyzer'),
+            ('markdown_to_pdf', '/api/v1/ai/documents/markdown-to-pdf', 'Conversão de Markdown para PDF', NULL),
+            ('summarize_document', '/api/v1/ai/documents/summarize', 'Resumo de documento', NULL)
+        ON CONFLICT (key) DO NOTHING;
     """)
 
     op.execute("""
@@ -681,4 +712,3 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS public.blog_posts CASCADE")
     op.execute("DROP TABLE IF EXISTS public.blog_categories CASCADE")
     op.execute("DROP TABLE IF EXISTS public.profiles CASCADE")
-
