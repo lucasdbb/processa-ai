@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from src.features.office.deadlines.schemas import (
+    DeadlineCreateRequest,
     DeadlineListParams,
     DeadlineResponse,
+    DeadlineUpdateRequest,
 )
 
 # Mock data baseado no frontend
@@ -146,6 +149,79 @@ class DeadlinesService:
                     updated_at=now,
                 )
         return None
+
+    async def create_deadline(self, user_id: str, data: DeadlineCreateRequest) -> DeadlineResponse:
+        """Create a new deadline."""
+        deadline_id = str(uuid4())
+        now = datetime.now(timezone.utc)
+
+        new_deadline = {
+            "id": deadline_id,
+            "type": data.type,
+            "process_id": data.process_id,
+            "process_number": f"PROC-{deadline_id[:8].upper()}",  # Mock process number
+            "client_name": "Cliente Mock",  # Mock client name
+            "date": data.date,
+            "description": data.description,
+            "status": "pending",
+        }
+
+        MOCK_DEADLINES.append(new_deadline)
+
+        return DeadlineResponse(
+            id=deadline_id,
+            user_id=user_id,
+            type=new_deadline["type"],
+            process_id=new_deadline["process_id"],
+            process_number=new_deadline["process_number"],
+            client_name=new_deadline["client_name"],
+            date=new_deadline["date"],
+            description=new_deadline["description"],
+            status=self._get_status(new_deadline["date"], new_deadline["status"]),
+            days_until=self._calculate_days_until(new_deadline["date"]),
+            created_at=now,
+            updated_at=now,
+        )
+
+    async def update_deadline(
+        self, user_id: str, deadline_id: str, data: DeadlineUpdateRequest
+    ) -> DeadlineResponse | None:
+        """Update an existing deadline."""
+        for d in MOCK_DEADLINES:
+            if d["id"] == deadline_id:
+                if data.type is not None:
+                    d["type"] = data.type
+                if data.date is not None:
+                    d["date"] = data.date
+                if data.description is not None:
+                    d["description"] = data.description
+                if data.status is not None:
+                    d["status"] = data.status
+
+                now = datetime.now(timezone.utc)
+                return DeadlineResponse(
+                    id=d["id"],
+                    user_id=user_id,
+                    type=d["type"],
+                    process_id=d["process_id"],
+                    process_number=d["process_number"],
+                    client_name=d["client_name"],
+                    date=d["date"],
+                    description=d["description"],
+                    status=self._get_status(d["date"], d["status"]),
+                    days_until=self._calculate_days_until(d["date"]),
+                    created_at=now,
+                    updated_at=now,
+                )
+        return None
+
+    async def delete_deadline(self, user_id: str, deadline_id: str) -> bool:
+        """Delete a deadline."""
+        for i, d in enumerate(MOCK_DEADLINES):
+            if d["id"] == deadline_id:
+                MOCK_DEADLINES.pop(i)
+                return True
+        return False
 
 
 deadlines_service = DeadlinesService()

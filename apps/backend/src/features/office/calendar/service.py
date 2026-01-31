@@ -55,7 +55,7 @@ class CalendarService:
 
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(query, query_params)
+                await cur.execute(query, query_params, prepare=False)
                 rows = await cur.fetchall()
 
                 events = [self._row_to_event(row) for row in rows]
@@ -65,7 +65,7 @@ class CalendarService:
                     SELECT COUNT(*) FROM office_api.events
                     WHERE user_id = %s AND start_at >= %s AND end_at <= %s
                 """
-                await cur.execute(count_query, [user_id, params.start, params.end])
+                await cur.execute(count_query, [user_id, params.start, params.end], prepare=False)
                 total_row = await cur.fetchone()
                 total = total_row[0] if total_row else 0
 

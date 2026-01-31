@@ -1,0 +1,348 @@
+/* react-big-calendar theme overrides using CSS variables from the design system */
+
+.rbc-calendar {
+  font-family: inherit;
+  color: var(--foreground);
+}
+
+/* Header row (Sun, Mon, Tue...) */
+.rbc-header {
+  padding: 8px 4px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+  background: hsl(var(--muted) / 0.3);
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.rbc-header:first-child {
+  border-left: none;
+}
+
+/* Month view cells */
+.rbc-month-view {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.rbc-month-row {
+  border-top: 1px solid var(--border);
+  display: flex;
+}
+
+.rbc-month-row:first-child {
+  border-top: none;
+}
+
+.rbc-row-bg {
+  display: flex;
+  flex: 1;
+}
+
+.rbc-day-bg {
+  flex: 1;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+  min-height: 80px;
+}
+
+.rbc-day-bg:first-child {
+  border-left: none;
+}
+
+.rbc-day-bg:hover {
+  background: hsl(var(--accent) / 0.5);
+}
+
+.rbc-row-content {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+.rbc-row-segment {
+  display: flex;
+  flex: 1;
+  border-left: 1px solid var(--border);
+}
+
+.rbc-row-segment:first-child {
+  border-left: none;
+}
+
+.rbc-off-range-bg {
+  background: hsl(var(--muted) / 0.4);
+}
+
+.rbc-today {
+  background: hsl(var(--primary) / 0.08) !important;
+}
+
+/* Date number in month cell */
+.rbc-date-cell {
+  padding: 4px 8px;
+  text-align: right;
+  font-size: 0.8125rem;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.rbc-date-cell a {
+  color: var(--foreground);
+}
+
+.rbc-date-cell.rbc-now {
+  font-weight: 700;
+}
+
+.rbc-date-cell.rbc-now a {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rbc-off-range {
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
+
+/* Events */
+.rbc-event {
+  border: none !important;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  outline: none;
+}
+
+.rbc-event:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.rbc-event.rbc-selected {
+  opacity: 0.85;
+}
+
+.rbc-event-label {
+  font-size: 0.6875rem;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.rbc-event-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Show more link */
+.rbc-show-more {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  padding: 2px 8px;
+  background: transparent;
+}
+
+.rbc-show-more:hover {
+  text-decoration: underline;
+}
+
+/* Week and Day views */
+.rbc-time-view {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.rbc-time-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid var(--border);
+}
+
+.rbc-time-content {
+  border-top: none;
+}
+
+.rbc-time-content > * + * > * {
+  border-left: 1px solid var(--border);
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  min-height: 48px;
+}
+
+.rbc-time-slot {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.rbc-time-gutter {
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+}
+
+.rbc-current-time-indicator {
+  background-color: var(--destructive);
+  height: 2px;
+}
+
+.rbc-current-time-indicator::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--destructive);
+}
+
+/* Day column in week/day view */
+.rbc-day-slot .rbc-event {
+  border-radius: 6px;
+  border-left: 3px solid currentColor !important;
+}
+
+/* All day section */
+.rbc-allday-cell {
+  background: var(--card);
+}
+
+.rbc-row-bg {
+  background: var(--card);
+}
+
+/* Agenda view */
+.rbc-agenda-view {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.rbc-agenda-view table.rbc-agenda-table {
+  border: none;
+}
+
+.rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+
+.rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--foreground);
+  vertical-align: middle;
+}
+
+.rbc-agenda-view table.rbc-agenda-table tbody > tr > td + td {
+  border-left: 1px solid var(--border);
+}
+
+.rbc-agenda-date-cell {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rbc-agenda-time-cell {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+.rbc-agenda-event-cell {
+  font-weight: 500;
+}
+
+/* Overlay backdrop */
+.rbc-overlay {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  z-index: 50;
+}
+
+.rbc-overlay-header {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px 8px;
+  margin: -8px -8px 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+/* Selection slot (clicking/dragging to select) */
+.rbc-slot-selection {
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+}
+
+/* Remove default blue selection */
+.rbc-selected-cell {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* Toolbar — hidden since we use a custom one */
+.rbc-toolbar {
+  display: none;
+}
+
+/* === Calendar Color Schemes === */
+
+/* Minimal Color Scheme */
+.calendar-minimal .rbc-event {
+  background: hsl(var(--muted) / 0.6) !important;
+  color: var(--foreground) !important;
+  border-left: 3px solid var(--foreground) !important;
+}
+
+.calendar-minimal .rbc-today {
+  background: hsl(var(--muted) / 0.15) !important;
+}
+
+/* Colorful Color Scheme */
+.calendar-colorful .rbc-event[style*="rgb(239, 68, 68)"] {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+}
+
+.calendar-colorful .rbc-event[style*="rgb(59, 130, 246)"] {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  border-left: 4px solid #3b82f6 !important;
+}
+
+.calendar-colorful .rbc-event[style*="rgb(34, 197, 94)"] {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+  border-left: 4px solid #22c55e !important;
+}
+
+.calendar-colorful .rbc-today {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.05)) !important;
+}

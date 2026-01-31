@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { Bell, Shield, CreditCard, Palette, Camera, Check, Loader2, ChevronDown } from 'lucide-react'
+import { Bell, Shield, CreditCard, Palette, Camera, Check, Loader2, ChevronDown, Calendar } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import {
 import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '@/features/auth/services/auth-service'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useCalendarSettingsStore, type CalendarColorScheme } from '@/stores/calendar-settings-store'
 
 export default function ConfiguracoesPage() {
   const { user } = useUser()
@@ -30,6 +31,10 @@ export default function ConfiguracoesPage() {
 
   // Appearance section state
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false)
+
+  // Calendar section state
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const { colorScheme, setColorScheme, defaultView, setDefaultView } = useCalendarSettingsStore()
 
   // Profile editing state
   const [isEditing, setIsEditing] = useState(false)
@@ -67,6 +72,12 @@ export default function ConfiguracoesPage() {
       name: 'Aparencia',
       icon: Palette,
       description: 'Tema da interface',
+    },
+    {
+      id: 'calendar',
+      name: 'Calendário',
+      icon: Calendar,
+      description: 'Preferências do calendário',
     },
     {
       id: 'notifications',
@@ -502,13 +513,101 @@ export default function ConfiguracoesPage() {
                           className={cn(
                             'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                             resolvedTheme === theme || (theme === 'system' && !['light', 'dark'].includes(resolvedTheme || ''))
-                              ? 'bg-slate-900 text-white'
+                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                               : 'bg-muted text-muted-foreground hover:text-foreground'
                           )}
                         >
                           {theme === 'light' ? 'Claro' : theme === 'dark' ? 'Escuro' : 'Sistema'}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // Calendário é expansível
+          if (section.id === 'calendar') {
+            return (
+              <div key={section.id}>
+                <button
+                  onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                  className="w-full flex items-center gap-4 p-5 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="p-2.5 bg-muted rounded-lg">
+                    <Icon className="h-5 w-5 text-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-foreground">{section.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{section.description}</p>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      'h-5 w-5 text-muted-foreground transition-transform duration-200',
+                      isCalendarOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+                {isCalendarOpen && (
+                  <div className="px-5 pb-5 pt-0 space-y-4">
+                    <div className="ml-14 space-y-4">
+                      {/* Esquema de Cores */}
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Esquema de Cores
+                        </label>
+                        <div className="flex gap-2">
+                          {(['default', 'minimal', 'colorful'] as CalendarColorScheme[]).map((scheme) => (
+                            <button
+                              key={scheme}
+                              onClick={() => {
+                                setColorScheme(scheme)
+                                toast.success('Tema do calendário atualizado')
+                              }}
+                              className={cn(
+                                'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                                colorScheme === scheme
+                                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                  : 'bg-muted text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              {scheme === 'default' && 'Padrão'}
+                              {scheme === 'minimal' && 'Minimalista'}
+                              {scheme === 'colorful' && 'Colorido'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Visualização Padrão */}
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Visualização Padrão
+                        </label>
+                        <div className="flex gap-2">
+                          {(['month', 'week', 'day', 'agenda'] as const).map((view) => (
+                            <button
+                              key={view}
+                              onClick={() => {
+                                setDefaultView(view)
+                                toast.success('Visualização padrão atualizada')
+                              }}
+                              className={cn(
+                                'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                                defaultView === view
+                                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                                  : 'bg-muted text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              {view === 'month' && 'Mês'}
+                              {view === 'week' && 'Semana'}
+                              {view === 'day' && 'Dia'}
+                              {view === 'agenda' && 'Agenda'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

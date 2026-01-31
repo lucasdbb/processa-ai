@@ -19,14 +19,15 @@ interface DeadlineFormDialogProps {
   isOpen: boolean
   onClose: () => void
   deadline?: Deadline
+  defaultDate?: string
   onSave: (deadline: Omit<Deadline, 'id'> & { id?: string }) => void
 }
 
-const getInitialFormData = (deadline?: Deadline) => ({
+const getInitialFormData = (deadline?: Deadline, defaultDate?: string) => ({
   title: deadline?.title ?? '',
   processNumber: deadline?.processNumber ?? '',
   processId: deadline?.processId ?? '',
-  date: deadline?.date ?? '',
+  date: deadline?.date ?? defaultDate ?? '',
   time: deadline?.time ?? '',
   type:
     deadline?.type ??
@@ -38,16 +39,18 @@ const getInitialFormData = (deadline?: Deadline) => ({
 
 function DeadlineFormDialogBody({
   deadline,
+  defaultDate,
   isEditing,
   onClose,
   onSave,
 }: {
   deadline?: Deadline
+  defaultDate?: string
   isEditing: boolean
   onClose: () => void
   onSave: (deadline: Omit<Deadline, 'id'> & { id?: string }) => void
 }) {
-  const [formData, setFormData] = useState(() => getInitialFormData(deadline))
+  const [formData, setFormData] = useState(() => getInitialFormData(deadline, defaultDate))
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const validate = () => {
@@ -294,15 +297,16 @@ function DeadlineFormDialogBody({
   )
 }
 
-export function DeadlineFormDialog({ isOpen, onClose, deadline, onSave }: DeadlineFormDialogProps) {
+export function DeadlineFormDialog({ isOpen, onClose, deadline, defaultDate, onSave }: DeadlineFormDialogProps) {
   const isEditing = !!deadline
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       {isOpen && (
         <DeadlineFormDialogBody
-          key={deadline?.id ?? 'new'}
+          key={deadline?.id ?? defaultDate ?? 'new'}
           deadline={deadline}
+          defaultDate={defaultDate}
           isEditing={isEditing}
           onClose={onClose}
           onSave={onSave}

@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.deadlines.schemas import (
+    DeadlineCreateRequest,
     DeadlineListParams,
     DeadlineListResponse,
     DeadlineResponse,
     DeadlineStatus,
+    DeadlineUpdateRequest,
 )
 from src.features.office.deadlines.service import deadlines_service
 
@@ -64,3 +66,43 @@ async def get_deadline(
             detail="Deadline not found",
         )
     return deadline
+
+
+@router.post("", response_model=DeadlineResponse, status_code=status.HTTP_201_CREATED)
+async def create_deadline(
+    data: DeadlineCreateRequest,
+    user_id: str = Depends(get_user_id),
+):
+    """Create a new deadline."""
+    return await deadlines_service.create_deadline(user_id, data)
+
+
+@router.put("/{deadline_id}", response_model=DeadlineResponse)
+async def update_deadline(
+    deadline_id: str,
+    data: DeadlineUpdateRequest,
+    user_id: str = Depends(get_user_id),
+):
+    """Update an existing deadline."""
+    deadline = await deadlines_service.update_deadline(user_id, deadline_id, data)
+    if not deadline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Deadline not found",
+        )
+    return deadline
+
+
+@router.delete("/{deadline_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_deadline(
+    deadline_id: str,
+    user_id: str = Depends(get_user_id),
+):
+    """Delete a deadline."""
+    deleted = await deadlines_service.delete_deadline(user_id, deadline_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Deadline not found",
+        )
+    return None
