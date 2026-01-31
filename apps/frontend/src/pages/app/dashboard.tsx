@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import {
   Users,
   FolderKanban,
@@ -8,8 +9,10 @@ import {
   FileText,
   ArrowRight,
   TrendingUp,
+  Loader2,
 } from 'lucide-react'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { dashboardService, type DashboardStats, type UpcomingDeadline } from '@/services/dashboard-service'
 
 interface StatCard {
   name: string
@@ -20,95 +23,107 @@ interface StatCard {
   href: string
 }
 
-const stats: StatCard[] = [
-  {
-    name: 'Clientes',
-    value: '47',
-    change: '+3 este mes',
-    changeType: 'positive',
-    icon: Users,
-    href: '/app/clientes',
-  },
-  {
-    name: 'Processos Ativos',
-    value: '23',
-    change: '5 novos',
-    changeType: 'neutral',
-    icon: FolderKanban,
-    href: '/app/processos',
-  },
-  {
-    name: 'Prazos Hoje',
-    value: '5',
-    change: '2 urgentes',
-    changeType: 'negative',
-    icon: CalendarClock,
-    href: '/app/prazos',
-  },
-  {
-    name: 'Calculos Este Mes',
-    value: '128',
-    change: '+12% vs anterior',
-    changeType: 'positive',
-    icon: Calculator,
-    href: '/app/calculadoras',
-  },
-]
-
-const upcomingDeadlines = [
-  {
-    id: '1',
-    type: 'Contestacao',
-    process: '0001234-12.2025.5.02.0001',
-    client: 'Joao Silva',
-    daysLeft: 0,
-    urgent: true,
-  },
-  {
-    id: '2',
-    type: 'Recurso Ordinario',
-    process: '0005678-34.2025.5.02.0002',
-    client: 'Maria Oliveira',
-    daysLeft: 2,
-    urgent: false,
-  },
-  {
-    id: '3',
-    type: 'Manifestacao',
-    process: '0009012-56.2025.8.26.0100',
-    client: 'Pedro Santos',
-    daysLeft: 5,
-    urgent: false,
-  },
-]
-
-const recentActivity = [
-  {
-    id: '1',
-    type: 'calculation',
-    description: 'Calculo de rescisao',
-    client: 'Joao Silva',
-    time: 'ha 2 horas',
-  },
-  {
-    id: '2',
-    type: 'document',
-    description: 'Peticao inicial gerada',
-    client: 'Maria Oliveira',
-    time: 'ha 5 horas',
-  },
-  {
-    id: '3',
-    type: 'client',
-    description: 'Novo cliente cadastrado',
-    client: 'Pedro Santos',
-    time: 'ontem',
-  },
-]
-
 export default function DashboardPage() {
   const { user } = useUser()
   const firstName = user?.name?.split(' ')[0] || 'Usuario'
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true)
+        const [statsData, deadlinesData] = await Promise.all([
+          dashboardService.getStats(),
+          dashboardService.getUpcomingDeadlines(3),
+        ])
+        setStats(statsData)
+        setDeadlines(deadlinesData)
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (user) {
+      loadDashboardData()
+    }
+  }, [user])
+
+  const statCards: StatCard[] = stats
+    ? [
+        {
+          name: 'Clientes',
+          value: stats.total_clients.toString(),
+          change: stats.new_clients_this_month > 0 ? `+${stats.new_clients_this_month} este mês` : undefined,
+          changeType: stats.new_clients_this_month > 0 ? 'positive' : 'neutral',
+          icon: Users,
+          href: '/app/clientes',
+        },
+        {
+          name: 'Processos Ativos',
+          value: stats.active_processes.toString(),
+          change: stats.new_processes_this_month > 0 ? `${stats.new_processes_this_month} novos` : undefined,
+          changeType: 'neutral',
+          icon: FolderKanban,
+          href: '/app/processos',
+        },
+        {
+          name: 'Prazos Hoje',
+          value: stats.deadlines_today.toString(),
+          change: stats.urgent_deadlines_today > 0 ? `${stats.urgent_deadlines_today} urgentes` : undefined,
+          changeType: stats.urgent_deadlines_today > 0 ? 'negative' : 'neutral',
+          icon: CalendarClock,
+          href: '/app/prazos',
+        },
+        {
+          name: 'Cálculos Este Mês',
+          value: stats.calculations_this_month.toString(),
+          change:
+            stats.calculations_change_percent !== 0
+              ? `${stats.calculations_change_percent > 0 ? '+' : ''}${stats.calculations_change_percent}% vs anterior`
+              : undefined,
+          changeType: stats.calculations_change_percent > 0 ? 'positive' : stats.calculations_change_percent < 0 ? 'negative' : 'neutral',
+          icon: Calculator,
+          href: '/app/calculadoras',
+        },
+      ]
+    : []
+
+  const upcomingDeadlines = deadlines.map((d, index) => ({
+    id: d.id || index.toString(),
+    type: d.type,
+    process: d.process,
+    client: d.client,
+    daysLeft: d.days_left,
+    urgent: d.urgent,
+  }))
+
+  const recentActivity = [
+    {
+      id: '1',
+      type: 'calculation',
+      description: 'Calculo de rescisao',
+      client: 'Joao Silva',
+      time: 'ha 2 horas',
+    },
+    {
+      id: '2',
+      type: 'document',
+      description: 'Peticao inicial gerada',
+      client: 'Maria Oliveira',
+      time: 'ha 5 horas',
+    },
+    {
+      id: '3',
+      type: 'client',
+      description: 'Novo cliente cadastrado',
+      client: 'Pedro Santos',
+      time: 'ontem',
+    },
+  ]
 
   return (
     <div className="space-y-8">
@@ -122,40 +137,46 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <Link
-              key={stat.name}
-              to={stat.href}
-              className="group bg-card border border-border rounded-xl p-5 hover:border-muted-foreground/50 hover:shadow-md transition-all"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.name}</p>
-                  <p className="text-3xl font-bold text-foreground mt-1">{stat.value}</p>
-                  {stat.change && (
-                    <p
-                      className={`text-xs mt-2 flex items-center gap-1 ${
-                        stat.changeType === 'positive'
-                          ? 'text-green-600'
-                          : stat.changeType === 'negative'
-                            ? 'text-red-600'
-                            : 'text-muted-foreground'
-                      }`}
-                    >
-                      {stat.changeType === 'positive' && <TrendingUp className="h-3 w-3" />}
-                      {stat.change}
-                    </p>
-                  )}
+        {loading ? (
+          <div className="col-span-full flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          statCards.map((stat) => {
+            const Icon = stat.icon
+            return (
+              <Link
+                key={stat.name}
+                to={stat.href}
+                className="group bg-card border border-border rounded-xl p-5 hover:border-muted-foreground/50 hover:shadow-md transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.name}</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">{stat.value}</p>
+                    {stat.change && (
+                      <p
+                        className={`text-xs mt-2 flex items-center gap-1 ${
+                          stat.changeType === 'positive'
+                            ? 'text-green-600'
+                            : stat.changeType === 'negative'
+                              ? 'text-red-600'
+                              : 'text-muted-foreground'
+                        }`}
+                      >
+                        {stat.changeType === 'positive' && <TrendingUp className="h-3 w-3" />}
+                        {stat.change}
+                      </p>
+                    )}
+                  </div>
+                  <div className="p-2.5 bg-muted rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                    <Icon className="h-5 w-5" />
+                  </div>
                 </div>
-                <div className="p-2.5 bg-muted rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors">
-                  <Icon className="h-5 w-5" />
-                </div>
-              </div>
-            </Link>
-          )
-        })}
+              </Link>
+            )
+          })
+        )}
       </div>
 
       {/* Content Grid */}
