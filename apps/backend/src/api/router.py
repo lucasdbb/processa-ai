@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 # AI features
 from src.features.ai.router import router as ai_router
+from src.features.billing.credits.router import router as credits_router
 
 # Billing features
 from src.features.billing.subscriptions.router import router as subscriptions_router
@@ -12,6 +13,7 @@ from src.features.billing.webhooks.router import router as webhooks_router
 # Calculator features
 from src.features.calculators.router import router as calculators_router
 from src.features.core.blog.router import router as blog_router
+from src.features.core.dashboard.router import router as dashboard_router
 from src.features.core.materials.router import router as materials_router
 from src.features.core.newsletter.router import router as newsletter_router
 from src.features.core.plans.router import router as plans_router
@@ -32,6 +34,7 @@ api_router = APIRouter()
 # Core features
 api_router.include_router(profiles_router, prefix="/profiles", tags=["Profiles"])
 api_router.include_router(profiles_router, prefix="/users", tags=["Users"])  # Alias
+api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 api_router.include_router(blog_router, prefix="/blog", tags=["Blog"])
 api_router.include_router(newsletter_router, prefix="/newsletter", tags=["Newsletter"])
 api_router.include_router(support_router, prefix="/support", tags=["Support"])
@@ -41,6 +44,7 @@ api_router.include_router(plans_router, prefix="/plans", tags=["Plans"])
 # Billing features
 api_router.include_router(subscriptions_router, prefix="/billing/subscriptions", tags=["Billing"])
 api_router.include_router(webhooks_router, prefix="/billing/webhooks", tags=["Billing Webhooks"])
+api_router.include_router(credits_router, prefix="/credits", tags=["Credits"])
 
 # Calculator features
 api_router.include_router(calculators_router, prefix="/calculators", tags=["Calculators"])

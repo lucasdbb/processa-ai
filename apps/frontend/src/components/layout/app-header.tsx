@@ -1,9 +1,11 @@
-import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
 import { useTheme } from 'next-themes'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useState, useEffect } from 'react'
+import { creditsService, type UserCredits } from '@/services/credits-service'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,8 +58,25 @@ export function AppHeader() {
   const { resolvedTheme, setTheme } = useTheme()
   const { user } = useUser()
   const { logout } = useAuthStore()
+  const [credits, setCredits] = useState<UserCredits | null>(null)
+  const [, setLoadingCredits] = useState(false)
 
   const isDark = resolvedTheme === 'dark'
+
+  // Load credits
+  useEffect(() => {
+    if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoadingCredits(true)
+      creditsService
+        .getCredits()
+        .then(setCredits)
+        .catch((error) => {
+          console.error('Failed to load credits:', error)
+        })
+        .finally(() => setLoadingCredits(false))
+    }
+  }, [user])
 
   const handleLogout = () => {
     logout()
@@ -120,6 +139,24 @@ export function AppHeader() {
 
         {/* Lado Direito */}
         <div className="flex items-center gap-2">
+          {/* Credits Display */}
+          {credits && (
+            <div className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all group cursor-pointer">
+              <div className="relative">
+                <Coins className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                <Sparkles className="h-3 w-3 text-amber-400 absolute -top-1 -right-1 animate-pulse" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 leading-none">
+                  {credits.available_credits.toLocaleString('pt-BR')}
+                </span>
+                <span className="text-[10px] text-amber-600/70 dark:text-amber-400/70 leading-none">
+                  créditos
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Toggle Tema */}
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}

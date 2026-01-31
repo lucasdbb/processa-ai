@@ -30,13 +30,20 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
 
-        CREATE INDEX IF NOT EXISTS idx_user_credits_user ON public.user_credits(user_id);
-        CREATE INDEX IF NOT EXISTS idx_user_credits_available ON public.user_credits(available_credits) WHERE available_credits > 0;
-        
+        CREATE INDEX IF NOT EXISTS idx_user_credits_user
+            ON public.user_credits(user_id);
+        CREATE INDEX IF NOT EXISTS idx_user_credits_available
+            ON public.user_credits(available_credits)
+            WHERE available_credits > 0;
+
         ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
-        
-        CREATE POLICY "Users can view own credits" ON public.user_credits FOR SELECT USING (auth.uid() = user_id);
-        CREATE POLICY "System can manage credits" ON public.user_credits FOR ALL USING (public.is_admin());
+
+        CREATE POLICY "Users can view own credits"
+            ON public.user_credits FOR SELECT
+            USING (auth.uid() = user_id);
+        CREATE POLICY "System can manage credits"
+            ON public.user_credits FOR ALL
+            USING (public.is_admin());
     """)
 
     # 2. Credit Transactions Table (audit log)
@@ -45,19 +52,27 @@ def upgrade() -> None:
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
             amount INTEGER NOT NULL,
-            transaction_type TEXT NOT NULL CHECK (transaction_type IN ('grant', 'consume', 'refund', 'reset')),
+            transaction_type TEXT NOT NULL
+                CHECK (transaction_type IN
+                    ('grant', 'consume', 'refund', 'reset')),
             reason TEXT,
             metadata JSONB DEFAULT '{}'::jsonb,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
 
-        CREATE INDEX IF NOT EXISTS idx_credit_transactions_user ON public.credit_transactions(user_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_credit_transactions_type ON public.credit_transactions(transaction_type);
+        CREATE INDEX IF NOT EXISTS idx_credit_transactions_user
+            ON public.credit_transactions(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_credit_transactions_type
+            ON public.credit_transactions(transaction_type);
         
         ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
-        
-        CREATE POLICY "Users can view own transactions" ON public.credit_transactions FOR SELECT USING (auth.uid() = user_id);
-        CREATE POLICY "System can create transactions" ON public.credit_transactions FOR INSERT WITH CHECK (public.is_admin());
+
+        CREATE POLICY "Users can view own transactions"
+            ON public.credit_transactions FOR SELECT
+            USING (auth.uid() = user_id);
+        CREATE POLICY "System can create transactions"
+            ON public.credit_transactions FOR INSERT
+            WITH CHECK (public.is_admin());
     """)
 
     # 3. Subscriptions Table (if not exists)
@@ -67,7 +82,10 @@ def upgrade() -> None:
             stripe_customer_id TEXT,
             stripe_subscription_id TEXT UNIQUE,
             plan_id TEXT NOT NULL DEFAULT 'free',
-            status TEXT NOT NULL DEFAULT 'none' CHECK (status IN ('active', 'past_due', 'canceled', 'incomplete', 'trialing', 'none')),
+            status TEXT NOT NULL DEFAULT 'none'
+                CHECK (status IN
+                    ('active', 'past_due', 'canceled',
+                     'incomplete', 'trialing', 'none')),
             current_period_start TIMESTAMPTZ,
             current_period_end TIMESTAMPTZ,
             cancel_at_period_end BOOLEAN NOT NULL DEFAULT false,
@@ -75,25 +93,46 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
 
-        CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON public.subscriptions(user_id);
-        CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_customer ON public.subscriptions(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_subscription ON public.subscriptions(stripe_subscription_id) WHERE stripe_subscription_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON public.subscriptions(status) WHERE status IN ('active', 'trialing');
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_user
+            ON public.subscriptions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_customer
+            ON public.subscriptions(stripe_customer_id)
+            WHERE stripe_customer_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_subscription
+            ON public.subscriptions(stripe_subscription_id)
+            WHERE stripe_subscription_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_status
+            ON public.subscriptions(status)
+            WHERE status IN ('active', 'trialing');
         
         ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
-        
-        CREATE POLICY "Users can view own subscription" ON public.subscriptions FOR SELECT USING (auth.uid() = user_id);
-        CREATE POLICY "System can manage subscriptions" ON public.subscriptions FOR ALL USING (public.is_admin());
+
+        CREATE POLICY "Users can view own subscription"
+            ON public.subscriptions FOR SELECT
+            USING (auth.uid() = user_id);
+        CREATE POLICY "System can manage subscriptions"
+            ON public.subscriptions FOR ALL
+            USING (public.is_admin());
     """)
 
     # 4. Plan Credits Configuration (monthly credits per plan)
     op.execute("""
-        ALTER TABLE public.billing_plans ADD COLUMN IF NOT EXISTS monthly_credits INTEGER NOT NULL DEFAULT 0;
-        ALTER TABLE public.billing_plans ADD COLUMN IF NOT EXISTS ai_enabled BOOLEAN NOT NULL DEFAULT false;
-        ALTER TABLE public.billing_plans ADD COLUMN IF NOT EXISTS calculator_enabled BOOLEAN NOT NULL DEFAULT false;
-        ALTER TABLE public.billing_plans ADD COLUMN IF NOT EXISTS office_enabled BOOLEAN NOT NULL DEFAULT false;
-        
-        CREATE INDEX IF NOT EXISTS idx_billing_plans_features ON public.billing_plans(ai_enabled, calculator_enabled, office_enabled);
+        ALTER TABLE public.billing_plans
+            ADD COLUMN IF NOT EXISTS monthly_credits
+                INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE public.billing_plans
+            ADD COLUMN IF NOT EXISTS ai_enabled
+                BOOLEAN NOT NULL DEFAULT false;
+        ALTER TABLE public.billing_plans
+            ADD COLUMN IF NOT EXISTS calculator_enabled
+                BOOLEAN NOT NULL DEFAULT false;
+        ALTER TABLE public.billing_plans
+            ADD COLUMN IF NOT EXISTS office_enabled
+                BOOLEAN NOT NULL DEFAULT false;
+
+        CREATE INDEX IF NOT EXISTS idx_billing_plans_features
+            ON public.billing_plans(
+                ai_enabled, calculator_enabled, office_enabled);
     """)
 
     # 5. Function to grant credits to user
@@ -105,15 +144,20 @@ def upgrade() -> None:
         ) RETURNS void AS $$
         BEGIN
             -- Upsert user_credits
-            INSERT INTO public.user_credits (user_id, total_credits, used_credits, last_reset_at)
+            INSERT INTO public.user_credits (
+                user_id, total_credits, used_credits, last_reset_at
+            )
             VALUES (p_user_id, p_amount, 0, NOW())
             ON CONFLICT (user_id) DO UPDATE SET
-                total_credits = public.user_credits.total_credits + p_amount,
+                total_credits =
+                    public.user_credits.total_credits + p_amount,
                 last_reset_at = NOW(),
                 updated_at = NOW();
-            
+
             -- Log transaction
-            INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reason)
+            INSERT INTO public.credit_transactions (
+                user_id, amount, transaction_type, reason
+            )
             VALUES (p_user_id, p_amount, 'grant', p_reason);
         END;
         $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -145,7 +189,9 @@ def upgrade() -> None:
             WHERE user_id = p_user_id;
             
             -- Log transaction
-            INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reason)
+            INSERT INTO public.credit_transactions (
+                user_id, amount, transaction_type, reason
+            )
             VALUES (p_user_id, -p_amount, 'consume', p_reason);
             
             RETURN true;
@@ -169,7 +215,9 @@ def upgrade() -> None:
             WHERE user_id = p_user_id;
             
             -- Log transaction
-            INSERT INTO public.credit_transactions (user_id, amount, transaction_type, reason)
+            INSERT INTO public.credit_transactions (
+                user_id, amount, transaction_type, reason
+            )
             VALUES (p_user_id, p_new_amount, 'reset', 'monthly_reset');
         END;
         $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -177,15 +225,19 @@ def upgrade() -> None:
 
     # 8. Triggers
     op.execute("""
-        DROP TRIGGER IF EXISTS update_user_credits_updated_at ON public.user_credits;
-        CREATE TRIGGER update_user_credits_updated_at 
-        BEFORE UPDATE ON public.user_credits 
-        FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-        
-        DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON public.subscriptions;
-        CREATE TRIGGER update_subscriptions_updated_at 
-        BEFORE UPDATE ON public.subscriptions 
-        FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+        DROP TRIGGER IF EXISTS update_user_credits_updated_at
+            ON public.user_credits;
+        CREATE TRIGGER update_user_credits_updated_at
+            BEFORE UPDATE ON public.user_credits
+            FOR EACH ROW EXECUTE FUNCTION
+                public.update_updated_at_column();
+
+        DROP TRIGGER IF EXISTS update_subscriptions_updated_at
+            ON public.subscriptions;
+        CREATE TRIGGER update_subscriptions_updated_at
+            BEFORE UPDATE ON public.subscriptions
+            FOR EACH ROW EXECUTE FUNCTION
+                public.update_updated_at_column();
     """)
 
 
