@@ -1,45 +1,54 @@
 from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-ClientStatus = Literal["active", "archived"]
+ClientStatus = Literal["active", "inactive", "archived"]
 
 
-class ClientCreateRequest(BaseModel):
+class ClientCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
-    cpf: str = Field(..., pattern=r"^\d{3}\.\d{3}\.\d{3}-\d{2}$")
-    phone: str | None = None
     email: EmailStr | None = None
+    phone: str | None = None
+    cpf_cnpj: str | None = None
     address: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
     notes: str | None = None
 
 
-class ClientUpdateRequest(BaseModel):
+class ClientUpdate(BaseModel):
     name: str | None = Field(None, min_length=2, max_length=255)
-    cpf: str | None = Field(None, pattern=r"^\d{3}\.\d{3}\.\d{3}-\d{2}$")
-    phone: str | None = None
     email: EmailStr | None = None
+    phone: str | None = None
+    cpf_cnpj: str | None = None
     address: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
     notes: str | None = None
     status: ClientStatus | None = None
 
 
 class ClientResponse(BaseModel):
-    id: str
-    user_id: str
+    id: UUID
+    user_id: UUID
     name: str
-    cpf: str
-    phone: str | None
     email: str | None
+    phone: str | None
+    cpf_cnpj: str | None
     address: str | None
+    city: str | None
+    state: str | None
+    zip_code: str | None
     notes: str | None
     status: ClientStatus
-    processes_count: int
-    calculations_count: int
-    last_activity: datetime | None
     created_at: datetime
     updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class ClientListResponse(BaseModel):
@@ -48,6 +57,11 @@ class ClientListResponse(BaseModel):
 
 
 class ClientListParams(BaseModel):
+    search: str | None = None
+    status: ClientStatus | None = None
+    limit: int = 50
+    offset: int = 0
+
     search: str | None = None
     status: ClientStatus | None = None
     limit: int = Field(default=50, ge=1, le=100)

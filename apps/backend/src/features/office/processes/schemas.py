@@ -1,46 +1,56 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-ProcessStatus = Literal["active", "archived"]
+ProcessStatus = Literal["active", "pending", "suspended", "archived", "concluded", "cancelled"]
 
 
-class ProcessCreateRequest(BaseModel):
-    number: str = Field(..., min_length=1, max_length=50)
+class ProcessCreate(BaseModel):
+    client_id: UUID
+    process_number: str = Field(..., min_length=1, max_length=255)
+    court: str | None = None
+    defendant: str | None = None
     type: str = Field(..., min_length=1, max_length=255)
-    court: str = Field(..., min_length=1, max_length=255)
-    client_id: str
-    defendant: str = Field(..., min_length=1, max_length=255)
-    value: float = Field(..., ge=0)
-    description: str | None = None
+    subject: str | None = None
+    value: Decimal | None = None
+    notes: str | None = None
+    start_date: date | None = None
 
 
-class ProcessUpdateRequest(BaseModel):
-    number: str | None = Field(None, min_length=1, max_length=50)
-    type: str | None = Field(None, min_length=1, max_length=255)
-    court: str | None = Field(None, min_length=1, max_length=255)
-    defendant: str | None = Field(None, min_length=1, max_length=255)
-    value: float | None = Field(None, ge=0)
-    description: str | None = None
+class ProcessUpdate(BaseModel):
+    process_number: str | None = Field(None, min_length=1, max_length=255)
+    court: str | None = None
+    defendant: str | None = None
+    type: str | None = None
+    subject: str | None = None
+    value: Decimal | None = None
     status: ProcessStatus | None = None
+    notes: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
 
 
 class ProcessResponse(BaseModel):
-    id: str
-    user_id: str
-    number: str
+    id: UUID
+    user_id: UUID
+    client_id: UUID
+    process_number: str
+    court: str | None
+    defendant: str | None
     type: str
-    court: str
-    client_id: str
-    client_name: str
-    defendant: str
-    value: float
-    description: str | None
+    subject: str | None
+    value: Decimal | None
     status: ProcessStatus
-    next_deadline: str | None
+    notes: str | None
+    start_date: date | None
+    end_date: date | None
     created_at: datetime
     updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class ProcessListResponse(BaseModel):
@@ -51,6 +61,6 @@ class ProcessListResponse(BaseModel):
 class ProcessListParams(BaseModel):
     search: str | None = None
     status: ProcessStatus | None = None
-    client_id: str | None = None
+    client_id: UUID | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)

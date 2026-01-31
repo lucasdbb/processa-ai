@@ -1,227 +1,160 @@
-from datetime import datetime, timezone
-from uuid import uuid4
+from datetime import datetime
+from typing import Any
+from uuid import UUID
 
+from psycopg.rows import dict_row
+
+from src.core.db import get_pool
 from src.features.office.deadlines.schemas import (
-    DeadlineCreateRequest,
+    DeadlineCreate,
     DeadlineListParams,
     DeadlineResponse,
-    DeadlineUpdateRequest,
+    DeadlineUpdate,
 )
-
-# Mock data baseado no frontend
-MOCK_DEADLINES = [
-    {
-        "id": "1",
-        "type": "Contestacao",
-        "process_id": "1",
-        "process_number": "0001234-12.2025.5.02.0001",
-        "client_name": "Joao Silva",
-        "date": datetime(2026, 1, 20, 23, 59, tzinfo=timezone.utc),
-        "description": None,
-        "status": "pending",
-    },
-    {
-        "id": "2",
-        "type": "Recurso Ordinario",
-        "process_id": "2",
-        "process_number": "0005678-34.2025.5.02.0002",
-        "client_name": "Maria Oliveira",
-        "date": datetime(2026, 1, 22, 23, 59, tzinfo=timezone.utc),
-        "description": None,
-        "status": "pending",
-    },
-    {
-        "id": "3",
-        "type": "Manifestacao",
-        "process_id": "1",
-        "process_number": "0009012-56.2025.8.26.0100",
-        "client_name": "Pedro Santos",
-        "date": datetime(2026, 1, 25, 23, 59, tzinfo=timezone.utc),
-        "description": None,
-        "status": "pending",
-    },
-    {
-        "id": "4",
-        "type": "Audiencia",
-        "process_id": "2",
-        "process_number": "0003456-78.2025.5.02.0003",
-        "client_name": "Ana Costa",
-        "date": datetime(2026, 1, 28, 14, 0, tzinfo=timezone.utc),
-        "description": "Audiencia de instrucao e julgamento",
-        "status": "pending",
-    },
-]
 
 
 class DeadlinesService:
-    """Service for deadline operations (mock data for now)."""
-
-    def _calculate_days_until(self, date: datetime) -> int:
-        """Calculate days until deadline."""
-        now = datetime.now(timezone.utc)
-        diff = date - now
-        return diff.days
-
-    def _get_status(self, date: datetime, original_status: str) -> str:
-        """Get actual status based on date."""
-        if original_status == "completed":
-            return "completed"
-        days = self._calculate_days_until(date)
-        if days < 0:
-            return "overdue"
-        return "pending"
+    """Service for deadline operations."""
 
     async def list_deadlines(
         self,
-        user_id: str,
+        user_id: UUID,
         params: DeadlineListParams,
-    ) -> tuple[list[DeadlineResponse], int, int, int, int]:
+    ) -> tuple[list[DeadlineResponse], int]:
         """List deadlines for a user."""
-        deadlines = MOCK_DEADLINES.copy()
+        pool = await get_pool()
 
-        # Filter by date range
+        where_conditions = ["user_id = %s"]
+        query_params: list[Any] = [str(user_id)]
+
         if params.start_date:
-            deadlines = [d for d in deadlines if d["date"] >= params.start_date]
+            where_conditions.append("due_date >= %s")
+            query_params.append(params.start_date)
+
         if params.end_date:
-            deadlines = [d for d in deadlines if d["date"] <= params.end_date]
+            where_conditions.append("due_date <= %s")
+            query_params.append(params.end_date)
 
-        # Filter by status
         if params.status:
-            deadlines = [
-                d for d in deadlines if self._get_status(d["date"], d["status"]) == params.status
-            ]
+            where_conditions.append("status = %s")
+            query_params.append(params.status)
 
-        # Filter by process
+        if params.priority:
+            where_conditions.append("priority = %s")
+            query_params.append(params.priority)
+
         if params.process_id:
-            deadlines = [d for d in deadlines if d["process_id"] == params.process_id]
+            where_conditions.append("process_id = %s")
+            query_params.append(str(params.process_id))
 
-        # Sort by date
-        deadlines = sorted(deadlines, key=lambda d: d["date"])
+        where_clause = " AND ".join(where_conditions)
 
-        # Calculate counts
-        today_count = sum(1 for d in deadlines if self._calculate_days_until(d["date"]) == 0)
-        week_count = sum(1 for d in deadlines if 0 < self._calculate_days_until(d["date"]) <= 7)
-        overdue_count = sum(1 for d in deadlines if self._calculate_days_until(d["date"]) < 0)
-
-        total = len(deadlines)
-
-        # Pagination
-        deadlines = deadlines[params.offset : params.offset + params.limit]
-
-        now_ts = datetime.now(timezone.utc)
-        responses = [
-            DeadlineResponse(
-                id=d["id"],
-                user_id=user_id,
-                type=d["type"],
-                process_id=d["process_id"],
-                process_number=d["process_number"],
-                client_name=d["client_name"],
-                date=d["date"],
-                description=d["description"],
-                status=self._get_status(d["date"], d["status"]),
-                days_until=self._calculate_days_until(d["date"]),
-                created_at=now_ts,
-                updated_at=now_ts,
-            )
-            for d in deadlines
-        ]
-
-        return responses, total, today_count, week_count, overdue_count
-
-    async def get_deadline(self, user_id: str, deadline_id: str) -> DeadlineResponse | None:
-        """Get a single deadline by ID."""
-        for d in MOCK_DEADLINES:
-            if d["id"] == deadline_id:
-                now = datetime.now(timezone.utc)
-                return DeadlineResponse(
-                    id=d["id"],
-                    user_id=user_id,
-                    type=d["type"],
-                    process_id=d["process_id"],
-                    process_number=d["process_number"],
-                    client_name=d["client_name"],
-                    date=d["date"],
-                    description=d["description"],
-                    status=self._get_status(d["date"], d["status"]),
-                    days_until=self._calculate_days_until(d["date"]),
-                    created_at=now,
-                    updated_at=now,
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                count_query = (
+                    f"SELECT COUNT(*) as total FROM office_api.deadlines WHERE {where_clause}"
                 )
-        return None
+                await cur.execute(count_query, query_params)
+                count_result = await cur.fetchone()
+                total = count_result["total"] if count_result else 0
 
-    async def create_deadline(self, user_id: str, data: DeadlineCreateRequest) -> DeadlineResponse:
+                data_query = f"""
+                    SELECT * FROM office_api.deadlines
+                    WHERE {where_clause}
+                    ORDER BY due_date ASC
+                    LIMIT %s OFFSET %s
+                """
+                await cur.execute(data_query, query_params + [params.limit, params.offset])
+                rows = await cur.fetchall()
+
+                deadlines = [DeadlineResponse(**row) for row in rows]
+                return deadlines, total
+
+    async def get_deadline(self, user_id: UUID, deadline_id: UUID) -> DeadlineResponse | None:
+        """Get a single deadline by ID."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    "SELECT * FROM office_api.deadlines WHERE user_id = %s AND id = %s",
+                    (str(user_id), str(deadline_id)),
+                )
+                row = await cur.fetchone()
+                return DeadlineResponse(**row) if row else None
+
+    async def create_deadline(self, user_id: UUID, data: DeadlineCreate) -> DeadlineResponse:
         """Create a new deadline."""
-        deadline_id = str(uuid4())
-        now = datetime.now(timezone.utc)
+        pool = await get_pool()
 
-        new_deadline = {
-            "id": deadline_id,
-            "type": data.type,
-            "process_id": data.process_id,
-            "process_number": f"PROC-{deadline_id[:8].upper()}",  # Mock process number
-            "client_name": "Cliente Mock",  # Mock client name
-            "date": data.date,
-            "description": data.description,
-            "status": "pending",
-        }
-
-        MOCK_DEADLINES.append(new_deadline)
-
-        return DeadlineResponse(
-            id=deadline_id,
-            user_id=user_id,
-            type=new_deadline["type"],
-            process_id=new_deadline["process_id"],
-            process_number=new_deadline["process_number"],
-            client_name=new_deadline["client_name"],
-            date=new_deadline["date"],
-            description=new_deadline["description"],
-            status=self._get_status(new_deadline["date"], new_deadline["status"]),
-            days_until=self._calculate_days_until(new_deadline["date"]),
-            created_at=now,
-            updated_at=now,
-        )
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO office_api.deadlines (
+                        user_id, process_id, title, description, due_date,
+                        priority, status, reminder_days_before
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING *
+                    """,
+                    (
+                        str(user_id),
+                        str(data.process_id),
+                        data.title,
+                        data.description,
+                        data.due_date,
+                        data.priority or "medium",
+                        data.status or "pending",
+                        data.reminder_days_before,
+                    ),
+                )
+                row = await cur.fetchone()
+                return DeadlineResponse(**row)
 
     async def update_deadline(
-        self, user_id: str, deadline_id: str, data: DeadlineUpdateRequest
+        self, user_id: UUID, deadline_id: UUID, data: DeadlineUpdate
     ) -> DeadlineResponse | None:
         """Update an existing deadline."""
-        for d in MOCK_DEADLINES:
-            if d["id"] == deadline_id:
-                if data.type is not None:
-                    d["type"] = data.type
-                if data.date is not None:
-                    d["date"] = data.date
-                if data.description is not None:
-                    d["description"] = data.description
-                if data.status is not None:
-                    d["status"] = data.status
+        pool = await get_pool()
 
-                now = datetime.now(timezone.utc)
-                return DeadlineResponse(
-                    id=d["id"],
-                    user_id=user_id,
-                    type=d["type"],
-                    process_id=d["process_id"],
-                    process_number=d["process_number"],
-                    client_name=d["client_name"],
-                    date=d["date"],
-                    description=d["description"],
-                    status=self._get_status(d["date"], d["status"]),
-                    days_until=self._calculate_days_until(d["date"]),
-                    created_at=now,
-                    updated_at=now,
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+
+        if update_data.get("status") == "completed" and "completed_at" not in update_data:
+            update_data["completed_at"] = datetime.utcnow()
+
+        if not update_data:
+            return await self.get_deadline(user_id, deadline_id)
+
+        set_clauses = [f"{k} = %s" for k in update_data.keys()]
+        set_clause = ", ".join(set_clauses)
+        values = list(update_data.values())
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    f"""
+                    UPDATE office_api.deadlines
+                    SET {set_clause}, updated_at = NOW()
+                    WHERE user_id = %s AND id = %s
+                    RETURNING *
+                    """,
+                    values + [str(user_id), str(deadline_id)],
                 )
-        return None
+                row = await cur.fetchone()
+                return DeadlineResponse(**row) if row else None
 
-    async def delete_deadline(self, user_id: str, deadline_id: str) -> bool:
+    async def delete_deadline(self, user_id: UUID, deadline_id: UUID) -> bool:
         """Delete a deadline."""
-        for i, d in enumerate(MOCK_DEADLINES):
-            if d["id"] == deadline_id:
-                MOCK_DEADLINES.pop(i)
-                return True
-        return False
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM office_api.deadlines WHERE user_id = %s AND id = %s",
+                    (str(user_id), str(deadline_id)),
+                )
+                return cur.rowcount > 0
 
 
 deadlines_service = DeadlinesService()

@@ -1,55 +1,58 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-DeadlineStatus = Literal["pending", "completed", "overdue"]
-DeadlineType = Literal["contestacao", "recurso", "manifestacao", "audiencia", "other"]
+DeadlineStatus = Literal["pending", "completed", "cancelled"]
+DeadlinePriority = Literal["low", "medium", "high", "urgent"]
 
 
-class DeadlineCreateRequest(BaseModel):
-    type: str = Field(..., min_length=1, max_length=255)
-    process_id: str
-    date: datetime
+class DeadlineCreate(BaseModel):
+    process_id: UUID
+    title: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
-    reminder_days: list[int] = Field(default_factory=lambda: [1, 3, 7])
+    due_date: date
+    priority: DeadlinePriority = "medium"
+    reminder_days_before: int = Field(default=3, ge=0, le=30)
 
 
-class DeadlineUpdateRequest(BaseModel):
-    type: str | None = Field(None, min_length=1, max_length=255)
-    date: datetime | None = None
+class DeadlineUpdate(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
+    due_date: date | None = None
+    priority: DeadlinePriority | None = None
     status: DeadlineStatus | None = None
-    reminder_days: list[int] | None = None
+    reminder_days_before: int | None = Field(None, ge=0, le=30)
 
 
 class DeadlineResponse(BaseModel):
-    id: str
-    user_id: str
-    type: str
-    process_id: str
-    process_number: str
-    client_name: str
-    date: datetime
+    id: UUID
+    user_id: UUID
+    process_id: UUID
+    title: str
     description: str | None
+    due_date: date
+    priority: DeadlinePriority
     status: DeadlineStatus
-    days_until: int
+    completed_at: datetime | None
+    reminder_days_before: int
     created_at: datetime
     updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class DeadlineListResponse(BaseModel):
     deadlines: list[DeadlineResponse]
     total: int
-    today_count: int
-    week_count: int
-    overdue_count: int
 
 
 class DeadlineListParams(BaseModel):
-    start_date: datetime | None = None
-    end_date: datetime | None = None
+    start_date: date | None = None
+    end_date: date | None = None
     status: DeadlineStatus | None = None
-    process_id: str | None = None
+    priority: DeadlinePriority | None = None
+    process_id: UUID | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)

@@ -31,9 +31,27 @@ export default function PrazosPage() {
     try {
       const data = await deadlinesService.list()
       setDeadlines(data.deadlines)
-      setTodayCount(data.today_count)
-      setWeekCount(data.week_count)
-      setOverdueCount(data.overdue_count)
+      
+      // Calculate counts from deadlines
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const weekFromNow = new Date(today)
+      weekFromNow.setDate(weekFromNow.getDate() + 7)
+      
+      let todayCountCalc = 0
+      let weekCountCalc = 0
+      let overdueCountCalc = 0
+      
+      data.deadlines.forEach((d) => {
+        const dueDate = new Date(d.due_date)
+        if (dueDate < today) overdueCountCalc++
+        if (dueDate.toDateString() === today.toDateString()) todayCountCalc++
+        if (dueDate >= today && dueDate <= weekFromNow) weekCountCalc++
+      })
+      
+      setTodayCount(todayCountCalc)
+      setWeekCount(weekCountCalc)
+      setOverdueCount(overdueCountCalc)
       setTotalCount(data.total)
     } catch (error) {
       setDeadlines([])
@@ -57,19 +75,19 @@ export default function PrazosPage() {
       if ('id' in deadlineData && deadlineData.id) {
         // Update existing deadline
         await deadlinesService.update(deadlineData.id, {
-          type: deadlineData.type,
-          date: deadlineData.date,
+          title: deadlineData.title,
+          due_date: deadlineData.date,
           description: deadlineData.description,
         })
         toast.success('Prazo atualizado com sucesso!')
       } else {
         // Create new deadline
         await deadlinesService.create({
-          type: deadlineData.title,
+          title: deadlineData.title,
           process_id: deadlineData.processId || '1', // Mock process ID
-          date: new Date(deadlineData.date + (deadlineData.time ? `T${deadlineData.time}` : 'T23:59:59')).toISOString(),
+          due_date: deadlineData.date,
           description: deadlineData.description,
-          reminder_days: [deadlineData.notifyBefore || 3],
+          reminder_days_before: deadlineData.notifyBefore || 3,
         })
         toast.success('Prazo criado com sucesso!')
       }
@@ -99,6 +117,24 @@ export default function PrazosPage() {
     toast.info(`Evento: ${event.title}${event.description ? ` — ${event.description}` : ''}`)
   }
 
+  const handleEditDeadline = (deadline: Deadline) => {
+    // Transform API Deadline to form shape
+    const formDeadline: EditingDeadline = {
+      id: deadline.id || '',
+      title: deadline.title || '',
+      processNumber: deadline.process_id || '',
+      processId: deadline.process_id,
+      date: deadline.due_date || '',
+      type: 'outros' as const,
+      priority: (deadline.priority as 'alta' | 'media' | 'baixa') || 'media',
+      description: deadline.description || undefined,
+      notifyBefore: deadline.reminder_days_before || 3,
+    }
+    setEditingDeadline(formDeadline)
+    setDefaultFormDate(deadline.due_date)
+    setIsFormOpen(true)
+  }
+
   const getUrgencyLevel = (daysUntil: number) => {
     if (daysUntil <= 0) return 'critical'
     if (daysUntil <= 2) return 'urgent'
@@ -119,6 +155,14 @@ export default function PrazosPage() {
     if (daysUntil === 1) return 'Amanha'
     if (daysUntil < 0) return `${Math.abs(daysUntil)} dias atras`
     return `em ${daysUntil} dias`
+  }
+
+  const getDaysUntil = (dateStr: string) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const dueDate = new Date(dateStr)
+    const diffMs = dueDate.getTime() - today.getTime()
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24))
   }
 
   return (
@@ -156,7 +200,10 @@ export default function PrazosPage() {
             <span className="font-semibold text-sm">Próximos 3 dias</span>
           </div>
           <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-            {deadlines.filter((d) => d.days_until > 0 && d.days_until <= 3).length}
+            {deadlines.filter((d) => {
+              const daysUntil = getDaysUntil(d.due_date)
+              return daysUntil > 0 && daysUntil <= 3
+            }).length}
           </p>
           <p className="text-xs text-yellow-600/70 dark:text-yellow-500/70 mt-1">Atenção necessária</p>
         </div>
@@ -208,7 +255,8 @@ export default function PrazosPage() {
             ) : (
               <div className="space-y-3">
                 {deadlines.map((deadline) => {
-                  const urgency = getUrgencyLevel(deadline.days_until)
+                  const daysUntil = getDaysUntil(deadline.due_date)
+                  const urgency = getUrgencyLevel(daysUntil)
 
                   return (
                     <div
@@ -220,6 +268,7 @@ export default function PrazosPage() {
                         urgency === 'warning' && 'bg-yellow-500/5 border-yellow-500/30 hover:bg-yellow-500/10 hover:border-yellow-500/50 hover:shadow-md',
                         urgency === 'normal' && 'bg-card border-border hover:bg-muted/50 hover:border-muted-foreground/30 hover:shadow-md'
                       )}
+                      onClick={() => handleEditDeadline(deadline)}
                     >
                       <div
                         className={cn(
@@ -232,28 +281,25 @@ export default function PrazosPage() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-foreground">{deadline.type}</span>
+                          <span className="font-semibold text-foreground">{deadline.title}</span>
                           {urgency === 'critical' && (
                             <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-red-500 text-white rounded-full">
                               URGENTE
                             </span>
                           )}
-                          {urgency === 'urgent' && deadline.days_until === 1 && (
+                          {urgency === 'urgent' && daysUntil === 1 && (
                             <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-yellow-500 text-white rounded-full">
                               AMANHÃ
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {deadline.process_number} • {deadline.client_name}
-                        </p>
                         {deadline.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{deadline.description}</p>
                         )}
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-semibold text-base text-foreground">
-                          {formatDeadlineDate(deadline.date)}
+                          {formatDeadlineDate(deadline.due_date)}
                         </p>
                         <p
                           className={cn(
@@ -264,7 +310,7 @@ export default function PrazosPage() {
                             urgency === 'normal' && 'text-muted-foreground'
                           )}
                         >
-                          {formatDaysUntil(deadline.days_until)}
+                          {formatDaysUntil(daysUntil)}
                         </p>
                       </div>
                     </div>

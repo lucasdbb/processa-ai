@@ -1,128 +1,172 @@
-from datetime import datetime
+from typing import Any
+from uuid import UUID
 
+from psycopg.rows import dict_row
+
+from src.core.db import get_pool
 from src.features.office.clients.schemas import (
+    ClientCreate,
     ClientListParams,
     ClientResponse,
+    ClientUpdate,
 )
-
-# Mock data baseado no frontend
-MOCK_CLIENTS = [
-    {
-        "id": "1",
-        "name": "Joao Silva",
-        "cpf": "123.456.789-00",
-        "phone": "(11) 99999-0000",
-        "email": "joao@email.com",
-        "address": None,
-        "notes": None,
-        "status": "active",
-        "processes_count": 2,
-        "calculations_count": 5,
-        "last_activity": datetime(2026, 1, 25, 10, 30),
-    },
-    {
-        "id": "2",
-        "name": "Maria Oliveira",
-        "cpf": "987.654.321-00",
-        "phone": "(11) 98888-0000",
-        "email": "maria@email.com",
-        "address": None,
-        "notes": None,
-        "status": "active",
-        "processes_count": 1,
-        "calculations_count": 3,
-        "last_activity": datetime(2026, 1, 20, 14, 15),
-    },
-    {
-        "id": "3",
-        "name": "Carlos Santos",
-        "cpf": "111.222.333-00",
-        "phone": "(11) 97777-0000",
-        "email": "carlos@email.com",
-        "address": None,
-        "notes": None,
-        "status": "archived",
-        "processes_count": 1,
-        "calculations_count": 2,
-        "last_activity": datetime(2025, 12, 27, 9, 0),
-    },
-]
 
 
 class ClientsService:
-    """Service for client operations (mock data for now)."""
+    """Service for client operations."""
 
     async def list_clients(
         self,
-        user_id: str,
+        user_id: UUID,
         params: ClientListParams,
     ) -> tuple[list[ClientResponse], int]:
         """List clients for a user."""
-        clients = MOCK_CLIENTS.copy()
+        pool = await get_pool()
 
-        # Filter by search
+        # Build WHERE conditions
+        where_conditions = ["user_id = %s"]
+        query_params: list[Any] = [str(user_id)]
+
+        # Add search filter
         if params.search:
-            search = params.search.lower()
-            clients = [
-                c
-                for c in clients
-                if search in c["name"].lower()
-                or search in c["cpf"]
-                or (c["email"] and search in c["email"].lower())
-            ]
+            where_conditions.append("(name ILIKE %s OR email ILIKE %s OR cpf_cnpj ILIKE %s)")
+            search_pattern = f"%{params.search}%"
+            query_params.extend([search_pattern, search_pattern, search_pattern])
 
-        # Filter by status
+        # Add status filter
         if params.status:
-            clients = [c for c in clients if c["status"] == params.status]
+            where_conditions.append("status = %s")
+            query_params.append(params.status)
 
-        total = len(clients)
+        where_clause = " AND ".join(where_conditions)
 
-        # Pagination
-        clients = clients[params.offset : params.offset + params.limit]
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                # Get total count
+                count_query = f"""
+                    SELECT COUNT(*) as total
+                    FROM office_api.clients
+                    WHERE {where_clause}
+                """
+                await cur.execute(count_query, query_params)
+                count_result = await cur.fetchone()
+                total = count_result["total"] if count_result else 0
 
-        now = datetime.now()
-        return [
-            ClientResponse(
-                id=c["id"],
-                user_id=user_id,
-                name=c["name"],
-                cpf=c["cpf"],
-                phone=c["phone"],
-                email=c["email"],
-                address=c["address"],
-                notes=c["notes"],
-                status=c["status"],
-                processes_count=c["processes_count"],
-                calculations_count=c["calculations_count"],
-                last_activity=c["last_activity"],
-                created_at=now,
-                updated_at=now,
-            )
-            for c in clients
-        ], total
+                # Get paginated results
+                data_query = f"""
+                    SELECT *
+                    FROM office_api.clients
+                    WHERE {where_clause}
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s
+                """
+                await cur.execute(data_query, query_params + [params.limit, params.offset])
+                rows = await cur.fetchall()
 
-    async def get_client(self, user_id: str, client_id: str) -> ClientResponse | None:
+                clients = [ClientResponse(**row) for row in rows]
+                return clients, total
+
+    async def get_client(self, user_id: UUID, client_id: UUID) -> ClientResponse | None:
         """Get a single client by ID."""
-        for c in MOCK_CLIENTS:
-            if c["id"] == client_id:
-                now = datetime.now()
-                return ClientResponse(
-                    id=c["id"],
-                    user_id=user_id,
-                    name=c["name"],
-                    cpf=c["cpf"],
-                    phone=c["phone"],
-                    email=c["email"],
-                    address=c["address"],
-                    notes=c["notes"],
-                    status=c["status"],
-                    processes_count=c["processes_count"],
-                    calculations_count=c["calculations_count"],
-                    last_activity=c["last_activity"],
-                    created_at=now,
-                    updated_at=now,
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT * FROM office_api.clients
+                    WHERE user_id = %s AND id = %s
+                    """,
+                    (str(user_id), str(client_id)),
                 )
-        return None
+                row = await cur.fetchone()
+
+                if not row:
+                    return None
+
+                return ClientResponse(**row)
+
+    async def create_client(self, user_id: UUID, data: ClientCreate) -> ClientResponse:
+        """Create a new client."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO office_api.clients (
+                        user_id, name, email, phone, cpf_cnpj, address,
+                        city, state, zip_code, notes, status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING *
+                    """,
+                    (
+                        str(user_id),
+                        data.name,
+                        data.email,
+                        data.phone,
+                        data.cpf_cnpj,
+                        data.address,
+                        data.city,
+                        data.state,
+                        data.zip_code,
+                        data.notes,
+                        data.status or "active",
+                    ),
+                )
+                row = await cur.fetchone()
+                return ClientResponse(**row)
+
+    async def update_client(
+        self, user_id: UUID, client_id: UUID, data: ClientUpdate
+    ) -> ClientResponse | None:
+        """Update an existing client."""
+        pool = await get_pool()
+
+        # Filter out None values
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+
+        if not update_data:
+            return await self.get_client(user_id, client_id)
+
+        # Build SET clause dynamically
+        set_clauses = [f"{k} = %s" for k in update_data.keys()]
+        set_clause = ", ".join(set_clauses)
+        values = list(update_data.values())
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    f"""
+                    UPDATE office_api.clients
+                    SET {set_clause}, updated_at = NOW()
+                    WHERE user_id = %s AND id = %s
+                    RETURNING *
+                    """,
+                    values + [str(user_id), str(client_id)],
+                )
+                row = await cur.fetchone()
+
+                if not row:
+                    return None
+
+                return ClientResponse(**row)
+
+    async def delete_client(self, user_id: UUID, client_id: UUID) -> bool:
+        """Delete a client."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    DELETE FROM office_api.clients
+                    WHERE user_id = %s AND id = %s
+                    """,
+                    (str(user_id), str(client_id)),
+                )
+                return cur.rowcount > 0
 
 
 clients_service = ClientsService()
