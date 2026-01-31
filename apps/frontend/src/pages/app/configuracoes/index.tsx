@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { Bell, Shield, CreditCard, Palette, Camera, Check, Loader2, ChevronDown, Calendar } from 'lucide-react'
+import { Bell, Shield, CreditCard, Palette, Camera, Check, Loader2, ChevronDown, Calendar, ExternalLink } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -19,8 +20,10 @@ import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '@/features/auth/services/auth-service'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useCalendarSettingsStore, type CalendarColorScheme } from '@/stores/calendar-settings-store'
+import { billingService, type SubscriptionStatus } from '@/services/billing-service'
 
 export default function ConfiguracoesPage() {
+  const navigate = useNavigate()
   const { user } = useUser()
   const setUser = useAuthStore((state) => state.setUser)
   const { resolvedTheme, setTheme } = useTheme()
@@ -35,6 +38,12 @@ export default function ConfiguracoesPage() {
   // Calendar section state
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const { colorScheme, setColorScheme, defaultView, setDefaultView } = useCalendarSettingsStore()
+
+  // Billing section state
+  const [isBillingOpen, setIsBillingOpen] = useState(false)
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
+  const [loadingBilling, setLoadingBilling] = useState(false)
+  const [openingPortal, setOpeningPortal] = useState(false)
 
   // Profile editing state
   const [isEditing, setIsEditing] = useState(false)
@@ -194,6 +203,45 @@ export default function ConfiguracoesPage() {
       newsletterCheckboxRef.current.checked = user?.newsletter_opt_in || false
     }
   }, [user])
+
+  // Load subscription data
+  useEffect(() => {
+    if (isBillingOpen && !subscription) {
+      setLoadingBilling(true)
+      billingService
+        .getSubscription()
+        .then(setSubscription)
+        .catch((error) => {
+          console.error('Error loading subscription:', error)
+          toast.error('Erro ao carregar informações da assinatura')
+        })
+        .finally(() => setLoadingBilling(false))
+    }
+  }, [isBillingOpen])
+
+  const handleOpenPortal = async () => {
+    setOpeningPortal(true)
+    try {
+      const { portal_url } = await billingService.getPortalUrl()
+      window.location.href = portal_url
+    } catch (error) {
+      console.error('Error opening portal:', error)
+      toast.error('Erro ao abrir portal de gerenciamento')
+      setOpeningPortal(false)
+    }
+  }
+
+  const getStatusLabel = (status: SubscriptionStatus['status']) => {
+    const labels = {
+      active: { text: 'Ativa', color: 'text-green-600 dark:text-green-500' },
+      trialing: { text: 'Período de teste', color: 'text-blue-600 dark:text-blue-500' },
+      past_due: { text: 'Pagamento pendente', color: 'text-yellow-600 dark:text-yellow-500' },
+      canceled: { text: 'Cancelada', color: 'text-red-600 dark:text-red-500' },
+      incomplete: { text: 'Incompleta', color: 'text-orange-600 dark:text-orange-500' },
+      none: { text: 'Nenhuma', color: 'text-muted-foreground' },
+    }
+    return labels[status] || labels.none
+  }
 
   const getInitials = () => {
     const name = user?.name || user?.email?.split('@')[0] || 'U'
@@ -608,6 +656,119 @@ export default function ConfiguracoesPage() {
                           ))}
                         </div>
                       </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // Billing é expansível
+          if (section.id === 'billing') {
+            const statusInfo = subscription ? getStatusLabel(subscription.status) : null
+
+            return (
+              <div key={section.id}>
+                <button
+                  onClick={() => setIsBillingOpen(!isBillingOpen)}
+                  className="w-full flex items-center gap-4 p-5 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="p-2.5 bg-muted rounded-lg">
+                    <Icon className="h-5 w-5 text-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-foreground">{section.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{section.description}</p>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      'h-5 w-5 text-muted-foreground transition-transform duration-200',
+                      isBillingOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+                {isBillingOpen && (
+                  <div className="px-5 pb-5 pt-0">
+                    <div className="ml-14 space-y-4">
+                      {loadingBilling ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : subscription ? (
+                        <>
+                          {/* Status da Assinatura */}
+                          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-muted-foreground">Status</span>
+                              <span className={cn('text-sm font-semibold', statusInfo?.color)}>
+                                {statusInfo?.text}
+                              </span>
+                            </div>
+                            
+                            {subscription.status === 'active' && subscription.current_period_end && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-muted-foreground">
+                                  Próxima renovação
+                                </span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')}
+                                </span>
+                              </div>
+                            )}
+
+                            {subscription.cancel_at_period_end && (
+                              <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-600 dark:text-yellow-500">
+                                Sua assinatura será cancelada no fim do período atual
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Botões de Ação */}
+                          <div className="space-y-2">
+                            <button
+                              onClick={handleOpenPortal}
+                              disabled={openingPortal}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {openingPortal ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Abrindo...
+                                </>
+                              ) : (
+                                <>
+                                  <ExternalLink className="w-4 h-4" />
+                                  Gerenciar Assinatura
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              onClick={() => navigate('/planos')}
+                              className="w-full px-4 py-2.5 border-2 border-border rounded-lg font-medium text-foreground hover:bg-muted transition-colors"
+                            >
+                              Ver Planos Disponíveis
+                            </button>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground">
+                            O gerenciamento completo de assinatura (faturas, pagamento, cancelamento) é feito pelo
+                            portal seguro do Stripe.
+                          </p>
+                        </>
+                      ) : (
+                        <div className="text-center py-8 space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Você ainda não possui uma assinatura ativa.
+                          </p>
+                          <button
+                            onClick={() => navigate('/planos')}
+                            className="px-6 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                          >
+                            Ver Planos
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

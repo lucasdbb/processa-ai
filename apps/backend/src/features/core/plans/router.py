@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, status
 
-from src.core.auth import verify_internal_token
 from src.features.core.plans.schemas import BillingPlanPublic
 from src.features.core.plans.service import PlansService
 
-router = APIRouter(dependencies=[Depends(verify_internal_token)])
+router = APIRouter()
 service = PlansService()
 
 

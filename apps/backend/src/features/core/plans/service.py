@@ -11,8 +11,9 @@ class PlansService:
         try:
             res = (
                 self.supabase.table("billing_plans")
-                .select("id,slug,name,description,is_popular,is_sellable,sort_order")
-                .eq("is_visible", True)
+                .select(
+                    "id,slug,name,description,is_popular,is_visible,sort_order,price_reais,currency,interval,features,stripe_price_id"
+                )
                 .order("sort_order", desc=False)
                 .execute()
             )
@@ -21,53 +22,18 @@ class PlansService:
             if not plans:
                 return []
 
-            plan_ids = [p["id"] for p in plans if p.get("id")]
-
-            prices_by_plan: dict[str, dict] = {}
-            if plan_ids:
-                prices_res = (
-                    self.supabase.table("billing_plan_prices")
-                    .select("plan_id,currency,amount_cents,interval")
-                    .in_("plan_id", plan_ids)
-                    .execute()
-                )
-                for row in prices_res.data or []:
-                    plan_id = row.get("plan_id")
-                    if not plan_id:
-                        continue
-                    current = prices_by_plan.get(plan_id)
-                    if current is None:
-                        prices_by_plan[plan_id] = row
-                        continue
-                    if current.get("interval") != "month" and row.get("interval") == "month":
-                        prices_by_plan[plan_id] = row
-
-            features_by_plan: dict[str, list[dict]] = {}
-            if plan_ids:
-                feats_res = (
-                    self.supabase.table("billing_plan_features")
-                    .select("plan_id,feature,sort_order")
-                    .in_("plan_id", plan_ids)
-                    .execute()
-                )
-                for row in feats_res.data or []:
-                    plan_id = row.get("plan_id")
-                    if not plan_id:
-                        continue
-                    features_by_plan.setdefault(plan_id, []).append(row)
-
             items = []
             for p in plans:
-                plan_id = p.get("id")
-                raw_price = prices_by_plan.get(plan_id) if plan_id else None
-                raw_features = features_by_plan.get(plan_id, []) if plan_id else []
-                raw_features_sorted = sorted(
-                    raw_features,
-                    key=lambda x: (
-                        int(x.get("sort_order") or 0),
-                        str(x.get("feature") or ""),
-                    ),
-                )
+                # Convert price from reais to cents
+                price_reais = float(p.get("price_reais") or 0)
+                amount_cents = int(price_reais * 100)
+
+                # Get features - it's stored as JSONB array
+                features_data = p.get("features") or []
+                if isinstance(features_data, str):
+                    import json
+
+                    features_data = json.loads(features_data)
 
                 items.append(
                     {
@@ -75,30 +41,31 @@ class PlansService:
                         "name": p.get("name") or "",
                         "description": p.get("description"),
                         "is_popular": bool(p.get("is_popular")),
-                        "is_sellable": bool(p.get("is_sellable")),
+                        "is_visible": bool(p.get("is_visible")),
+                        "is_sellable": True,  # All visible plans are sellable
                         "sort_order": int(p.get("sort_order") or 0),
                         "price": (
                             {
-                                "currency": raw_price.get("currency"),
-                                "amount_cents": int(raw_price.get("amount_cents") or 0),
-                                "interval": raw_price.get("interval"),
+                                "currency": p.get("currency") or "BRL",
+                                "amount_cents": amount_cents,
+                                "interval": p.get("interval") or "month",
+                                "stripe_price_id": p.get("stripe_price_id"),
                             }
-                            if raw_price
+                            if amount_cents >= 0
                             else None
                         ),
-                        "features": [
-                            str(f.get("feature") or "").strip()
-                            for f in raw_features_sorted
-                            if f.get("feature")
-                        ],
+                        "features": [str(f).strip() for f in features_data if f],
                     }
                 )
 
             return items
         except HTTPException:
             raise
-        except Exception:
+        except Exception as e:
+            import traceback
+
+            traceback.print_exc()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Erro ao listar planos",
+                detail=f"Erro ao listar planos: {str(e)}",
             )

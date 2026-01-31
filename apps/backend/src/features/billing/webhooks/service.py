@@ -4,8 +4,8 @@ import stripe
 from fastapi import HTTPException, status
 
 from src.core.config import settings
-from src.core.supabase import get_supabase
 from src.core.logging import logger
+from src.core.supabase import get_supabase
 
 # Initialize Stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -81,6 +81,7 @@ class WebhooksService:
         plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
 
         try:
+            # Update subscription
             self.supabase.table("subscriptions").upsert(
                 {
                     "user_id": user_id,
@@ -98,6 +99,10 @@ class WebhooksService:
                 },
                 on_conflict="user_id",
             ).execute()
+
+            # Grant credits based on plan
+            await self._grant_plan_credits(user_id, plan_id)
+
             logger.info(f"Subscription activated for user {user_id}, plan: {plan_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription: {e}")
@@ -115,17 +120,31 @@ class WebhooksService:
             return
 
         try:
-            self.supabase.table("subscriptions").update(
-                {
-                    "status": "active",
-                    "current_period_start": datetime.fromtimestamp(
-                        subscription["current_period_start"], tz=timezone.utc
-                    ).isoformat(),
-                    "current_period_end": datetime.fromtimestamp(
-                        subscription["current_period_end"], tz=timezone.utc
-                    ).isoformat(),
-                }
-            ).eq("stripe_subscription_id", subscription_id).execute()
+            # Update subscription status
+            result = (
+                self.supabase.table("subscriptions")
+                .update(
+                    {
+                        "status": "active",
+                        "current_period_start": datetime.fromtimestamp(
+                            subscription["current_period_start"], tz=timezone.utc
+                        ).isoformat(),
+                        "current_period_end": datetime.fromtimestamp(
+                            subscription["current_period_end"], tz=timezone.utc
+                        ).isoformat(),
+                    }
+                )
+                .eq("stripe_subscription_id", subscription_id)
+                .execute()
+            )
+
+            # Reset monthly credits if it's a renewal
+            if result.data and len(result.data) > 0:
+                user_id = result.data[0].get("user_id")
+                plan_id = result.data[0].get("plan_id")
+                if user_id and plan_id:
+                    await self._reset_monthly_credits(user_id, plan_id)
+
             logger.info(f"Subscription renewed: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription on invoice.paid: {e}")
@@ -187,6 +206,65 @@ class WebhooksService:
             logger.info(f"Subscription canceled: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription on delete: {e}")
+
+    async def _grant_plan_credits(self, user_id: str, plan_id: str) -> None:
+        """Grant credits to user based on their plan."""
+        try:
+            # Get plan details to know how many credits to grant
+            plan_result = (
+                self.supabase.table("billing_plans")
+                .select("monthly_credits")
+                .eq("slug", plan_id)
+                .single()
+                .execute()
+            )
+
+            if not plan_result.data:
+                logger.warning(f"Plan not found: {plan_id}")
+                return
+
+            monthly_credits = plan_result.data.get("monthly_credits", 0)
+
+            if monthly_credits > 0:
+                # Use PostgreSQL function to grant credits
+                self.supabase.rpc(
+                    "grant_credits_to_user",
+                    {
+                        "p_user_id": user_id,
+                        "p_amount": monthly_credits,
+                        "p_reason": f"subscription_activation_{plan_id}",
+                    },
+                ).execute()
+                logger.info(f"Granted {monthly_credits} credits to user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to grant credits: {e}")
+
+    async def _reset_monthly_credits(self, user_id: str, plan_id: str) -> None:
+        """Reset monthly credits for user based on their plan."""
+        try:
+            # Get plan details
+            plan_result = (
+                self.supabase.table("billing_plans")
+                .select("monthly_credits")
+                .eq("slug", plan_id)
+                .single()
+                .execute()
+            )
+
+            if not plan_result.data:
+                logger.warning(f"Plan not found: {plan_id}")
+                return
+
+            monthly_credits = plan_result.data.get("monthly_credits", 0)
+
+            if monthly_credits > 0:
+                # Use PostgreSQL function to reset credits
+                self.supabase.rpc(
+                    "reset_monthly_credits", {"p_user_id": user_id, "p_new_amount": monthly_credits}
+                ).execute()
+                logger.info(f"Reset monthly credits to {monthly_credits} for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to reset monthly credits: {e}")
 
     def _get_plan_id_from_price(self, price_id: str) -> str:
         """Map Stripe price_id to internal plan_id."""

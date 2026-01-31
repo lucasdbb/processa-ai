@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { Check, ChevronDown, Crown, GraduationCap, Star, Users, Zap } from 'lucide-react'
-import { fetchWithCredentials } from '@/lib/fetch'
+import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Check, ChevronDown, Crown, GraduationCap, Loader2, Star, Users, Zap } from 'lucide-react'
+import { toast } from 'sonner'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { billingService } from '@/services/billing-service'
+import { useUser } from '@/features/auth/hooks/use-user'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 
 type ApiPlanPrice = {
   currency: string
   amount_cents: number
   interval: string
+  stripe_price_id?: string
 }
 
 type ApiPlan = {
@@ -15,6 +19,7 @@ type ApiPlan = {
   name: string
   description: string | null
   is_popular: boolean
+  is_visible: boolean
   is_sellable: boolean
   sort_order: number
   price: ApiPlanPrice | null
@@ -52,22 +57,28 @@ const faqs = [
 ]
 
 export default function PlanosPage() {
+  const navigate = useNavigate()
+  const { user } = useUser()
   const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0)
   const [apiPlans, setApiPlans] = useState<ApiPlan[] | null>(null)
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
 
   useEffect(() => {
     let didCancel = false
 
     const loadPlans = async () => {
       try {
-        const res = await fetchWithCredentials('/api/plans', { method: 'GET' })
+        const res = await fetchWithCredentials(`${API_URL}/plans`, { method: 'GET' })
         if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }))
+          console.error('Error loading plans:', errorData)
           throw new Error('Falha ao carregar planos')
         }
         const data = (await res.json()) as ApiPlan[]
         if (!didCancel) setApiPlans(Array.isArray(data) ? data : [])
-      } catch {
+      } catch (error) {
+        console.error('Failed to load plans:', error)
         if (!didCancel) setApiPlans([])
       }
     }
@@ -104,6 +115,7 @@ export default function PlanosPage() {
       const amountCents = p.price?.amount_cents ?? 0
       const currency = p.price?.currency ?? 'BRL'
       const interval = p.price?.interval
+      const stripePriceId = p.price?.stripe_price_id
 
       const priceLabel = isComingSoon
         ? 'Em breve'
@@ -126,6 +138,7 @@ export default function PlanosPage() {
           : `Assinar ${p.name}`
 
       return {
+        slug: p.slug,
         name: p.name,
         price: priceLabel,
         period: periodLabel,
@@ -135,12 +148,59 @@ export default function PlanosPage() {
         popular: !!p.is_popular,
         icon: iconBySlug[p.slug] || Users,
         comingSoon: isComingSoon,
+        isHidden: !p.is_visible,
         sortOrder: p.sort_order ?? 0,
+        stripePriceId: stripePriceId || null,
+        isFree: amountCents === 0,
       }
     }
 
     return (apiPlans || []).map(normalize).sort((a, b) => a.sortOrder - b.sortOrder)
   }, [apiPlans])
+
+  type Plan = (typeof plans)[number]
+
+  const handlePlanClick = async (plan: Plan) => {
+    if (plan.comingSoon) return
+
+    // Se não estiver logado, abrir modal de registro
+    if (!user) {
+      openRegisterModal()
+      return
+    }
+
+    // Se for plano gratuito, redirecionar para o app
+    if (plan.isFree) {
+      navigate('/app')
+      return
+    }
+
+    // Se não tiver stripe_price_id, mostrar erro
+    if (!plan.stripePriceId) {
+      toast.error('Este plano não está disponível no momento.')
+      return
+    }
+
+    setLoadingPlan(plan.slug)
+
+    try {
+      const successUrl = `${window.location.origin}/app?subscription=success`
+      const cancelUrl = `${window.location.origin}/planos?subscription=canceled`
+
+      const { checkout_url } = await billingService.createCheckout({
+        price_id: plan.stripePriceId,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      })
+
+      // Redirecionar para o Stripe Checkout
+      window.location.href = checkout_url
+    } catch (error) {
+      console.error('Error creating checkout:', error)
+      toast.error('Erro ao iniciar checkout. Tente novamente.')
+      setLoadingPlan(null)
+    }
+  }
 
   return (
     <div className="pt-24">
@@ -166,19 +226,22 @@ export default function PlanosPage() {
           {apiPlans === null ? (
             <div className="text-center text-sm text-muted-foreground py-10">Carregando planos...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+            <div className="flex items-stretch justify-center gap-6 w-full">
               {plans.map((plan, index) => {
                 const IconComponent = plan.icon
                 const isComingSoon = (plan as { comingSoon?: boolean }).comingSoon === true
+                const isHidden = (plan as { isHidden?: boolean }).isHidden === true
                 return (
                   <div
                     key={index}
-                    className={`relative bg-card rounded-2xl p-5 flex flex-col h-full transition-all duration-300 ${
+                    className={`relative bg-card rounded-2xl p-5 flex flex-col h-full transition-all duration-300 w-full min-w-[280px] max-w-[320px] ${
                       plan.popular ? 'shadow-2xl ring-2 ring-primary z-10' : 'shadow-xl border border-border'
                     } ${
-                      isComingSoon
+                      isComingSoon || isHidden
                         ? 'opacity-90'
-                        : 'hover:scale-[1.02] hover:shadow-2xl hover:border-muted-foreground/50'
+                        : 'hover:scale-[1.01] hover:shadow-2xl hover:border-muted-foreground/50'
+                    } ${
+                      isHidden ? 'blur-[2px] pointer-events-none' : ''
                     }`}
                   >
                     {plan.popular ? (
@@ -234,20 +297,24 @@ export default function PlanosPage() {
 
                       <div className="mt-auto">
                         <button
-                          onClick={() => {
-                            if (isComingSoon) return
-                            openRegisterModal()
-                          }}
-                          disabled={isComingSoon}
-                          className={`w-full min-h-[48px] flex items-center justify-center py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 transform ${
-                            isComingSoon
+                          onClick={() => handlePlanClick(plan)}
+                          disabled={isComingSoon || loadingPlan === plan.slug}
+                          className={`w-full min-h-[48px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 transform ${
+                            isComingSoon || loadingPlan === plan.slug
                               ? 'bg-muted text-muted-foreground cursor-not-allowed border-2 border-border'
                               : plan.popular
-                                ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl hover:-translate-y-0.5'
+                                ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl hover:-translate-y-0.5 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100'
                                 : 'bg-card text-foreground border-2 border-border hover:border-primary hover:bg-muted hover:-translate-y-0.5'
                           }`}
                         >
-                          {plan.buttonText}
+                          {loadingPlan === plan.slug ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Processando...
+                            </>
+                          ) : (
+                            plan.buttonText
+                          )}
                         </button>
                       </div>
                     </div>
