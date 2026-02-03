@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
-import { Outlet, useNavigation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { Sidebar } from './sidebar'
 import { AppHeader } from './app-header'
 import { BottomNav } from './bottom-nav'
+import { PageTransition } from './page-transition'
 import { CommandPalette } from '@/components/navigation/command-palette'
 import { Breadcrumbs } from '@/components/navigation/breadcrumbs'
 import { useSidebarStore } from '@/stores/sidebar-store'
@@ -38,6 +40,7 @@ function RouteLoadingBar() {
 }
 
 export function AppLayout() {
+  const location = useLocation()
   const { isExpanded } = useSidebarStore()
   const { toggle: toggleCommandPalette } = useCommandPaletteStore()
 
@@ -73,7 +76,11 @@ export function AppLayout() {
           >
             <div className="p-4 lg:p-6 space-y-6">
               <Breadcrumbs />
-              <Outlet />
+              <AnimatePresence mode="wait">
+                <PageTransition key={location.pathname}>
+                  <Outlet />
+                </PageTransition>
+              </AnimatePresence>
             </div>
           </main>
 

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Outlet, useLocation, useNavigation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { Header } from './header'
 import { Footer } from './footer'
+import { PageTransition } from './page-transition'
 import { LoginModal } from '@/features/auth/components/login-modal'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 
@@ -67,7 +69,11 @@ export function RootLayout() {
       <RouteLoadingBar />
       {isAdminRoute ? null : <Header onLoginClick={openLoginModal} />}
       <main className="flex-1">
-        <Outlet context={{ openLoginModal, openRegisterModal } satisfies RootLayoutOutletContext} />
+        <AnimatePresence mode="wait">
+          <PageTransition key={location.pathname}>
+            <Outlet context={{ openLoginModal, openRegisterModal } satisfies RootLayoutOutletContext} />
+          </PageTransition>
+        </AnimatePresence>
       </main>
       {isAdminRoute ? null : <Footer />}
       {isLoginModalOpen ? (
