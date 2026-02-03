@@ -210,7 +210,7 @@ export default function IAHubPage() {
           const statusData = (await statusResponse.json()) as {
             status: string
             progress: number
-            result?: { download_url?: string; content?: string }
+            result?: { document_id?: string; download_url?: string; content?: string }
             error?: string
           }
 
@@ -223,16 +223,28 @@ export default function IAHubPage() {
 
           if (statusData.status === 'completed') {
             // Job completed - get the result
-            if (statusData.result?.download_url) {
-              // Download from signed URL
-              const pdfResponse = await fetch(statusData.result.download_url)
+            if (statusData.result?.document_id) {
+              // Gerar nova URL assinada via endpoint de download
+              const downloadResponse = await fetchWithCredentials(
+                `${API_URL}/ai/documents/${encodeURIComponent(statusData.result.document_id)}/download?expires_in=3600`
+              )
+              if (!downloadResponse.ok) {
+                throw new Error('Erro ao gerar URL de download')
+              }
+              const downloadData = (await downloadResponse.json()) as { download_url: string }
+              if (!downloadData.download_url) {
+                throw new Error('URL de download não encontrada')
+              }
+
+              // Baixar PDF da URL assinada
+              const pdfResponse = await fetch(downloadData.download_url)
               if (!pdfResponse.ok) {
                 throw new Error('Erro ao baixar PDF')
               }
               const blob = await pdfResponse.blob()
               setCnisPdfUrl(URL.createObjectURL(blob))
             } else if (statusData.result?.content) {
-              // Base64 content
+              // Base64 content (fallback)
               const binary = atob(statusData.result.content)
               const bytes = new Uint8Array(binary.length)
               for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)

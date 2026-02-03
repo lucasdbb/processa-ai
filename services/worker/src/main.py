@@ -269,18 +269,7 @@ async def _handle_ai_job(job: dict) -> None:
     if store_pdf:
         bucket = result.get("bucket")
         storage_path = result.get("storage_path")
-        download_url = result.get("download_url")
         pdf_bytes = result.get("content")
-
-        status["result"] = {**(status.get("result") or {})}
-        if isinstance(bucket, str):
-            status["result"]["bucket"] = bucket
-        if isinstance(storage_path, str):
-            status["result"]["storage_path"] = storage_path
-        if isinstance(download_url, str):
-            status["result"]["download_url"] = download_url
-        if isinstance(pdf_bytes, (bytes, bytearray)):
-            status["result"]["content"] = _encode_bytes(bytes(pdf_bytes))
 
         if job_uuid and isinstance(bucket, str) and isinstance(storage_path, str):
             checksum = None
@@ -296,7 +285,7 @@ async def _handle_ai_job(job: dict) -> None:
                     job_uuid=job_uuid,
                     user_id=user_id,
                     client_id=str(client_id) if client_id is not None else None,
-                    document_type="cnis_analysis_pdf",
+                    document_type="output",
                     bucket=bucket,
                     storage_path=storage_path,
                     filename=filename,
@@ -308,16 +297,33 @@ async def _handle_ai_job(job: dict) -> None:
             except Exception:
                 logger.exception("Failed to persist document in database")
                 doc_id = None
-            if doc_id:
-                status["result"]["document_id"] = str(doc_id)
-                result_payload["document_id"] = str(doc_id)
 
-        if isinstance(bucket, str):
-            result_payload["bucket"] = bucket
-        if isinstance(storage_path, str):
-            result_payload["storage_path"] = storage_path
-        if isinstance(download_url, str):
-            result_payload["download_url"] = download_url
+            # Retornar apenas document_id, não download_url
+            # O frontend deve usar GET /api/ai/documents/{document_id}/download para obter URL fresca
+            if doc_id:
+                status["result"] = {
+                    **(status.get("result") or {}),
+                    "document_id": str(doc_id),
+                }
+                result_payload["document_id"] = str(doc_id)
+                logger.info(f"Output document saved: {doc_id}")
+            else:
+                # Fallback: retornar bucket e storage_path se não conseguir criar documento
+                status["result"] = {
+                    **(status.get("result") or {}),
+                    "bucket": bucket,
+                    "storage_path": storage_path,
+                }
+                result_payload["bucket"] = bucket
+                result_payload["storage_path"] = storage_path
+        else:
+            # Sem job_uuid ou informações de storage - retornar PDF em base64
+            if isinstance(pdf_bytes, (bytes, bytearray)):
+                status["result"] = {
+                    **(status.get("result") or {}),
+                    "content": _encode_bytes(bytes(pdf_bytes)),
+                }
+                result_payload["content_storage"] = "redis"
     else:
         content = result.get("content")
         if isinstance(content, (bytes, bytearray)):
