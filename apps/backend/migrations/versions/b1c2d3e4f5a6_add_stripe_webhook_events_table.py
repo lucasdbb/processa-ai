@@ -55,6 +55,16 @@ def upgrade() -> None:
         $$ LANGUAGE plpgsql;
     """)
 
+    # Add 'paused' status to subscriptions table constraint
+    op.execute("""
+        ALTER TABLE public.subscriptions
+            DROP CONSTRAINT IF EXISTS subscriptions_status_check;
+
+        ALTER TABLE public.subscriptions
+            ADD CONSTRAINT subscriptions_status_check
+            CHECK (status IN ('active', 'past_due', 'canceled', 'incomplete', 'trialing', 'paused', 'none'));
+    """)
+
 
 def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS public.cleanup_old_webhook_events CASCADE")

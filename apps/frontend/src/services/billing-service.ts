@@ -21,7 +21,7 @@ export interface SubscriptionStatus {
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   plan_id: string
-  status: 'active' | 'past_due' | 'canceled' | 'incomplete' | 'trialing' | 'none'
+  status: 'active' | 'past_due' | 'canceled' | 'incomplete' | 'trialing' | 'paused' | 'none'
   current_period_start: string | null
   current_period_end: string | null
   cancel_at_period_end: boolean

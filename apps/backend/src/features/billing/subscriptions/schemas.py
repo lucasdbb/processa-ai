@@ -25,7 +25,7 @@ class SubscriptionStatus(BaseModel):
     stripe_customer_id: str | None = None
     stripe_subscription_id: str | None = None
     plan_id: str
-    status: Literal["active", "past_due", "canceled", "incomplete", "trialing", "none"]
+    status: Literal["active", "past_due", "canceled", "incomplete", "trialing", "paused", "none"]
     current_period_start: datetime | None = None
     current_period_end: datetime | None = None
     cancel_at_period_end: bool = False

@@ -101,16 +101,40 @@ class WebhooksService:
         logger.info(f"Processing Stripe webhook: {event_type} (ID: {event_id})")
 
         try:
+            # Checkout events
             if event_type == "checkout.session.completed":
                 await self._handle_checkout_completed(data)
+
+            # Invoice events
             elif event_type == "invoice.paid":
                 await self._handle_invoice_paid(data)
             elif event_type == "invoice.payment_failed":
                 await self._handle_invoice_failed(data)
+            elif event_type == "invoice.payment_action_required":
+                await self._handle_invoice_action_required(data)
+
+            # Subscription lifecycle events
+            elif event_type == "customer.subscription.created":
+                await self._handle_subscription_created(data)
             elif event_type == "customer.subscription.updated":
                 await self._handle_subscription_updated(data)
             elif event_type == "customer.subscription.deleted":
                 await self._handle_subscription_deleted(data)
+            elif event_type == "customer.subscription.paused":
+                await self._handle_subscription_paused(data)
+            elif event_type == "customer.subscription.resumed":
+                await self._handle_subscription_resumed(data)
+
+            # Payment events
+            elif event_type == "charge.refunded":
+                await self._handle_charge_refunded(data)
+            elif event_type == "charge.dispute.created":
+                await self._handle_dispute_created(data)
+
+            # Customer events
+            elif event_type == "customer.updated":
+                await self._handle_customer_updated(data)
+
             else:
                 logger.debug(f"Unhandled webhook event type: {event_type}")
                 self._record_event(event_id, event_type, event_status="skipped")
@@ -263,6 +287,85 @@ class WebhooksService:
             logger.error(f"Failed to update subscription on invoice.failed: {e}")
             raise TransientError(f"Failed to update subscription status: {e}")
 
+    async def _handle_invoice_action_required(self, invoice: dict) -> None:
+        """Handle invoice.payment_action_required event (3D Secure, etc)."""
+        subscription_id = invoice.get("subscription")
+        customer_email = invoice.get("customer_email")
+        hosted_invoice_url = invoice.get("hosted_invoice_url")
+
+        if not subscription_id:
+            logger.debug("invoice.payment_action_required without subscription_id, skipping")
+            return
+
+        try:
+            # Update subscription status to incomplete
+            self.supabase.table("subscriptions").update({"status": "incomplete"}).eq(
+                "stripe_subscription_id", subscription_id
+            ).execute()
+
+            logger.warning(
+                f"Payment action required for subscription {subscription_id}. "
+                f"Customer: {customer_email}, Invoice URL: {hosted_invoice_url}"
+            )
+            # TODO: Send email notification to user about pending payment action
+        except Exception as e:
+            logger.error(f"Failed to handle invoice action required: {e}")
+            raise TransientError(f"Failed to update subscription status: {e}")
+
+    async def _handle_subscription_created(self, subscription: dict) -> None:
+        """Handle customer.subscription.created event (for subscriptions created outside checkout)."""
+        subscription_id = subscription.get("id")
+        customer_id = subscription.get("customer")
+
+        if not subscription_id or not customer_id:
+            raise PermanentError("subscription.created missing required fields")
+
+        # Try to find user by stripe_customer_id
+        try:
+            result = (
+                self.supabase.table("subscriptions")
+                .select("user_id")
+                .eq("stripe_customer_id", customer_id)
+                .limit(1)
+                .execute()
+            )
+
+            if not result.data:
+                # No existing record - this subscription was created outside our flow
+                logger.warning(
+                    f"Subscription {subscription_id} created for unknown customer {customer_id}"
+                )
+                return
+
+            user_id = result.data[0]["user_id"]
+            plan_id = self._get_plan_id_from_price(
+                subscription["items"]["data"][0]["price"]["id"]
+            )
+
+            self.supabase.table("subscriptions").update(
+                {
+                    "stripe_subscription_id": subscription_id,
+                    "plan_id": plan_id,
+                    "status": subscription["status"],
+                    "current_period_start": datetime.fromtimestamp(
+                        subscription["current_period_start"], tz=timezone.utc
+                    ).isoformat(),
+                    "current_period_end": datetime.fromtimestamp(
+                        subscription["current_period_end"], tz=timezone.utc
+                    ).isoformat(),
+                    "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
+                }
+            ).eq("stripe_customer_id", customer_id).execute()
+
+            # Grant credits if subscription is active
+            if subscription["status"] == "active":
+                await self._grant_plan_credits(user_id, plan_id)
+
+            logger.info(f"Subscription created for user {user_id}: {subscription_id}")
+        except Exception as e:
+            logger.error(f"Failed to handle subscription created: {e}")
+            raise TransientError(f"Failed to process subscription creation: {e}")
+
     async def _handle_subscription_updated(self, subscription: dict) -> None:
         """Handle customer.subscription.updated event."""
         subscription_id = subscription.get("id")
@@ -308,6 +411,178 @@ class WebhooksService:
         except Exception as e:
             logger.error(f"Failed to update subscription on delete: {e}")
             raise TransientError(f"Failed to update subscription on cancellation: {e}")
+
+    async def _handle_subscription_paused(self, subscription: dict) -> None:
+        """Handle customer.subscription.paused event."""
+        subscription_id = subscription.get("id")
+        if not subscription_id:
+            raise PermanentError("subscription.paused missing subscription id")
+
+        try:
+            self.supabase.table("subscriptions").update({"status": "paused"}).eq(
+                "stripe_subscription_id", subscription_id
+            ).execute()
+            logger.info(f"Subscription paused: {subscription_id}")
+        except Exception as e:
+            logger.error(f"Failed to update subscription on pause: {e}")
+            raise TransientError(f"Failed to pause subscription: {e}")
+
+    async def _handle_subscription_resumed(self, subscription: dict) -> None:
+        """Handle customer.subscription.resumed event."""
+        subscription_id = subscription.get("id")
+        if not subscription_id:
+            raise PermanentError("subscription.resumed missing subscription id")
+
+        try:
+            result = (
+                self.supabase.table("subscriptions")
+                .update({"status": "active"})
+                .eq("stripe_subscription_id", subscription_id)
+                .execute()
+            )
+
+            # Grant credits when subscription is resumed
+            if result.data and len(result.data) > 0:
+                user_id = result.data[0].get("user_id")
+                plan_id = result.data[0].get("plan_id")
+                if user_id and plan_id:
+                    await self._grant_plan_credits(user_id, plan_id)
+
+            logger.info(f"Subscription resumed: {subscription_id}")
+        except Exception as e:
+            logger.error(f"Failed to update subscription on resume: {e}")
+            raise TransientError(f"Failed to resume subscription: {e}")
+
+    async def _handle_charge_refunded(self, charge: dict) -> None:
+        """Handle charge.refunded event - revoke credits if applicable."""
+        invoice_id = charge.get("invoice")
+        amount_refunded = charge.get("amount_refunded", 0)
+        refunded = charge.get("refunded", False)
+
+        if not invoice_id:
+            logger.debug("charge.refunded without invoice_id, skipping")
+            return
+
+        try:
+            # Get invoice to find subscription
+            invoice = stripe.Invoice.retrieve(invoice_id)
+            subscription_id = invoice.get("subscription")
+
+            if not subscription_id:
+                logger.debug("Refunded charge not associated with subscription")
+                return
+
+            # Find user by subscription
+            result = (
+                self.supabase.table("subscriptions")
+                .select("user_id, plan_id")
+                .eq("stripe_subscription_id", subscription_id)
+                .limit(1)
+                .execute()
+            )
+
+            if result.data and len(result.data) > 0:
+                user_id = result.data[0]["user_id"]
+
+                # If fully refunded, revoke credits
+                if refunded:
+                    logger.warning(
+                        f"Full refund for subscription {subscription_id}, "
+                        f"user {user_id}. Consider revoking credits."
+                    )
+                    # TODO: Implement credit revocation if needed
+                else:
+                    logger.info(
+                        f"Partial refund ({amount_refunded}) for subscription {subscription_id}"
+                    )
+
+        except stripe.StripeError as e:
+            logger.error(f"Failed to retrieve invoice for refund: {e}")
+            raise TransientError(f"Failed to process refund: {e}")
+        except Exception as e:
+            logger.error(f"Failed to handle charge refunded: {e}")
+            raise TransientError(f"Failed to process refund: {e}")
+
+    async def _handle_dispute_created(self, dispute: dict) -> None:
+        """Handle charge.dispute.created event - critical alert."""
+        charge_id = dispute.get("charge")
+        amount = dispute.get("amount", 0)
+        reason = dispute.get("reason", "unknown")
+        status = dispute.get("status", "unknown")
+
+        logger.critical(
+            f"DISPUTE CREATED - Charge: {charge_id}, Amount: {amount}, "
+            f"Reason: {reason}, Status: {status}"
+        )
+
+        # Try to find associated subscription
+        try:
+            if charge_id:
+                charge = stripe.Charge.retrieve(charge_id)
+                invoice_id = charge.get("invoice")
+
+                if invoice_id:
+                    invoice = stripe.Invoice.retrieve(invoice_id)
+                    subscription_id = invoice.get("subscription")
+
+                    if subscription_id:
+                        result = (
+                            self.supabase.table("subscriptions")
+                            .select("user_id")
+                            .eq("stripe_subscription_id", subscription_id)
+                            .limit(1)
+                            .execute()
+                        )
+
+                        if result.data:
+                            user_id = result.data[0]["user_id"]
+                            logger.critical(f"Dispute for user {user_id}")
+
+            # TODO: Send urgent notification to admin
+            # TODO: Consider suspending user access pending dispute resolution
+
+        except Exception as e:
+            logger.error(f"Failed to get dispute details: {e}")
+            # Don't raise - dispute is logged, we don't want to retry
+
+    async def _handle_customer_updated(self, customer: dict) -> None:
+        """Handle customer.updated event - sync customer data."""
+        customer_id = customer.get("id")
+        email = customer.get("email")
+        name = customer.get("name")
+
+        if not customer_id:
+            raise PermanentError("customer.updated missing customer id")
+
+        try:
+            # Find subscription by customer_id
+            result = (
+                self.supabase.table("subscriptions")
+                .select("user_id")
+                .eq("stripe_customer_id", customer_id)
+                .limit(1)
+                .execute()
+            )
+
+            if result.data and len(result.data) > 0:
+                user_id = result.data[0]["user_id"]
+
+                # Update profile with new email/name if provided
+                update_data = {}
+                if email:
+                    update_data["email"] = email
+                if name:
+                    update_data["name"] = name
+
+                if update_data:
+                    self.supabase.table("profiles").update(update_data).eq(
+                        "id", user_id
+                    ).execute()
+                    logger.info(f"Updated profile for user {user_id} from Stripe customer data")
+
+        except Exception as e:
+            logger.error(f"Failed to sync customer data: {e}")
+            # Don't raise - this is non-critical
 
     async def _grant_plan_credits(self, user_id: str, plan_id: str) -> None:
         """Grant credits to user based on their plan."""
