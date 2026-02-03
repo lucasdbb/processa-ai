@@ -32,6 +32,7 @@ interface NavItem {
   href: string
   icon: typeof LayoutDashboard
   children?: { name: string; href: string }[]
+  dataTour?: string
 }
 
 interface NavGroup {
