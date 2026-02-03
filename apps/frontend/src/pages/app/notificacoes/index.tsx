@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { AlertCircle, FolderKanban, Calculator, Check, Filter, Trash2 } from 'lucide-react'
+import { AlertCircle, FolderKanban, Calculator, Check, Filter, Trash2, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { InfoTooltip } from '@/components/ui/tooltip'
 
 // Mock notifications (mesmas do header + mais algumas)
 const allNotifications = [
@@ -103,13 +105,16 @@ export default function NotificacoesPage() {
         </div>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllAsRead}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors text-sm"
-            >
-              <Check className="h-4 w-4" />
-              Marcar todas como lidas
-            </button>
+            <>
+              <button
+                onClick={handleMarkAllAsRead}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors text-sm"
+              >
+                <Check className="h-4 w-4" />
+                Marcar todas como lidas
+              </button>
+              <InfoTooltip content="Marca todas as notificações como lidas de uma vez" />
+            </>
           )}
         </div>
       </div>
@@ -117,6 +122,7 @@ export default function NotificacoesPage() {
       {/* Filters */}
       <div className="flex items-center gap-2">
         <Filter className="h-4 w-4 text-muted-foreground" />
+        <InfoTooltip content="Filtre para visualizar todas ou apenas não lidas" />
         <button
           onClick={() => setFilter('all')}
           className={cn(
@@ -144,13 +150,11 @@ export default function NotificacoesPage() {
       {/* Notifications List */}
       <div className="space-y-2">
         {filteredNotifications.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-muted-foreground">
-              {filter === 'unread'
-                ? 'Nenhuma notificação não lida'
-                : 'Nenhuma notificação encontrada'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Bell}
+            title={filter === 'unread' ? 'Nenhuma notificação não lida' : 'Nenhuma notificação'}
+            description={filter === 'unread' ? 'Você está em dia!' : 'Você não tem notificações no momento.'}
+          />
         ) : (
           filteredNotifications.map((notification) => {
             const Icon = notification.icon

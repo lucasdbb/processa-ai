@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { ProcessListSkeleton } from '@/components/skeletons/process-list-skeleton'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { InfoTooltip } from '@/components/ui/tooltip'
 
 type Process = {
   id: string
@@ -121,6 +123,7 @@ export default function ProcessosPage() {
         </div>
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
+          <InfoTooltip content="Filtre processos por status: todos, apenas ativos ou arquivados" />
           <div className="flex rounded-lg border border-border overflow-hidden">
             {(['all', 'active', 'archived'] as const).map((f) => (
               <button
@@ -144,17 +147,16 @@ export default function ProcessosPage() {
       {isLoading ? (
         <ProcessListSkeleton />
       ) : processes.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-12 text-center">
-          <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
-            <FolderKanban className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium text-foreground mb-1">Nenhum processo encontrado</h3>
-          <p className="text-muted-foreground text-sm">
-            {search
+        <EmptyState
+          icon={FolderKanban}
+          title="Nenhum processo encontrado"
+          description={
+            search
               ? 'Tente buscar com outros termos.'
-              : 'Comece cadastrando seu primeiro processo.'}
-          </p>
-        </div>
+              : 'Comece cadastrando seu primeiro processo.'
+          }
+          action={!search ? { label: 'Novo Processo', onClick: handleNewProcess } : undefined}
+        />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="divide-y divide-border">

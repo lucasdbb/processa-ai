@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Search, Plus, Mail, Phone, MapPin, FileText, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { clientsService, type Client } from '@/services/clients-service'
 import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default function ClientesPage() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'archived'>('all')
 
@@ -124,17 +126,16 @@ export default function ClientesPage() {
       {isLoading ? (
         <ClientListSkeleton />
       ) : clients.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-12 text-center">
-          <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
-            <User className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium text-foreground mb-1">Nenhum cliente encontrado</h3>
-          <p className="text-muted-foreground text-sm">
-            {search
+        <EmptyState
+          icon={User}
+          title="Nenhum cliente encontrado"
+          description={
+            search
               ? 'Tente buscar com outros termos.'
-              : 'Comece cadastrando seu primeiro cliente.'}
-          </p>
-        </div>
+              : 'Comece cadastrando seu primeiro cliente.'
+          }
+          action={!search ? { label: 'Novo Cliente', onClick: () => navigate('/app/clientes/novo') } : undefined}
+        />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="divide-y divide-border">
