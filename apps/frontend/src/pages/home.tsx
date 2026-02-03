@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from 'react'
+import { useRef, useState, useMemo, useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import {
   ArrowRight,
@@ -16,18 +16,25 @@ import { useTheme } from 'next-themes'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { toast } from 'sonner'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
-import { AI_TOOLS } from '@/features/ai/ai-tools'
+import { fetchAiTools } from '@/features/ai/api'
+import type { AiTool } from '@/features/ai/types'
 
 export default function HomePage() {
   const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [aiTools, setAiTools] = useState<AiTool[]>([])
 
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const availableAITools = useMemo(() => AI_TOOLS.filter((t) => !t.locked).length, [])
+  // Fetch AI tools from backend on mount
+  useEffect(() => {
+    fetchAiTools().then((tools) => setAiTools(tools))
+  }, [])
+
+  const availableAITools = useMemo(() => aiTools.filter((t) => !t.locked).length, [aiTools])
 
   const featuresRef = useRef<HTMLElement>(null)
   const demoRef = useRef<HTMLElement>(null)

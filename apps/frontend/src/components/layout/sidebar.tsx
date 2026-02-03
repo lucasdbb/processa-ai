@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useTheme } from 'next-themes'
+import { useAiTools } from '@/features/ai/context'
+import type { AiTool } from '@/features/ai/types'
 
 interface NavItem {
   name: string
@@ -34,52 +36,60 @@ interface NavGroup {
   items: NavItem[]
 }
 
-const navigation: NavGroup[] = [
-  {
-    label: '',
-    items: [
-      { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: 'Gestao',
-    items: [
-      { name: 'Clientes', href: '/app/clientes', icon: Users },
-      { name: 'Processos', href: '/app/processos', icon: FolderKanban },
-      { name: 'Prazos', href: '/app/prazos', icon: CalendarClock },
-    ],
-  },
-  {
-    label: 'Ferramentas',
-    items: [
-      {
-        name: 'Calculadoras',
-        href: '/app/calculadoras',
-        icon: Calculator,
-        children: [
-          { name: 'Rescisao', href: '/app/calculadoras/rescisao' },
-          // Aposentadoria ainda não implementada
-        ],
-      },
-      {
-        name: 'IA Juridica',
-        href: '/app/ia',
-        icon: Bot,
-        children: [
-          { name: 'Analise CNIS', href: '/app/ia/cnis-analysis' },
-          // Chat e Petição ainda não implementados
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Recursos',
-    items: [
-      { name: 'Documentos', href: '/app/documentos', icon: FileText },
-      { name: 'Materiais', href: '/app/materiais', icon: BookOpen },
-    ],
-  },
-]
+const getNavigationGroups = (aiTools: AiTool[]): NavGroup[] => {
+  // Build IA Jurídica children from API tools (only unlocked ones)
+  const iaChildren = aiTools
+    .filter((tool) => !tool.locked)
+    .sort((a, b) => a.order - b.order)
+    .map((tool) => ({
+      name: tool.name,
+      href: `/app/ia/${tool.slug}`,
+    }))
+
+  return [
+    {
+      label: '',
+      items: [
+        { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
+      ],
+    },
+    {
+      label: 'Gestao',
+      items: [
+        { name: 'Clientes', href: '/app/clientes', icon: Users },
+        { name: 'Processos', href: '/app/processos', icon: FolderKanban },
+        { name: 'Prazos', href: '/app/prazos', icon: CalendarClock },
+      ],
+    },
+    {
+      label: 'Ferramentas',
+      items: [
+        {
+          name: 'Calculadoras',
+          href: '/app/calculadoras',
+          icon: Calculator,
+          children: [
+            { name: 'Rescisão', href: '/app/calculadoras/rescisao' },
+            // Aposentadoria ainda não implementada
+          ],
+        },
+        {
+          name: 'IA Juridica',
+          href: '/app/ia',
+          icon: Bot,
+          children: iaChildren,
+        },
+      ],
+    },
+    {
+      label: 'Recursos',
+      items: [
+        { name: 'Documentos', href: '/app/documentos', icon: FileText },
+        { name: 'Materiais', href: '/app/materiais', icon: BookOpen },
+      ],
+    },
+  ]
+}
 
 const bottomNavigation: NavItem[] = [
   { name: 'Configuracoes', href: '/app/configuracoes', icon: Settings },
@@ -92,9 +102,12 @@ export function Sidebar() {
   const { logout } = useAuthStore()
   const { resolvedTheme } = useTheme()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const { tools: aiTools } = useAiTools()
 
   const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
+
+  const navigation = getNavigationGroups(aiTools)
 
   const isActive = (href: string) => {
     if (href === '/app') {

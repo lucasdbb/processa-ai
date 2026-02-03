@@ -9,6 +9,7 @@ import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import { AiToolsProvider } from '@/features/ai/context'
 
 function RouteLoadingBar() {
   const navigation = useNavigation()
@@ -56,25 +57,27 @@ export function AppLayout() {
   }, [toggleCommandPalette])
 
   return (
-    <div className="min-h-screen bg-background font-sans text-foreground">
-      <RouteLoadingBar />
-      <Sidebar />
-      <AppHeader />
+    <AiToolsProvider>
+      <div className="min-h-screen bg-background font-sans text-foreground">
+        <RouteLoadingBar />
+        <Sidebar />
+        <AppHeader />
 
-      <main
-        className={cn(
-          'min-h-screen pt-16 pb-20 lg:pb-0 transition-all duration-300',
-          isExpanded ? 'lg:pl-64' : 'lg:pl-[72px]'
-        )}
-      >
-        <div className="p-4 lg:p-6 space-y-6">
-          <Breadcrumbs />
-          <Outlet />
-        </div>
-      </main>
+        <main
+          className={cn(
+            'min-h-screen pt-16 pb-20 lg:pb-0 transition-all duration-300',
+            isExpanded ? 'lg:pl-64' : 'lg:pl-[72px]'
+          )}
+        >
+          <div className="p-4 lg:p-6 space-y-6">
+            <Breadcrumbs />
+            <Outlet />
+          </div>
+        </main>
 
-      <BottomNav />
-      <CommandPalette />
-    </div>
+        <BottomNav />
+        <CommandPalette />
+      </div>
+    </AiToolsProvider>
   )
 }

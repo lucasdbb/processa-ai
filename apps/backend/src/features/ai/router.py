@@ -15,6 +15,8 @@ from src.core.auth import require_internal_auth
 from src.core.logging import logger
 from src.core.queue import enqueue_job, get_job_status, set_job_status
 from src.features.ai.schemas import (
+    AiToolResponse,
+    AiToolsListResponse,
     AnalysisHistoryItem,
     AnalysisHistoryResponse,
     CnisAnalysisRequest,
@@ -28,6 +30,40 @@ from src.features.ai.schemas import (
 from src.features.ai.service import AiService
 
 router = APIRouter()
+
+
+@router.get("/tools", response_model=AiToolsListResponse)
+async def get_ai_tools(_internal=Depends(require_internal_auth)):
+    """Retorna lista de ferramentas de IA disponíveis."""
+    from src.core.db import get_pool
+
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("""
+                SELECT key, display_name, description, icon, variant,
+                       display_order, is_locked
+                FROM ai_worker.endpoints
+                WHERE variant IN ('cnis', 'chat', 'prompt')
+                ORDER BY display_order, display_name
+            """)
+            rows = await cur.fetchall()
+
+    tools = []
+    for row in rows:
+        tools.append(
+            AiToolResponse(
+                slug=row[0],
+                name=row[1],
+                description=row[2] or "",
+                icon=row[3] or "FileText",
+                variant=row[4] or "prompt",
+                locked=bool(row[6]),
+                order=int(row[5]) if row[5] is not None else 0,
+            )
+        )
+
+    return AiToolsListResponse(tools=tools)
 
 
 @router.post(

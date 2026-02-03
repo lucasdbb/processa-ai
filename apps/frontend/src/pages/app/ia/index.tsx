@@ -7,27 +7,20 @@ import DOMPurify from 'dompurify'
 import { normalizeMarkdown } from '@/lib/utils'
 
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
-import { AI_TOOLS } from '@/features/ai/ai-tools'
+import { useAiTools } from '@/features/ai/context'
 import type { ChatMessage } from '@/features/ai/types'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
-const TOOL_ROUTE_TO_SLUG: Record<string, string> = {
-  chat: 'chat',
-  peticao: 'initial-petition',
-  cnis: 'cnis-analysis',
-}
-
 export default function IAHubPage() {
   const { toolId } = useParams<{ toolId?: string }>()
   const { isLoading: isAuthLoading } = useUser()
+  const { tools: aiTools, isLoading: isLoadingTools } = useAiTools()
 
-  const allTools = useMemo(() => [...AI_TOOLS].sort((a, b) => a.order - b.order), [])
+  const allTools = useMemo(() => [...aiTools].sort((a, b) => a.order - b.order), [aiTools])
 
-  const resolvedToolSlug = useMemo(() => {
-    if (!toolId) return null
-    return TOOL_ROUTE_TO_SLUG[toolId] ?? toolId
-  }, [toolId])
+  // toolId is the URL slug, which matches the database 'key' column exactly
+  const resolvedToolSlug = toolId || null
 
   const defaultSlug = useMemo(() => {
     return allTools.find((t) => !t.locked)?.slug || allTools[0]?.slug || ''
@@ -176,7 +169,7 @@ export default function IAHubPage() {
         formData.append('store_pdf', 'true')
 
         // Determine which endpoint to use based on tool slug
-        const endpoint = activeSlug === 'process-summary'
+        const endpoint = activeSlug === 'process_summary'
           ? `${API_URL}/ai/analyses/process-summary-upload`
           : `${API_URL}/ai/analyses/cnis-upload`
 
@@ -379,7 +372,7 @@ export default function IAHubPage() {
     }
   }, [chatInput, isChatLoading])
 
-  if (isAuthLoading) {
+  if (isAuthLoading || isLoadingTools) {
     return <LoadingSpinner fullScreen size="lg" />
   }
 

@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom'
+import { useAiTools } from '@/features/ai/context'
 
 export interface BreadcrumbItem {
   label: string
@@ -14,9 +15,6 @@ const ROUTE_LABELS: Record<string, string> = {
   rescisao: 'Rescisão Trabalhista',
   aposentadoria: 'Aposentadoria',
   ia: 'IA Jurídica',
-  chat: 'Chat',
-  peticao: 'Petição',
-  cnis: 'Análise CNIS',
   documentos: 'Documentos',
   materiais: 'Materiais',
   configuracoes: 'Configurações',
@@ -25,6 +23,7 @@ const ROUTE_LABELS: Record<string, string> = {
 
 export function useBreadcrumbs(): BreadcrumbItem[] {
   const location = useLocation()
+  const { getToolBySlug } = useAiTools()
 
   // Split pathname and filter empty strings
   const pathSegments = location.pathname.split('/').filter(Boolean)
@@ -37,17 +36,28 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
   // Build breadcrumb items
   const breadcrumbs: BreadcrumbItem[] = []
   let currentPath = ''
+  let previousSegment = ''
 
   pathSegments.forEach((segment) => {
     currentPath += `/${segment}`
 
-    // Get label from mapping, or capitalize the segment as fallback
-    const label = ROUTE_LABELS[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)
+    let label: string
+
+    // If previous segment was 'ia', this segment is an AI tool slug
+    if (previousSegment === 'ia') {
+      const tool = getToolBySlug(segment)
+      label = tool?.name || segment.charAt(0).toUpperCase() + segment.slice(1)
+    } else {
+      // Get label from static mapping, or capitalize as fallback
+      label = ROUTE_LABELS[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)
+    }
 
     breadcrumbs.push({
       label,
       href: currentPath,
     })
+
+    previousSegment = segment
   })
 
   return breadcrumbs

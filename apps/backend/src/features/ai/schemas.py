@@ -85,3 +85,21 @@ class ProcessSummaryRequest(BaseModel):
     store_pdf: bool = False
     store_input_pdf: bool = True
     signed_url_expires_in: int = 600
+
+
+class AiToolResponse(BaseModel):
+    """Response para uma ferramenta de IA disponível."""
+
+    slug: str
+    name: str
+    description: str
+    icon: str
+    variant: str
+    locked: bool
+    order: int
+
+
+class AiToolsListResponse(BaseModel):
+    """Lista de ferramentas de IA disponíveis."""
+
+    tools: list[AiToolResponse]

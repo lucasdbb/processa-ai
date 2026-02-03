@@ -6,7 +6,8 @@ import { UserMenu } from '@/features/auth/components/user-menu'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
-import { AI_TOOLS } from '@/features/ai/ai-tools'
+import { fetchAiTools } from '@/features/ai/api'
+import type { AiTool } from '@/features/ai/types'
 
 type HeaderSubitem = {
   id?: string
@@ -62,35 +63,6 @@ const CALCULATORS: HeaderSubitem[] = [
   },
 ].sort((a, b) => a.name.localeCompare(b.name))
 
-// Recursos principais - o que o usuário pode ACESSAR
-const recursos: HeaderResourceItem[] = [
-  {
-    name: 'IA Jurídica',
-    description: 'Ferramentas de inteligência artificial',
-    icon: Bot,
-    subitems: AI_TOOLS.filter((t) => !t.locked)
-      .map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        href: `/app/ia?tool=${tool.slug}`,
-        icon: tool.icon,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  },
-  {
-    name: 'Calculadoras',
-    description: 'Trabalhista e previdenciária',
-    icon: Calculator,
-    subitems: CALCULATORS,
-  },
-  {
-    name: 'Materiais Complementares',
-    description: 'E-books, planilhas e modelos',
-    href: '/materiais',
-    icon: BookOpen,
-  },
-]
-
 interface HeaderProps {
   onLoginClick?: () => void
 }
@@ -100,10 +72,46 @@ export function Header({ onLoginClick }: HeaderProps) {
   const [recursosOpen, setRecursosOpen] = useState(false)
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [aiTools, setAiTools] = useState<AiTool[]>([])
   const recursosRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { user, isAuthenticated, isLoading } = useUser()
   const { resolvedTheme, setTheme } = useTheme()
+
+  // Fetch AI tools from backend on mount
+  useEffect(() => {
+    fetchAiTools().then((tools) => setAiTools(tools))
+  }, [])
+
+  // Recursos principais - o que o usuário pode ACESSAR
+  const recursos: HeaderResourceItem[] = [
+    {
+      name: 'IA Jurídica',
+      description: 'Ferramentas de inteligência artificial',
+      icon: Bot,
+      subitems: aiTools
+        .filter((t) => !t.locked)
+        .map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          href: `/app/ia?tool=${tool.slug}`,
+          icon: tool.icon,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    },
+    {
+      name: 'Calculadoras',
+      description: 'Trabalhista e previdenciária',
+      icon: Calculator,
+      subitems: CALCULATORS,
+    },
+    {
+      name: 'Materiais Complementares',
+      description: 'E-books, planilhas e modelos',
+      href: '/materiais',
+      icon: BookOpen,
+    },
+  ]
 
   useEffect(() => {
     const handleScroll = () => {

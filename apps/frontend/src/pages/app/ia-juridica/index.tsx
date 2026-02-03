@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Brain, Lock, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { AI_TOOLS } from '@/features/ai/ai-tools'
+import { useAiTools } from '@/features/ai/context'
 
 const categories = [
   { id: 'all', name: 'Todas' },
@@ -12,17 +13,18 @@ const categories = [
 ]
 
 const getCategoryForTool = (slug: string) => {
-  if (slug === 'cnis-analysis') return 'analysis'
+  if (slug === 'cnis_analysis' || slug === 'process_summary') return 'analysis'
   if (slug === 'chat') return 'consultation'
-  if (slug === 'initial-petition' || slug === 'defense') return 'generation'
+  if (slug === 'initial_petition' || slug === 'defense') return 'generation'
   return 'all'
 }
 
 export default function IAJuridicaHubPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const { tools: aiTools } = useAiTools()
 
   const tools = useMemo(() => {
-    return AI_TOOLS.map((tool) => ({
+    return aiTools.map((tool) => ({
       id: tool.slug,
       name: tool.name,
       description: tool.description,
@@ -32,7 +34,7 @@ export default function IAJuridicaHubPage() {
       available: !tool.locked,
       locked: tool.locked,
     }))
-  }, [])
+  }, [aiTools])
 
   const filteredTools = useMemo(() => {
     if (selectedCategory === 'all') return tools

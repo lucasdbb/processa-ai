@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, useEffect, type ChangeEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Brain } from 'lucide-react'
 import { toast } from 'sonner'
@@ -7,7 +7,7 @@ import DOMPurify from 'dompurify'
 
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { normalizeMarkdown } from '@/lib/utils'
-import { AI_TOOLS } from '@/features/ai/ai-tools'
+import { fetchAiTools } from '@/features/ai/api'
 import { ToolsSidebar } from '@/features/ai/components/tools-sidebar'
 import type { AiTool, ChatMessage } from '@/features/ai/types'
 import { useUser } from '@/features/auth/hooks/use-user'
@@ -18,7 +18,17 @@ export default function IAPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useUser()
   const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
 
-  const tools = useMemo(() => [...AI_TOOLS].sort((a, b) => a.order - b.order), [])
+  const [aiTools, setAiTools] = useState<AiTool[]>([])
+  const [isLoadingTools, setIsLoadingTools] = useState(true)
+
+  // Fetch AI tools from backend on mount
+  useEffect(() => {
+    fetchAiTools()
+      .then((tools) => setAiTools(tools))
+      .finally(() => setIsLoadingTools(false))
+  }, [])
+
+  const tools = useMemo(() => [...aiTools].sort((a, b) => a.order - b.order), [aiTools])
   const [selectedTool, setSelectedTool] = useState(() => tools.find((t) => !t.locked)?.slug || tools[0]?.slug || '')
 
   const [prompt, setPrompt] = useState('')
@@ -382,7 +392,7 @@ export default function IAPage() {
     }
   }, [chatInput, isChatLoading, isAuthenticated, openRegisterModal])
 
-  if (isAuthLoading) {
+  if (isAuthLoading || isLoadingTools) {
     return <LoadingSpinner fullScreen size="lg" />
   }
 
