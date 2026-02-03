@@ -10,41 +10,6 @@ services:
     networks:
       - processa-network
 
-  # n8n - Workflow engine
-  n8n:
-    image: n8nio/n8n:latest
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_HOST=${N8N_HOST:-localhost}
-      - N8N_PORT=${N8N_PORT:-5678}
-      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
-      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-}
-      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Sao_Paulo}
-      - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=external
-      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
-      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:-changeme}
-      - N8N_NATIVE_PYTHON_RUNNER=true
-    volumes:
-      - 'D:\Docker\n8n_data:/home/node/.n8n'
-    networks:
-      - processa-network
-
-  # n8n runners - External task runners
-  n8n-runners:
-    image: n8nio/runners:latest
-    environment:
-      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
-      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:-changeme}
-      - N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT=${N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT:-0}
-    networks:
-      - processa-network
-    depends_on:
-      - n8n
-
   # =============================================================================
   # APPLICATIONS
   # =============================================================================
@@ -94,13 +59,6 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
       - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
-      # n8n
-      - N8N_BASE_URL=http://n8n:5678
-      - N8N_CNIS_WORKFLOW_ID=${N8N_CNIS_WORKFLOW_ID}
-      - N8N_FILE_FIELD_NAME=${N8N_FILE_FIELD_NAME:-data}
-      - N8N_AUTH_USER=${N8N_AUTH_USER}
-      - N8N_AUTH_PASSWORD=${N8N_AUTH_PASSWORD}
-      - N8N_TIMEOUT_S=${N8N_TIMEOUT_S:-120}
       # Google
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -141,8 +99,9 @@ services:
       - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
       - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
       # n8n
-      - N8N_BASE_URL=http://n8n:5678
+      - N8N_BASE_URL=${N8N_BASE_URL}
       - N8N_CNIS_WORKFLOW_ID=${N8N_CNIS_WORKFLOW_ID}
+      - N8N_PROCESS_SUMMARY_WORKFLOW_ID=${N8N_PROCESS_SUMMARY_WORKFLOW_ID}
       - N8N_FILE_FIELD_NAME=${N8N_FILE_FIELD_NAME:-data}
       - N8N_AUTH_USER=${N8N_AUTH_USER}
       - N8N_AUTH_PASSWORD=${N8N_AUTH_PASSWORD}
@@ -158,7 +117,6 @@ services:
       - processa-network
     depends_on:
       - redis
-      - n8n
     deploy:
       replicas: 1  # Can be scaled horizontally
 
