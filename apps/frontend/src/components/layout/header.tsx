@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { fetchAiTools } from '@/features/ai/api'
 import type { AiTool } from '@/features/ai/types'
+import { fetchCalculators } from '@/features/calculators/api'
+import type { CalculatorItem } from '@/features/calculators/api'
 
 type HeaderSubitem = {
   id?: string
@@ -26,43 +28,6 @@ type HeaderResourceItem = {
   subitems?: HeaderSubitem[]
 }
 
-// Calculadoras disponíveis
-const CALCULATORS: HeaderSubitem[] = [
-  {
-    id: 'aposentadoria',
-    name: 'Aposentadoria',
-    description: 'Cálculo de tempo de contribuição',
-    href: '/app/calculadoras/aposentadoria',
-  },
-  {
-    id: 'correcao-monetaria',
-    name: 'Correção Monetária',
-    description: 'Em desenvolvimento',
-    href: '#',
-    locked: true,
-  },
-  {
-    id: 'honorarios',
-    name: 'Honorários Advocatícios',
-    description: 'Em desenvolvimento',
-    href: '#',
-    locked: true,
-  },
-  {
-    id: 'juros',
-    name: 'Juros e Multa',
-    description: 'Em desenvolvimento',
-    href: '#',
-    locked: true,
-  },
-  {
-    id: 'rescisao',
-    name: 'Rescisão Trabalhista',
-    description: 'Cálculo de verbas rescisórias',
-    href: '/app/calculadoras/rescisao',
-  },
-].sort((a, b) => a.name.localeCompare(b.name))
-
 interface HeaderProps {
   onLoginClick?: () => void
 }
@@ -73,6 +38,7 @@ export function Header({ onLoginClick }: HeaderProps) {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
   const [aiTools, setAiTools] = useState<AiTool[]>([])
+  const [calculators, setCalculators] = useState<CalculatorItem[]>([])
   const recursosRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { user, isAuthenticated, isLoading } = useUser()
@@ -83,27 +49,41 @@ export function Header({ onLoginClick }: HeaderProps) {
     fetchAiTools().then((tools) => setAiTools(tools))
   }, [])
 
+  // Fetch calculators from backend on mount
+  useEffect(() => {
+    fetchCalculators().then((items) => setCalculators(items))
+  }, [])
+
   // Recursos principais - o que o usuário pode ACESSAR
   const recursos: HeaderResourceItem[] = [
     {
       name: 'IA Jurídica',
       description: 'Ferramentas de inteligência artificial',
       icon: Bot,
-      subitems: aiTools
-        .filter((t) => !t.locked)
+      subitems: [...aiTools]
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name))
         .map((tool) => ({
+          id: tool.slug,
           name: tool.name,
           description: tool.description,
           href: `/app/ia?tool=${tool.slug}`,
           icon: tool.icon,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+          locked: tool.locked,
+        })),
     },
     {
       name: 'Calculadoras',
       description: 'Trabalhista e previdenciária',
       icon: Calculator,
-      subitems: CALCULATORS,
+      subitems: calculators
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name))
+        .map((calc) => ({
+          id: calc.slug,
+          name: calc.name,
+          description: calc.description,
+          href: calc.path,
+          locked: calc.locked,
+        })),
     },
     {
       name: 'Materiais Complementares',
