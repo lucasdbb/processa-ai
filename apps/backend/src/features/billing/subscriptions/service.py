@@ -6,10 +6,13 @@ from fastapi import HTTPException, status
 
 from src.core.config import settings
 from src.core.logging import logger
+from src.core.stripe_client import (
+    create_checkout_session as stripe_create_checkout,
+    create_customer as stripe_create_customer,
+    create_portal_session as stripe_create_portal,
+    list_invoices as stripe_list_invoices,
+)
 from src.core.supabase import get_supabase
-
-# Initialize Stripe
-stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class SubscriptionsService:
@@ -132,9 +135,9 @@ class SubscriptionsService:
                 detail="Erro ao buscar perfil",
             )
 
-        # Create Stripe customer
+        # Create Stripe customer (with retry)
         try:
-            customer = stripe.Customer.create(
+            customer = stripe_create_customer(
                 email=profile["email"],
                 name=profile.get("name"),
                 metadata={"user_id": user_id},
@@ -191,11 +194,9 @@ class SubscriptionsService:
         cancel = cancel_url or f"{settings.FRONTEND_URL}/app/billing?canceled=true"
 
         try:
-            session = stripe.checkout.Session.create(
+            session = stripe_create_checkout(
                 customer=customer_id,
-                payment_method_types=["card"],
-                line_items=[{"price": price_id, "quantity": 1}],
-                mode="subscription",
+                price_id=price_id,
                 success_url=success,
                 cancel_url=cancel,
                 metadata={"user_id": user_id},
@@ -234,7 +235,7 @@ class SubscriptionsService:
             )
 
         try:
-            session = stripe.billing_portal.Session.create(
+            session = stripe_create_portal(
                 customer=customer_id,
                 return_url=f"{settings.FRONTEND_URL}/app/billing",
             )
@@ -304,7 +305,7 @@ class SubscriptionsService:
             return {"invoices": [], "has_more": False}
 
         try:
-            invoices = stripe.Invoice.list(customer=customer_id, limit=limit)
+            invoices = stripe_list_invoices(customer=customer_id, limit=limit)
         except stripe.StripeError as e:
             logger.error(f"Stripe error listing invoices: {e}")
             raise HTTPException(

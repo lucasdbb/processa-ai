@@ -23,6 +23,7 @@ dependencies = [
     "supabase>=2.0.0",
     # Stripe
     "stripe>=8.0.0",
+    "tenacity>=8.2.0",
     # Redis (for job queue)
     "redis>=5.0.8",
     # Google Integration

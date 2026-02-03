@@ -5,10 +5,12 @@ from fastapi import HTTPException, status
 
 from src.core.config import settings
 from src.core.logging import logger
+from src.core.stripe_client import (
+    retrieve_charge,
+    retrieve_invoice,
+    retrieve_subscription,
+)
 from src.core.supabase import get_supabase
-
-# Initialize Stripe
-stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class TransientError(Exception):
@@ -191,7 +193,7 @@ class WebhooksService:
 
         # Get subscription details from Stripe
         try:
-            subscription = stripe.Subscription.retrieve(subscription_id)
+            subscription = retrieve_subscription(subscription_id)
         except stripe.StripeError as e:
             logger.error(f"Failed to retrieve subscription: {e}")
             raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
@@ -235,7 +237,7 @@ class WebhooksService:
             return
 
         try:
-            subscription = stripe.Subscription.retrieve(subscription_id)
+            subscription = retrieve_subscription(subscription_id)
         except stripe.StripeError as e:
             logger.error(f"Failed to retrieve subscription for invoice.paid: {e}")
             raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
@@ -465,7 +467,7 @@ class WebhooksService:
 
         try:
             # Get invoice to find subscription
-            invoice = stripe.Invoice.retrieve(invoice_id)
+            invoice = retrieve_invoice(invoice_id)
             subscription_id = invoice.get("subscription")
 
             if not subscription_id:
@@ -518,11 +520,11 @@ class WebhooksService:
         # Try to find associated subscription
         try:
             if charge_id:
-                charge = stripe.Charge.retrieve(charge_id)
+                charge = retrieve_charge(charge_id)
                 invoice_id = charge.get("invoice")
 
                 if invoice_id:
-                    invoice = stripe.Invoice.retrieve(invoice_id)
+                    invoice = retrieve_invoice(invoice_id)
                     subscription_id = invoice.get("subscription")
 
                     if subscription_id:
