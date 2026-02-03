@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, Header, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from starlette.responses import RedirectResponse
 
 from src.core.auth import get_user_id, get_user_role, verify_internal_token
@@ -100,8 +100,8 @@ async def update_material(
 
 
 @router.delete("/admin/{material_id}", status_code=status.HTTP_200_OK)
-async def delete_material(material_id: str, x_user_role: str = Header("user")):
-    if x_user_role != "admin":
+async def delete_material(material_id: str, user_role: str = Depends(get_user_role)):
+    if user_role != "admin":
         from fastapi import HTTPException
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
