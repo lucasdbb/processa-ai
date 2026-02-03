@@ -83,6 +83,7 @@ export default function ClientesPage() {
         </div>
         <Link
           to="/app/clientes/novo"
+          data-tour="new-client-btn"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
@@ -92,7 +93,7 @@ export default function ClientesPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+        <div data-tour="search-clients" className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"

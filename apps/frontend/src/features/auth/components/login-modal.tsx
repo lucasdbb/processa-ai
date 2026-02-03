@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { X, Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../hooks/use-auth'
 import { createClient } from '@/lib/supabase/client'
+import { useOnboardingStore } from '@/features/onboarding'
 import {
   loginSchema,
   registerSchema,
@@ -25,6 +26,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
   const [successMessage, setSuccessMessage] = useState('')
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { login, register: registerUser } = useAuth()
+  const { startTour } = useOnboardingStore()
   const supabase = createClient()
 
   const modalRef = useRef<HTMLDivElement>(null)
@@ -90,14 +92,26 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
     setSuccessMessage('')
 
     try {
-      await registerUser({
+      const user = await registerUser({
         name: data.name,
         email: data.email,
         password: data.password,
         newsletter_opt_in: data.newsletter_opt_in,
       })
-      setSuccessMessage('Solicitação enviada com sucesso! Confirme o seu e-mail.')
-      toast.success('Conta criada com sucesso! Verifique seu email.')
+      
+      // Se o usuário foi criado e está logado (sem necessidade de confirmação de email)
+      if (user) {
+        toast.success('Conta criada com sucesso!')
+        onClose()
+        // Pequeno delay para o modal fechar antes do tour iniciar
+        setTimeout(() => {
+          startTour('welcome')
+        }, 500)
+      } else {
+        // Email confirmation required
+        setSuccessMessage('Solicitação enviada com sucesso! Confirme o seu e-mail.')
+        toast.success('Conta criada com sucesso! Verifique seu email.')
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao criar conta'
       setApiError(message)

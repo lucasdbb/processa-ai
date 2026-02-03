@@ -85,6 +85,7 @@ export function UserMenu({ user }: UserMenuProps) {
           <DropdownMenuItem asChild className="rounded-none p-0 focus:bg-transparent">
             <Link
               to="/app"
+              data-tour="dashboard-link"
               className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150 cursor-pointer focus:outline-none"
             >
               <LayoutDashboard className="w-4 h-4 mr-3 text-muted-foreground" />

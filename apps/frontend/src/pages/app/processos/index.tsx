@@ -102,6 +102,7 @@ export default function ProcessosPage() {
         </div>
         <button
           onClick={handleNewProcess}
+          data-tour="new-process-btn"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
         >
           <Plus className="h-4 w-4" />
@@ -121,7 +122,7 @@ export default function ProcessosPage() {
             className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div data-tour="process-filters" className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <InfoTooltip content="Filtre processos por status: todos, apenas ativos ou arquivados" />
           <div className="flex rounded-lg border border-border overflow-hidden">

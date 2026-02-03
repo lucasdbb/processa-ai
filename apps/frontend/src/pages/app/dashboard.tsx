@@ -13,6 +13,7 @@ import {
 import { useUser } from '@/features/auth/hooks/use-user'
 import { dashboardService, type DashboardStats, type UpcomingDeadline } from '@/services/dashboard-service'
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
+import { TourButton } from '@/features/onboarding/tour-button'
 
 interface StatCard {
   name: string
@@ -128,18 +129,21 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Ola, {firstName}!</h1>
-        <p className="text-muted-foreground mt-1">
-          Aqui esta um resumo da sua atividade.
-        </p>
+      <div data-tour="welcome" className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Ola, {firstName}!</h1>
+          <p className="text-muted-foreground mt-1">
+            Aqui esta um resumo da sua atividade.
+          </p>
+        </div>
+        <TourButton tourId="dashboard" />
       </div>
 
       {/* Stats Grid */}
       {loading ? (
         <DashboardSkeleton />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div data-tour="stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {
           statCards.map((stat) => {
             const Icon = stat.icon
@@ -182,7 +186,7 @@ export default function DashboardPage() {
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Prazos Proximos */}
-        <div className="bg-card border border-border rounded-xl">
+        <div data-tour="deadlines" className="bg-card border border-border rounded-xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h2 className="font-semibold text-foreground">Prazos Proximos</h2>
             <Link

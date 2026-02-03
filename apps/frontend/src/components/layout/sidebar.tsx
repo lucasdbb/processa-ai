@@ -150,7 +150,7 @@ export function Sidebar() {
 
     if (hasChildren) {
       return (
-        <div key={item.name}>
+        <div key={item.name} data-tour={item.dataTour}>
           <button
             onClick={() => toggleExpanded(item.name)}
             className={cn(

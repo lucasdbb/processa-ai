@@ -1,6 +1,7 @@
 import { RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { TourProvider } from '@/features/onboarding/tour-provider'
 import { router } from './router'
 
 function App() {
@@ -11,8 +12,10 @@ function App() {
       enableSystem
       disableTransitionOnChange
     >
-      <RouterProvider router={router} />
-      <Toaster position="top-right" richColors closeButton />
+      <TourProvider>
+        <RouterProvider router={router} />
+        <Toaster position="top-right" richColors closeButton />
+      </TourProvider>
     </ThemeProvider>
   )
 }
