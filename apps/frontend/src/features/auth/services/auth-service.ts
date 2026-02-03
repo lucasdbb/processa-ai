@@ -121,4 +121,15 @@ export const authService = {
       throw new Error(error.detail || "Erro ao redefinir senha");
     }
   },
+
+  async deleteAccount(): Promise<void> {
+    const response = await fetchWithCredentials(`${API_URL}/users/me`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Erro ao excluir conta");
+    }
+  },
 };

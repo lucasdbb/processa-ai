@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle, FolderKanban, Calculator, Check, Filter, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 // Mock notifications (mesmas do header + mais algumas)
 const allNotifications = [
@@ -64,6 +65,7 @@ const allNotifications = [
 export default function NotificacoesPage() {
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [notifications, setNotifications] = useState(allNotifications)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const filteredNotifications = notifications.filter((n) => {
     if (filter === 'unread') return !n.read
@@ -84,6 +86,7 @@ export default function NotificacoesPage() {
 
   const handleDelete = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id))
+    setDeleteId(null)
   }
 
   return (
@@ -191,7 +194,7 @@ export default function NotificacoesPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => handleDelete(notification.id)}
+                    onClick={() => setDeleteId(notification.id)}
                     className="h-8 w-8 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors"
                     aria-label="Excluir notificação"
                     title="Excluir"
@@ -204,6 +207,18 @@ export default function NotificacoesPage() {
           })
         )}
       </div>
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        title="Excluir notificação?"
+        description="Esta ação não pode ser desfeita. A notificação será removida permanentemente."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   )
 }

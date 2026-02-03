@@ -22,6 +22,12 @@ async def update_my_profile(
     return await profiles_service.update_profile(user_id, data)
 
 
+@router.delete("/me")
+async def delete_my_account(user_id: str = Depends(get_user_id)):
+    """Delete current user's account and all related data."""
+    return await profiles_service.delete_account(user_id)
+
+
 @router.get("/", response_model=list[UserProfile])
 async def list_profiles(
     limit: int = Query(50, ge=1, le=100),

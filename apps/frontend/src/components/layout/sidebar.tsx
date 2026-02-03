@@ -25,6 +25,7 @@ import { useAiTools } from '@/features/ai/context'
 import { useCalculators } from '@/features/calculators/context'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface NavItem {
   name: string
@@ -113,6 +114,7 @@ export function Sidebar() {
   const { logout } = useAuthStore()
   const { resolvedTheme } = useTheme()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const { tools: aiTools } = useAiTools()
   const { calculators } = useCalculators()
 
@@ -135,6 +137,7 @@ export function Sidebar() {
   }
 
   const handleLogout = () => {
+    setShowLogoutConfirm(false)
     logout()
     window.location.href = '/'
   }
@@ -258,7 +261,7 @@ export function Sidebar() {
       <div className="border-t border-border px-3 py-4 space-y-1">
         {bottomNavigation.map((item) => renderNavItem(item))}
         <button
-          onClick={handleLogout}
+          onClick={() => setShowLogoutConfirm(true)}
           className={cn(
             'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors',
             !isExpanded && 'justify-center'
@@ -303,6 +306,17 @@ export function Sidebar() {
       >
         {sidebarContent}
       </aside>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        title="Sair da plataforma?"
+        description="Você será desconectado e precisará fazer login novamente para acessar sua conta."
+        confirmText="Sair"
+        variant="warning"
+      />
     </>
   )
 }

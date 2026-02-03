@@ -9,10 +9,10 @@ import {
   FileText,
   ArrowRight,
   TrendingUp,
-  Loader2,
 } from 'lucide-react'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { dashboardService, type DashboardStats, type UpcomingDeadline } from '@/services/dashboard-service'
+import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
 
 interface StatCard {
   name: string
@@ -136,12 +136,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {loading ? (
-          <div className="col-span-full flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {
           statCards.map((stat) => {
             const Icon = stat.icon
             return (
@@ -176,8 +175,9 @@ export default function DashboardPage() {
               </Link>
             )
           })
-        )}
-      </div>
+        }
+        </div>
+      )}
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

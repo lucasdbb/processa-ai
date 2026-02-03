@@ -5,6 +5,16 @@ from fastapi import HTTPException, status
 from src.core.supabase import get_supabase
 from src.features.core.profiles.schemas import UpdateProfile
 
+try:
+    import stripe
+
+    from src.core.config import settings
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    STRIPE_AVAILABLE = True
+except ImportError:
+    STRIPE_AVAILABLE = False
+
 
 class ProfilesService:
     def __init__(self):
@@ -271,6 +281,54 @@ class ProfilesService:
                 ).eq("user_id", user_id).execute()
         except Exception:
             pass
+
+    async def delete_account(self, user_id: str) -> dict:
+        """Delete user account and all related data."""
+        try:
+            # 1. Cancel Stripe subscription and delete customer if exists
+            if STRIPE_AVAILABLE:
+                try:
+                    # Get customer_id from subscriptions table
+                    sub_res = (
+                        self.supabase.table("subscriptions")
+                        .select("stripe_customer_id, stripe_subscription_id")
+                        .eq("user_id", user_id)
+                        .limit(1)
+                        .execute()
+                    )
+
+                    if sub_res.data and sub_res.data[0]:
+                        subscription_id = sub_res.data[0].get("stripe_subscription_id")
+                        customer_id = sub_res.data[0].get("stripe_customer_id")
+
+                        # Cancel active subscription immediately
+                        if subscription_id:
+                            try:
+                                stripe.Subscription.delete(subscription_id)
+                            except stripe.InvalidRequestError:
+                                pass  # Subscription may not exist or already cancelled
+
+                        # Delete Stripe customer (includes all payment methods)
+                        if customer_id:
+                            try:
+                                stripe.Customer.delete(customer_id)
+                            except stripe.InvalidRequestError:
+                                pass  # Customer may not exist
+                except Exception as e:
+                    # Log but don't fail - continue with account deletion
+                    from src.core.logging import logger
+
+                    logger.warning(f"Error cancelling Stripe subscription for user {user_id}: {e}")
+
+            # 2. Delete from Supabase Auth (this will cascade delete the profile and related data)
+            self.supabase.auth.admin.delete_user(user_id)
+
+            return {"message": "Conta excluída com sucesso"}
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao excluir conta: {str(e)}",
+            )
 
 
 profiles_service = ProfilesService()

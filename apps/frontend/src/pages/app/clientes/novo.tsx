@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { clientsService, type ClientCreate } from '@/services/clients-service'
 import { Button } from '@/components/ui/button'
@@ -119,9 +119,13 @@ export default function ClienteNovoPage() {
                 id="name"
                 {...register('name')}
                 placeholder="Nome completo"
+                className={errors.name ? 'border-red-500' : ''}
               />
               {errors.name && (
-                <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
+                <p className="text-sm text-red-500 mt-1 flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
@@ -133,9 +137,13 @@ export default function ClienteNovoPage() {
                   type="email"
                   {...register('email')}
                   placeholder="email@exemplo.com"
+                  className={errors.email ? 'border-red-500' : ''}
                 />
                 {errors.email && (
-                  <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
+                  <p className="text-sm text-red-500 mt-1 flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 

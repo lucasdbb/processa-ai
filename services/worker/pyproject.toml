@@ -24,6 +24,8 @@ dependencies = [
     "markdown-pdf==1.10",
     # Utils
     "python-dotenv>=1.0.0",
+    "stripe>=14.3.0",
+    "fastapi>=0.128.0",
 ]
 
 [project.optional-dependencies]

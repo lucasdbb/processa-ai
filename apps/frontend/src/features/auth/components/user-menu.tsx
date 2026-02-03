@@ -1,5 +1,5 @@
 import { LogOut, Shield, ChevronDown, LayoutDashboard } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -21,9 +21,13 @@ interface UserMenuProps {
 export function UserMenu({ user }: UserMenuProps) {
   const { logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+  const location = useLocation()
 
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  // Verifica se está nas rotas da aplicação (/app/*)
+  const isAppRoute = location.pathname.startsWith('/app')
 
   const getInitials = () => {
     if (user.name) {
@@ -108,18 +112,22 @@ export function UserMenu({ user }: UserMenuProps) {
             </DropdownMenuItem>
           )}
         </div>
-        <DropdownMenuSeparator className="border-t border-border my-1 bg-transparent" />
-        <DropdownMenuItem
-          onClick={handleLogout}
-          className={`rounded-none flex items-center w-full px-4 py-2 text-sm transition-colors duration-150 cursor-pointer ${
-            isDark
-              ? 'text-red-400 hover:bg-red-900/10 focus:bg-red-900/10 focus:text-red-300'
-              : 'text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700'
-          }`}
-        >
-          <LogOut className="w-4 h-4 mr-3 text-red-500" />
-          <span>Sair</span>
-        </DropdownMenuItem>
+        {!isAppRoute && (
+          <>
+            <DropdownMenuSeparator className="border-t border-border my-1 bg-transparent" />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className={`rounded-none flex items-center w-full px-4 py-2 text-sm transition-colors duration-150 cursor-pointer ${
+                isDark
+                  ? 'text-red-400 hover:bg-red-900/10 focus:bg-red-900/10 focus:text-red-300'
+                  : 'text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700'
+              }`}
+            >
+              <LogOut className="w-4 h-4 mr-3 text-red-500" />
+              <span>Sair</span>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

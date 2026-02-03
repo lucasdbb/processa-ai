@@ -4,7 +4,7 @@ import { Search, Plus, Mail, Phone, MapPin, FileText, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { clientsService, type Client } from '@/services/clients-service'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
@@ -122,9 +122,7 @@ export default function ClientesPage() {
 
       {/* Client List */}
       {isLoading ? (
-        <div className="py-12 flex justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
+        <ClientListSkeleton />
       ) : clients.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">

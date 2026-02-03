@@ -4,7 +4,7 @@ import { Search, Plus, Filter, FolderKanban } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { ProcessListSkeleton } from '@/components/skeletons/process-list-skeleton'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 
 type Process = {
@@ -142,9 +142,7 @@ export default function ProcessosPage() {
 
       {/* Process List */}
       {isLoading ? (
-        <div className="py-12 flex justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
+        <ProcessListSkeleton />
       ) : processes.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">

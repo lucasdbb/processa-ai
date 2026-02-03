@@ -21,11 +21,13 @@ import { authService } from '@/features/auth/services/auth-service'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useCalendarSettingsStore, type CalendarColorScheme } from '@/stores/calendar-settings-store'
 import { billingService, type SubscriptionStatus } from '@/services/billing-service'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function ConfiguracoesPage() {
   const navigate = useNavigate()
   const { user } = useUser()
   const setUser = useAuthStore((state) => state.setUser)
+  const { logout } = useAuthStore()
   const { resolvedTheme, setTheme } = useTheme()
 
   // Profile dropdown state
@@ -39,11 +41,29 @@ export default function ConfiguracoesPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const { colorScheme, setColorScheme, defaultView, setDefaultView } = useCalendarSettingsStore()
 
+  // Notifications section state
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const [pushNotifications, setPushNotifications] = useState(false)
+  const [deadlineReminders, setDeadlineReminders] = useState(true)
+  const [processUpdates, setProcessUpdates] = useState(true)
+
+  // Security section state
+  const [isSecurityOpen, setIsSecurityOpen] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+
   // Billing section state
   const [isBillingOpen, setIsBillingOpen] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [loadingBilling, setLoadingBilling] = useState(false)
   const [openingPortal, setOpeningPortal] = useState(false)
+
+  // Delete account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
   // Profile editing state
   const [isEditing, setIsEditing] = useState(false)
@@ -78,7 +98,7 @@ export default function ConfiguracoesPage() {
   const sections = [
     {
       id: 'appearance',
-      name: 'Aparencia',
+      name: 'Aparência',
       icon: Palette,
       description: 'Tema da interface',
     },
@@ -90,15 +110,15 @@ export default function ConfiguracoesPage() {
     },
     {
       id: 'notifications',
-      name: 'Notificacoes',
+      name: 'Notificações',
       icon: Bell,
       description: 'Configure alertas e lembretes',
     },
     {
       id: 'security',
-      name: 'Seguranca',
+      name: 'Segurança',
       icon: Shield,
-      description: 'Senha e autenticacao',
+      description: 'Senha e autenticação',
     },
     {
       id: 'billing',
@@ -228,6 +248,54 @@ export default function ConfiguracoesPage() {
       console.error('Error opening portal:', error)
       toast.error('Erro ao abrir portal de gerenciamento')
       setOpeningPortal(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true)
+    try {
+      await authService.deleteAccount()
+      toast.success('Conta excluída com sucesso')
+      logout()
+      navigate('/')
+    } catch (error) {
+      console.error('Error deleting account:', error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir conta')
+    } finally {
+      setIsDeletingAccount(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Preencha todos os campos')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('As senhas não coincidem')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres')
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      // TODO: Implementar endpoint de mudança de senha
+      // await authService.changePassword(currentPassword, newPassword)
+      toast.success('Senha alterada com sucesso')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (error) {
+      console.error('Error changing password:', error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao alterar senha')
+    } finally {
+      setIsChangingPassword(false)
     }
   }
 
@@ -663,6 +731,231 @@ export default function ConfiguracoesPage() {
             )
           }
 
+          // Notificações é expansível
+          if (section.id === 'notifications') {
+            return (
+              <div key={section.id}>
+                <button
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="w-full flex items-center gap-4 p-5 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="p-2.5 bg-muted rounded-lg">
+                    <Icon className="h-5 w-5 text-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-foreground">{section.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{section.description}</p>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      'h-5 w-5 text-muted-foreground transition-transform duration-200',
+                      isNotificationsOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+                {isNotificationsOpen && (
+                  <div className="px-5 pb-5 pt-0">
+                    <div className="ml-14 space-y-4">
+                      {/* Email Notifications */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium text-foreground">Notificações por Email</h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Receba atualizações importantes por email
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={emailNotifications}
+                            onChange={(e) => {
+                              setEmailNotifications(e.target.checked)
+                              toast.success(
+                                e.target.checked
+                                  ? 'Notificações por email ativadas'
+                                  : 'Notificações por email desativadas'
+                              )
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 dark:peer-focus:ring-slate-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-slate-900 dark:peer-checked:bg-white"></div>
+                        </label>
+                      </div>
+
+                      {/* Push Notifications */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium text-foreground">Notificações Push</h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Receba notificações no navegador
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={pushNotifications}
+                            onChange={(e) => {
+                              setPushNotifications(e.target.checked)
+                              toast.success(
+                                e.target.checked
+                                  ? 'Notificações push ativadas'
+                                  : 'Notificações push desativadas'
+                              )
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 dark:peer-focus:ring-slate-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-slate-900 dark:peer-checked:bg-white"></div>
+                        </label>
+                      </div>
+
+                      {/* Deadline Reminders */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium text-foreground">Lembretes de Prazos</h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Alertas sobre prazos próximos do vencimento
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={deadlineReminders}
+                            onChange={(e) => {
+                              setDeadlineReminders(e.target.checked)
+                              toast.success(
+                                e.target.checked
+                                  ? 'Lembretes de prazos ativados'
+                                  : 'Lembretes de prazos desativados'
+                              )
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 dark:peer-focus:ring-slate-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-slate-900 dark:peer-checked:bg-white"></div>
+                        </label>
+                      </div>
+
+                      {/* Process Updates */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-medium text-foreground">Atualizações de Processos</h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Notificações sobre mudanças nos processos
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={processUpdates}
+                            onChange={(e) => {
+                              setProcessUpdates(e.target.checked)
+                              toast.success(
+                                e.target.checked
+                                  ? 'Atualizações de processos ativadas'
+                                  : 'Atualizações de processos desativadas'
+                              )
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 dark:peer-focus:ring-slate-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-slate-900 dark:peer-checked:bg-white"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // Segurança é expansível
+          if (section.id === 'security') {
+            return (
+              <div key={section.id}>
+                <button
+                  onClick={() => setIsSecurityOpen(!isSecurityOpen)}
+                  className="w-full flex items-center gap-4 p-5 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="p-2.5 bg-muted rounded-lg">
+                    <Icon className="h-5 w-5 text-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-foreground">{section.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{section.description}</p>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      'h-5 w-5 text-muted-foreground transition-transform duration-200',
+                      isSecurityOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+                {isSecurityOpen && (
+                  <div className="px-5 pb-5 pt-0">
+                    <div className="ml-14 space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-3">Alterar Senha</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label htmlFor="current-password" className="block text-sm font-medium text-muted-foreground mb-1">
+                              Senha Atual
+                            </label>
+                            <input
+                              id="current-password"
+                              type="password"
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
+                              placeholder="Digite sua senha atual"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="new-password" className="block text-sm font-medium text-muted-foreground mb-1">
+                              Nova Senha
+                            </label>
+                            <input
+                              id="new-password"
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
+                              placeholder="Digite sua nova senha"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="confirm-password" className="block text-sm font-medium text-muted-foreground mb-1">
+                              Confirmar Nova Senha
+                            </label>
+                            <input
+                              id="confirm-password"
+                              type="password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
+                              placeholder="Confirme sua nova senha"
+                            />
+                          </div>
+                          <button
+                            onClick={handleChangePassword}
+                            disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isChangingPassword ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Alterando...
+                              </>
+                            ) : (
+                              'Alterar Senha'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
+
           // Billing é expansível
           if (section.id === 'billing') {
             const statusInfo = subscription ? getStatusLabel(subscription.status) : null
@@ -807,10 +1100,26 @@ export default function ConfiguracoesPage() {
         <p className="text-sm text-muted-foreground mb-4">
           Acoes irreversiveis para sua conta.
         </p>
-        <button className="px-4 py-2 text-sm font-medium text-red-600 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors">
+        <button 
+          onClick={() => setShowDeleteConfirm(true)}
+          className="px-4 py-2 text-sm font-medium text-red-600 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+        >
           Excluir minha conta
         </button>
       </div>
+
+      {/* Delete Account Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteAccount}
+        title="Excluir conta permanentemente?"
+        description="Esta ação é irreversível. Todos os seus dados, processos, clientes, documentos e configurações serão permanentemente excluídos. Você não poderá recuperar essas informações."
+        confirmText={isDeletingAccount ? 'Excluindo...' : 'Sim, excluir minha conta'}
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingAccount}
+      />
     </div>
   )
 }

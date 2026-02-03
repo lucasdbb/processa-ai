@@ -24,6 +24,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -181,6 +182,8 @@ export default function AdminPage() {
   const [materialModalMode, setMaterialModalMode] = useState<MaterialModalMode>('create')
   const [materialModalInitial, setMaterialModalInitial] = useState<AdminMaterialListItem | null>(null)
   const [isSavingMaterial, setIsSavingMaterial] = useState(false)
+  const [archivePostId, setArchivePostId] = useState<string | null>(null)
+  const [deleteMaterialId, setDeleteMaterialId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !isAdmin && !isAuthor) {
@@ -314,7 +317,6 @@ export default function AdminPage() {
       toast.error('Apenas admin pode arquivar posts')
       return
     }
-    if (!confirm('Tem certeza que deseja arquivar este post?')) return
     try {
       const res = await fetchWithCredentials(`${API_URL}/blog/posts/${postId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(await extractErrorMessage(res, 'Erro ao arquivar post'))
@@ -322,6 +324,8 @@ export default function AdminPage() {
       void loadPosts()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao arquivar post')
+    } finally {
+      setArchivePostId(null)
     }
   }
 
@@ -447,7 +451,6 @@ export default function AdminPage() {
       toast.error('Apenas admin pode excluir materiais')
       return
     }
-    if (!confirm('Tem certeza que deseja excluir este material?')) return
     try {
       const res = await fetchWithCredentials(`${API_URL}/materials/admin/${materialId}`, {
         method: 'DELETE',
@@ -455,6 +458,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(await extractErrorMessage(res, 'Erro ao excluir material'))
       toast.success('Material excluído!')
       if (materialModalInitial?.id === materialId) closeMaterialModal()
+      setDeleteMaterialId(null)
       void loadMaterials()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao excluir material')
@@ -1043,7 +1047,7 @@ export default function AdminPage() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => void handleArchivePost(post.id)}
+                                        onClick={() => setArchivePostId(post.id)}
                                         className="text-destructive hover:text-destructive"
                                       >
                                         <Archive className="h-4 w-4" />
@@ -1139,7 +1143,7 @@ export default function AdminPage() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => void handleDeleteMaterial(m.id)}
+                                    onClick={() => setDeleteMaterialId(m.id)}
                                     className="text-destructive hover:text-destructive"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1178,6 +1182,27 @@ export default function AdminPage() {
 
         </div>
       </div>
+
+      {/* Confirmation Dialogs */}
+      <ConfirmDialog
+        isOpen={!!archivePostId}
+        onClose={() => setArchivePostId(null)}
+        onConfirm={() => archivePostId && handleArchivePost(archivePostId)}
+        title="Arquivar post?"
+        description="Este post será arquivado e não ficará mais visível publicamente. Você pode restaurá-lo depois."
+        confirmText="Arquivar"
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteMaterialId}
+        onClose={() => setDeleteMaterialId(null)}
+        onConfirm={() => deleteMaterialId && handleDeleteMaterial(deleteMaterialId)}
+        title="Excluir material?"
+        description="Esta ação é permanente e não pode ser desfeita. O arquivo será removido do servidor."
+        confirmText="Excluir"
+        variant="danger"
+      />
     </div>
   )
 }
