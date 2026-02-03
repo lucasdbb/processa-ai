@@ -24,8 +24,6 @@ class Settings(BaseSettings):
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
-    STRIPE_PRICE_ID_PRO: str = ""
-    STRIPE_PRICE_ID_ENTERPRISE: str = ""
 
     # Redis (for job queue)
     REDIS_URL: str = "redis://localhost:6379/0"

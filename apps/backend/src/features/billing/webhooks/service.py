@@ -11,12 +11,65 @@ from src.core.supabase import get_supabase
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
+class TransientError(Exception):
+    """Error that should trigger a Stripe retry (e.g., database temporarily unavailable)."""
+
+    pass
+
+
+class PermanentError(Exception):
+    """Error that should NOT trigger a retry - logged but acknowledged to Stripe."""
+
+    pass
+
+
 class WebhooksService:
     def __init__(self):
         self.supabase = get_supabase()
 
+    def _is_event_processed(self, event_id: str) -> bool:
+        """Check if event was already processed (idempotency check)."""
+        try:
+            result = (
+                self.supabase.table("stripe_webhook_events")
+                .select("event_id, status")
+                .eq("event_id", event_id)
+                .limit(1)
+                .execute()
+            )
+            return bool(result.data)
+        except Exception as e:
+            logger.error(f"Failed to check event idempotency: {e}")
+            # On error, assume not processed to avoid missing events
+            return False
+
+    def _record_event(
+        self,
+        event_id: str,
+        event_type: str,
+        event_status: str = "processed",
+        error_message: str | None = None,
+        metadata: dict | None = None,
+    ) -> None:
+        """Record a processed webhook event for idempotency."""
+        try:
+            self.supabase.table("stripe_webhook_events").upsert(
+                {
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "status": event_status,
+                    "error_message": error_message,
+                    "metadata": metadata or {},
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                },
+                on_conflict="event_id",
+            ).execute()
+        except Exception as e:
+            logger.error(f"Failed to record webhook event: {e}")
+
     async def handle_webhook(self, payload: bytes, signature: str) -> dict:
-        """Handle Stripe webhook events."""
+        """Handle Stripe webhook events with idempotency and proper error handling."""
+        # Verify signature
         try:
             event = stripe.Webhook.construct_event(
                 payload,
@@ -36,10 +89,16 @@ class WebhooksService:
                 detail="Invalid payload",
             )
 
+        event_id = event["id"]
         event_type = event["type"]
         data = event["data"]["object"]
 
-        logger.info(f"Processing Stripe webhook: {event_type}")
+        # Idempotency check - skip if already processed
+        if self._is_event_processed(event_id):
+            logger.info(f"Skipping already processed webhook: {event_id}")
+            return {"received": True, "status": "already_processed"}
+
+        logger.info(f"Processing Stripe webhook: {event_type} (ID: {event_id})")
 
         try:
             if event_type == "checkout.session.completed":
@@ -54,10 +113,41 @@ class WebhooksService:
                 await self._handle_subscription_deleted(data)
             else:
                 logger.debug(f"Unhandled webhook event type: {event_type}")
+                self._record_event(event_id, event_type, event_status="skipped")
+                return {"received": True}
+
+            # Record successful processing
+            self._record_event(event_id, event_type, event_status="processed")
+
+        except TransientError as e:
+            # Transient error - tell Stripe to retry
+            logger.error(f"Transient error processing webhook {event_type}: {e}")
+            self._record_event(
+                event_id, event_type, event_status="failed", error_message=str(e)
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Temporary error, please retry",
+            )
+
+        except PermanentError as e:
+            # Permanent error - log but acknowledge to Stripe (no retry needed)
+            logger.error(f"Permanent error processing webhook {event_type}: {e}")
+            self._record_event(
+                event_id, event_type, event_status="failed", error_message=str(e)
+            )
+            # Return success to prevent retries, but error is logged for investigation
+
         except Exception as e:
-            logger.error(f"Error processing webhook {event_type}: {e}")
-            # Don't raise - return success to Stripe to avoid retries
-            # Log the error for investigation
+            # Unknown error - treat as transient to be safe (Stripe will retry)
+            logger.error(f"Unknown error processing webhook {event_type}: {e}")
+            self._record_event(
+                event_id, event_type, event_status="failed", error_message=str(e)
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal error, please retry",
+            )
 
         return {"received": True}
 
@@ -69,14 +159,18 @@ class WebhooksService:
 
         if not customer_id or not subscription_id:
             logger.warning("checkout.session.completed missing customer or subscription")
-            return
+            raise PermanentError("Missing customer or subscription in checkout session")
+
+        if not user_id:
+            logger.warning("checkout.session.completed missing user_id in metadata")
+            raise PermanentError("Missing user_id in checkout session metadata")
 
         # Get subscription details from Stripe
         try:
             subscription = stripe.Subscription.retrieve(subscription_id)
         except stripe.StripeError as e:
             logger.error(f"Failed to retrieve subscription: {e}")
-            return
+            raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
 
         plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
 
@@ -106,18 +200,21 @@ class WebhooksService:
             logger.info(f"Subscription activated for user {user_id}, plan: {plan_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription: {e}")
+            raise TransientError(f"Failed to update subscription in database: {e}")
 
     async def _handle_invoice_paid(self, invoice: dict) -> None:
         """Handle invoice.paid event - renew subscription."""
         subscription_id = invoice.get("subscription")
         if not subscription_id:
+            # Invoice without subscription (one-time payment) - skip
+            logger.debug("invoice.paid without subscription_id, skipping")
             return
 
         try:
             subscription = stripe.Subscription.retrieve(subscription_id)
         except stripe.StripeError as e:
             logger.error(f"Failed to retrieve subscription for invoice.paid: {e}")
-            return
+            raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
 
         try:
             # Update subscription status
@@ -148,11 +245,13 @@ class WebhooksService:
             logger.info(f"Subscription renewed: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription on invoice.paid: {e}")
+            raise TransientError(f"Failed to update subscription in database: {e}")
 
     async def _handle_invoice_failed(self, invoice: dict) -> None:
         """Handle invoice.payment_failed event."""
         subscription_id = invoice.get("subscription")
         if not subscription_id:
+            logger.debug("invoice.payment_failed without subscription_id, skipping")
             return
 
         try:
@@ -162,12 +261,13 @@ class WebhooksService:
             logger.warning(f"Subscription payment failed: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription on invoice.failed: {e}")
+            raise TransientError(f"Failed to update subscription status: {e}")
 
     async def _handle_subscription_updated(self, subscription: dict) -> None:
         """Handle customer.subscription.updated event."""
         subscription_id = subscription.get("id")
         if not subscription_id:
-            return
+            raise PermanentError("subscription.updated missing subscription id")
 
         plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
 
@@ -188,12 +288,13 @@ class WebhooksService:
             logger.info(f"Subscription updated: {subscription_id}, plan: {plan_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription: {e}")
+            raise TransientError(f"Failed to update subscription in database: {e}")
 
     async def _handle_subscription_deleted(self, subscription: dict) -> None:
         """Handle customer.subscription.deleted event."""
         subscription_id = subscription.get("id")
         if not subscription_id:
-            return
+            raise PermanentError("subscription.deleted missing subscription id")
 
         try:
             self.supabase.table("subscriptions").update(
@@ -206,6 +307,7 @@ class WebhooksService:
             logger.info(f"Subscription canceled: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to update subscription on delete: {e}")
+            raise TransientError(f"Failed to update subscription on cancellation: {e}")
 
     async def _grant_plan_credits(self, user_id: str, plan_id: str) -> None:
         """Grant credits to user based on their plan."""
@@ -267,11 +369,19 @@ class WebhooksService:
             logger.error(f"Failed to reset monthly credits: {e}")
 
     def _get_plan_id_from_price(self, price_id: str) -> str:
-        """Map Stripe price_id to internal plan_id."""
-        if price_id == settings.STRIPE_PRICE_ID_PRO:
-            return "pro"
-        elif price_id == settings.STRIPE_PRICE_ID_ENTERPRISE:
-            return "enterprise"
+        """Map Stripe price_id to internal plan_id using database lookup."""
+        result = (
+            self.supabase.table("billing_plans")
+            .select("slug")
+            .eq("stripe_price_id", price_id)
+            .limit(1)
+            .execute()
+        )
+
+        if result.data and len(result.data) > 0:
+            return result.data[0]["slug"]
+
+        logger.warning(f"Unknown price_id: {price_id}, defaulting to free")
         return "free"
 
 

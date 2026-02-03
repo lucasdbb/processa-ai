@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import stripe
 from fastapi import HTTPException, status
@@ -14,6 +15,82 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 class SubscriptionsService:
     def __init__(self):
         self.supabase = get_supabase()
+        self._allowed_prices_cache: set[str] | None = None
+        self._cache_timestamp: float = 0
+
+    def _get_allowed_price_ids(self) -> set[str]:
+        """Get allowed Stripe price IDs from billing_plans table with caching."""
+        import time
+
+        # Cache for 5 minutes
+        cache_ttl = 300
+        current_time = time.time()
+
+        if (
+            self._allowed_prices_cache is not None
+            and current_time - self._cache_timestamp < cache_ttl
+        ):
+            return self._allowed_prices_cache
+
+        result = (
+            self.supabase.table("billing_plans")
+            .select("stripe_price_id")
+            .not_.is_("stripe_price_id", "null")
+            .execute()
+        )
+
+        prices = {
+            row["stripe_price_id"]
+            for row in (result.data or [])
+            if row.get("stripe_price_id")
+        }
+
+        self._allowed_prices_cache = prices
+        self._cache_timestamp = current_time
+
+        return prices
+
+    def _validate_price_id(self, price_id: str) -> None:
+        """Validate that the price_id is allowed."""
+        allowed = self._get_allowed_price_ids()
+
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Nenhum plano configurado",
+            )
+
+        if price_id not in allowed:
+            logger.warning(f"Invalid price_id attempted: {price_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Plano inválido",
+            )
+
+    def _validate_redirect_url(self, url: str | None) -> str | None:
+        """Validate that redirect URL belongs to allowed domain."""
+        if url is None:
+            return None
+
+        parsed = urlparse(url)
+        frontend_parsed = urlparse(settings.FRONTEND_URL)
+
+        # Only allow redirects to the frontend domain
+        if parsed.netloc and parsed.netloc != frontend_parsed.netloc:
+            logger.warning(f"Invalid redirect URL attempted: {url}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="URL de redirecionamento inválida",
+            )
+
+        # Ensure HTTPS in production
+        if settings.ENVIRONMENT == "production" and parsed.scheme and parsed.scheme != "https":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="URL deve usar HTTPS",
+            )
+
+        return url
 
     async def get_or_create_customer(self, user_id: str) -> str:
         """Get existing Stripe customer or create new one."""
@@ -93,6 +170,21 @@ class SubscriptionsService:
         cancel_url: str | None = None,
     ) -> dict:
         """Create a Stripe Checkout session."""
+        # Validate price_id against allowed prices from database
+        self._validate_price_id(price_id)
+
+        # Validate redirect URLs
+        success_url = self._validate_redirect_url(success_url)
+        cancel_url = self._validate_redirect_url(cancel_url)
+
+        # Check if user already has an active subscription
+        existing_sub = await self.get_subscription(user_id)
+        if existing_sub.get("status") in ("active", "trialing"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Você já possui uma assinatura ativa. Use o portal para gerenciar.",
+            )
+
         customer_id = await self.get_or_create_customer(user_id)
 
         success = success_url or f"{settings.FRONTEND_URL}/app/billing?success=true"
