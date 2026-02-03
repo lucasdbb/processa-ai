@@ -155,6 +155,9 @@ export default function IAHubPage() {
       }
     }
 
+    // Limpar PDF anterior e progresso antes de iniciar nova análise
+    setCnisPdfUrl('')
+    setProgress(0)
     setIsGenerating(true)
 
     try {
@@ -172,7 +175,12 @@ export default function IAHubPage() {
         formData.append('user_id', user.id)
         formData.append('store_pdf', 'true')
 
-        const submitResponse = await fetchWithCredentials(`${API_URL}/ai/analyses/cnis-upload`, {
+        // Determine which endpoint to use based on tool slug
+        const endpoint = activeSlug === 'process-summary'
+          ? `${API_URL}/ai/analyses/process-summary-upload`
+          : `${API_URL}/ai/analyses/cnis-upload`
+
+        const submitResponse = await fetchWithCredentials(endpoint, {
           method: 'POST',
           body: formData,
         })

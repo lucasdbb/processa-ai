@@ -38,14 +38,6 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/callback"
     ENCRYPTION_KEY: str = ""
 
-    # n8n Integration
-    N8N_BASE_URL: str = "http://localhost:5678"
-    N8N_CNIS_WORKFLOW_ID: str = ""
-    N8N_FILE_FIELD_NAME: str = "data"
-    N8N_AUTH_USER: str = ""
-    N8N_AUTH_PASSWORD: str = ""
-    N8N_TIMEOUT_S: int = 120
-
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

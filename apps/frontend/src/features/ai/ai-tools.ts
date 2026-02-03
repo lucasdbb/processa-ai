@@ -3,6 +3,7 @@ import { FileSearch, FileText, MessageSquare } from 'lucide-react'
 import type { AiTool } from './types'
 import { ChatJuridicoTool } from './components/chat-juridico-tool'
 import { CnisAnalysisTool } from './components/cnis-analysis-tool'
+import { ProcessSummaryTool } from './components/process-summary-tool'
 import { PromptTool } from './components/prompt-tool'
 
 export const AI_TOOLS: AiTool[] = [
@@ -18,13 +19,24 @@ export const AI_TOOLS: AiTool[] = [
     Component: CnisAnalysisTool,
   },
   {
+    slug: 'process-summary',
+    name: 'Resumo de Processos',
+    description: 'Gere resumos executivos estruturados de processos judiciais.',
+    icon: FileText,
+    variant: 'cnis',
+    locked: false,
+    order: 1,
+    templates: [],
+    Component: ProcessSummaryTool,
+  },
+  {
     slug: 'chat',
     name: 'Chat Jurídico',
     description: 'Converse com a IA para tirar dúvidas e estruturar ideias.',
     icon: MessageSquare,
     variant: 'chat',
     locked: true, // TODO: Implementar endpoint no backend
-    order: 1,
+    order: 2,
     templates: [],
     Component: ChatJuridicoTool,
   },
@@ -35,7 +47,7 @@ export const AI_TOOLS: AiTool[] = [
     icon: FileText,
     variant: 'prompt',
     locked: true, // TODO: Implementar endpoint no backend
-    order: 2,
+    order: 3,
     templates: [],
     Component: PromptTool,
   },
@@ -46,7 +58,7 @@ export const AI_TOOLS: AiTool[] = [
     icon: MessageSquare,
     variant: 'prompt',
     locked: true, // TODO: Implementar endpoint no backend
-    order: 3,
+    order: 4,
     templates: [],
     Component: PromptTool,
   },

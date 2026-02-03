@@ -23,6 +23,7 @@ from src.features.ai.schemas import (
     EnqueueJobResponse,
     JobProgressCallback,
     JobStatusResponse,
+    ProcessSummaryRequest,
 )
 from src.features.ai.service import AiService
 
@@ -74,8 +75,12 @@ async def cnis_analysis(
             event_type="queued",
             payload={"progress": 0},
         )
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to persist job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job no banco de dados",
+        )
 
     await enqueue_job(
         {
@@ -198,14 +203,218 @@ async def cnis_analysis_upload(
             event_type="queued",
             payload={"progress": 0},
         )
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to persist job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job no banco de dados",
+        )
 
     await enqueue_job(
         {
             "job_id": job_id,
             "job_uuid": str(job_uuid),
             "type": "cnis_analysis",
+            "payload": {
+                "file_url": upload_result["signed_url"],
+                "user_id": user_id,
+                "client_id": client_id,
+                "store_pdf": bool(store_pdf),
+                "signed_url_expires_in": int(signed_url_expires_in),
+                "input_document_id": upload_result.get("document_id"),
+                "input_storage_path": upload_result.get("storage_path"),
+            },
+        }
+    )
+    return EnqueueJobResponse(job_id=job_id)
+
+
+@router.post(
+    "/analyses/process-summary",
+    response_model=EnqueueJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def process_summary_analysis(
+    data: ProcessSummaryRequest,
+    _internal=Depends(require_internal_auth),
+):
+    """Análise de resumo de processo via URL."""
+    file_url = (data.file_url or "").strip()
+    if not file_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file_url obrigatório")
+
+    user_id = (data.user_id or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
+
+    job_uuid = uuid4()
+    job_id = f"ai:{job_uuid}"
+
+    try:
+        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
+    except Exception:
+        logger.exception("Failed to persist queued status in Redis")
+
+    try:
+        await create_job(
+            job_uuid=job_uuid,
+            endpoint_key="process_summary",
+            user_id=user_id,
+            client_id=(data.client_id or "").strip() or None,
+            request_payload={
+                "job_id": job_id,
+                "file_url": file_url,
+                "user_id": user_id,
+                "client_id": (data.client_id or "").strip() or None,
+                "store_pdf": bool(data.store_pdf),
+                "signed_url_expires_in": int(data.signed_url_expires_in),
+            },
+        )
+        await add_job_event(
+            job_uuid=job_uuid,
+            event_type="queued",
+            payload={"progress": 0},
+        )
+    except Exception as e:
+        logger.exception("Failed to persist job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job no banco de dados",
+        )
+
+    await enqueue_job(
+        {
+            "job_id": job_id,
+            "job_uuid": str(job_uuid),
+            "type": "process_summary",
+            "payload": {
+                "file_url": file_url,
+                "user_id": user_id,
+                "client_id": data.client_id,
+                "store_pdf": bool(data.store_pdf),
+                "signed_url_expires_in": int(data.signed_url_expires_in),
+            },
+        }
+    )
+    return EnqueueJobResponse(job_id=job_id)
+
+
+@router.post(
+    "/analyses/process-summary-upload",
+    response_model=EnqueueJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def process_summary_analysis_upload(
+    file: UploadFile = File(...),
+    user_id: str = Form(...),
+    client_id: str | None = Form(None),
+    store_pdf: bool = Form(False),
+    signed_url_expires_in: int = Form(600),
+    _internal=Depends(require_internal_auth),
+):
+    """
+    Upload de PDF de processo via multipart/form-data.
+
+    Parâmetros:
+    - file: Arquivo PDF do processo
+    - user_id: ID do usuário
+    - client_id: ID do cliente (opcional)
+    - store_pdf: Se deve salvar o PDF processado
+    - signed_url_expires_in: Tempo de expiração da URL assinada em segundos
+    """
+    # Validações
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Apenas arquivos PDF são permitidos",
+        )
+
+    user_id = user_id.strip()
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_id obrigatório",
+        )
+
+    # Lê o arquivo em memória
+    try:
+        pdf_content = await file.read()
+    except Exception as e:
+        logger.exception("Erro ao ler arquivo")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Erro ao ler arquivo: {str(e)}",
+        )
+
+    if not pdf_content or len(pdf_content) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Arquivo vazio",
+        )
+
+    # Gera job_id primeiro para usar na estrutura de pastas
+    job_uuid = uuid4()
+    job_id = f"ai:{job_uuid}"
+
+    # Upload direto para Supabase Storage usando job_uuid na estrutura de pastas
+    service = AiService()
+    try:
+        upload_result = await service.upload_input_pdf(
+            pdf_bytes=pdf_content,
+            filename=file.filename,
+            user_id=user_id,
+            client_id=client_id.strip() if client_id else None,
+            job_uuid=str(job_uuid),
+            expires_in=signed_url_expires_in,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Erro ao fazer upload do PDF")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao fazer upload: {str(e)}",
+        )
+
+    try:
+        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
+    except Exception:
+        logger.exception("Failed to persist queued status in Redis")
+
+    try:
+        await create_job(
+            job_uuid=job_uuid,
+            endpoint_key="process_summary",
+            user_id=user_id,
+            client_id=client_id.strip() if client_id else None,
+            request_payload={
+                "job_id": job_id,
+                "bucket": upload_result["bucket"],
+                "storage_path": upload_result["storage_path"],
+                "user_id": user_id,
+                "client_id": client_id.strip() if client_id else None,
+                "store_pdf": bool(store_pdf),
+                "signed_url_expires_in": int(signed_url_expires_in),
+                "input_storage_path": upload_result.get("storage_path"),
+            },
+        )
+        await add_job_event(
+            job_uuid=job_uuid,
+            event_type="queued",
+            payload={"progress": 0},
+        )
+    except Exception as e:
+        logger.exception("Failed to persist job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job no banco de dados",
+        )
+
+    await enqueue_job(
+        {
+            "job_id": job_id,
+            "job_uuid": str(job_uuid),
+            "type": "process_summary",
             "payload": {
                 "file_url": upload_result["signed_url"],
                 "user_id": user_id,

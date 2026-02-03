@@ -603,3 +603,194 @@ class AiService:
         content = self._markdown_to_pdf_bytes(markdown, title=title)
         response["content"] = content
         return response
+
+    async def _call_n8n_process_summary_workflow(
+        self,
+        *,
+        pdf_url: str,
+        job_id: str | None = None,
+        callback_url: str | None = None,
+    ) -> dict:
+        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{settings.N8N_PROCESS_SUMMARY_WORKFLOW_ID}"
+
+        auth = None
+        if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:
+            auth = (settings.N8N_AUTH_USER, settings.N8N_AUTH_PASSWORD)
+
+        payload = {
+            "pdf_url": pdf_url,
+            "job_id": job_id,
+            "callback_url": callback_url,
+        }
+
+        try:
+            logger.info(f"Chamando workflow {webhook_url} (job_id={job_id})")
+
+            async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
+                resp = await client.post(
+                    webhook_url,
+                    json=payload,
+                    auth=auth,
+                )
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao aguardar resposta do n8n",
+            )
+        except httpx.RequestError as e:
+            logger.error("Erro de conexão com n8n", exc_info=e)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro de conexão com o serviço de análise",
+            )
+
+        try:
+            data = resp.json()
+        except Exception:
+            content_type = (resp.headers.get("content-type") or "").lower()
+            body_preview = ""
+            if "application/json" not in content_type:
+                body_preview = (resp.text or "").strip().replace("\n", " ")[:300]
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Resposta inválida do n8n"
+                    + (f" (status {resp.status_code})" if resp.status_code else "")
+                    + (f": {body_preview}" if body_preview else "")
+                ),
+            )
+
+        if resp.status_code >= 400:
+            detail = "Erro ao processar resumo de processo"
+            if isinstance(data, dict):
+                detail = data.get("message") or detail
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+        if not isinstance(data, dict):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta inválida do n8n",
+            )
+
+        if data.get("status") == "error":
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=data.get("message", "Erro no processamento do resumo de processo"),
+            )
+
+        if data.get("status") != "ok":
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Status inesperado do n8n: {data.get('status')}",
+            )
+
+        markdown = data.get("text")
+        if not markdown:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta do n8n não contém 'text'",
+            )
+
+        metadata = data.get("metadata", {})
+        return {
+            "markdown": str(markdown),
+            "audit_score": metadata.get("audit_score"),
+            "structured_summary": metadata.get("structured_summary"),
+            "metadata": metadata,
+        }
+
+    async def analyze_process_summary(
+        self,
+        *,
+        file_url: str,
+        user_id: str,
+        client_id: str | None,
+        store_pdf: bool = False,
+        store_input_pdf: bool = True,
+        signed_url_expires_in: int = 600,
+        job_id: str | None = None,
+        callback_url: str | None = None,
+    ) -> dict:
+        """Analisa um PDF de processo e gera resumo executivo."""
+        pdf_bytes = await self._download_pdf_bytes(file_url)
+        inferred_filename = self._infer_pdf_filename_from_url(file_url)
+
+        # Verificar cache baseado no hash do arquivo
+        input_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+        # Salvar PDF de input para histórico (se solicitado)
+        input_storage = None
+        if store_input_pdf:
+            input_storage = await self._upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes,
+                user_id=user_id,
+                client_id=client_id,
+                job_uuid=job_id.split(":")[-1] if job_id and ":" in job_id else "unknown",
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+            )
+
+        cached = await self._check_cache(input_hash=input_hash, endpoint_key="process_summary")
+        if cached and cached.get("markdown"):
+            logger.info(f"Retornando resultado do cache para hash {input_hash[:16]}...")
+            cached["cached"] = True
+            if input_storage:
+                cached["input_storage"] = input_storage
+            if store_pdf and not cached.get("storage_path"):
+                # Gerar PDF do cache se necessário
+                stored = await self._markdown_to_pdf_and_store(
+                    markdown=cached["markdown"],
+                    filename=inferred_filename,
+                    user_id=user_id,
+                    client_id=client_id,
+                    endpoint="process_summary/output",
+                    expires_in=signed_url_expires_in,
+                )
+                cached.update(stored)
+            return cached
+
+        result = await self._call_n8n_process_summary_workflow(
+            pdf_url=file_url, job_id=job_id, callback_url=callback_url
+        )
+        markdown = (result.get("markdown") or "").strip()
+        if not markdown:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta inválida do n8n",
+            )
+
+        response = {
+            "audit_score": result.get("audit_score"),
+            "structured_summary": result.get("structured_summary"),
+            "markdown": markdown,
+            "input_hash": input_hash,
+        }
+
+        if input_storage:
+            response["input_storage"] = input_storage
+
+        if store_pdf:
+            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="SUPABASE_SERVICE_ROLE_KEY não configurada",
+                )
+
+            stored = await self._markdown_to_pdf_and_store(
+                markdown=markdown,
+                filename=inferred_filename,
+                user_id=user_id,
+                client_id=client_id,
+                endpoint="process_summary/output",
+                expires_in=signed_url_expires_in,
+            )
+            response.update(stored)
+            return response
+
+        title = inferred_filename
+        if title.lower().endswith(".pdf"):
+            title = title[:-4]
+
+        content = self._markdown_to_pdf_bytes(markdown, title=title)
+        response["content"] = content
+        return response

@@ -72,3 +72,16 @@ class DocumentDownloadResponse(BaseModel):
     download_url: str
     expires_in: int
     filename: str
+
+
+class ProcessSummaryRequest(BaseModel):
+    """Request para análise de resumo de processo via URL."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    file_url: str
+    user_id: str
+    client_id: str | None = None
+    store_pdf: bool = False
+    store_input_pdf: bool = True
+    signed_url_expires_in: int = 600

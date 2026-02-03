@@ -56,7 +56,7 @@ async def _handle_ai_job(job: dict) -> None:
         job_uuid = parse_job_uuid(job_id)
 
     job_type = str(job.get("type") or "").strip()
-    if job_type != "cnis_analysis":
+    if job_type not in ("cnis_analysis", "process_summary"):
         await _safe_set_job_status(
             job_id,
             {
@@ -190,16 +190,29 @@ async def _handle_ai_job(job: dict) -> None:
             callback_base_url = f"http://{host}:{settings.PORT}"
         callback_url = f"{callback_base_url}/api/v1/ai/jobs/progress"
 
-        result = await ai_service.analyze_cnis(
-            file_url=file_url,
-            user_id=user_id,
-            client_id=str(client_id) if client_id is not None else None,
-            store_pdf=store_pdf,
-            store_input_pdf=store_input_pdf,
-            signed_url_expires_in=expires_in,
-            job_id=job_id,
-            callback_url=callback_url,
-        )
+        # Route to appropriate analysis method based on job_type
+        if job_type == "process_summary":
+            result = await ai_service.analyze_process_summary(
+                file_url=file_url,
+                user_id=user_id,
+                client_id=str(client_id) if client_id is not None else None,
+                store_pdf=store_pdf,
+                store_input_pdf=store_input_pdf,
+                signed_url_expires_in=expires_in,
+                job_id=job_id,
+                callback_url=callback_url,
+            )
+        else:  # cnis_analysis
+            result = await ai_service.analyze_cnis(
+                file_url=file_url,
+                user_id=user_id,
+                client_id=str(client_id) if client_id is not None else None,
+                store_pdf=store_pdf,
+                store_input_pdf=store_input_pdf,
+                signed_url_expires_in=expires_in,
+                job_id=job_id,
+                callback_url=callback_url,
+            )
     except Exception as e:
         err = str(getattr(e, "detail", None) or str(e) or "Erro")
         await _safe_set_job_status(
@@ -231,6 +244,15 @@ async def _handle_ai_job(job: dict) -> None:
         status["result"] = {"audit_score": audit_score}
         result_payload["audit_score"] = audit_score
 
+    # Para process_summary, incluir structured_summary
+    structured_summary = result.get("structured_summary")
+    if structured_summary is not None and isinstance(structured_summary, dict):
+        status["result"] = {
+            **(status.get("result") or {}),
+            "structured_summary": structured_summary,
+        }
+        result_payload["structured_summary"] = structured_summary
+
     markdown = result.get("markdown")
     if isinstance(markdown, str) and markdown.strip():
         status["result"] = {
@@ -259,7 +281,7 @@ async def _handle_ai_job(job: dict) -> None:
                         filename=filename,
                         checksum_sha256=input_hash,
                         size_bytes=None,
-                        metadata={"endpoint": "cnis_analysis"},
+                        metadata={"endpoint": job_type},
                     )
                     if input_doc_id:
                         logger.info(f"Input document saved: {input_doc_id}")
@@ -291,7 +313,7 @@ async def _handle_ai_job(job: dict) -> None:
                     filename=filename,
                     checksum_sha256=checksum,
                     size_bytes=size_bytes,
-                    metadata={"endpoint": "cnis_analysis", "audit_score": audit_score},
+                    metadata={"endpoint": job_type, "audit_score": audit_score},
                     linked_document_id=input_doc_id,
                 )
             except Exception:
@@ -372,7 +394,7 @@ async def _handle_job(job: dict) -> None:
     job_type = str(job.get("type") or "").strip()
 
     # AI jobs
-    if job_type in ("cnis_analysis",):
+    if job_type in ("cnis_analysis", "process_summary"):
         await _handle_ai_job(job)
         return
 
