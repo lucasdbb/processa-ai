@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Calculator, DollarSign, Calendar, TrendingUp, Clock, ArrowRight, Loader2 } from 'lucide-react'
+import { Calculator, ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useCalculators } from '@/features/calculators/context'
+import type { LucideIcon } from 'lucide-react'
 
 type RescisaoDetalhes = {
   saldoSalario: number
@@ -36,44 +38,17 @@ type Resultado =
       detalhes: AposentadoriaDetalhes
     }
 
-const calculators = [
-  {
-    id: 'rescisao',
-    name: 'Rescisão Trabalhista',
-    description: 'Calcule todas as verbas rescisórias: saldo de salário, aviso prévio, férias, 13°, FGTS e multa.',
-    icon: DollarSign,
-    href: '/app/calculadoras/rescisao',
-    category: 'trabalhista',
-    available: true,
-  },
-  {
-    id: 'aposentadoria',
-    name: 'Simulação de Aposentadoria',
-    description: 'Simule tempo de contribuição, idade mínima e valor do benefício com as regras de transição.',
-    icon: Calendar,
-    href: '/app/calculadoras/aposentadoria',
-    category: 'previdenciario',
-    available: true,
-  },
-  {
-    id: 'correcao',
-    name: 'Correção Monetária',
-    description: 'Atualize valores com IPCA-E, INPC, Taxa Selic, TR ou IGP-M de forma automática.',
-    icon: TrendingUp,
-    href: '/app/calculadoras/correcao',
-    category: 'civel',
-    available: false,
-  },
-  {
-    id: 'juros',
-    name: 'Juros de Mora',
-    description: 'Calcule juros de mora sobre valores com diferentes taxas e períodos.',
-    icon: Clock,
-    href: '/app/calculadoras/juros',
-    category: 'civel',
-    available: false,
-  },
-]
+// Category mapping based on calculator slugs
+const getCategoryForCalculator = (slug: string): string => {
+  const categoryMap: Record<string, string> = {
+    rescisao: 'trabalhista',
+    aposentadoria: 'previdenciario',
+    correcao_monetaria: 'civel',
+    honorarios: 'civel',
+    juros: 'civel',
+  }
+  return categoryMap[slug] || 'civel'
+}
 
 const categories = [
   { id: 'all', name: 'Todas' },
@@ -82,8 +57,32 @@ const categories = [
   { id: 'civel', name: 'Cível' },
 ]
 
+interface CalculatorConfig {
+  id: string
+  name: string
+  description: string
+  icon: LucideIcon
+  href: string
+  category: string
+  available: boolean
+}
+
 export default function CalculadorasHubPage() {
   const { calculatorId } = useParams<{ calculatorId?: string }>()
+  const { calculators: calculatorsFromContext } = useCalculators()
+
+  // Build calculators array from context
+  const calculators = useMemo<CalculatorConfig[]>(() => {
+    return calculatorsFromContext.map((calc) => ({
+      id: calc.slug,
+      name: calc.name,
+      description: calc.description,
+      icon: calc.icon,
+      href: calc.path,
+      category: getCategoryForCalculator(calc.slug),
+      available: !calc.locked,
+    }))
+  }, [calculatorsFromContext])
 
   const selectedCalculator = useMemo(() => {
     if (!calculatorId) return null

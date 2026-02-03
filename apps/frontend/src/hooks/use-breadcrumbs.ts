@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom'
 import { useAiTools } from '@/features/ai/context'
+import { useCalculators } from '@/features/calculators/context'
 
 export interface BreadcrumbItem {
   label: string
@@ -12,8 +13,6 @@ const ROUTE_LABELS: Record<string, string> = {
   processos: 'Processos',
   prazos: 'Prazos',
   calculadoras: 'Calculadoras',
-  rescisao: 'Rescisão Trabalhista',
-  aposentadoria: 'Aposentadoria',
   ia: 'IA Jurídica',
   documentos: 'Documentos',
   materiais: 'Materiais',
@@ -24,6 +23,7 @@ const ROUTE_LABELS: Record<string, string> = {
 export function useBreadcrumbs(): BreadcrumbItem[] {
   const location = useLocation()
   const { getToolBySlug } = useAiTools()
+  const { getCalculatorBySlug } = useCalculators()
 
   // Split pathname and filter empty strings
   const pathSegments = location.pathname.split('/').filter(Boolean)
@@ -47,6 +47,11 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
     if (previousSegment === 'ia') {
       const tool = getToolBySlug(segment)
       label = tool?.name || segment.charAt(0).toUpperCase() + segment.slice(1)
+    }
+    // If previous segment was 'calculadoras', this segment is a calculator slug
+    else if (previousSegment === 'calculadoras') {
+      const calculator = getCalculatorBySlug(segment)
+      label = calculator?.name || segment.charAt(0).toUpperCase() + segment.slice(1)
     } else {
       // Get label from static mapping, or capitalize as fallback
       label = ROUTE_LABELS[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)

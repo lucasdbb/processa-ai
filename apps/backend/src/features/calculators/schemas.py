@@ -47,3 +47,21 @@ class RescisaoTrabalhistaResponse(BaseModel):
     input: dict
     detalhes: RescisaoTrabalhistaDetalhes
     pdf: PdfExport | None = None
+
+
+class CalculatorResponse(BaseModel):
+    """Response para uma calculadora disponível."""
+
+    slug: str
+    name: str
+    description: str
+    icon: str
+    path: str
+    locked: bool
+    order: int
+
+
+class CalculatorsListResponse(BaseModel):
+    """Lista de calculadoras disponíveis."""
+
+    calculators: list[CalculatorResponse]

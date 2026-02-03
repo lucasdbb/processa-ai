@@ -22,7 +22,9 @@ import { useSidebarStore } from '@/stores/sidebar-store'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useTheme } from 'next-themes'
 import { useAiTools } from '@/features/ai/context'
+import { useCalculators } from '@/features/calculators/context'
 import type { AiTool } from '@/features/ai/types'
+import type { CalculatorItem } from '@/features/calculators/api'
 
 interface NavItem {
   name: string
@@ -36,7 +38,10 @@ interface NavGroup {
   items: NavItem[]
 }
 
-const getNavigationGroups = (aiTools: AiTool[]): NavGroup[] => {
+const getNavigationGroups = (
+  aiTools: AiTool[],
+  calculators: CalculatorItem[]
+): NavGroup[] => {
   // Build IA Jurídica children from API tools (only unlocked ones)
   const iaChildren = aiTools
     .filter((tool) => !tool.locked)
@@ -44,6 +49,15 @@ const getNavigationGroups = (aiTools: AiTool[]): NavGroup[] => {
     .map((tool) => ({
       name: tool.name,
       href: `/app/ia/${tool.slug}`,
+    }))
+
+  // Build Calculadoras children from API (only unlocked ones)
+  const calcChildren = calculators
+    .filter((calc) => !calc.locked)
+    .sort((a, b) => a.order - b.order)
+    .map((calc) => ({
+      name: calc.name,
+      href: calc.path,
     }))
 
   return [
@@ -68,10 +82,7 @@ const getNavigationGroups = (aiTools: AiTool[]): NavGroup[] => {
           name: 'Calculadoras',
           href: '/app/calculadoras',
           icon: Calculator,
-          children: [
-            { name: 'Rescisão', href: '/app/calculadoras/rescisao' },
-            // Aposentadoria ainda não implementada
-          ],
+          children: calcChildren,
         },
         {
           name: 'IA Juridica',
@@ -103,11 +114,12 @@ export function Sidebar() {
   const { resolvedTheme } = useTheme()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const { tools: aiTools } = useAiTools()
+  const { calculators } = useCalculators()
 
   const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
 
-  const navigation = getNavigationGroups(aiTools)
+  const navigation = getNavigationGroups(aiTools, calculators)
 
   const isActive = (href: string) => {
     if (href === '/app') {

@@ -9,12 +9,52 @@ from src.core.calc_engine_store import (
     mark_calculation_failed,
 )
 from src.core.auth import require_internal_auth
-from src.features.calculators.schemas import RescisaoTrabalhistaRequest, RescisaoTrabalhistaResponse
+from src.features.calculators.schemas import (
+    CalculatorResponse,
+    CalculatorsListResponse,
+    RescisaoTrabalhistaRequest,
+    RescisaoTrabalhistaResponse,
+)
 from src.features.calculators.service import CalculatorsService
 
 router = APIRouter()
 
 service = CalculatorsService()
+
+
+@router.get("/list", response_model=CalculatorsListResponse)
+async def get_calculators(_internal=Depends(require_internal_auth)):
+    """Retorna lista de calculadoras disponíveis."""
+    from src.core.db import get_pool
+
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT key, display_name, description, icon, path,
+                       display_order, is_locked
+                FROM calc_engine.calculators
+                ORDER BY display_order, display_name
+            """
+            )
+            rows = await cur.fetchall()
+
+    calculators = []
+    for row in rows:
+        calculators.append(
+            CalculatorResponse(
+                slug=row[0],
+                name=row[1],
+                description=row[2] or "",
+                icon=row[3] or "Calculator",
+                path=row[4],
+                locked=bool(row[6]),
+                order=int(row[5]) if row[5] is not None else 0,
+            )
+        )
+
+    return CalculatorsListResponse(calculators=calculators)
 
 
 @router.post(
