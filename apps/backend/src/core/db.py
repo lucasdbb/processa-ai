@@ -17,6 +17,10 @@ async def init_db() -> None:
         min_size=1,
         max_size=10,
         open=False,
+        kwargs={
+            "prepare_threshold": None,  # None = nunca usa prepared statements
+            "options": "-c jit=off",  # Desabilita JIT compilation para melhor performance
+        },
     )
     await _pool.open()
     logger.info("Database connection pool initialized")

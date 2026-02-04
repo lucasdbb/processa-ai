@@ -166,18 +166,18 @@ export default function PrazosPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Prazos e Eventos</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl font-bold text-foreground">Prazos e Eventos</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Gerencie prazos processuais, audiências e compromissos.
           </p>
         </div>
         <button
           onClick={handleNewDeadline}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
         >
           <Plus className="h-4 w-4" />
           Novo Evento
@@ -185,62 +185,62 @@ export default function PrazosPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20 rounded-lg p-3">
           <div className="flex items-center gap-2 text-red-600 dark:text-red-500">
-            <AlertTriangle className="h-5 w-5" />
-            <span className="font-semibold text-sm">Urgente</span>
+            <AlertTriangle className="h-4 w-4" />
+            <span className="font-semibold text-xs">Urgente</span>
           </div>
-          <p className="text-3xl font-bold text-red-600 dark:text-red-500 mt-2">{todayCount + overdueCount}</p>
-          <p className="text-xs text-red-600/70 dark:text-red-500/70 mt-1">Hoje/Atrasados</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-500 mt-1.5">{todayCount + overdueCount}</p>
+          <p className="text-[11px] text-red-600/70 dark:text-red-500/70 mt-0.5">Hoje/Atrasados</p>
         </div>
-        <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border border-yellow-500/20 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border border-yellow-500/20 rounded-lg p-3">
           <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
-            <CalendarClock className="h-5 w-5" />
-            <span className="font-semibold text-sm">Próximos 3 dias</span>
+            <CalendarClock className="h-4 w-4" />
+            <span className="font-semibold text-xs">Próximos 3 dias</span>
           </div>
-          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
+          <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-1.5">
             {deadlines.filter((d) => {
               const daysUntil = getDaysUntil(d.due_date)
               return daysUntil > 0 && daysUntil <= 3
             }).length}
           </p>
-          <p className="text-xs text-yellow-600/70 dark:text-yellow-500/70 mt-1">Atenção necessária</p>
+          <p className="text-[11px] text-yellow-600/70 dark:text-yellow-500/70 mt-0.5">Atenção necessária</p>
         </div>
-        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-3">
           <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
-            <CalendarClock className="h-5 w-5" />
-            <span className="font-semibold text-sm">Esta semana</span>
+            <CalendarClock className="h-4 w-4" />
+            <span className="font-semibold text-xs">Esta semana</span>
           </div>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-500 mt-2">{weekCount}</p>
-          <p className="text-xs text-blue-600/70 dark:text-blue-500/70 mt-1">Próximos 7 dias</p>
+          <p className="text-2xl font-bold text-blue-600 dark:text-blue-500 mt-1.5">{weekCount}</p>
+          <p className="text-[11px] text-blue-600/70 dark:text-blue-500/70 mt-0.5">Próximos 7 dias</p>
         </div>
-        <div className="bg-gradient-to-br from-slate-500/10 to-slate-600/5 border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-gradient-to-br from-slate-500/10 to-slate-600/5 border border-border rounded-lg p-3">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <CalendarDays className="h-5 w-5" />
-            <span className="font-semibold text-sm">Total</span>
+            <CalendarDays className="h-4 w-4" />
+            <span className="font-semibold text-xs">Total</span>
           </div>
-          <p className="text-3xl font-bold text-foreground mt-2">{totalCount}</p>
-          <p className="text-xs text-muted-foreground mt-1">Todos os eventos</p>
+          <p className="text-2xl font-bold text-foreground mt-1.5">{totalCount}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Todos os eventos</p>
         </div>
       </div>
 
       {/* Tabs: Lista / Calendário */}
-      <Tabs defaultValue="lista" className="space-y-4">
+      <Tabs defaultValue="lista" className="space-y-3">
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="lista" className="gap-1.5">
+          <TabsTrigger value="lista" className="gap-1.5 text-xs">
             <List className="h-4 w-4" />
             Lista
           </TabsTrigger>
-          <TabsTrigger value="calendario" className="gap-1.5">
+          <TabsTrigger value="calendario" className="gap-1.5 text-xs">
             <CalendarDays className="h-4 w-4" />
             Calendário
           </TabsTrigger>
         </TabsList>
 
         {/* List Tab */}
-        <TabsContent value="lista" className="mt-4">
-          <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+        <TabsContent value="lista" className="mt-3">
+          <div className="bg-card border border-border rounded-lg p-4">
             {isLoading ? (
               <div className="py-16 flex flex-col items-center justify-center gap-3">
                 <LoadingSpinner size="lg" />
@@ -253,7 +253,7 @@ export default function PrazosPage() {
                 <p className="text-sm">Clique em "Novo Evento" para adicionar um prazo</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {deadlines.map((deadline) => {
                   const daysUntil = getDaysUntil(deadline.due_date)
                   const urgency = getUrgencyLevel(daysUntil)
@@ -262,11 +262,11 @@ export default function PrazosPage() {
                     <div
                       key={deadline.id}
                       className={cn(
-                        'flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer group',
-                        urgency === 'critical' && 'bg-red-500/5 border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50 hover:shadow-md',
-                        urgency === 'urgent' && 'bg-yellow-500/5 border-yellow-500/30 hover:bg-yellow-500/10 hover:border-yellow-500/50 hover:shadow-md',
-                        urgency === 'warning' && 'bg-yellow-500/5 border-yellow-500/30 hover:bg-yellow-500/10 hover:border-yellow-500/50 hover:shadow-md',
-                        urgency === 'normal' && 'bg-card border-border hover:bg-muted/50 hover:border-muted-foreground/30 hover:shadow-md'
+                        'flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer group',
+                        urgency === 'critical' && 'bg-red-500/5 border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50',
+                        urgency === 'urgent' && 'bg-yellow-500/5 border-yellow-500/30 hover:bg-yellow-500/10 hover:border-yellow-500/50',
+                        urgency === 'warning' && 'bg-yellow-500/5 border-yellow-500/30 hover:bg-yellow-500/10 hover:border-yellow-500/50',
+                        urgency === 'normal' && 'bg-card border-border hover:bg-muted/50 hover:border-muted-foreground/30'
                       )}
                       onClick={() => handleEditDeadline(deadline)}
                     >
@@ -280,8 +280,8 @@ export default function PrazosPage() {
                         )}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-foreground">{deadline.title}</span>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-sm font-semibold text-foreground truncate">{deadline.title}</span>
                           {urgency === 'critical' && (
                             <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-red-500 text-white rounded-full">
                               URGENTE
@@ -294,16 +294,18 @@ export default function PrazosPage() {
                           )}
                         </div>
                         {deadline.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{deadline.description}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                            {deadline.description}
+                          </p>
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-semibold text-base text-foreground">
+                        <p className="font-semibold text-sm text-foreground">
                           {formatDeadlineDate(deadline.due_date)}
                         </p>
                         <p
                           className={cn(
-                            'text-xs font-medium mt-0.5',
+                            'text-[11px] font-medium mt-0.5',
                             urgency === 'critical' && 'text-red-600 dark:text-red-500',
                             urgency === 'urgent' && 'text-yellow-600 dark:text-yellow-500',
                             urgency === 'warning' && 'text-yellow-600 dark:text-yellow-500',

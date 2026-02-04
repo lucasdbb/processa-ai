@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.processes.schemas import (
     ProcessCreate,
+    ProcessDetailResponse,
     ProcessListParams,
     ProcessListResponse,
     ProcessResponse,
@@ -46,6 +47,21 @@ async def get_process(
 ):
     """Get a single process by ID."""
     process = await processes_service.get_process(user_id, process_id)
+    if not process:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Process not found",
+        )
+    return process
+
+
+@router.get("/{process_id}/detail", response_model=ProcessDetailResponse)
+async def get_process_detail(
+    process_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+):
+    """Get aggregated process detail with client, deadlines, timeline, and documents."""
+    process = await processes_service.get_process_detail(user_id, process_id)
     if not process:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

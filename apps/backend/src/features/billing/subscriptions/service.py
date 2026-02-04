@@ -8,9 +8,17 @@ from src.core.config import settings
 from src.core.logging import logger
 from src.core.stripe_client import (
     create_checkout_session as stripe_create_checkout,
+)
+from src.core.stripe_client import (
     create_customer as stripe_create_customer,
+)
+from src.core.stripe_client import (
     create_portal_session as stripe_create_portal,
+)
+from src.core.stripe_client import (
     list_invoices as stripe_list_invoices,
+)
+from src.core.stripe_client import (
     retrieve_subscription as stripe_retrieve_subscription,
 )
 from src.core.supabase import get_supabase
@@ -44,9 +52,7 @@ class SubscriptionsService:
         )
 
         prices = {
-            row["stripe_price_id"]
-            for row in (result.data or [])
-            if row.get("stripe_price_id")
+            row["stripe_price_id"] for row in (result.data or []) if row.get("stripe_price_id")
         }
 
         self._allowed_prices_cache = prices
@@ -319,7 +325,7 @@ class SubscriptionsService:
             items.append(
                 {
                     "id": inv.id,
-                    "amount": inv.amount_paid,
+                    "amount": inv.paid_amount,
                     "currency": inv.currency,
                     "status": inv.status,
                     "created": datetime.fromtimestamp(inv.created, tz=timezone.utc),
@@ -378,9 +384,7 @@ class SubscriptionsService:
             )
 
         # Get plan_id from price
-        plan_id = self._get_plan_id_from_stripe_price(
-            stripe_sub["items"]["data"][0]["price"]["id"]
-        )
+        plan_id = self._get_plan_id_from_stripe_price(stripe_sub["items"]["data"][0]["price"]["id"])
 
         # Update local record with Stripe data
         try:

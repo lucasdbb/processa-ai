@@ -64,3 +64,80 @@ class ProcessListParams(BaseModel):
     client_id: UUID | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
+
+
+class ProcessDeadlineSummary(BaseModel):
+    """Summary of a deadline for process detail view."""
+
+    id: UUID
+    title: str
+    due_date: str
+    status: str
+    priority: str | None
+    days_until: int
+
+
+class ProcessTimelineEvent(BaseModel):
+    """Timeline event for process detail view."""
+
+    id: UUID
+    event_type: str
+    title: str
+    description: str | None
+    event_date: datetime
+    created_at: datetime
+
+
+class ProcessDocumentSummary(BaseModel):
+    """Summary of a document for process detail view."""
+
+    id: UUID
+    name: str
+    mime_type: str | None
+    file_size: int | None
+    created_at: datetime
+
+
+class ProcessClientInfo(BaseModel):
+    """Client info for process detail view."""
+
+    id: UUID
+    name: str
+    email: str | None
+    phone: str | None
+    cpf_cnpj: str | None
+
+
+class ProcessDetailResponse(BaseModel):
+    """Aggregated process detail response."""
+
+    # Basic process info
+    id: UUID
+    user_id: UUID
+    client_id: UUID
+    process_number: str
+    court: str | None
+    defendant: str | None
+    type: str
+    subject: str | None
+    value: Decimal | None
+    status: ProcessStatus
+    notes: str | None
+    start_date: date | None
+    end_date: date | None
+    created_at: datetime
+    updated_at: datetime
+
+    # Client info
+    client: ProcessClientInfo
+
+    # Aggregated data
+    deadlines: list[ProcessDeadlineSummary]
+    deadlines_count: int
+    overdue_deadlines_count: int
+    timeline: list[ProcessTimelineEvent]
+    timeline_count: int
+    documents: list[ProcessDocumentSummary]
+    documents_count: int
+
+    model_config = {"from_attributes": True}

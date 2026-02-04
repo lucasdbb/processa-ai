@@ -5,9 +5,14 @@ from psycopg.rows import dict_row
 
 from src.core.db import get_pool
 from src.features.office.processes.schemas import (
+    ProcessClientInfo,
     ProcessCreate,
+    ProcessDeadlineSummary,
+    ProcessDetailResponse,
+    ProcessDocumentSummary,
     ProcessListParams,
     ProcessResponse,
+    ProcessTimelineEvent,
     ProcessUpdate,
 )
 
@@ -88,9 +93,9 @@ class ProcessesService:
                     """
                     INSERT INTO office_api.processes (
                         user_id, client_id, process_number, court, defendant, type,
-                        subject, value, status, notes, start_date, end_date
+                        subject, value, status, notes, start_date
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)
                     RETURNING *
                     """,
                     (
@@ -102,10 +107,8 @@ class ProcessesService:
                         data.type,
                         data.subject,
                         data.value,
-                        data.status or "active",
                         data.notes,
                         data.start_date,
-                        data.end_date,
                     ),
                 )
                 row = await cur.fetchone()
@@ -150,6 +153,145 @@ class ProcessesService:
                     (str(user_id), str(process_id)),
                 )
                 return cur.rowcount > 0
+
+    async def get_process_detail(
+        self, user_id: UUID, process_id: UUID
+    ) -> ProcessDetailResponse | None:
+        """Get aggregated process detail with client, deadlines, timeline, and documents."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                # Get process basic info
+                await cur.execute(
+                    "SELECT * FROM office_api.processes WHERE user_id = %s AND id = %s",
+                    (str(user_id), str(process_id)),
+                )
+                process_row = await cur.fetchone()
+
+                if not process_row:
+                    return None
+
+                # Get client info
+                await cur.execute(
+                    """
+                    SELECT id, name, email, phone, cpf_cnpj
+                    FROM office_api.clients
+                    WHERE id = %s AND user_id = %s
+                    """,
+                    (str(process_row["client_id"]), str(user_id)),
+                )
+                client_row = await cur.fetchone()
+                client = (
+                    ProcessClientInfo(**client_row)
+                    if client_row
+                    else ProcessClientInfo(
+                        id=process_row["client_id"],
+                        name="Cliente não encontrado",
+                        email=None,
+                        phone=None,
+                        cpf_cnpj=None,
+                    )
+                )
+
+                # Get deadlines with days_until calculation
+                await cur.execute(
+                    """
+                    SELECT
+                        id,
+                        title,
+                        due_date::text as due_date,
+                        status,
+                        priority,
+                        (due_date - CURRENT_DATE) as days_until
+                    FROM office_api.deadlines
+                    WHERE user_id = %s AND process_id = %s
+                    ORDER BY due_date ASC
+                    LIMIT 10
+                    """,
+                    (str(user_id), str(process_id)),
+                )
+                deadline_rows = await cur.fetchall()
+                deadlines = [ProcessDeadlineSummary(**row) for row in deadline_rows]
+
+                # Get deadline counts
+                await cur.execute(
+                    """
+                    SELECT
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE due_date < CURRENT_DATE AND status != 'completed') as overdue
+                    FROM office_api.deadlines
+                    WHERE user_id = %s AND process_id = %s
+                    """,
+                    (str(user_id), str(process_id)),
+                )
+                deadline_counts = await cur.fetchone()
+                deadlines_count = deadline_counts["total"] if deadline_counts else 0
+                overdue_deadlines_count = deadline_counts["overdue"] if deadline_counts else 0
+
+                # Get timeline events
+                await cur.execute(
+                    """
+                    SELECT id, event_type, title, description, event_date, created_at
+                    FROM office_api.timeline_events
+                    WHERE user_id = %s AND process_id = %s
+                    ORDER BY event_date DESC, created_at DESC
+                    LIMIT 20
+                    """,
+                    (str(user_id), str(process_id)),
+                )
+                timeline_rows = await cur.fetchall()
+                timeline = [ProcessTimelineEvent(**row) for row in timeline_rows]
+
+                # Get timeline count
+                await cur.execute(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM office_api.timeline_events
+                    WHERE user_id = %s AND process_id = %s
+                    """,
+                    (str(user_id), str(process_id)),
+                )
+                timeline_count_row = await cur.fetchone()
+                timeline_count = timeline_count_row["count"] if timeline_count_row else 0
+
+                # Get documents
+                await cur.execute(
+                    """
+                    SELECT id, name, mime_type, file_size, created_at
+                    FROM office_api.documents
+                    WHERE user_id = %s AND process_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT 10
+                    """,
+                    (str(user_id), str(process_id)),
+                )
+                document_rows = await cur.fetchall()
+                documents = [ProcessDocumentSummary(**row) for row in document_rows]
+
+                # Get documents count
+                await cur.execute(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM office_api.documents
+                    WHERE user_id = %s AND process_id = %s
+                    """,
+                    (str(user_id), str(process_id)),
+                )
+                documents_count_row = await cur.fetchone()
+                documents_count = documents_count_row["count"] if documents_count_row else 0
+
+                return ProcessDetailResponse(
+                    **process_row,
+                    client=client,
+                    deadlines=deadlines,
+                    deadlines_count=deadlines_count,
+                    overdue_deadlines_count=overdue_deadlines_count,
+                    timeline=timeline,
+                    timeline_count=timeline_count,
+                    documents=documents,
+                    documents_count=documents_count,
+                )
 
 
 processes_service = ProcessesService()

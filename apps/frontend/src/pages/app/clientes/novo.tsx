@@ -5,15 +5,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { clientsService, type ClientCreate } from '@/services/clients-service'
+import { clientsService, type ClientCreate, type Client } from '@/services/clients-service'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { ClientCreatedDialog } from '@/components/ui/success-action-dialog'
+import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 
 const clientSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  name: z.string().min(2, 'Nome deve ter no minimo 2 caracteres'),
+  email: z.string().email('Email invalido').optional().or(z.literal('')),
   phone: z.string().optional(),
   cpf_cnpj: z.string().optional(),
   address: z.string().optional(),
@@ -31,6 +33,11 @@ export default function ClienteNovoPage() {
   const [loading, setLoading] = useState(false)
   const [loadingCep, setLoadingCep] = useState(false)
 
+  // Fluxo continuo
+  const [createdClient, setCreatedClient] = useState<Client | null>(null)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [showProcessDialog, setShowProcessDialog] = useState(false)
+
   const {
     register,
     handleSubmit,
@@ -45,24 +52,24 @@ export default function ClienteNovoPage() {
 
   const handleCepBlur = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, '')
-    
+
     if (cleanCep.length !== 8) return
-    
+
     try {
       setLoadingCep(true)
       const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
       const data = await response.json()
-      
+
       if (data.erro) {
-        toast.error('CEP não encontrado')
+        toast.error('CEP nao encontrado')
         return
       }
-      
+
       if (data.logradouro) setValue('address', data.logradouro)
       if (data.localidade) setValue('city', data.localidade)
       if (data.uf) setValue('state', data.uf)
-      
-      toast.success('Endereço preenchido automaticamente')
+
+      toast.success('Endereco preenchido automaticamente')
     } catch {
       toast.error('Falha ao buscar CEP')
     } finally {
@@ -73,7 +80,7 @@ export default function ClienteNovoPage() {
   const onSubmit = async (data: ClientFormData) => {
     try {
       setLoading(true)
-      
+
       const payload: ClientCreate = {
         name: data.name,
         email: data.email || undefined,
@@ -85,15 +92,36 @@ export default function ClienteNovoPage() {
         zip_code: data.zip_code || undefined,
         notes: data.notes || undefined,
       }
-      
-      await clientsService.create(payload)
-      toast.success('Cliente criado com sucesso!')
-      navigate('/app/clientes')
+
+      const client = await clientsService.create(payload)
+      setCreatedClient(client)
+      setShowSuccessDialog(true)
     } catch {
       toast.error('Falha ao criar cliente')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleViewClient = () => {
+    if (createdClient) {
+      navigate(`/app/clientes/${createdClient.id}`)
+    }
+  }
+
+  const handleCreateProcess = () => {
+    setShowSuccessDialog(false)
+    setShowProcessDialog(true)
+  }
+
+  const handleProcessSaved = () => {
+    // Apos salvar processo, vai para a lista de processos
+    navigate('/app/processos')
+  }
+
+  const handleSuccessDialogClose = () => {
+    setShowSuccessDialog(false)
+    navigate('/app/clientes')
   }
 
   return (
@@ -169,7 +197,7 @@ export default function ClienteNovoPage() {
 
           {/* Address */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Endereço</h3>
+            <h3 className="font-semibold">Endereco</h3>
 
             <div>
               <Label htmlFor="zip_code">CEP</Label>
@@ -186,7 +214,7 @@ export default function ClienteNovoPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Digite o CEP e o endereço será preenchido automaticamente
+                Digite o CEP e o endereco sera preenchido automaticamente
               </p>
             </div>
 
@@ -195,14 +223,14 @@ export default function ClienteNovoPage() {
               <Input
                 id="address"
                 {...register('address')}
-                placeholder="Rua, número, complemento"
+                placeholder="Rua, numero, complemento"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
                 <Label htmlFor="city">Cidade</Label>
-                <Input id="city" {...register('city')} placeholder="São Paulo" />
+                <Input id="city" {...register('city')} placeholder="Sao Paulo" />
               </div>
 
               <div>
@@ -214,11 +242,11 @@ export default function ClienteNovoPage() {
 
           {/* Notes */}
           <div>
-            <Label htmlFor="notes">Observações</Label>
+            <Label htmlFor="notes">Observacoes</Label>
             <Textarea
               id="notes"
               {...register('notes')}
-              placeholder="Observações sobre o cliente"
+              placeholder="Observacoes sobre o cliente"
               rows={4}
             />
           </div>
@@ -239,6 +267,26 @@ export default function ClienteNovoPage() {
           </div>
         </form>
       </div>
+
+      {/* Dialog de sucesso com acoes */}
+      <ClientCreatedDialog
+        isOpen={showSuccessDialog}
+        onClose={handleSuccessDialogClose}
+        clientName={createdClient?.name || ''}
+        onViewClient={handleViewClient}
+        onCreateProcess={handleCreateProcess}
+      />
+
+      {/* Dialog para criar processo */}
+      <ProcessFormDialog
+        isOpen={showProcessDialog}
+        onClose={() => {
+          setShowProcessDialog(false)
+          navigate('/app/clientes')
+        }}
+        preselectedClient={createdClient || undefined}
+        onSave={handleProcessSaved}
+      />
     </div>
   )
 }

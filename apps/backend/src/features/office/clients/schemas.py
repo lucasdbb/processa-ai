@@ -59,10 +59,67 @@ class ClientListResponse(BaseModel):
 class ClientListParams(BaseModel):
     search: str | None = None
     status: ClientStatus | None = None
-    limit: int = 50
-    offset: int = 0
-
-    search: str | None = None
-    status: ClientStatus | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
+
+
+class ClientProcessSummary(BaseModel):
+    """Summary of a process for client detail view."""
+
+    id: UUID
+    number: str
+    type: str
+    status: str
+    court: str | None
+    value: float | None
+    next_deadline: str | None = None
+
+
+class ClientFeeSummary(BaseModel):
+    """Summary of fees for client detail view."""
+
+    total_amount: float
+    total_paid: float
+    total_pending: float
+    total_overdue: float
+    fees_count: int
+
+
+class ClientNoteSummary(BaseModel):
+    """Summary of a note for client detail view."""
+
+    id: UUID
+    title: str
+    note_type: str
+    is_pinned: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class ClientDetailResponse(BaseModel):
+    """Aggregated client detail response."""
+
+    # Basic client info
+    id: UUID
+    user_id: UUID
+    name: str
+    email: str | None
+    phone: str | None
+    cpf_cnpj: str | None
+    address: str | None
+    city: str | None
+    state: str | None
+    zip_code: str | None
+    notes: str | None
+    status: ClientStatus
+    created_at: datetime
+    updated_at: datetime
+
+    # Aggregated data
+    processes: list[ClientProcessSummary]
+    processes_count: int
+    fees_summary: ClientFeeSummary
+    recent_notes: list[ClientNoteSummary]
+    notes_count: int
+
+    model_config = {"from_attributes": True}

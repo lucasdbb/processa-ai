@@ -7,6 +7,34 @@ DocumentType = Literal["ai_analysis", "calculation", "petition", "contract", "ot
 DocumentStatus = Literal["draft", "final", "archived"]
 
 
+class DocumentCreate(BaseModel):
+    """Schema for creating a document."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    type: DocumentType = "other"
+    status: DocumentStatus = "draft"
+    file_url: str | None = None
+    file_size: int | None = Field(None, ge=0)
+    mime_type: str | None = None
+    process_id: str | None = None
+    client_id: str | None = None
+    description: str | None = None
+
+
+class DocumentUpdate(BaseModel):
+    """Schema for updating a document."""
+
+    name: str | None = Field(None, min_length=1, max_length=255)
+    type: DocumentType | None = None
+    status: DocumentStatus | None = None
+    file_url: str | None = None
+    file_size: int | None = Field(None, ge=0)
+    mime_type: str | None = None
+    process_id: str | None = None
+    client_id: str | None = None
+    description: str | None = None
+
+
 class DocumentResponse(BaseModel):
     id: str
     user_id: str

@@ -262,48 +262,48 @@ export default function CalculadorasHubPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3">
-            <div className="bg-card border border-border rounded-2xl p-6">
+            <div className="bg-card border border-border rounded-xl p-5">
               {selectedCalculator === 'rescisao' ? (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Salário Mensal (R$) *</label>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Salário Mensal (R$) *</label>
                       <input
                         type="number"
                         value={formData.salario}
                         onChange={(e) => handleInputChange('salario', e.target.value)}
-                        className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground"
+                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground text-sm"
                         placeholder="Ex: 3000,00"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Data de Admissão *</label>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Data de Admissão *</label>
                       <input
                         type="date"
                         value={formData.dataAdmissao}
                         onChange={(e) => handleInputChange('dataAdmissao', e.target.value)}
-                        className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground"
+                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground text-sm"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Data de Rescisão *</label>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Data de Rescisão *</label>
                       <input
                         type="date"
                         value={formData.dataRescisao}
                         onChange={(e) => handleInputChange('dataRescisao', e.target.value)}
-                        className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground"
+                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground text-sm"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Motivo da Rescisão *</label>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Motivo da Rescisão *</label>
                       <div className="relative">
                         <select
                           value={formData.tipoRescisao}
                           onChange={(e) => handleInputChange('tipoRescisao', e.target.value)}
-                          className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none text-foreground"
+                          className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none text-foreground text-sm"
                         >
                           <option value="sem_justa_causa">Dispensa sem Justa Causa</option>
                           <option value="por_pedido">Pedido de Demissão</option>
@@ -311,7 +311,7 @@ export default function CalculadorasHubPage() {
                           <option value="acordo">Acordo (Reforma Trabalhista)</option>
                           <option value="termino_contrato">Término de Contrato</option>
                         </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-muted-foreground">
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-muted-foreground">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                           </svg>
@@ -319,26 +319,26 @@ export default function CalculadorasHubPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Férias Vencidas (dias)</label>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Férias Vencidas (dias)</label>
                       <input
                         type="number"
                         value={formData.feriasVencidas}
                         onChange={(e) => handleInputChange('feriasVencidas', e.target.value)}
-                        className="w-full px-4 py-3 bg-muted/50 border border-input rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground"
+                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground text-sm"
                         placeholder="Ex: 0"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border">
                     <label className="flex items-center cursor-pointer group">
                       <input
                         type="checkbox"
                         checked={formData.avisoPrevio}
                         onChange={(e) => handleInputChange('avisoPrevio', e.target.checked)}
-                        className="rounded border-input text-primary focus:ring-primary w-5 h-5 transition-all"
+                        className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
                       />
-                      <span className="ml-3 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
+                      <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
                         Aviso Prévio
                       </span>
                     </label>
@@ -347,9 +347,9 @@ export default function CalculadorasHubPage() {
                         type="checkbox"
                         checked={formData.feriasProporcionais}
                         onChange={(e) => handleInputChange('feriasProporcionais', e.target.checked)}
-                        className="rounded border-input text-primary focus:ring-primary w-5 h-5 transition-all"
+                        className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
                       />
-                      <span className="ml-3 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
+                      <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
                         Férias Proporcionais
                       </span>
                     </label>
@@ -358,9 +358,9 @@ export default function CalculadorasHubPage() {
                         type="checkbox"
                         checked={formData.decimoTerceiro}
                         onChange={(e) => handleInputChange('decimoTerceiro', e.target.checked)}
-                        className="rounded border-input text-primary focus:ring-primary w-5 h-5 transition-all"
+                        className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
                       />
-                      <span className="ml-3 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
+                      <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
                         13º Proporcional
                       </span>
                     </label>
@@ -458,12 +458,12 @@ export default function CalculadorasHubPage() {
                 </div>
               ) : null}
 
-              <div className="mt-8 pt-6 border-t border-border">
+              <div className="mt-5 pt-4 border-t border-border">
                 <button
                   type="button"
                   onClick={handleCalculate}
                   disabled={isCalculating}
-                  className="bg-slate-900 text-white hover:bg-slate-800 flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isCalculating ? (
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -601,7 +601,7 @@ export default function CalculadorasHubPage() {
             className={cn(
               'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
               category.id === selectedCategory
-                ? 'bg-slate-900 text-white'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
             )}
           >
@@ -638,7 +638,7 @@ export default function CalculadorasHubPage() {
                   className={cn(
                     'p-3 rounded-xl transition-colors',
                     calc.available
-                      ? 'bg-muted group-hover:bg-slate-900 group-hover:text-white'
+                      ? 'bg-muted group-hover:bg-primary group-hover:text-primary-foreground'
                       : 'bg-muted'
                   )}
                 >

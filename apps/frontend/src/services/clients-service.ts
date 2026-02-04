@@ -45,6 +45,41 @@ export interface ClientListResponse {
   total: number;
 }
 
+export interface ClientProcessSummary {
+  id: string;
+  number: string;
+  type: string;
+  status: string;
+  court: string | null;
+  value: number | null;
+  next_deadline: string | null;
+}
+
+export interface ClientFeeSummary {
+  total_amount: number;
+  total_paid: number;
+  total_pending: number;
+  total_overdue: number;
+  fees_count: number;
+}
+
+export interface ClientNoteSummary {
+  id: string;
+  title: string;
+  note_type: string;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientDetail extends Client {
+  processes: ClientProcessSummary[];
+  processes_count: number;
+  fees_summary: ClientFeeSummary;
+  recent_notes: ClientNoteSummary[];
+  notes_count: number;
+}
+
 export const clientsService = {
   async list(params?: ClientListParams): Promise<ClientListResponse> {
     const searchParams = new URLSearchParams();
@@ -62,6 +97,12 @@ export const clientsService = {
   async get(id: string): Promise<Client> {
     const res = await fetchWithCredentials(`${API_URL}/office/clients/${id}`);
     if (!res.ok) throw new Error("Failed to fetch client");
+    return res.json();
+  },
+
+  async getDetail(id: string): Promise<ClientDetail> {
+    const res = await fetchWithCredentials(`${API_URL}/office/clients/${id}/detail`);
+    if (!res.ok) throw new Error("Failed to fetch client detail");
     return res.json();
   },
 

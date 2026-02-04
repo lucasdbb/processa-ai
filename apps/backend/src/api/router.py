@@ -27,7 +27,10 @@ from src.features.office.calendar.router import router as calendar_router
 from src.features.office.clients.router import router as clients_router
 from src.features.office.deadlines.router import router as deadlines_router
 from src.features.office.documents.router import router as documents_router
+from src.features.office.fees.router import router as fees_router
+from src.features.office.notes.router import router as notes_router
 from src.features.office.processes.router import router as processes_router
+from src.features.office.timeline.router import router as timeline_router
 
 api_router = APIRouter()
 
@@ -58,3 +61,6 @@ api_router.include_router(clients_router, prefix="/office/clients", tags=["Clien
 api_router.include_router(processes_router, prefix="/office/processes", tags=["Processes"])
 api_router.include_router(deadlines_router, prefix="/office/deadlines", tags=["Deadlines"])
 api_router.include_router(documents_router, prefix="/office/documents", tags=["Documents"])
+api_router.include_router(fees_router, prefix="/office/fees", tags=["Fees"])
+api_router.include_router(notes_router, prefix="/office/notes", tags=["Notes"])
+api_router.include_router(timeline_router, prefix="/office/timeline", tags=["Timeline"])

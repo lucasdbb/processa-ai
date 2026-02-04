@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.clients.schemas import (
     ClientCreate,
+    ClientDetailResponse,
     ClientListParams,
     ClientListResponse,
     ClientResponse,
@@ -44,6 +45,21 @@ async def get_client(
 ):
     """Get a single client by ID."""
     client = await clients_service.get_client(user_id, client_id)
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found",
+        )
+    return client
+
+
+@router.get("/{client_id}/detail", response_model=ClientDetailResponse)
+async def get_client_detail(
+    client_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+):
+    """Get aggregated client detail with processes, fees, and notes."""
+    client = await clients_service.get_client_detail(user_id, client_id)
     if not client:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

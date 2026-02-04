@@ -68,6 +68,51 @@ export interface ProcessListResponse {
   total: number;
 }
 
+export interface ProcessClientInfo {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  cpf_cnpj: string | null;
+}
+
+export interface ProcessDeadlineSummary {
+  id: string;
+  title: string;
+  due_date: string;
+  status: string;
+  priority: string | null;
+  days_until: number;
+}
+
+export interface ProcessTimelineEvent {
+  id: string;
+  event_type: string;
+  title: string;
+  description: string | null;
+  event_date: string;
+  created_at: string;
+}
+
+export interface ProcessDocumentSummary {
+  id: string;
+  name: string;
+  mime_type: string | null;
+  file_size: number | null;
+  created_at: string;
+}
+
+export interface ProcessDetail extends Process {
+  client: ProcessClientInfo;
+  deadlines: ProcessDeadlineSummary[];
+  deadlines_count: number;
+  overdue_deadlines_count: number;
+  timeline: ProcessTimelineEvent[];
+  timeline_count: number;
+  documents: ProcessDocumentSummary[];
+  documents_count: number;
+}
+
 export const processesService = {
   async list(params?: ProcessListParams): Promise<ProcessListResponse> {
     const searchParams = new URLSearchParams();
@@ -86,6 +131,14 @@ export const processesService = {
   async get(id: string): Promise<Process> {
     const res = await fetchWithCredentials(`${API_URL}/office/processes/${id}`);
     if (!res.ok) throw new Error("Failed to fetch process");
+    return res.json();
+  },
+
+  async getDetail(id: string): Promise<ProcessDetail> {
+    const res = await fetchWithCredentials(
+      `${API_URL}/office/processes/${id}/detail`,
+    );
+    if (!res.ok) throw new Error("Failed to fetch process detail");
     return res.json();
   },
 

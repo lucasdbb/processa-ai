@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Search, Plus, Mail, Phone, MapPin, FileText, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { clientsService, type Client } from '@/services/clients-service'
 import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ClientFormDialog } from '@/components/forms/client-form-dialog'
 
 export default function ClientesPage() {
-  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'archived'>('all')
+  const [showClientDialog, setShowClientDialog] = useState(false)
 
   const [clients, setClients] = useState<Client[]>([])
   const [total, setTotal] = useState(0)
@@ -74,43 +75,43 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
-          <p className="text-muted-foreground mt-1">Gerencie seus clientes e seus dados.</p>
+          <h1 className="text-xl font-bold text-foreground">Clientes</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Gerencie seus clientes e seus dados.</p>
         </div>
-        <Link
-          to="/app/clientes/novo"
+        <button
+          onClick={() => setShowClientDialog(true)}
           data-tour="new-client-btn"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
         >
           <Plus className="h-4 w-4" />
           Novo Cliente
-        </Link>
+        </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div data-tour="search-clients" className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nome, CPF ou email..."
-            className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
           />
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-border overflow-hidden">
+          <div className="flex rounded-md border border-border overflow-hidden">
             {(['all', 'active', 'inactive', 'archived'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={cn(
-                  'px-3 py-2 text-sm font-medium transition-colors',
+                  'px-2.5 py-1.5 text-xs font-medium transition-colors',
                   filter === f
                     ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
                     : 'bg-background text-muted-foreground hover:bg-muted'
@@ -135,74 +136,72 @@ export default function ClientesPage() {
               ? 'Tente buscar com outros termos.'
               : 'Comece cadastrando seu primeiro cliente.'
           }
-          action={!search ? { label: 'Novo Cliente', onClick: () => navigate('/app/clientes/novo') } : undefined}
+          action={!search ? { label: 'Novo Cliente', onClick: () => setShowClientDialog(true) } : undefined}
         />
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="divide-y divide-border">
-            {clients.map((client) => (
-              <Link key={client.id} to={`/app/clientes/${client.id}`}>
-                <div className="p-4 sm:p-5 hover:bg-accent/50 transition-all duration-200 cursor-pointer border-l-2 border-transparent hover:border-primary">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center text-sm font-medium shrink-0">
-                      {client.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2)}
+        <div className="space-y-3">
+          {clients.map((client) => (
+            <Link key={client.id} to={`/app/clientes/${client.id}`}>
+              <div className="group p-3.5 bg-card border border-border rounded-lg hover:shadow-sm hover:border-primary/50 transition-all duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center text-xs font-semibold shrink-0">
+                    {client.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase()
+                      .slice(0, 2)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <h3 className="text-sm font-semibold text-foreground truncate">{client.name}</h3>
+                      <span
+                        className={cn(
+                          'px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full',
+                          client.status === 'active'
+                            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                            : client.status === 'inactive'
+                            ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                            : 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {getStatusLabel(client.status)}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium text-foreground">{client.name}</h3>
-                        <span
-                          className={cn(
-                            'px-1.5 py-0.5 text-[10px] font-bold uppercase rounded',
-                            client.status === 'active'
-                              ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-500'
-                              : client.status === 'inactive'
-                              ? 'bg-yellow-500/10 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-500'
-                              : 'bg-muted text-muted-foreground'
-                          )}
-                        >
-                          {getStatusLabel(client.status)}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {client.cpf_cnpj && (
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          {client.cpf_cnpj}
                         </span>
-                      </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-muted-foreground">
-                        {client.cpf_cnpj && (
-                          <span className="flex items-center gap-1">
-                            <FileText className="h-3 w-3" />
-                            {client.cpf_cnpj}
-                          </span>
-                        )}
-                        {client.phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {client.phone}
-                          </span>
-                        )}
-                        {client.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {client.email}
-                          </span>
-                        )}
-                        {client.city && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {client.city}{client.state ? `, ${client.state}` : ''}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
+                      )}
+                      {client.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {client.phone}
+                        </span>
+                      )}
+                      {client.email && (
+                        <span className="flex items-center gap-1 truncate">
+                          <Mail className="h-3 w-3" />
+                          {client.email}
+                        </span>
+                      )}
+                      {client.city && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {client.city}{client.state ? `, ${client.state}` : ''}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
                         Cadastrado em {formatDate(client.created_at)}
-                      </p>
+                      </span>
                     </div>
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 
@@ -210,6 +209,17 @@ export default function ClientesPage() {
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>Mostrando {clients.length} de {total} clientes</span>
       </div>
+
+      {/* Client Form Dialog */}
+      <ClientFormDialog
+        isOpen={showClientDialog}
+        onClose={() => setShowClientDialog(false)}
+        onSave={async () => {
+          setShowClientDialog(false)
+          await fetchClients(search, filter)
+          toast.success('Cliente criado com sucesso!')
+        }}
+      />
     </div>
   )
 }

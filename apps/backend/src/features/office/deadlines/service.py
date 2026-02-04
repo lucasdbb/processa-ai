@@ -104,8 +104,8 @@ class DeadlinesService:
                         data.title,
                         data.description,
                         data.due_date,
-                        data.priority or "medium",
-                        data.status or "pending",
+                        data.priority,
+                        "pending",  # Status always starts as pending
                         data.reminder_days_before,
                     ),
                 )

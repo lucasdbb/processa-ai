@@ -6,7 +6,11 @@ from psycopg.rows import dict_row
 from src.core.db import get_pool
 from src.features.office.clients.schemas import (
     ClientCreate,
+    ClientDetailResponse,
+    ClientFeeSummary,
     ClientListParams,
+    ClientNoteSummary,
+    ClientProcessSummary,
     ClientResponse,
     ClientUpdate,
 )
@@ -112,7 +116,7 @@ class ClientsService:
                         data.state,
                         data.zip_code,
                         data.notes,
-                        data.status or "active",
+                        "active",
                     ),
                 )
                 row = await cur.fetchone()
@@ -167,6 +171,122 @@ class ClientsService:
                     (str(user_id), str(client_id)),
                 )
                 return cur.rowcount > 0
+
+    async def get_client_detail(
+        self, user_id: UUID, client_id: UUID
+    ) -> ClientDetailResponse | None:
+        """Get aggregated client detail with processes, fees, and notes."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                # Get client basic info
+                await cur.execute(
+                    """
+                    SELECT * FROM office_api.clients
+                    WHERE user_id = %s AND id = %s
+                    """,
+                    (str(user_id), str(client_id)),
+                )
+                client_row = await cur.fetchone()
+
+                if not client_row:
+                    return None
+
+                # Get processes with next deadline
+                await cur.execute(
+                    """
+                    SELECT
+                        p.id,
+                        p.process_number as number,
+                        p.type,
+                        p.status,
+                        p.court,
+                        p.value,
+                        (
+                            SELECT MIN(d.due_date)::text
+                            FROM office_api.deadlines d
+                            WHERE d.process_id = p.id
+                              AND d.due_date >= CURRENT_DATE
+                              AND d.status != 'completed'
+                        ) as next_deadline
+                    FROM office_api.processes p
+                    WHERE p.user_id = %s AND p.client_id = %s
+                    ORDER BY p.created_at DESC
+                    """,
+                    (str(user_id), str(client_id)),
+                )
+                process_rows = await cur.fetchall()
+                processes = [
+                    ClientProcessSummary(
+                        id=row["id"],
+                        number=row["number"],
+                        type=row["type"],
+                        status=row["status"],
+                        court=row["court"],
+                        value=float(row["value"]) if row["value"] else None,
+                        next_deadline=row["next_deadline"],
+                    )
+                    for row in process_rows
+                ]
+
+                # Get fees summary
+                await cur.execute(
+                    """
+                    SELECT
+                        COALESCE(SUM(amount), 0) as total_amount,
+                        COALESCE(SUM(CASE WHEN status = 'paid' THEN paid_amount ELSE 0 END), 0) as total_paid,
+                        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount - COALESCE(paid_amount, 0) ELSE 0 END), 0) as total_pending,
+                        COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount - COALESCE(paid_amount, 0) ELSE 0 END), 0) as total_overdue,
+                        COUNT(*) as fees_count
+                    FROM office_api.fees
+                    WHERE user_id = %s AND client_id = %s
+                    """,
+                    (str(user_id), str(client_id)),
+                )
+                fees_row = await cur.fetchone()
+                fees_summary = ClientFeeSummary(
+                    total_amount=float(fees_row["total_amount"]) if fees_row else 0,
+                    total_paid=float(fees_row["total_paid"]) if fees_row else 0,
+                    total_pending=float(fees_row["total_pending"]) if fees_row else 0,
+                    total_overdue=float(fees_row["total_overdue"]) if fees_row else 0,
+                    fees_count=fees_row["fees_count"] if fees_row else 0,
+                )
+
+                # Get recent notes (last 5, pinned first)
+                await cur.execute(
+                    """
+                    SELECT id, title, note_type, is_pinned, created_at, updated_at
+                    FROM office_api.notes
+                    WHERE user_id = %s AND client_id = %s
+                    ORDER BY is_pinned DESC, updated_at DESC
+                    LIMIT 5
+                    """,
+                    (str(user_id), str(client_id)),
+                )
+                notes_rows = await cur.fetchall()
+                recent_notes = [ClientNoteSummary(**row) for row in notes_rows]
+
+                # Get total notes count
+                await cur.execute(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM office_api.notes
+                    WHERE user_id = %s AND client_id = %s
+                    """,
+                    (str(user_id), str(client_id)),
+                )
+                notes_count_row = await cur.fetchone()
+                notes_count = notes_count_row["count"] if notes_count_row else 0
+
+                return ClientDetailResponse(
+                    **client_row,
+                    processes=processes,
+                    processes_count=len(processes),
+                    fees_summary=fees_summary,
+                    recent_notes=recent_notes,
+                    notes_count=notes_count,
+                )
 
 
 clients_service = ClientsService()

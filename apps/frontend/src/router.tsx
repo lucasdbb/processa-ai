@@ -20,7 +20,6 @@ import PrivacidadePage from '@/pages/privacidade'
 import DashboardPage from '@/pages/app/dashboard'
 import ClientesPage from '@/pages/app/clientes'
 import ClienteDetalhePage from '@/pages/app/clientes/[id]'
-import ClienteNovoPage from '@/pages/app/clientes/novo'
 import ProcessosPage from '@/pages/app/processos'
 import ProcessoDetalhePage from '@/pages/app/processos/[id]'
 import PrazosPage from '@/pages/app/prazos'
@@ -118,16 +117,8 @@ export const router = createBrowserRouter([
         element: <ClientesPage />,
       },
       {
-        path: 'clientes/novo',
-        element: <ClienteNovoPage />,
-      },
-      {
         path: 'clientes/:id',
         element: <ClienteDetalhePage />,
-      },
-      {
-        path: 'clientes/:id/editar',
-        element: <ClienteNovoPage />,
       },
       {
         path: 'processos',

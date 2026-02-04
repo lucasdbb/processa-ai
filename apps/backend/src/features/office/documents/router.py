@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.documents.schemas import (
+    DocumentCreate,
     DocumentListParams,
     DocumentListResponse,
     DocumentResponse,
     DocumentStatus,
     DocumentType,
+    DocumentUpdate,
 )
 from src.features.office.documents.service import documents_service
 
@@ -53,3 +55,42 @@ async def get_document(
             detail="Document not found",
         )
     return document
+
+
+@router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def create_document(
+    data: DocumentCreate,
+    user_id: str = Depends(get_user_id),
+):
+    """Create a new document."""
+    return await documents_service.create_document(user_id, data)
+
+
+@router.put("/{document_id}", response_model=DocumentResponse)
+async def update_document(
+    document_id: str,
+    data: DocumentUpdate,
+    user_id: str = Depends(get_user_id),
+):
+    """Update an existing document."""
+    document = await documents_service.update_document(user_id, document_id, data)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+    return document
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    document_id: str,
+    user_id: str = Depends(get_user_id),
+):
+    """Delete a document."""
+    deleted = await documents_service.delete_document(user_id, document_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
