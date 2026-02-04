@@ -8,7 +8,6 @@ import {
   FileText,
   Users,
   BookOpen,
-  CalendarClock,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -202,12 +201,12 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 auto-rows-[220px]">
-            {/* Linha 1: CRM Jurídico (2 cols) + Calendário de Prazos (1 col) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:grid-rows-[repeat(3,220px)]">
+            {/* Linha 1-2: CRM Jurídico (2 cols x 2 rows) + [IA (1 col, row 1) + Calculadora (1 col, row 2)] */}
             
-            {/* CRM Jurídico - Card Grande */}
+            {/* CRM Jurídico - Card Grande (Destaque Principal) */}
             <div
-              className={`md:col-span-2 md:row-span-1 group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-500 hover:shadow-2xl shadow-xl hover:scale-[1.02] border ${
+              className={`md:col-span-2 md:row-span-2 group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-500 hover:shadow-2xl shadow-xl hover:scale-[1.02] border ${
                 isDark ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-[#1e293b]'
               }`}
             >
@@ -290,44 +289,55 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* Calendário de Prazos */}
+            {/* IA Jurídica com Badge Dinâmico - Médio Destaque */}
             <div
-              className={`group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] border ${
+              className={`md:col-span-1 md:row-span-1 group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] border ${
                 isDark
                   ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
                   : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
-                      isDark
-                        ? 'bg-slate-700 border-slate-600'
-                        : 'bg-slate-100 border-slate-200'
-                    }`}
-                  >
-                    <CalendarClock
-                      className={`w-4 h-4 ${
-                        isDark ? 'text-slate-300' : 'text-slate-700'
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
+                        isDark
+                          ? 'bg-slate-700 border-slate-600'
+                          : 'bg-slate-100 border-slate-200'
                       }`}
-                      strokeWidth={1.5}
-                    />
+                    >
+                      <BrainCircuit
+                        className={`w-4 h-4 ${
+                          isDark ? 'text-slate-300' : 'text-slate-700'
+                        }`}
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                    <h3
+                      className={`text-base font-bold tracking-tight ${
+                        isDark ? 'text-slate-100' : 'text-slate-900'
+                      }`}
+                    >
+                      IA Jurídica
+                    </h3>
                   </div>
-                  <h3
-                    className={`text-base font-bold tracking-tight ${
-                      isDark ? 'text-slate-100' : 'text-slate-900'
+                  <span
+                    className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border flex-shrink-0 ${
+                      isDark
+                        ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                        : 'bg-green-50 text-green-700 border-green-200'
                     }`}
                   >
-                    Calendário de Prazos
-                  </h3>
+                    {availableAITools} Ferramentas
+                  </span>
                 </div>
                 <p
                   className={`text-sm leading-relaxed ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  Alertas automáticos de urgência com dashboard: hoje, próximos 7 dias, este mês.
+                  IA treinada para direito brasileiro. Elabore peças e analise documentos.
                 </p>
               </div>
               <div
@@ -336,23 +346,21 @@ export default function HomePage() {
                 }`}
               >
                 <Link
-                  to="/app/prazos"
+                  to="/app/ia"
                   className={`inline-flex items-center justify-between w-full text-sm font-semibold transition-colors group-hover:translate-x-1 duration-200 ${
                     isDark
                       ? 'text-slate-300 hover:text-slate-100'
                       : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
-                  Acessar <ArrowRight className="w-4 h-4" />
+                  Explorar IA <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             </div>
 
-            {/* Linha 2: Calculadoras (1 col) + IA Jurídica (2 cols) */}
-            
-            {/* Calculadoras */}
+            {/* Calculadoras - Médio Destaque */}
             <div
-              className={`group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] border ${
+              className={`md:col-span-1 md:row-span-1 group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] border ${
                 isDark
                   ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
                   : 'bg-white border-slate-200 hover:border-slate-300'
@@ -408,116 +416,46 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* IA Jurídica com Badge Dinâmico - Card Grande */}
-            <div
-              className={`md:col-span-2 group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] border ${
-                isDark
-                  ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${
-                        isDark
-                          ? 'bg-slate-700 border-slate-600'
-                          : 'bg-slate-100 border-slate-200'
-                      }`}
-                    >
-                      <BrainCircuit
-                        className={`w-5 h-5 ${
-                          isDark ? 'text-slate-300' : 'text-slate-700'
-                        }`}
-                        strokeWidth={1.5}
-                      />
-                    </div>
-                    <h3
-                      className={`text-lg font-bold tracking-tight ${
-                        isDark ? 'text-slate-100' : 'text-slate-900'
-                      }`}
-                    >
-                      IA Jurídica Especializada
-                    </h3>
-                  </div>
-                  <span
-                    className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border flex-shrink-0 ${
-                      isDark
-                        ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                        : 'bg-green-50 text-green-700 border-green-200'
-                    }`}
-                  >
-                    {availableAITools} Ferramentas
-                  </span>
-                </div>
-                <p
-                  className={`text-sm leading-relaxed ${
-                    isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}
-                >
-                  Automatize elaboração de peças, análise de documentos e pesquisa jurídica com IA
-                  treinada para o direito brasileiro.
-                </p>
-              </div>
-              <div
-                className={`pt-2 mt-auto border-t ${
-                  isDark ? 'border-slate-700' : 'border-slate-200'
-                }`}
-              >
-                <Link
-                  to="/app/ia"
-                  className={`inline-flex items-center justify-between w-full text-sm font-semibold transition-colors group-hover:translate-x-1 duration-200 ${
-                    isDark
-                      ? 'text-slate-300 hover:text-slate-100'
-                      : 'text-slate-700 hover:text-slate-900'
-                  }`}
-                >
-                  Explorar IA <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Linha 3: Blog Jurídico (2 cols) + Biblioteca Jurídica (1 col) */}
+            {/* Linha 3: Blog (2 cols) + Biblioteca (1 col) - Menor Destaque */}
             
-            {/* Blog + Newsletter - Card Grande */}
+            {/* Blog + Newsletter */}
             <div
-              className={`md:col-span-2 group relative overflow-hidden rounded-3xl p-6 flex flex-col transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] h-full border ${
+              className={`md:col-span-2 md:row-span-1 group relative overflow-hidden rounded-3xl p-5 flex flex-col transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.01] border ${
                 isDark
                   ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
                   : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div>
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-3 mb-2">
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
                       isDark
                         ? 'bg-slate-700 border-slate-600'
                         : 'bg-slate-100 border-slate-200'
                     }`}
                   >
                     <FileText
-                      className={`w-5 h-5 ${
+                      className={`w-4 h-4 ${
                         isDark ? 'text-slate-300' : 'text-slate-700'
                       }`}
                       strokeWidth={1.5}
                     />
                   </div>
                   <h3
-                    className={`text-lg font-bold tracking-tight ${
+                    className={`text-base font-bold tracking-tight ${
                       isDark ? 'text-slate-100' : 'text-slate-900'
                     }`}
                   >
-                    Blog Jurídico + Newsletter
+                    Blog + Newsletter
                   </h3>
                 </div>
                 <p
-                  className={`text-sm leading-relaxed mb-3 ${
+                  className={`text-xs leading-relaxed mb-2 ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  Notícias do meio jurídico, análises aprofundadas e atualizações sobre legislação.
+                  Notícias, análises e atualizações sobre legislação.
                 </p>
               </div>
 
@@ -526,20 +464,20 @@ export default function HomePage() {
                   isDark ? 'border-slate-700' : 'border-slate-200'
                 }`}
               >
-                <form onSubmit={handleNewsletterSubscribe} className="w-full max-w-2xl">
+                <form onSubmit={handleNewsletterSubscribe} className="w-full">
                   <label htmlFor="home-newsletter-email" className="sr-only">
                     Seu melhor e-mail
                   </label>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex gap-2">
                     <input
                       id="home-newsletter-email"
                       type="email"
                       inputMode="email"
                       autoComplete="email"
-                      placeholder="Seu melhor e-mail"
+                      placeholder="Seu e-mail"
                       value={newsletterEmail}
                       onChange={(e) => setNewsletterEmail(e.target.value)}
-                      className={`flex-1 px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+                      className={`flex-1 px-3 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
                         isDark
                           ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400 focus:bg-slate-600'
                           : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-500 focus:bg-white'
@@ -550,17 +488,17 @@ export default function HomePage() {
                     <button
                       type="submit"
                       disabled={isNewsletterSubmitting}
-                      className={`font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-md whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed text-sm ${
+                      className={`font-semibold py-1.5 px-3 rounded-lg transition-all duration-200 shadow-sm whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed text-xs ${
                         isDark
                           ? 'bg-white text-slate-900 hover:bg-slate-100'
                           : 'bg-slate-900 text-white hover:bg-slate-800'
                       }`}
                     >
-                      {isNewsletterSubmitting ? 'Inscrevendo…' : 'Inscrever-se'}
+                      {isNewsletterSubmitting ? 'Inscrevendo…' : 'Inscrever'}
                     </button>
                   </div>
                   <p
-                    className={`mt-1.5 text-[10px] ${
+                    className={`mt-1 text-[9px] ${
                       isDark ? 'text-slate-500' : 'text-slate-500'
                     }`}
                   >
@@ -570,9 +508,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Biblioteca Jurídica */}
+            {/* Biblioteca Jurídica - Menor Destaque */}
             <div
-              className={`group relative overflow-hidden rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] border ${
+              className={`md:col-span-1 md:row-span-1 group relative overflow-hidden rounded-3xl p-5 flex flex-col justify-between transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.01] border ${
                 isDark
                   ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
                   : 'bg-white border-slate-200 hover:border-slate-300'
