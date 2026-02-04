@@ -7,6 +7,8 @@ from src.features.core.blog.schemas import (
     BlogPostDetailResponse,
     BlogPostListResponse,
     BlogPostUpdate,
+    PublishPostRequest,
+    PublishPostResponse,
 )
 from src.features.core.blog.service import BlogService
 
@@ -78,12 +80,20 @@ async def add_coauthor(
     return await service.add_coauthor(user_id, user_role, post_id, data.user_id)
 
 
-@router.patch("/posts/{post_id}/publish")
+@router.patch("/posts/{post_id}/publish", response_model=PublishPostResponse)
 async def publish_post(
     post_id: str,
+    data: PublishPostRequest | None = None,
     user_role: str = Depends(get_user_role),
 ):
-    return await service.publish(user_role, post_id)
+    """
+    Publish a blog post.
+
+    Optionally notify newsletter subscribers about the new post by setting
+    `notify_subscribers: true` in the request body.
+    """
+    notify = data.notify_subscribers if data else False
+    return await service.publish(user_role, post_id, notify_subscribers=notify)
 
 
 @router.patch("/posts/{post_id}/restore")

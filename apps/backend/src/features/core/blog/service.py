@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 
+from src.core.email import send_new_blog_post_notification_bulk
+from src.core.logging import logger
 from src.core.supabase import get_supabase
 
 
@@ -545,7 +547,7 @@ class BlogService:
         except Exception:
             return {"added": False}
 
-    async def publish(self, user_role: str, post_id: str):
+    async def publish(self, user_role: str, post_id: str, notify_subscribers: bool = False):
         if user_role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -568,7 +570,17 @@ class BlogService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Falha ao publicar",
             )
-        return {"id": str(post_id), "status": "published"}
+
+        # Notify newsletter subscribers if requested
+        notifications_sent = 0
+        if notify_subscribers:
+            notifications_sent = await self._notify_subscribers(post_id)
+
+        return {
+            "id": str(post_id),
+            "status": "published",
+            "notifications_sent": notifications_sent,
+        }
 
     async def restore(self, user_role: str, post_id: str):
         if user_role != "admin":
@@ -619,3 +631,73 @@ class BlogService:
                 detail="Falha ao arquivar post",
             )
         return {"id": post_id, "deleted": True, "status": "archived"}
+
+    async def _notify_subscribers(self, post_id: str) -> int:
+        """
+        Notify newsletter subscribers about a new blog post.
+        Returns the number of notifications sent successfully.
+        """
+        # Get post details
+        post_res = (
+            self.supabase.table("blog_posts")
+            .select("id, title, slug, excerpt, category_id")
+            .eq("id", post_id)
+            .limit(1)
+            .execute()
+        )
+
+        if not post_res.data:
+            logger.warning(f"Post {post_id} not found for notification")
+            return 0
+
+        post = post_res.data[0]
+
+        # Get category name if available
+        category_name = None
+        if post.get("category_id"):
+            cat_res = (
+                self.supabase.table("blog_categories")
+                .select("name")
+                .eq("id", post["category_id"])
+                .limit(1)
+                .execute()
+            )
+            if cat_res.data:
+                category_name = cat_res.data[0].get("name")
+
+        # Get all active newsletter subscribers
+        subscribers_res = (
+            self.supabase.table("newsletter_subscriptions")
+            .select("id, email, name, confirmation_token")
+            .eq("status", "subscribed")
+            .execute()
+        )
+
+        if not subscribers_res.data:
+            logger.info("No newsletter subscribers to notify")
+            return 0
+
+        subscribers = subscribers_res.data
+        subscriber_emails = [sub["email"] for sub in subscribers]
+
+        # Send bulk email with all subscribers in BCC
+        try:
+            success = await send_new_blog_post_notification_bulk(
+                subscriber_emails=subscriber_emails,
+                post_title=post["title"],
+                post_excerpt=post.get("excerpt"),
+                post_slug=post["slug"],
+                category_name=category_name,
+            )
+
+            notifications_sent = len(subscriber_emails) if success else 0
+
+            logger.info(
+                f"Blog post notification: sent to {notifications_sent}/{len(subscribers)} subscribers "
+                f"for post '{post['title']}' (bulk BCC)"
+            )
+
+            return notifications_sent
+        except Exception as e:
+            logger.error(f"Failed to send bulk blog notification: {e}")
+            return 0

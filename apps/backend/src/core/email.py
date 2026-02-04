@@ -16,6 +16,7 @@ async def send_email(
     body: str,
     html_body: str | None = None,
     from_email: str | None = None,
+    bcc_emails: list[str] | None = None,
 ) -> bool:
     """
     Send an email using SendGrid.
@@ -26,6 +27,7 @@ async def send_email(
         body: Plain text body
         html_body: Optional HTML body
         from_email: Optional sender email (defaults to SENDGRID_FROM)
+        bcc_emails: Optional list of BCC recipients
 
     Returns:
         True if email was sent successfully, False otherwise
@@ -43,13 +45,17 @@ async def send_email(
     if html_body:
         content.append({"type": "text/html", "value": html_body})
 
+    personalization = {
+        "to": [{"email": to_email}],
+        "subject": subject,
+    }
+
+    # Add BCC recipients if provided
+    if bcc_emails:
+        personalization["bcc"] = [{"email": email} for email in bcc_emails]
+
     payload = {
-        "personalizations": [
-            {
-                "to": [{"email": to_email}],
-                "subject": subject,
-            }
-        ],
+        "personalizations": [personalization],
         "from": {"email": sender},
         "content": content,
     }
@@ -151,9 +157,7 @@ Equipe Processa AI
     return await send_email(to_email=user_email, subject=subject, body=body)
 
 
-async def send_payment_action_required(
-    user_email: str, invoice_url: str | None = None
-) -> bool:
+async def send_payment_action_required(user_email: str, invoice_url: str | None = None) -> bool:
     """Send email when payment requires action (e.g., 3D Secure)."""
     subject = "Ação necessária para completar seu pagamento - Processa AI"
 
@@ -195,3 +199,229 @@ Acesse o dashboard do Stripe para mais detalhes e responder à disputa.
 AÇÃO URGENTE NECESSÁRIA!
 """
     return await send_admin_notification(subject, body)
+
+
+# Blog notification templates
+
+
+def _build_unsubscribe_link(url: str | None, token: str | None) -> str:
+    """Build unsubscribe HTML link for email footer."""
+    if not token or not url:
+        return ""
+    return f'<p class="unsubscribe"><a href="{url}">Cancelar inscrição</a></p>'
+
+
+async def send_new_blog_post_notification(
+    to_email: str,
+    subscriber_name: str | None,
+    post_title: str,
+    post_excerpt: str | None,
+    post_slug: str,
+    category_name: str | None = None,
+    unsubscribe_token: str | None = None,
+) -> bool:
+    """Send notification email about a new blog post."""
+    subject = f"Novo artigo: {post_title} - Processa AI"
+
+    greeting = f"Olá{', ' + subscriber_name if subscriber_name else ''}!"
+
+    category_text = ""
+    if category_name:
+        category_text = f"\nCategoria: {category_name}\n"
+
+    excerpt_text = ""
+    if post_excerpt:
+        excerpt_text = f"\n{post_excerpt}\n"
+
+    post_url = f"{settings.FRONTEND_URL}/blog/{post_slug}"
+
+    unsubscribe_text = ""
+    if unsubscribe_token:
+        unsubscribe_url = f"{settings.FRONTEND_URL}/blog?unsubscribe={unsubscribe_token}"
+        unsubscribe_text = f"\n---\nPara cancelar sua inscrição na newsletter: {unsubscribe_url}"
+
+    body = f"""{greeting}
+
+Publicamos um novo artigo no blog do Processa AI que pode ser do seu interesse:
+
+{post_title}
+{category_text}{excerpt_text}
+Leia o artigo completo em: {post_url}
+
+Atenciosamente,
+Equipe Processa AI
+{unsubscribe_text}
+"""
+
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #1a365d; color: white; padding: 20px; text-align: center; }}
+        .content {{ padding: 20px; background-color: #f7fafc; }}
+        .post-title {{ font-size: 24px; color: #1a365d; margin-bottom: 10px; }}
+        .category {{ color: #718096; font-size: 14px; margin-bottom: 15px; }}
+        .excerpt {{ color: #4a5568; margin-bottom: 20px; }}
+        .cta-button {{
+            display: inline-block; background-color: #3182ce; color: white;
+            padding: 12px 24px; text-decoration: none; border-radius: 5px;
+        }}
+        .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #718096; }}
+        .unsubscribe {{ color: #a0aec0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Processa AI</h1>
+        </div>
+        <div class="content">
+            <p>{greeting}</p>
+            <p>Publicamos um novo artigo no blog que pode ser do seu interesse:</p>
+            <h2 class="post-title">{post_title}</h2>
+            {f'<p class="category">{category_name}</p>' if category_name else ""}
+            {f'<p class="excerpt">{post_excerpt}</p>' if post_excerpt else ""}
+            <p>
+                <a href="{post_url}" class="cta-button">Ler artigo completo</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>Atenciosamente,<br>Equipe Processa AI</p>
+            {_build_unsubscribe_link(unsubscribe_url, unsubscribe_token)}
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    return await send_email(
+        to_email=to_email,
+        subject=subject,
+        body=body,
+        html_body=html_body,
+    )
+
+
+async def send_new_blog_post_notification_bulk(
+    subscriber_emails: list[str],
+    post_title: str,
+    post_excerpt: str | None,
+    post_slug: str,
+    category_name: str | None = None,
+) -> bool:
+    """
+    Send notification email about a new blog post to multiple subscribers using BCC.
+    This sends a single email with all subscribers in BCC to improve performance.
+
+    Args:
+        subscriber_emails: List of subscriber email addresses
+        post_title: Title of the blog post
+        post_excerpt: Optional excerpt of the post
+        post_slug: Slug of the post for URL generation
+        category_name: Optional category name
+
+    Returns:
+        True if email was sent successfully, False otherwise
+    """
+    if not subscriber_emails:
+        logger.info("No subscribers to notify")
+        return False
+
+    subject = f"Novo artigo: {post_title} - Processa AI"
+
+    greeting = "Olá!"
+
+    category_text = ""
+    if category_name:
+        category_text = f"\nCategoria: {category_name}\n"
+
+    excerpt_text = ""
+    if post_excerpt:
+        excerpt_text = f"\n{post_excerpt}\n"
+
+    post_url = f"{settings.FRONTEND_URL}/blog/{post_slug}"
+
+    body = f"""{greeting}
+
+Publicamos um novo artigo no blog do Processa AI que pode ser do seu interesse:
+
+{post_title}
+{category_text}{excerpt_text}
+Leia o artigo completo em: {post_url}
+
+Atenciosamente,
+Equipe Processa AI
+"""
+
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #1a365d; color: white; padding: 20px; text-align: center; }}
+        .content {{ padding: 20px; background-color: #f7fafc; }}
+        .post-title {{ font-size: 24px; color: #1a365d; margin-bottom: 10px; }}
+        .category {{ color: #718096; font-size: 14px; margin-bottom: 15px; }}
+        .excerpt {{ color: #4a5568; margin-bottom: 20px; }}
+        .cta-button {{
+            display: inline-block; background-color: #3182ce; color: white;
+            padding: 12px 24px; text-decoration: none; border-radius: 5px;
+        }}
+        .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #718096; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Processa AI</h1>
+        </div>
+        <div class="content">
+            <p>{greeting}</p>
+            <p>Publicamos um novo artigo no blog que pode ser do seu interesse:</p>
+            <h2 class="post-title">{post_title}</h2>
+            {f'<p class="category">{category_name}</p>' if category_name else ""}
+            {f'<p class="excerpt">{post_excerpt}</p>' if post_excerpt else ""}
+            <p>
+                <a href="{post_url}" class="cta-button">Ler artigo completo</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>Atenciosamente,<br>Equipe Processa AI</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    # Use sender as TO and all subscribers as BCC
+    sender = settings.SENDGRID_FROM or settings.ADMIN_EMAIL
+
+    # SendGrid BCC limit is 1000 per request, split if needed
+    batch_size = 1000
+    total_sent = 0
+
+    for i in range(0, len(subscriber_emails), batch_size):
+        batch = subscriber_emails[i : i + batch_size]
+        success = await send_email(
+            to_email=sender,  # Sender receives the email visibly
+            subject=subject,
+            body=body,
+            html_body=html_body,
+            bcc_emails=batch,
+        )
+        if success:
+            total_sent += len(batch)
+            logger.info(
+                f"Sent blog notification to {len(batch)} subscribers (batch {i // batch_size + 1})"
+            )
+        else:
+            logger.error(f"Failed to send blog notification batch {i // batch_size + 1}")
+
+    return total_sent == len(subscriber_emails)

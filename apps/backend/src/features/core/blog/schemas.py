@@ -61,3 +61,13 @@ class BlogPostDetailResponse(BaseModel):
 
 class AddCoauthorRequest(BaseModel):
     user_id: str
+
+
+class PublishPostRequest(BaseModel):
+    notify_subscribers: bool = False
+
+
+class PublishPostResponse(BaseModel):
+    id: str
+    status: str
+    notifications_sent: int = 0
