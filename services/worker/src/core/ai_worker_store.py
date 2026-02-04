@@ -97,6 +97,28 @@ async def create_job(
             )
 
 
+async def get_endpoint_by_key(key: str) -> dict | None:
+    """
+    Busca um endpoint por key na tabela ai_worker.endpoints.
+    Retorna dict com dados do endpoint ou None se não encontrado.
+    """
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        row_factory = _get_dict_row()
+        async with conn.cursor(row_factory=row_factory) as cur:
+            await cur.execute(
+                (
+                    "select key, version, method, path, description, n8n_workflow_id, "
+                    "is_active, created_at, updated_at "
+                    "from ai_worker.endpoints "
+                    "where key = %s and is_active = true"
+                ),
+                (key,),
+            )
+            row = await cur.fetchone()
+            return row
+
+
 async def add_job_event(
     *,
     job_uuid: uuid.UUID,

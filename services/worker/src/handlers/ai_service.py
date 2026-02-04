@@ -435,7 +435,16 @@ class AiService:
         job_id: str | None = None,
         callback_url: str | None = None,
     ) -> dict:
-        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{settings.N8N_CNIS_WORKFLOW_ID}"
+        from src.core.ai_worker_store import get_endpoint_by_key
+
+        endpoint = await get_endpoint_by_key("cnis_analysis")
+        if not endpoint or not endpoint.get("n8n_workflow_id"):
+            raise WorkerException(
+                status_code=500,
+                detail="Endpoint cnis_analysis não configurado no banco de dados",
+            )
+
+        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{endpoint['n8n_workflow_id']}"
 
         auth = None
         if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:
@@ -628,7 +637,16 @@ class AiService:
         job_id: str | None = None,
         callback_url: str | None = None,
     ) -> dict:
-        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{settings.N8N_PROCESS_SUMMARY_WORKFLOW_ID}"
+        from src.core.ai_worker_store import get_endpoint_by_key
+
+        endpoint = await get_endpoint_by_key("process_summary")
+        if not endpoint or not endpoint.get("n8n_workflow_id"):
+            raise WorkerException(
+                status_code=500,
+                detail="Endpoint process_summary não configurado no banco de dados",
+            )
+
+        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{endpoint['n8n_workflow_id']}"
 
         auth = None
         if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:

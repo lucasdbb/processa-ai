@@ -19,8 +19,6 @@ class Settings(BaseSettings):
 
     # n8n Integration (for AI jobs)
     N8N_BASE_URL: str = "http://localhost:5678"
-    N8N_CNIS_WORKFLOW_ID: str = ""
-    N8N_PROCESS_SUMMARY_WORKFLOW_ID: str = ""
     N8N_AUTH_USER: str = ""
     N8N_AUTH_PASSWORD: str = ""
     N8N_TIMEOUT_S: int = 120
