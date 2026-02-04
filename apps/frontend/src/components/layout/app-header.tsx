@@ -141,20 +141,63 @@ export function AppHeader() {
         <div className="flex items-center gap-2">
           {/* Credits Display */}
           {credits && (
-            <div className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all group cursor-pointer">
-              <div className="relative">
-                <Coins className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
-                <Sparkles className="h-3 w-3 text-amber-400 absolute -top-1 -right-1 animate-pulse" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 leading-none">
-                  {credits.available_credits.toLocaleString('pt-BR')}
-                </span>
-                <span className="text-[10px] text-amber-600/70 dark:text-amber-400/70 leading-none">
-                  créditos
-                </span>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-full bg-muted/50 border border-border hover:bg-accent hover:border-foreground/20 transition-colors group"
+                  aria-label="Ver detalhes de créditos"
+                >
+                  <div className="relative text-amber-500">
+                    <Coins className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                    <Sparkles className="h-3 w-3 absolute -top-1 -right-1 text-amber-400/90" />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
+                    {credits.available_credits.toLocaleString('pt-BR')}
+                  </span>
+                  <span className="text-xs text-muted-foreground">créditos</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 p-0">
+                <div className="px-4 pt-4 pb-3 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                      <Coins className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Créditos</p>
+                      <p className="text-xs text-muted-foreground">Detalhes do seu saldo</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-4 py-3">
+                  <div className="rounded-xl border border-border bg-muted/40 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Total disponível</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {credits.total_credits.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Créditos usados</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {credits.used_credits.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-4">
+                  <Link
+                    to="/planos"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-foreground text-background text-sm font-semibold py-2.5 hover:opacity-90 transition-opacity"
+                  >
+                    Adquirir mais créditos
+                  </Link>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Toggle Tema */}

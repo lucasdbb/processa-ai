@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, ChevronDown, ChevronUp, Book, MessageCircle, Mail, Phone } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Book, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FAQItem {
@@ -14,16 +14,16 @@ const faqItems: FAQItem[] = [
   {
     id: '1',
     category: 'geral',
-    question: 'Como faço para começar a usar a plataforma?',
+    question: 'Por onde começo dentro do app?',
     answer:
-      'Após fazer login, você terá acesso ao dashboard principal. Recomendamos começar cadastrando seus clientes em "Clientes", depois registrar os processos em "Processos". Você também pode explorar as ferramentas de IA e calculadoras jurídicas disponíveis no menu lateral.',
+      'Após o login, você chega ao Dashboard. O fluxo recomendado é: cadastrar clientes, registrar processos e prazos, e organizar documentos. Em seguida, explore as ferramentas de IA Jurídica e as Calculadoras no menu lateral.',
   },
   {
     id: '2',
     category: 'geral',
-    question: 'Como funciona o sistema de notificações?',
+    question: 'Como funcionam as notificações e os prazos?',
     answer:
-      'O sistema envia notificações para prazos próximos do vencimento, atualizações de processos e quando novos documentos são gerados. Você pode visualizar todas as notificações clicando no ícone de sino no header e gerenciar suas preferências em Configurações.',
+      'Você recebe avisos de prazos, atualizações de processos e eventos importantes. Todas as notificações ficam no ícone de sino do header e as preferências podem ser ajustadas em Configurações.',
   },
   {
     id: '3',
@@ -37,23 +37,23 @@ const faqItems: FAQItem[] = [
   {
     id: '4',
     category: 'ia',
-    question: 'Como funciona a ferramenta de IA para petições?',
+    question: 'Como usar as ferramentas de IA Jurídica?',
     answer:
-      'Nossa IA foi treinada com milhares de peças processuais. Você fornece as informações básicas do caso (partes, fatos, pedidos) e a IA gera uma petição completa seguindo as normas técnicas e jurídicas. Você pode revisar e editar o documento antes de salvá-lo.',
+      'Acesse IA Jurídica no menu, escolha a ferramenta e envie as informações ou arquivos necessários. A IA gera análises e documentos com base nos dados fornecidos, e você pode revisar antes de salvar.',
   },
   {
     id: '5',
     category: 'ia',
-    question: 'A IA pode analisar documentos CNIS?',
+    question: 'A IA analisa CNIS e gera resumo processual?',
     answer:
-      'Sim! Você pode fazer upload de um arquivo CNIS e nossa IA fará a análise automática, identificando períodos contributivos, inconsistências, lacunas e sugerindo as melhores estratégias para ações previdenciárias.',
+      'Sim. Você pode enviar um PDF de CNIS para análise automática e também gerar resumos processuais com pontos-chave e inconsistências. O resultado fica disponível no próprio fluxo de trabalho.',
   },
   {
     id: '6',
     category: 'ia',
-    question: 'As respostas da IA têm validade jurídica?',
+    question: 'Como funcionam os créditos de IA?',
     answer:
-      'A IA é uma ferramenta de apoio que auxilia na redação e pesquisa, mas não substitui a análise jurídica profissional. Todos os documentos gerados devem ser revisados por um advogado antes de serem utilizados.',
+      'Cada execução de IA consome créditos. Os créditos da assinatura são renovados mensalmente e os créditos extras não expiram. Você pode acompanhar o consumo no painel da plataforma.',
   },
 
   // Calculadoras
@@ -62,14 +62,14 @@ const faqItems: FAQItem[] = [
     category: 'calculadoras',
     question: 'Quais calculadoras estão disponíveis?',
     answer:
-      'Atualmente oferecemos calculadoras de Rescisão Trabalhista e Aposentadoria. Em breve adicionaremos calculadoras para atualização de débitos, juros, honorários advocatícios e outras demandas comuns.',
+      'A lista de calculadoras fica na página de Calculadoras e é atualizada constantemente. O acesso pode variar por plano, então verifique as opções liberadas no seu perfil.',
   },
   {
     id: '8',
     category: 'calculadoras',
     question: 'Posso salvar os cálculos realizados?',
     answer:
-      'Sim! Todos os cálculos são automaticamente salvos e vinculados ao cliente correspondente. Você pode acessá-los posteriormente através da aba "Cálculos" no perfil do cliente ou na página de Calculadoras.',
+      'Sim. Os cálculos podem ficar vinculados ao cliente e são acessíveis depois na página de Calculadoras ou no perfil do cliente relacionado.',
   },
   {
     id: '9',
@@ -85,14 +85,14 @@ const faqItems: FAQItem[] = [
     category: 'processos',
     question: 'Como cadastro um novo processo?',
     answer:
-      'Clique em "Processos" no menu lateral e depois no botão "+ Novo processo". Preencha as informações básicas como número do processo, tipo, vara, partes envolvidas e valor da causa. Você pode adicionar documentos e prazos posteriormente.',
+      'Acesse "Processos" no menu lateral e clique em "+ Novo processo". Informe número, tipo, vara, partes e valor da causa. Depois, você pode anexar documentos e criar prazos vinculados.',
   },
   {
     id: '11',
     category: 'processos',
-    question: 'Como faço para acompanhar os prazos?',
+    question: 'Como acompanho prazos e alertas?',
     answer:
-      'Os prazos são exibidos na página "Prazos" do menu lateral, organizados cronologicamente. Você receberá notificações automáticas 7 dias antes, 3 dias antes e no dia do vencimento. Também pode visualizar os prazos de um processo específico na aba "Prazos" do detalhe do processo.',
+      'Os prazos ficam organizados na página "Prazos" e também dentro de cada processo. Você recebe notificações automáticas antes do vencimento para evitar perdas de prazo.',
   },
   {
     id: '12',
@@ -108,14 +108,14 @@ const faqItems: FAQItem[] = [
     category: 'documentos',
     question: 'Onde ficam salvos os documentos gerados?',
     answer:
-      'Todos os documentos gerados pela IA ou outras ferramentas são salvos automaticamente na seção "Documentos". Eles ficam organizados por data e tipo, e também podem ser acessados através do perfil do cliente ou processo relacionado.',
+      'Os documentos gerados ficam na seção "Documentos", organizados por data e tipo. Eles também podem ser acessados a partir do cliente ou processo relacionado.',
   },
   {
     id: '14',
     category: 'documentos',
-    question: 'Posso editar documentos gerados pela IA?',
+    question: 'Posso editar ou baixar os documentos?',
     answer:
-      'Sim! Após a geração, você pode editar o documento diretamente na plataforma ou fazer download para editar em seu editor preferido (Word, Google Docs, etc.).',
+      'Sim. Você pode editar o conteúdo diretamente na plataforma ou fazer download para ajustar no seu editor preferido antes de usar.',
   },
   {
     id: '15',
@@ -247,48 +247,20 @@ export default function AjudaPage() {
 
       {/* Contact Support */}
       <div className="bg-card border border-border rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Ainda precisa de ajuda?</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Nossa equipe de suporte está pronta para ajudá-lo
-        </p>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="max-w-xl mx-auto text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
+            <Mail className="h-6 w-6 text-primary" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground mb-2">Ainda precisa de ajuda?</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Nossa equipe responde por e-mail em até 24 horas úteis.
+          </p>
           <a
-            href="mailto:suporte@processa.ai"
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-slate-900/5 hover:border-slate-900/10 border border-transparent transition-all hover:shadow-sm"
+            href="mailto:suporte@processai.app.br"
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors"
           >
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Mail className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Email</p>
-              <p className="text-xs text-muted-foreground">suporte@processa.ai</p>
-            </div>
-          </a>
-          <a
-            href="https://wa.me/5511999999999"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-green-50 hover:border-green-200 border border-transparent transition-all hover:shadow-sm"
-          >
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <MessageCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">WhatsApp</p>
-              <p className="text-xs text-muted-foreground">(11) 99999-9999</p>
-            </div>
-          </a>
-          <a
-            href="tel:+551133333333"
-            className="flex items-center gap-3 p-4 bg-muted rounded-lg hover:bg-blue-50 hover:border-blue-200 border border-transparent transition-all hover:shadow-sm"
-          >
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Phone className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Telefone</p>
-              <p className="text-xs text-muted-foreground">(11) 3333-3333</p>
-            </div>
+            <Mail className="h-4 w-4" />
+            suporte@processai.app.br
           </a>
         </div>
       </div>
