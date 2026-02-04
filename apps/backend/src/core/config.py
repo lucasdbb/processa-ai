@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Email
     SENDGRID_API_KEY: str = ""
     SENDGRID_FROM: str = ""
-    ADMIN_EMAIL: str = ""
+    SUPPORT_EMAIL: str = ""
 
     # Webhook
     WEBHOOK_BASE_URL: str = ""

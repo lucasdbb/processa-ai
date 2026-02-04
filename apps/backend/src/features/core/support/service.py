@@ -2,8 +2,8 @@ import httpx
 from fastapi import HTTPException, status
 
 from src.core.config import settings
-from src.features.core.support.schemas import SupportContactRequest
 from src.core.supabase import get_supabase
+from src.features.core.support.schemas import SupportContactRequest
 
 
 class SupportService:
@@ -48,7 +48,7 @@ class SupportService:
 
         # Send notification email via SendGrid if configured
         try:
-            if settings.ADMIN_EMAIL and settings.SENDGRID_API_KEY:
+            if settings.SUPPORT_EMAIL and settings.SENDGRID_API_KEY:
                 body = (
                     f"Nome: {data.name}\n"
                     f"Email: {data.email}\n"
@@ -63,11 +63,11 @@ class SupportService:
                 payload = {
                     "personalizations": [
                         {
-                            "to": [{"email": settings.ADMIN_EMAIL}],
+                            "to": [{"email": settings.SUPPORT_EMAIL}],
                             "subject": f"Novo contato: {data.subject}",
                         }
                     ],
-                    "from": {"email": settings.SENDGRID_FROM or settings.ADMIN_EMAIL},
+                    "from": {"email": settings.SENDGRID_FROM},
                     "content": [{"type": "text/plain", "value": body}],
                 }
 

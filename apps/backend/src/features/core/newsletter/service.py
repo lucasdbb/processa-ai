@@ -62,7 +62,7 @@ class NewsletterService:
                 )
                 payload_email = {
                     "personalizations": [{"to": [{"email": email}], "subject": subject}],
-                    "from": {"email": settings.SENDGRID_FROM or settings.ADMIN_EMAIL or email},
+                    "from": {"email": settings.SENDGRID_FROM or email},
                     "content": [{"type": "text/plain", "value": body}],
                 }
                 headers = {

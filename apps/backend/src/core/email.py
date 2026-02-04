@@ -36,7 +36,7 @@ async def send_email(
         logger.warning("SendGrid API key not configured, skipping email")
         return False
 
-    sender = from_email or settings.SENDGRID_FROM or settings.ADMIN_EMAIL
+    sender = from_email or settings.SENDGRID_FROM
     if not sender:
         logger.warning("No sender email configured, skipping email")
         return False
@@ -81,19 +81,6 @@ async def send_email(
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
         return False
-
-
-async def send_admin_notification(subject: str, body: str) -> bool:
-    """Send notification email to admin."""
-    if not settings.ADMIN_EMAIL:
-        logger.warning("Admin email not configured, skipping notification")
-        return False
-
-    return await send_email(
-        to_email=settings.ADMIN_EMAIL,
-        subject=f"[Processa AI] {subject}",
-        body=body,
-    )
 
 
 # Billing-specific email templates
@@ -401,7 +388,7 @@ Equipe Processa AI
 """
 
     # Use sender as TO and all subscribers as BCC
-    sender = settings.SENDGRID_FROM or settings.ADMIN_EMAIL
+    sender = settings.SENDGRID_FROM
 
     # Remove sender from subscriber list to avoid duplication
     # (SendGrid requires unique emails between to, cc, and bcc)
