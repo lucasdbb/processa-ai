@@ -669,7 +669,7 @@ class BlogService:
         subscribers_res = (
             self.supabase.table("newsletter_subscriptions")
             .select("id, email, name, confirmation_token")
-            .eq("status", "subscribed")
+            .eq("status", "active")
             .execute()
         )
 

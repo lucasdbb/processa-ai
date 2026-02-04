@@ -73,7 +73,7 @@ export const authService = {
   },
 
   async updateProfile(data: UpdateProfileData): Promise<User> {
-    const response = await fetchWithCredentials(`${API_URL}/users/profile`, {
+    const response = await fetchWithCredentials(`${API_URL}/users/me`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

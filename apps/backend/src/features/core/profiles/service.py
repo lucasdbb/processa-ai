@@ -69,8 +69,6 @@ class ProfilesService:
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
                 "phone": None,
-                "document_type": None,
-                "document_number": None,
                 "newsletter_opt_in": newsletter_opt_in,
                 "confirmed_at": confirmed_at,
                 "created_at": profile["created_at"],
@@ -103,10 +101,6 @@ class ProfilesService:
                 db_update["avatar_url"] = update_data["avatar_url"]
             if "phone" in update_data:
                 db_update["phone"] = update_data["phone"]
-            if "document_type" in update_data:
-                db_update["document_type"] = update_data["document_type"]
-            if "document_number" in update_data:
-                db_update["document_number"] = update_data["document_number"]
 
             if db_update:
                 response = (
@@ -126,10 +120,10 @@ class ProfilesService:
 
             # Update newsletter if requested
             if newsletter_opt_in is not None:
-                await self._update_newsletter_status(user_id, profile["email"], newsletter_opt_in)
+                await self._update_newsletter_status(profile["email"], newsletter_opt_in)
 
             # Get current newsletter status
-            current_newsletter_opt_in = await self._get_newsletter_status(user_id)
+            current_newsletter_opt_in = await self._get_newsletter_status(profile["email"])
 
             return {
                 "id": profile["id"],
@@ -138,17 +132,18 @@ class ProfilesService:
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
                 "phone": profile.get("phone"),
-                "document_type": profile.get("document_type"),
-                "document_number": profile.get("document_number"),
                 "newsletter_opt_in": current_newsletter_opt_in,
                 "created_at": profile["created_at"],
             }
         except HTTPException:
             raise
-        except Exception:
+        except Exception as e:
+            from src.core.logging import logger
+
+            logger.error(f"Error updating profile: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Erro ao atualizar perfil",
+                detail=f"Erro ao atualizar perfil: {str(e)}",
             )
 
     async def list_profiles(self, limit: int = 50, offset: int = 0) -> list[dict]:
@@ -229,47 +224,44 @@ class ProfilesService:
                 detail="Erro ao atualizar role",
             )
 
-    async def _get_newsletter_status(self, user_id: str) -> bool:
+    async def _get_newsletter_status(self, email: str) -> bool:
         """Check if user is subscribed to newsletter."""
         try:
             newsletter_res = (
                 self.supabase.table("newsletter_subscriptions")
                 .select("status")
-                .eq("user_id", user_id)
-                .eq("status", "subscribed")
+                .eq("email", email)
+                .eq("status", "active")
                 .execute()
             )
             return bool(newsletter_res.data)
         except Exception:
             return False
 
-    async def _update_newsletter_status(self, user_id: str, email: str, opt_in: bool) -> None:
+    async def _update_newsletter_status(self, email: str, opt_in: bool) -> None:
         """Update newsletter subscription status."""
         try:
             if opt_in:
                 existing = (
                     self.supabase.table("newsletter_subscriptions")
                     .select("id")
-                    .eq("user_id", user_id)
+                    .eq("email", email)
                     .execute()
                 )
+
                 if existing.data:
                     self.supabase.table("newsletter_subscriptions").update(
                         {
-                            "status": "subscribed",
+                            "status": "active",
                             "confirmed_at": datetime.now(timezone.utc).isoformat(),
-                            "consent": True,
                         }
                     ).eq("id", existing.data[0]["id"]).execute()
                 else:
                     self.supabase.table("newsletter_subscriptions").insert(
                         {
-                            "user_id": user_id,
                             "email": email,
-                            "status": "subscribed",
+                            "status": "active",
                             "confirmed_at": datetime.now(timezone.utc).isoformat(),
-                            "consent": True,
-                            "channel": "email",
                         }
                     ).execute()
             else:
@@ -278,9 +270,12 @@ class ProfilesService:
                         "status": "unsubscribed",
                         "unsubscribed_at": datetime.now(timezone.utc).isoformat(),
                     }
-                ).eq("user_id", user_id).execute()
-        except Exception:
-            pass
+                ).eq("email", email).execute()
+        except Exception as e:
+            from src.core.logging import logger
+
+            logger.error(f"Error updating newsletter status: {str(e)}")
+            raise
 
     async def delete_account(self, user_id: str) -> dict:
         """Delete user account and all related data."""

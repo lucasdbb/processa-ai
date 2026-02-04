@@ -1,16 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { X, Camera } from 'lucide-react'
 import { toast } from 'sonner'
-import type { User, DocumentType } from '../types'
+import type { User } from '../types'
 import {
   phoneMask,
   removePhoneMask,
   isValidPhone,
-  cpfMask,
-  cnpjMask,
-  removeDocumentMask,
-  isValidCpf,
-  isValidCnpj,
 } from '@/lib/masks'
 import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '../services/auth-service'
@@ -25,16 +20,10 @@ interface ProfileModalProps {
 export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: ProfileModalProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [documentType, setDocumentType] = useState<DocumentType>(user.document_type || 'cpf')
   const [formData, setFormData] = useState({
     name: user.name || '',
     email: user.email,
     phone: user.phone ? phoneMask(user.phone) : '',
-    documentNumber: user.document_number
-      ? user.document_type === 'cnpj'
-        ? cnpjMask(user.document_number)
-        : cpfMask(user.document_number)
-      : '',
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -68,19 +57,12 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
       let processedValue = value
       if (name === 'phone') {
         processedValue = phoneMask(value)
-      } else if (name === 'documentNumber') {
-        processedValue = documentType === 'cpf' ? cpfMask(value) : cnpjMask(value)
       }
 
       setFormData((prev) => ({ ...prev, [name]: processedValue }))
     },
-    [documentType]
+    []
   )
-
-  const handleDocumentTypeChange = useCallback((type: DocumentType) => {
-    setDocumentType(type)
-    setFormData((prev) => ({ ...prev, documentNumber: '' }))
-  }, [])
 
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -112,13 +94,10 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
 
       try {
         const cleanPhone = removePhoneMask(formData.phone)
-        const cleanDocument = removeDocumentMask(formData.documentNumber)
 
         const updateData = {
           name: formData.name,
           phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
-          document_type: documentType,
-          document_number: cleanDocument.trim() === '' ? undefined : cleanDocument,
           newsletter_opt_in: newsletterCheckboxRef.current?.checked || false,
           avatar_url: avatarPreview || undefined,
         }
@@ -135,21 +114,15 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
         setIsLoading(false)
       }
     },
-    [formData, avatarPreview, onUpdateProfile, documentType]
+    [formData, avatarPreview, onUpdateProfile]
   )
 
   const handleCancel = useCallback(() => {
     setIsEditing(false)
-    setDocumentType(user.document_type || 'cpf')
     setFormData({
       name: user.name || '',
       email: user.email,
       phone: user.phone ? phoneMask(user.phone) : '',
-      documentNumber: user.document_number
-        ? user.document_type === 'cnpj'
-          ? cnpjMask(user.document_number)
-          : cpfMask(user.document_number)
-        : '',
     })
     setAvatarPreview(null)
     if (newsletterCheckboxRef.current) {
@@ -266,54 +239,6 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                           : 'border-input focus:ring-primary'
                   }`}
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Documento
-                </label>
-                <div className="flex gap-2">
-                  {isEditing && (
-                    <div className="flex bg-muted p-0.5 rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => handleDocumentTypeChange('cpf')}
-                        className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
-                          documentType === 'cpf' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
-                        }`}
-                      >
-                        CPF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDocumentTypeChange('cnpj')}
-                        className={`px-2 py-1 rounded-md font-medium text-[10px] transition-all ${
-                          documentType === 'cnpj' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
-                        }`}
-                      >
-                        CNPJ
-                      </button>
-                    </div>
-                  )}
-                  <input
-                    type="text"
-                    id="documentNumber"
-                    name="documentNumber"
-                    value={formData.documentNumber}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all flex-1 ${
-                      !isEditing
-                        ? 'bg-muted text-muted-foreground border-input'
-                        : formData.documentNumber && (documentType === 'cpf' ? !isValidCpf(formData.documentNumber) : !isValidCnpj(formData.documentNumber))
-                          ? 'border-destructive focus:ring-destructive'
-                          : formData.documentNumber && (documentType === 'cpf' ? isValidCpf(formData.documentNumber) : isValidCnpj(formData.documentNumber))
-                            ? 'border-green-500 focus:ring-green-500'
-                            : 'border-input focus:ring-primary'
-                    }`}
-                  />
-                </div>
               </div>
 
               <div className="md:col-span-2">

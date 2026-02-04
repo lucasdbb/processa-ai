@@ -13,8 +13,6 @@ class UserProfile(BaseModel):
     role: str = "user"
     avatar_url: str | None = None
     phone: str | None = None
-    document_type: str | None = None
-    document_number: str | None = None
     newsletter_opt_in: bool = False
     confirmed_at: str | None = None
     created_at: datetime
@@ -31,8 +29,6 @@ class UpdateProfile(BaseModel):
     name: str | None = None
     avatar_url: str | None = None
     phone: str | None = None
-    document_type: str | None = Field(default=None, alias="documentType")
-    document_number: str | None = Field(default=None, alias="documentNumber")
     newsletter_opt_in: bool | None = None
 
 

@@ -26,28 +26,16 @@ class NewsletterService:
                 detail="Consentimento necessário",
             )
 
-        # Tentar encontrar usuário existente pelo email se user_id não for fornecido
-        if not user_id:
-            try:
-                # Buscar na tabela de perfis pública primeiro
-                profile_res = (
-                    self.supabase.table("profiles").select("id").eq("email", email).execute()
-                )
-                if profile_res.data:
-                    user_id = profile_res.data[0]["id"]
-            except Exception:
-                pass
-
         token = secrets.token_urlsafe(32)
+
+        # Campos válidos na tabela newsletter_subscriptions
         payload = {
-            "user_id": user_id,
             "email": email,
-            "topics": topics,
-            "channel": channel,
-            "consent": consent,
-            "confirmation_token": token,
+            "topics": topics or [],
             "status": "pending",
+            "confirmation_token": token,
         }
+
         try:
             res = self.supabase.table("newsletter_subscriptions").insert(payload).execute()
             if not res.data:

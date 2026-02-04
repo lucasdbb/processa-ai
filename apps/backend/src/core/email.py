@@ -403,12 +403,16 @@ Equipe Processa AI
     # Use sender as TO and all subscribers as BCC
     sender = settings.SENDGRID_FROM or settings.ADMIN_EMAIL
 
+    # Remove sender from subscriber list to avoid duplication
+    # (SendGrid requires unique emails between to, cc, and bcc)
+    unique_subscribers = [email for email in subscriber_emails if email.lower() != sender.lower()]
+
     # SendGrid BCC limit is 1000 per request, split if needed
     batch_size = 1000
     total_sent = 0
 
-    for i in range(0, len(subscriber_emails), batch_size):
-        batch = subscriber_emails[i : i + batch_size]
+    for i in range(0, len(unique_subscribers), batch_size):
+        batch = unique_subscribers[i : i + batch_size]
         success = await send_email(
             to_email=sender,  # Sender receives the email visibly
             subject=subject,
@@ -424,4 +428,4 @@ Equipe Processa AI
         else:
             logger.error(f"Failed to send blog notification batch {i // batch_size + 1}")
 
-    return total_sent == len(subscriber_emails)
+    return total_sent == len(unique_subscribers)

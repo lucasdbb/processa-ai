@@ -5,16 +5,10 @@ import { Bell, Shield, CreditCard, Palette, Camera, Check, Loader2, ChevronDown,
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import type { DocumentType } from '@/features/auth/types'
 import {
   phoneMask,
   removePhoneMask,
   isValidPhone,
-  cpfMask,
-  cnpjMask,
-  removeDocumentMask,
-  isValidCpf,
-  isValidCnpj,
 } from '@/lib/masks'
 import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '@/features/auth/services/auth-service'
@@ -68,15 +62,9 @@ export default function ConfiguracoesPage() {
   // Profile editing state
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [documentType, setDocumentType] = useState<DocumentType>(user?.document_type || 'cpf')
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone ? phoneMask(user.phone) : '',
-    documentNumber: user?.document_number
-      ? user.document_type === 'cnpj'
-        ? cnpjMask(user.document_number)
-        : cpfMask(user.document_number)
-      : '',
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -135,19 +123,12 @@ export default function ConfiguracoesPage() {
       let processedValue = value
       if (name === 'phone') {
         processedValue = phoneMask(value)
-      } else if (name === 'documentNumber') {
-        processedValue = documentType === 'cpf' ? cpfMask(value) : cnpjMask(value)
       }
 
       setFormData((prev) => ({ ...prev, [name]: processedValue }))
     },
-    [documentType]
+    []
   )
-
-  const handleDocumentTypeChange = useCallback((type: DocumentType) => {
-    setDocumentType(type)
-    setFormData((prev) => ({ ...prev, documentNumber: '' }))
-  }, [])
 
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -179,13 +160,10 @@ export default function ConfiguracoesPage() {
 
       try {
         const cleanPhone = removePhoneMask(formData.phone)
-        const cleanDocument = removeDocumentMask(formData.documentNumber)
 
         const updateData = {
           name: formData.name,
           phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
-          document_type: documentType,
-          document_number: cleanDocument.trim() === '' ? undefined : cleanDocument,
           newsletter_opt_in: newsletterCheckboxRef.current?.checked || false,
           avatar_url: avatarPreview || undefined,
         }
@@ -203,20 +181,14 @@ export default function ConfiguracoesPage() {
         setIsLoading(false)
       }
     },
-    [formData, avatarPreview, setUser, documentType]
+    [formData, avatarPreview, setUser]
   )
 
   const handleCancel = useCallback(() => {
     setIsEditing(false)
-    setDocumentType(user?.document_type || 'cpf')
     setFormData({
       name: user?.name || '',
       phone: user?.phone ? phoneMask(user.phone) : '',
-      documentNumber: user?.document_number
-        ? user.document_type === 'cnpj'
-          ? cnpjMask(user.document_number)
-          : cpfMask(user.document_number)
-        : '',
     })
     setAvatarPreview(null)
     if (newsletterCheckboxRef.current) {
@@ -502,58 +474,6 @@ export default function ConfiguracoesPage() {
                             : 'border-input focus:ring-primary bg-background'
                     )}
                   />
-                </div>
-
-                {/* Documento */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    Documento
-                  </label>
-                  <div className="flex gap-2">
-                    {isEditing && (
-                      <div className="flex bg-muted p-0.5 rounded-lg">
-                        <button
-                          type="button"
-                          onClick={() => handleDocumentTypeChange('cpf')}
-                          className={cn(
-                            'px-2 py-1.5 rounded-md font-medium text-xs transition-all',
-                            documentType === 'cpf' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
-                          )}
-                        >
-                          CPF
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDocumentTypeChange('cnpj')}
-                          className={cn(
-                            'px-2 py-1.5 rounded-md font-medium text-xs transition-all',
-                            documentType === 'cnpj' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
-                          )}
-                        >
-                          CNPJ
-                        </button>
-                      </div>
-                    )}
-                    <input
-                      type="text"
-                      id="documentNumber"
-                      name="documentNumber"
-                      value={formData.documentNumber}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder={documentType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
-                      className={cn(
-                        'flex-1 px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all',
-                        !isEditing
-                          ? 'bg-muted text-muted-foreground border-input cursor-not-allowed'
-                          : formData.documentNumber && (documentType === 'cpf' ? !isValidCpf(formData.documentNumber) : !isValidCnpj(formData.documentNumber))
-                            ? 'border-destructive focus:ring-destructive bg-background'
-                            : formData.documentNumber && (documentType === 'cpf' ? isValidCpf(formData.documentNumber) : isValidCnpj(formData.documentNumber))
-                              ? 'border-green-500 focus:ring-green-500 bg-background'
-                              : 'border-input focus:ring-primary bg-background'
-                      )}
-                    />
-                  </div>
                 </div>
 
                 {/* Membro desde */}
