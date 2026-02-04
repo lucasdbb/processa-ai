@@ -28,7 +28,7 @@ export function Footer() {
             </Link>
             <span className="hidden md:block w-px h-4 bg-muted"></span>
             <p className="text-sm text-muted-foreground">
-              © 2025. Todos os direitos reservados.
+              © 2026. Todos os direitos reservados.
             </p>
           </div>
 

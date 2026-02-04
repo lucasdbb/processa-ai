@@ -111,7 +111,7 @@ export default function SobrePage() {
                 loading="lazy"
               />
               <div className="absolute -bottom-6 -left-6 bg-slate-900 text-white p-8 rounded-[1.5rem] shadow-xl transform transition-transform duration-300 group-hover:scale-105">
-                <p className="text-4xl font-bold mb-1">2025</p>
+                <p className="text-4xl font-bold mb-1">2026</p>
                 <p className="text-sm text-white/80 font-medium tracking-wide uppercase">Ano de Fundação</p>
               </div>
             </div>
