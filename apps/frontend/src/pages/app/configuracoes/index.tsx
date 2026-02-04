@@ -306,6 +306,7 @@ export default function ConfiguracoesPage() {
       past_due: { text: 'Pagamento pendente', color: 'text-yellow-600 dark:text-yellow-500' },
       canceled: { text: 'Cancelada', color: 'text-red-600 dark:text-red-500' },
       incomplete: { text: 'Incompleta', color: 'text-orange-600 dark:text-orange-500' },
+      paused: { text: 'Pausada', color: 'text-gray-600 dark:text-gray-500' },
       none: { text: 'Nenhuma', color: 'text-muted-foreground' },
     }
     return labels[status] || labels.none
