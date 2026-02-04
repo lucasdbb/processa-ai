@@ -4,9 +4,7 @@ import {
   Eye,
   HeadphonesIcon,
   Heart,
-  Linkedin,
   Mail,
-  Phone,
   Shield,
   Target,
   Zap,
@@ -285,47 +283,34 @@ export default function SobrePage() {
         </section>
 
         <section>
-          <div className="bg-card rounded-[2rem] shadow-xl border border-border p-8 md:p-12 text-center">
-            <h2 className="text-2xl font-bold text-foreground mb-4 tracking-tight">Entre em Contato</h2>
-            <p className="text-base text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Tem alguma dúvida ou sugestão? Estamos sempre prontos para ouvir você e melhorar ainda
-              mais nossa plataforma.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] shadow-2xl p-8 md:p-16 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+            
+            <div className="relative z-10">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-2xl mb-6 backdrop-blur-sm">
+                <Mail className="h-10 w-10 text-white" strokeWidth={1.5} />
+              </div>
+              
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
+                Entre em Contato
+              </h2>
+              
+              <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed">
+                Tem alguma dúvida ou sugestão? Estamos sempre prontos para ouvir você e melhorar ainda mais nossa plataforma.
+              </p>
+              
               <a
-                href="mailto:contato@processaai.com"
-                className="flex flex-col items-center justify-center p-6 rounded-xl bg-muted/50 border border-border hover:bg-card hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
+                href="mailto:suporte@processai.app.br"
+                className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-xl font-semibold hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl group"
               >
-                <div className="w-12 h-12 bg-background rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Mail className="h-6 w-6 text-foreground" strokeWidth={1.5} />
-                </div>
-                <p className="font-bold text-foreground mb-1 text-sm">E-mail</p>
-                <p className="text-xs text-muted-foreground">contato@processaai.com</p>
+                <Mail className="h-5 w-5 group-hover:rotate-12 transition-transform" />
+                <span className="text-lg">suporte@processai.app.br</span>
               </a>
-
-              <a
-                href="tel:+5511999999999"
-                className="flex flex-col items-center justify-center p-6 rounded-xl bg-muted/50 border border-border hover:bg-card hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
-              >
-                <div className="w-12 h-12 bg-background rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Phone className="h-6 w-6 text-foreground" strokeWidth={1.5} />
-                </div>
-                <p className="font-bold text-foreground mb-1 text-sm">Telefone</p>
-                <p className="text-xs text-muted-foreground">(11) 99999-9999</p>
-              </a>
-
-              <a
-                href="https://linkedin.com/company/processa-ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center p-6 rounded-xl bg-muted/50 border border-border hover:bg-card hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
-              >
-                <div className="w-12 h-12 bg-background rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Linkedin className="h-6 w-6 text-foreground" strokeWidth={1.5} />
-                </div>
-                <p className="font-bold text-foreground mb-1 text-sm">LinkedIn</p>
-                <p className="text-xs text-muted-foreground">Siga-nos</p>
-              </a>
+              
+              <p className="text-sm text-white/60 mt-6">
+                Respondemos em até 24 horas úteis
+              </p>
             </div>
           </div>
         </section>

@@ -47,12 +47,17 @@ const faqs = [
   {
     question: 'O plano Estudante exige comprovação?',
     answer:
-      'No lançamento, podemos solicitar comprovação simples (ex.: e-mail institucional) para ativação ou renovação do desconto.',
+      'Não, apenas não inclui as funcionalidades de Gestão.',
   },
   {
     question: 'Como funciona o limite da IA?',
     answer:
-      'Cada plano tem um limite mensal de uso. Ao atingir o limite, você pode aguardar a renovação ou fazer upgrade.',
+      'A plataforma é baseada em créditos, cada utilização consome créditos para utilização. Você pode monitorar seu consumo e adquirir créditos extras conforme necessário.',
+  },
+  {
+    question: 'Os créditos expiram ou acumulam?',
+    answer:
+      'Existem dois tipos de créditos: os inclusos na assinatura, que são renovados mensalmente (não acumulam), e os créditos extras adquiridos separadamente, que nunca expiram e podem ser usados a qualquer momento.',
   },
 ]
 
@@ -60,7 +65,7 @@ export default function PlanosPage() {
   const navigate = useNavigate()
   const { user } = useUser()
   const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0)
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   const [apiPlans, setApiPlans] = useState<ApiPlan[] | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
 

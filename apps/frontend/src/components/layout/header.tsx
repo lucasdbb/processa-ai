@@ -40,6 +40,7 @@ export function Header({ onLoginClick }: HeaderProps) {
   const [aiTools, setAiTools] = useState<AiTool[]>([])
   const [calculators, setCalculators] = useState<CalculatorItem[]>([])
   const recursosRef = useRef<HTMLDivElement>(null)
+  const closeTimeoutRef = useRef<number | null>(null)
   const location = useLocation()
   const { user, isAuthenticated, isLoading } = useUser()
   const { resolvedTheme, setTheme } = useTheme()
@@ -192,9 +193,17 @@ export function Header({ onLoginClick }: HeaderProps) {
               {recursosOpen && (
                 <div
                   className="absolute top-full left-0 mt-1"
+                  onMouseEnter={() => {
+                    if (closeTimeoutRef.current) {
+                      clearTimeout(closeTimeoutRef.current)
+                      closeTimeoutRef.current = null
+                    }
+                  }}
                   onMouseLeave={() => {
-                    setRecursosOpen(false)
-                    setActiveSubmenu(null)
+                    closeTimeoutRef.current = setTimeout(() => {
+                      setRecursosOpen(false)
+                      setActiveSubmenu(null)
+                    }, 150)
                   }}
                 >
                   {/* Menu Principal */}
@@ -207,14 +216,12 @@ export function Header({ onLoginClick }: HeaderProps) {
                         return (
                           <button
                             key={item.name}
-                            onMouseEnter={() => setActiveSubmenu(item.name)}
-                            onMouseLeave={(e) => {
-                              // Só fecha se estiver saindo completamente do menu
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              const movingRight = e.clientX > rect.right
-                              if (!movingRight) {
-                                setActiveSubmenu(null)
+                            onMouseEnter={() => {
+                              if (closeTimeoutRef.current) {
+                                clearTimeout(closeTimeoutRef.current)
+                                closeTimeoutRef.current = null
                               }
+                              setActiveSubmenu(item.name)
                             }}
                             className={cn(
                               'w-full flex items-start justify-between gap-3 px-4 py-3 hover:bg-muted transition-colors',
@@ -253,12 +260,21 @@ export function Header({ onLoginClick }: HeaderProps) {
                     })}
                   </div>
 
-                  {/* Submenu Lateral Independente */}
+                  {/* Submenu Lateral com espaçamento reduzido */}
                   {activeSubmenu && (
                     <div 
-                      className="absolute left-full top-0 ml-1 w-64 py-2 bg-background border border-border rounded-xl shadow-xl"
-                      onMouseEnter={() => setActiveSubmenu(activeSubmenu)}
-                      onMouseLeave={() => setActiveSubmenu(null)}
+                      className="absolute left-full top-0 -ml-1 w-64 py-2 bg-background border border-border rounded-xl shadow-xl"
+                      onMouseEnter={() => {
+                        if (closeTimeoutRef.current) {
+                          clearTimeout(closeTimeoutRef.current)
+                          closeTimeoutRef.current = null
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        closeTimeoutRef.current = setTimeout(() => {
+                          setActiveSubmenu(null)
+                        }, 150)
+                      }}
                     >
                       {recursos
                         .find((r) => r.name === activeSubmenu)
