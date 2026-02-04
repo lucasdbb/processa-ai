@@ -17,7 +17,6 @@ class Settings(BaseSettings):
 
     # Supabase
     SUPABASE_URL: str = ""
-    SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_OUTPUTS_BUCKET: str = "supabase-outputs"
 
@@ -33,8 +32,6 @@ class Settings(BaseSettings):
     # Google Integration
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/calendar/callback"
-    ENCRYPTION_KEY: str = ""
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"
@@ -44,9 +41,6 @@ class Settings(BaseSettings):
     SENDGRID_API_KEY: str = ""
     SENDGRID_FROM: str = ""
     SUPPORT_EMAIL: str = ""
-
-    # Webhook
-    WEBHOOK_BASE_URL: str = ""
 
 
 settings = Settings()

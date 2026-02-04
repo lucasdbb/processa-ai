@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     N8N_BASE_URL: str = "http://localhost:5678"
     N8N_CNIS_WORKFLOW_ID: str = ""
     N8N_PROCESS_SUMMARY_WORKFLOW_ID: str = ""
-    N8N_FILE_FIELD_NAME: str = "data"
     N8N_AUTH_USER: str = ""
     N8N_AUTH_PASSWORD: str = ""
     N8N_TIMEOUT_S: int = 120
@@ -29,7 +28,6 @@ class Settings(BaseSettings):
     # Google Integration (for office jobs)
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    ENCRYPTION_KEY: str = ""
 
     # Callback URL for n8n progress updates
     AI_WORKER_CALLBACK_BASE_URL: str = ""

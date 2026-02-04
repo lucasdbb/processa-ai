@@ -21,9 +21,9 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:8000}
-        - VITE_INTERNAL_TOKEN=${INTERNAL_TOKEN}
-        - VITE_SUPABASE_URL=${SUPABASE_URL}
-        - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+        - VITE_INTERNAL_TOKEN=${VITE_INTERNAL_TOKEN}
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
     ports:
       - "5173:80"
     networks:
@@ -47,7 +47,6 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       # Supabase
       - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_OUTPUTS_BUCKET=${SUPABASE_OUTPUTS_BUCKET}
       # Stripe
@@ -60,17 +59,13 @@ services:
       # Google
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/v1/calendar/callback}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       # Frontend
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
       # Email
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - SENDGRID_FROM=${SENDGRID_FROM}
-      - ADMIN_EMAIL=${ADMIN_EMAIL}
-      # Webhook
-      - WEBHOOK_BASE_URL=${WEBHOOK_BASE_URL}
+      - SUPPORT_EMAIL=${SUPPORT_EMAIL}
     networks:
       - processa-network
     depends_on:
@@ -100,14 +95,12 @@ services:
       - N8N_BASE_URL=${N8N_BASE_URL}
       - N8N_CNIS_WORKFLOW_ID=${N8N_CNIS_WORKFLOW_ID}
       - N8N_PROCESS_SUMMARY_WORKFLOW_ID=${N8N_PROCESS_SUMMARY_WORKFLOW_ID}
-      - N8N_FILE_FIELD_NAME=${N8N_FILE_FIELD_NAME:-data}
       - N8N_AUTH_USER=${N8N_AUTH_USER}
       - N8N_AUTH_PASSWORD=${N8N_AUTH_PASSWORD}
       - N8N_TIMEOUT_S=${N8N_TIMEOUT_S:-120}
       # Google (for office jobs)
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       # Callback
       - AI_WORKER_CALLBACK_BASE_URL=http://backend:8000
       - PORT=8001
