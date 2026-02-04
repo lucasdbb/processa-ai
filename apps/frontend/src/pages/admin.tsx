@@ -184,6 +184,8 @@ export default function AdminPage() {
   const [isSavingMaterial, setIsSavingMaterial] = useState(false)
   const [archivePostId, setArchivePostId] = useState<string | null>(null)
   const [deleteMaterialId, setDeleteMaterialId] = useState<string | null>(null)
+  const [publishPostId, setPublishPostId] = useState<string | null>(null)
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !isAdmin && !isAuthor) {
@@ -329,7 +331,7 @@ export default function AdminPage() {
     }
   }
 
-  const handlePublishPost = async (postId: string) => {
+  const handlePublishPost = async (postId: string, notifySubscribers: boolean = false) => {
     if (!isAdmin) {
       toast.error('Apenas admin pode publicar posts')
       return
@@ -337,13 +339,23 @@ export default function AdminPage() {
     try {
       const res = await fetchWithCredentials(`${API_URL}/blog/posts/${postId}/publish`, {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notify_subscribers: notifySubscribers }),
       })
       if (!res.ok) throw new Error(await extractErrorMessage(res, 'Erro ao publicar post'))
-      toast.success('Post publicado!')
+      const message = notifySubscribers ? 'Post publicado e assinantes notificados!' : 'Post publicado!'
+      toast.success(message)
       void loadPosts()
+      setIsPublishDialogOpen(false)
+      setPublishPostId(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao publicar post')
     }
+  }
+
+  const openPublishDialog = (postId: string) => {
+    setPublishPostId(postId)
+    setIsPublishDialogOpen(true)
   }
 
   const handleRestorePost = async (postId: string) => {
@@ -1032,7 +1044,7 @@ export default function AdminPage() {
                                     </Button>
 
                                     {isAdmin && post.status === 'draft' ? (
-                                      <Button variant="ghost" size="sm" onClick={() => void handlePublishPost(post.id)}>
+                                      <Button variant="ghost" size="sm" onClick={() => openPublishDialog(post.id)}>
                                         <CheckCircle className="h-4 w-4" />
                                       </Button>
                                     ) : null}
@@ -1203,6 +1215,53 @@ export default function AdminPage() {
         confirmText="Excluir"
         variant="danger"
       />
+
+      {/* Publish Post Confirmation Dialog */}
+      <DialogPrimitive.Root open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 bg-black/50 z-[9998]" />
+          <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[9999] w-[90vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-background p-6 shadow-lg">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Publicar Post</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Deseja notificar os assinantes da newsletter sobre este novo post?
+                </p>
+              </div>
+              <DialogPrimitive.Close className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+                <Cross2Icon className="h-4 w-4" />
+                <span className="sr-only">Fechar</span>
+              </DialogPrimitive.Close>
+            </div>
+
+            <div className="flex flex-col gap-3 mt-6">
+              <Button
+                onClick={() => publishPostId && void handlePublishPost(publishPostId, true)}
+                className="w-full"
+              >
+                Publicar e Notificar Assinantes
+              </Button>
+              <Button
+                onClick={() => publishPostId && void handlePublishPost(publishPostId, false)}
+                variant="outline"
+                className="w-full"
+              >
+                Publicar sem Notificar
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsPublishDialogOpen(false)
+                  setPublishPostId(null)
+                }}
+                variant="ghost"
+                className="w-full"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </div>
   )
 }
