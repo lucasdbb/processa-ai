@@ -231,7 +231,7 @@ export default function PlanosPage() {
           {apiPlans === null ? (
             <div className="text-center text-sm text-muted-foreground py-10">Carregando planos...</div>
           ) : (
-            <div className="flex items-stretch justify-center gap-6 w-full">
+            <div className="flex flex-wrap justify-center gap-6 w-full max-w-[1360px] mx-auto">
               {plans.map((plan, index) => {
                 const IconComponent = plan.icon
                 const isComingSoon = (plan as { comingSoon?: boolean }).comingSoon === true
@@ -239,14 +239,14 @@ export default function PlanosPage() {
                 return (
                   <div
                     key={index}
-                    className={`relative bg-card rounded-2xl p-5 flex flex-col h-full transition-all duration-300 w-full min-w-[280px] max-w-[320px] ${
+                    className={`relative bg-card rounded-2xl p-5 flex flex-col transition-all duration-300 w-full max-w-[320px] ${
                       plan.popular ? 'shadow-2xl ring-2 ring-primary z-10' : 'shadow-xl border border-border'
                     } ${
                       isComingSoon || isHidden
                         ? 'opacity-90'
                         : 'hover:scale-[1.01] hover:shadow-2xl hover:border-muted-foreground/50'
                     } ${
-                      isHidden ? 'blur-[2px] pointer-events-none' : ''
+                      isHidden ? 'blur-[4px] pointer-events-none' : ''
                     }`}
                   >
                     {plan.popular ? (
@@ -266,8 +266,8 @@ export default function PlanosPage() {
                       </div>
                     ) : null}
 
-                    <div className={`${isComingSoon ? 'blur-[2px] opacity-60' : ''} flex flex-col h-full`}>
-                      <div className="mb-4">
+                    <div className={`${isComingSoon ? 'blur-[2px] opacity-60' : ''} flex flex-col flex-1`}>
+                      <div className="mb-4 flex-shrink-0">
                         <div
                           className={`inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 ${
                             plan.popular ? 'bg-slate-900 text-white' : 'bg-muted text-foreground'
@@ -279,12 +279,12 @@ export default function PlanosPage() {
                         <p className="text-muted-foreground text-sm leading-relaxed">{plan.description}</p>
                       </div>
 
-                      <div className="flex items-baseline mb-4">
+                      <div className="flex items-baseline mb-4 flex-shrink-0">
                         <span className="text-3xl font-bold text-foreground tracking-tight">{plan.price}</span>
                         <span className="text-muted-foreground ml-1.5 text-sm font-medium">{plan.period}</span>
                       </div>
 
-                      <ul className="space-y-2.5 mb-4 flex-1">
+                      <ul className="space-y-2.5 mb-6 flex-1">
                         {plan.features.map((feature, featureIndex) => (
                           <li key={featureIndex} className="flex items-start">
                             <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center mr-2.5 mt-0.5">
@@ -300,7 +300,7 @@ export default function PlanosPage() {
                         ))}
                       </ul>
 
-                      <div className="mt-auto">
+                      <div className="flex-shrink-0">
                         <button
                           onClick={() => handlePlanClick(plan)}
                           disabled={isComingSoon || loadingPlan === plan.slug}

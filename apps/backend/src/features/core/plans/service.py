@@ -14,6 +14,7 @@ class PlansService:
                 .select(
                     "id,slug,name,description,is_popular,is_visible,sort_order,price_reais,currency,interval,features,stripe_price_id"
                 )
+                .filter("is_visible", "eq", True)
                 .order("sort_order", desc=False)
                 .execute()
             )
@@ -24,6 +25,30 @@ class PlansService:
 
             items = []
             for p in plans:
+                is_visible = bool(p.get("is_visible"))
+
+                # If plan is not visible, return masked data
+                if not is_visible:
+                    items.append(
+                        {
+                            "slug": p.get("slug") or "",
+                            "name": p.get("name") or "",
+                            "description": "****",
+                            "is_popular": bool(p.get("is_popular")),
+                            "is_visible": False,
+                            "is_sellable": False,
+                            "sort_order": int(p.get("sort_order") or 0),
+                            "price": {
+                                "currency": "BRL",
+                                "amount_cents": 0,
+                                "interval": "month",
+                                "stripe_price_id": None,
+                            },
+                            "features": ["Feature 1", "Feature 2", "Feature 3"],
+                        }
+                    )
+                    continue
+
                 # Convert price from reais to cents
                 price_reais = float(p.get("price_reais") or 0)
                 amount_cents = int(price_reais * 100)
@@ -41,7 +66,7 @@ class PlansService:
                         "name": p.get("name") or "",
                         "description": p.get("description"),
                         "is_popular": bool(p.get("is_popular")),
-                        "is_visible": bool(p.get("is_visible")),
+                        "is_visible": True,
                         "is_sellable": True,  # All visible plans are sellable
                         "sort_order": int(p.get("sort_order") or 0),
                         "price": (
