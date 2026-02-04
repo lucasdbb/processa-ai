@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from src.api.router import api_router
 from src.core.config import settings
@@ -46,6 +47,9 @@ app = FastAPI(
     docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
 )
+
+# Proxy Headers (Railway/load balancer support for HTTPS redirects)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # CORS
 origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
