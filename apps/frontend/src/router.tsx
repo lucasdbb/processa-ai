@@ -13,6 +13,8 @@ import PlanosPage from '@/pages/planos'
 import SobrePage from '@/pages/sobre'
 import MaterialsPage from '@/pages/materials'
 import CallbackPage from '@/pages/auth/CallbackPage'
+import TermosPage from '@/pages/termos'
+import PrivacidadePage from '@/pages/privacidade'
 
 // App pages (eager loading - frequently accessed)
 import DashboardPage from '@/pages/app/dashboard'
@@ -82,6 +84,14 @@ export const router = createBrowserRouter([
       {
         path: 'materiais',
         element: <MaterialsPage />,
+      },
+      {
+        path: 'termos',
+        element: <TermosPage />,
+      },
+      {
+        path: 'privacidade',
+        element: <PrivacidadePage />,
       },
       {
         path: 'auth/callback',
