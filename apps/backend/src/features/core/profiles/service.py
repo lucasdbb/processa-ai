@@ -188,7 +188,7 @@ class ProfilesService:
 
     async def update_role(self, target_user_id: str, role: str) -> dict:
         """Update user role (admin only)."""
-        valid_roles = {"user", "author", "admin", "premium"}
+        valid_roles = {"client", "author", "admin"}
         if role not in valid_roles:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

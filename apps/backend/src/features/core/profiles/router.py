@@ -42,7 +42,7 @@ async def list_profiles(
     return await profiles_service.list_profiles(limit=limit, offset=offset)
 
 
-@router.patch("/role")
+@router.patch("/update-role")
 async def update_role(
     data: UpdateRoleRequest,
     user_role: str = Depends(get_user_role),
