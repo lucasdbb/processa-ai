@@ -7,6 +7,7 @@ from src.features.billing.subscriptions.schemas import (
     InvoiceListResponse,
     PortalResponse,
     SubscriptionStatus,
+    SyncResponse,
 )
 from src.features.billing.subscriptions.service import subscriptions_service
 
@@ -46,3 +47,14 @@ async def list_invoices(
 ):
     """List user's invoices."""
     return await subscriptions_service.list_invoices(user_id, limit=limit)
+
+
+@router.post("/sync", response_model=SyncResponse)
+async def sync_subscription(user_id: str = Depends(get_user_id)):
+    """
+    Sync local subscription state with Stripe.
+
+    Use this endpoint to reconcile data after webhook failures
+    or when subscription state seems out of sync.
+    """
+    return await subscriptions_service.sync_subscription(user_id)

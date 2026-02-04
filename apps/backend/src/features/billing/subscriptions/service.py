@@ -11,6 +11,7 @@ from src.core.stripe_client import (
     create_customer as stripe_create_customer,
     create_portal_session as stripe_create_portal,
     list_invoices as stripe_list_invoices,
+    retrieve_subscription as stripe_retrieve_subscription,
 )
 from src.core.supabase import get_supabase
 
@@ -328,6 +329,111 @@ class SubscriptionsService:
             )
 
         return {"invoices": items, "has_more": invoices.has_more}
+
+    async def sync_subscription(self, user_id: str) -> dict:
+        """
+        Sync local subscription state with Stripe.
+        Useful for reconciliation after webhook failures or manual updates.
+        """
+        # Get local subscription record
+        try:
+            res = (
+                self.supabase.table("subscriptions")
+                .select("stripe_subscription_id, stripe_customer_id")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+
+            if not res.data:
+                return {
+                    "synced": False,
+                    "message": "No subscription record found",
+                }
+
+            local_sub = res.data[0]
+            stripe_subscription_id = local_sub.get("stripe_subscription_id")
+
+            if not stripe_subscription_id:
+                return {
+                    "synced": False,
+                    "message": "No active Stripe subscription to sync",
+                }
+
+        except Exception as e:
+            logger.error(f"Failed to fetch local subscription: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao buscar assinatura local",
+            )
+
+        # Fetch subscription from Stripe
+        try:
+            stripe_sub = stripe_retrieve_subscription(stripe_subscription_id)
+        except stripe.StripeError as e:
+            logger.error(f"Failed to retrieve subscription from Stripe: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao buscar assinatura no Stripe",
+            )
+
+        # Get plan_id from price
+        plan_id = self._get_plan_id_from_stripe_price(
+            stripe_sub["items"]["data"][0]["price"]["id"]
+        )
+
+        # Update local record with Stripe data
+        try:
+            self.supabase.table("subscriptions").update(
+                {
+                    "plan_id": plan_id,
+                    "status": stripe_sub["status"],
+                    "current_period_start": datetime.fromtimestamp(
+                        stripe_sub["current_period_start"], tz=timezone.utc
+                    ).isoformat(),
+                    "current_period_end": datetime.fromtimestamp(
+                        stripe_sub["current_period_end"], tz=timezone.utc
+                    ).isoformat(),
+                    "cancel_at_period_end": stripe_sub.get("cancel_at_period_end", False),
+                }
+            ).eq("user_id", user_id).execute()
+
+            logger.info(f"Synced subscription for user {user_id}")
+
+            return {
+                "synced": True,
+                "plan_id": plan_id,
+                "status": stripe_sub["status"],
+                "current_period_end": datetime.fromtimestamp(
+                    stripe_sub["current_period_end"], tz=timezone.utc
+                ).isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to update subscription: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao atualizar assinatura",
+            )
+
+    def _get_plan_id_from_stripe_price(self, price_id: str) -> str:
+        """Map Stripe price_id to internal plan_id using database lookup."""
+        try:
+            result = (
+                self.supabase.table("billing_plans")
+                .select("slug")
+                .eq("stripe_price_id", price_id)
+                .limit(1)
+                .execute()
+            )
+
+            if result.data and len(result.data) > 0:
+                return result.data[0]["slug"]
+        except Exception as e:
+            logger.error(f"Failed to lookup plan for price {price_id}: {e}")
+
+        logger.warning(f"Unknown price_id: {price_id}, defaulting to free")
+        return "free"
 
 
 subscriptions_service = SubscriptionsService()

@@ -4,6 +4,13 @@ import stripe
 from fastapi import HTTPException, status
 
 from src.core.config import settings
+from src.core.email import (
+    send_dispute_alert,
+    send_payment_action_required,
+    send_payment_failed,
+    send_subscription_canceled,
+    send_subscription_welcome,
+)
 from src.core.logging import logger
 from src.core.stripe_client import (
     retrieve_charge,
@@ -224,6 +231,12 @@ class WebhooksService:
             await self._grant_plan_credits(user_id, plan_id)
 
             logger.info(f"Subscription activated for user {user_id}, plan: {plan_id}")
+
+            # Send welcome email
+            user_email = await self._get_user_email(user_id)
+            if user_email:
+                plan_name = await self._get_plan_name(plan_id)
+                await send_subscription_welcome(user_email, plan_name)
         except Exception as e:
             logger.error(f"Failed to update subscription: {e}")
             raise TransientError(f"Failed to update subscription in database: {e}")
@@ -281,10 +294,22 @@ class WebhooksService:
             return
 
         try:
-            self.supabase.table("subscriptions").update({"status": "past_due"}).eq(
-                "stripe_subscription_id", subscription_id
-            ).execute()
+            result = (
+                self.supabase.table("subscriptions")
+                .update({"status": "past_due"})
+                .eq("stripe_subscription_id", subscription_id)
+                .execute()
+            )
             logger.warning(f"Subscription payment failed: {subscription_id}")
+
+            # Send payment failed email
+            if result.data and len(result.data) > 0:
+                user_id = result.data[0].get("user_id")
+                if user_id:
+                    user_email = await self._get_user_email(user_id)
+                    if user_email:
+                        invoice_url = invoice.get("hosted_invoice_url")
+                        await send_payment_failed(user_email, invoice_url)
         except Exception as e:
             logger.error(f"Failed to update subscription on invoice.failed: {e}")
             raise TransientError(f"Failed to update subscription status: {e}")
@@ -309,7 +334,10 @@ class WebhooksService:
                 f"Payment action required for subscription {subscription_id}. "
                 f"Customer: {customer_email}, Invoice URL: {hosted_invoice_url}"
             )
-            # TODO: Send email notification to user about pending payment action
+
+            # Send payment action required email
+            if customer_email:
+                await send_payment_action_required(customer_email, hosted_invoice_url)
         except Exception as e:
             logger.error(f"Failed to handle invoice action required: {e}")
             raise TransientError(f"Failed to update subscription status: {e}")
@@ -402,14 +430,27 @@ class WebhooksService:
             raise PermanentError("subscription.deleted missing subscription id")
 
         try:
-            self.supabase.table("subscriptions").update(
-                {
-                    "status": "canceled",
-                    "plan_id": "free",
-                    "stripe_subscription_id": None,
-                }
-            ).eq("stripe_subscription_id", subscription_id).execute()
+            result = (
+                self.supabase.table("subscriptions")
+                .update(
+                    {
+                        "status": "canceled",
+                        "plan_id": "free",
+                        "stripe_subscription_id": None,
+                    }
+                )
+                .eq("stripe_subscription_id", subscription_id)
+                .execute()
+            )
             logger.info(f"Subscription canceled: {subscription_id}")
+
+            # Send subscription canceled email
+            if result.data and len(result.data) > 0:
+                user_id = result.data[0].get("user_id")
+                if user_id:
+                    user_email = await self._get_user_email(user_id)
+                    if user_email:
+                        await send_subscription_canceled(user_email)
         except Exception as e:
             logger.error(f"Failed to update subscription on delete: {e}")
             raise TransientError(f"Failed to update subscription on cancellation: {e}")
@@ -540,8 +581,13 @@ class WebhooksService:
                             user_id = result.data[0]["user_id"]
                             logger.critical(f"Dispute for user {user_id}")
 
-            # TODO: Send urgent notification to admin
-            # TODO: Consider suspending user access pending dispute resolution
+                            # Send urgent notification to admin
+                            await send_dispute_alert(
+                                user_id=user_id,
+                                charge_id=charge_id,
+                                amount=amount,
+                                reason=reason,
+                            )
 
         except Exception as e:
             logger.error(f"Failed to get dispute details: {e}")
@@ -660,6 +706,38 @@ class WebhooksService:
 
         logger.warning(f"Unknown price_id: {price_id}, defaulting to free")
         return "free"
+
+    async def _get_user_email(self, user_id: str) -> str | None:
+        """Get user email from profiles table."""
+        try:
+            result = (
+                self.supabase.table("profiles")
+                .select("email")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if result.data and len(result.data) > 0:
+                return result.data[0].get("email")
+        except Exception as e:
+            logger.error(f"Failed to get user email: {e}")
+        return None
+
+    async def _get_plan_name(self, plan_id: str) -> str:
+        """Get plan display name from billing_plans table."""
+        try:
+            result = (
+                self.supabase.table("billing_plans")
+                .select("name")
+                .eq("slug", plan_id)
+                .limit(1)
+                .execute()
+            )
+            if result.data and len(result.data) > 0:
+                return result.data[0].get("name", plan_id)
+        except Exception as e:
+            logger.error(f"Failed to get plan name: {e}")
+        return plan_id
 
 
 webhooks_service = WebhooksService()

@@ -44,3 +44,11 @@ class InvoiceItem(BaseModel):
 class InvoiceListResponse(BaseModel):
     invoices: list[InvoiceItem]
     has_more: bool
+
+
+class SyncResponse(BaseModel):
+    synced: bool
+    message: str | None = None
+    plan_id: str | None = None
+    status: str | None = None
+    current_period_end: str | None = None
