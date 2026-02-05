@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import type { Client } from '@/services/clients-service'
 
-interface Process {
+export interface ProcessFormData {
   id: string
   process_number: string
   type: string
@@ -16,7 +16,7 @@ interface Process {
   client_name?: string
   defendant: string
   value: number
-  status: 'active' | 'archived'
+  status: 'active' | 'pending' | 'suspended' | 'archived' | 'concluded' | 'cancelled'
   start_date?: string
   notes?: string
 }
@@ -24,20 +24,20 @@ interface Process {
 interface ProcessFormDialogProps {
   isOpen: boolean
   onClose: () => void
-  process?: Process
+  process?: ProcessFormData
   /** Cliente pre-selecionado (para fluxo de cadeia) */
   preselectedClient?: Client
-  onSave: (process: Process) => void
+  onSave: (process: ProcessFormData) => void
 }
 
-const getInitialFormData = (process?: Process, preselectedClient?: Client) => ({
+const getInitialFormData = (process?: ProcessFormData, preselectedClient?: Client) => ({
   process_number: process?.process_number ?? '',
   type: process?.type ?? '',
   court: process?.court ?? '',
   client_id: process?.client_id ?? preselectedClient?.id ?? '',
   defendant: process?.defendant ?? '',
   value: process?.value ? process.value.toString() : '',
-  status: process?.status ?? ('active' as 'active' | 'archived'),
+  status: process?.status ?? ('active' as ProcessFormData['status']),
   start_date: process?.start_date ?? '',
   notes: process?.notes ?? '',
 })
@@ -49,11 +49,11 @@ function ProcessFormDialogBody({
   onClose,
   onSave,
 }: {
-  process?: Process
+  process?: ProcessFormData
   preselectedClient?: Client
   isEditing: boolean
   onClose: () => void
-  onSave: (process: Process) => void
+  onSave: (process: ProcessFormData) => void
 }) {
   const [formData, setFormData] = useState(() => getInitialFormData(process, preselectedClient))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -112,10 +112,14 @@ function ProcessFormDialogBody({
 
         const updated = await processesService.update(process.id, payload)
 
-        const updatedProcess: Process = {
+        const updatedProcess: ProcessFormData = {
           ...process,
           ...updated,
-          client_name: selectedClient?.name,
+          court: updated.court || '',
+          defendant: updated.defendant || '',
+          value: updated.value || 0,
+          start_date: updated.start_date || undefined,
+          notes: updated.notes || undefined,
         }
         
         toast.success('Processo atualizado com sucesso!')
@@ -136,7 +140,7 @@ function ProcessFormDialogBody({
 
         const created = await processesService.create(payload)
 
-        const savedProcess: Process = {
+        const savedProcess: ProcessFormData = {
           id: created.id,
           process_number: created.process_number,
           type: created.type,
@@ -145,7 +149,7 @@ function ProcessFormDialogBody({
           client_name: selectedClient?.name,
           defendant: created.defendant || '',
           value: created.value || 0,
-          status: created.status as 'active' | 'archived',
+          status: created.status as ProcessFormData['status'],
           start_date: created.start_date || undefined,
           notes: created.notes || undefined,
         }
@@ -229,10 +233,6 @@ function ProcessFormDialogBody({
     created_at: '',
     updated_at: '',
   } : preselectedClient
-
-  function formatCurrencyInput(value: string): string {
-    throw new Error('Function not implemented.')
-  }
 
   return (
     <DialogContent className="max-w-2xl">
@@ -331,7 +331,7 @@ function ProcessFormDialogBody({
                 type="text"
                 value={formData.value}
                 onChange={(e) => {
-                  handleChange('value', formatCurrencyInput(e.target.value))
+                  handleChange('value', e.target.value)
                 }}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="R$ 0,00"
@@ -356,7 +356,7 @@ function ProcessFormDialogBody({
               <label className="block text-sm font-medium text-foreground mb-1.5">Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => handleChange('status', e.target.value as 'active' | 'archived')}
+                onChange={(e) => handleChange('status', e.target.value as ProcessFormData['status'])}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="active">Ativo</option>

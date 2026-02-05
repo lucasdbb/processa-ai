@@ -31,7 +31,7 @@ import {
   type Client,
   type ClientDetail,
 } from '@/services/clients-service'
-import { notesService, type Note } from '@/services/notes-service'
+import { notesService, type Note } from '../../../services/notes-service'
 import { feesService, type Fee } from '@/services/fees-service'
 
 type Tab = 'resumo' | 'processos' | 'honorarios' | 'notas'

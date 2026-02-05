@@ -235,7 +235,7 @@ function DeadlineFormDialogBody({
               </label>
               <ClientSelect
                 value={selectedClientId || ''}
-                onChange={(clientId: string | null, client: Client | null) => {
+                onChange={(clientId: string | null, _client: Client | null) => {
                   setSelectedClientId(clientId)
                   // Limpar processo selecionado quando cliente mudar
                   if (formData.processId) {

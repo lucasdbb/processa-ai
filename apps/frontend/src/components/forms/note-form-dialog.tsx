@@ -197,7 +197,7 @@ function NoteFormDialogBody({
   )
 }
 
-export function NoteFormDialog({ isOpen, onClose, clientId, note, onSave }: NoteFormDialogProps) {
+export function NoteFormDialog({ isOpen, onClose, clientId: _clientId, note, onSave }: NoteFormDialogProps) {
   const isEditing = !!note
 
   return (

@@ -4,8 +4,6 @@ import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 import { ClientSelect } from '@/components/ui/client-select'
 import { ProcessSelect } from '@/components/ui/process-select'
-import type { Client } from '@/services/clients-service'
-import type { Process } from '@/services/processes-service'
 
 interface Document {
   id: string
@@ -83,7 +81,7 @@ function DocumentFormDialogBody({
 
     try {
       if (isEditing && document) {
-        await onSave({ ...formData, id: document.id, file_url: document.file_url })
+        await onSave({ ...formData, id: document.id, file_url: document.file_url || undefined })
       } else {
         await onSave(formData)
       }

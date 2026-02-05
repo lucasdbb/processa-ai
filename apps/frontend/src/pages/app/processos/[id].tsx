@@ -10,29 +10,24 @@ import {
   Clock,
   AlertCircle,
   Edit,
-  Download,
   Plus,
-  Phone,
-  Mail,
   Trash2,
   TrendingUp,
   ExternalLink,
-  ChevronRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { DeadlineFormDialog } from '@/components/forms/deadline-form-dialog'
-import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
+import { ProcessFormDialog, type ProcessFormData } from '@/components/forms/process-form-dialog'
 import { DocumentFormDialog } from '@/components/forms/document-form-dialog'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import {
   processesService,
-  type Process,
   type ProcessDetail,
 } from '@/services/processes-service'
-import { deadlinesService } from '@/services/deadlines-service'
+import { deadlinesService, type Deadline } from '@/services/deadlines-service'
 import { documentsService, type Document } from '@/services/documents-service'
 
 type Tab = 'resumo' | 'andamentos' | 'prazos' | 'documentos'
@@ -43,7 +38,7 @@ export default function ProcessoDetalhePage() {
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
   const [showDeadlineDialog, setShowDeadlineDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [editingDeadline, setEditingDeadline] = useState<ProcessDetail['deadlines'][0] | null>(null)
+  const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null)
   const [showDocumentDialog, setShowDocumentDialog] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
 
@@ -69,24 +64,18 @@ export default function ProcessoDetalhePage() {
     void fetchProcess()
   }, [fetchProcess])
 
-  const processForDialog: (Process & { client_name?: string }) | undefined = process
+  const processForDialog: ProcessFormData | undefined = process
     ? {
         id: process.id,
-        user_id: process.user_id,
         client_id: process.client_id,
         process_number: process.process_number,
         type: process.type,
-        court: process.court,
-        defendant: process.defendant,
-        subject: process.subject,
-        value: process.value,
+        court: process.court || '',
+        defendant: process.defendant || '',
+        value: process.value || 0,
         status: process.status,
-        notes: process.notes,
-        start_date: process.start_date,
-        end_date: process.end_date,
-        created_at: process.created_at,
-        updated_at: process.updated_at,
-        client_name: process.client.name,
+        notes: process.notes || undefined,
+        start_date: process.start_date || undefined,
       }
     : undefined
 
@@ -97,46 +86,12 @@ export default function ProcessoDetalhePage() {
     }).format(value)
   }
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-    } catch {
-      return dateStr
-    }
-  }
-
   const formatShortDate = (dateStr: string) => {
     try {
       return format(new Date(dateStr), 'dd/MM/yyyy', { locale: ptBR })
     } catch {
       return dateStr
     }
-  }
-
-  const formatPhone = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, '')
-    if (cleaned.length === 11) {
-      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
-    }
-    if (cleaned.length === 10) {
-      return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
-    }
-    return phone
-  }
-
-  const formatCPF = (cpf: string) => {
-    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-  }
-
-  const formatCNPJ = (cnpj: string) => {
-    return cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
-  }
-
-  const formatCPFOrCNPJ = (doc: string) => {
-    const cleaned = doc.replace(/\D/g, '')
-    if (cleaned.length === 11) return formatCPF(cleaned)
-    if (cleaned.length === 14) return formatCNPJ(cleaned)
-    return doc
   }
 
   const formatFileSize = (bytes: number | null) => {
@@ -533,11 +488,6 @@ export default function ProcessoDetalhePage() {
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           Status: {deadline.status === 'pending' ? 'Pendente' : deadline.status}
                         </p>
-                        {deadline.description && (
-                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
-                            {deadline.description}
-                          </p>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -561,9 +511,14 @@ export default function ProcessoDetalhePage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => {
-                            setEditingDeadline(deadline)
-                            setShowDeadlineDialog(true)
+                          onClick={async () => {
+                            try {
+                              const fullDeadline = await deadlinesService.get(deadline.id)
+                              setEditingDeadline(fullDeadline)
+                              setShowDeadlineDialog(true)
+                            } catch {
+                              toast.error('Erro ao carregar prazo')
+                            }
                           }}
                           className="p-1 rounded-md hover:bg-accent transition-colors"
                           title="Editar prazo"
@@ -625,17 +580,12 @@ export default function ProcessoDetalhePage() {
                         <div className="flex-1">
                           <h3 className="font-medium text-foreground">{doc.name}</h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {doc.file_type || 'Documento'} · {formatShortDate(doc.created_at)} ·{' '}
+                            {doc.mime_type || 'Documento'} · {formatShortDate(doc.created_at)} ·{' '}
                             {formatFileSize(doc.file_size)}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {doc.file_url && (
-                          <button className="p-1.5 rounded-lg hover:bg-accent transition-colors" title="Baixar">
-                            <Download className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                        )}
                         <button
                           onClick={async () => {
                             try {
@@ -688,7 +638,7 @@ export default function ProcessoDetalhePage() {
       </div>
 
       {/* Dialogs */}
-      {processForDialog && (
+      {process && (
         <>
           <DeadlineFormDialog
             isOpen={showDeadlineDialog}
@@ -696,7 +646,7 @@ export default function ProcessoDetalhePage() {
               setShowDeadlineDialog(false)
               setEditingDeadline(null)
             }}
-            preselectedProcess={processForDialog}
+            preselectedProcess={process}
             deadline={editingDeadline ? {
               id: editingDeadline.id,
               title: editingDeadline.title,
