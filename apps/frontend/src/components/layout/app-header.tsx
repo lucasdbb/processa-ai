@@ -153,7 +153,7 @@ export function AppHeader() {
                     <Sparkles className="h-3 w-3 absolute -top-1 -right-1 text-amber-400/90" />
                   </div>
                   <span className="text-sm font-semibold text-foreground">
-                    {credits.available_credits.toLocaleString('pt-BR')}
+                    {credits.total_available.toLocaleString('pt-BR')}
                   </span>
                   <span className="text-xs text-muted-foreground">créditos</span>
                 </button>
@@ -171,18 +171,57 @@ export function AppHeader() {
                   </div>
                 </div>
 
-                <div className="px-4 py-3">
+                <div className="px-4 py-3 space-y-3">
+                  {/* Subscription Credits */}
                   <div className="rounded-xl border border-border bg-muted/40 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Total disponível</span>
-                      <span className="text-sm font-semibold text-foreground">
-                        {credits.total_credits.toLocaleString('pt-BR')}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-foreground">Assinatura</span>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        Renovação mensal
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Créditos usados</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Disponível</span>
                       <span className="text-sm font-semibold text-foreground">
-                        {credits.used_credits.toLocaleString('pt-BR')}
+                        {credits.subscription.available.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Usado este mês</span>
+                      <span className="text-sm text-muted-foreground">
+                        {credits.subscription.used.toLocaleString('pt-BR')} / {credits.subscription.total.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Purchased Credits */}
+                  <div className="rounded-xl border border-border bg-muted/40 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-foreground">Créditos Extras</span>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        Nunca expiram
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Disponível</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {credits.purchased.available.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Usado</span>
+                      <span className="text-sm text-muted-foreground">
+                        {credits.purchased.used.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="rounded-xl border-2 border-amber-500/30 bg-amber-500/5 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-foreground">Total Disponível</span>
+                      <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                        {credits.total_available.toLocaleString('pt-BR')}
                       </span>
                     </div>
                   </div>

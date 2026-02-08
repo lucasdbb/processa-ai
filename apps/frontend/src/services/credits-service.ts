@@ -1,13 +1,17 @@
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 
+export interface CreditBreakdown {
+  total: number
+  used: number
+  available: number
+}
+
 export interface UserCredits {
   user_id: string
-  total_credits: number
-  used_credits: number
-  available_credits: number
+  subscription: CreditBreakdown
+  purchased: CreditBreakdown
+  total_available: number
   last_reset_at: string | null
-  created_at: string
-  updated_at: string
 }
 
 export const creditsService = {
