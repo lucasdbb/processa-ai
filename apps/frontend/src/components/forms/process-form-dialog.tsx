@@ -30,13 +30,40 @@ interface ProcessFormDialogProps {
   onSave: (process: ProcessFormData) => void
 }
 
+const formatCurrencyInput = (value: string): string => {
+  const digits = value.replace(/\D/g, '')
+  if (!digits) return ''
+  const cents = parseInt(digits, 10)
+  const reais = cents / 100
+  return reais.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+const parseCurrencyToNumber = (formatted: string): number => {
+  if (!formatted) return 0
+  const cleaned = formatted.replace(/\./g, '').replace(',', '.')
+  return parseFloat(cleaned) || 0
+}
+
+const numberToCurrencyDisplay = (value: number | string | null | undefined): string => {
+  if (value == null) return ''
+  const num = typeof value === 'string' ? parseFloat(value) : value
+  if (isNaN(num) || num === 0) return ''
+  return num.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 const getInitialFormData = (process?: ProcessFormData, preselectedClient?: Client) => ({
   process_number: process?.process_number ?? '',
   type: process?.type ?? '',
   court: process?.court ?? '',
   client_id: process?.client_id ?? preselectedClient?.id ?? '',
   defendant: process?.defendant ?? '',
-  value: process?.value ? process.value.toString() : '',
+  value: numberToCurrencyDisplay(process?.value),
   status: process?.status ?? ('active' as ProcessFormData['status']),
   start_date: process?.start_date ?? '',
   notes: process?.notes ?? '',
@@ -104,7 +131,7 @@ function ProcessFormDialogBody({
           type: formData.type,
           court: formData.court || undefined,
           defendant: formData.defendant || undefined,
-          value: formData.value ? Number(formData.value) : undefined,
+          value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
           notes: formData.notes || undefined,
           start_date: formData.start_date || undefined,
           status: formData.status,
@@ -133,7 +160,7 @@ function ProcessFormDialogBody({
           type: formData.type,
           court: formData.court || undefined,
           defendant: formData.defendant || undefined,
-          value: formData.value ? Number(formData.value) : undefined,
+          value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
           notes: formData.notes || undefined,
           start_date: formData.start_date || undefined,
         }
@@ -189,6 +216,8 @@ function ProcessFormDialogBody({
   const handleChange = (field: keyof typeof formData, value: string) => {
     if (field === 'process_number') {
       setFormData((prev) => ({ ...prev, [field]: formatProcessNumber(value) }))
+    } else if (field === 'value') {
+      setFormData((prev) => ({ ...prev, [field]: formatCurrencyInput(value) }))
     } else {
       setFormData((prev) => ({ ...prev, [field]: value }))
     }
@@ -327,15 +356,17 @@ function ProcessFormDialogBody({
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 Valor da Causa
               </label>
-              <input
-                type="text"
-                value={formData.value}
-                onChange={(e) => {
-                  handleChange('value', e.target.value)
-                }}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="R$ 0,00"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.value}
+                  onChange={(e) => handleChange('value', e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="0,00"
+                />
+              </div>
             </div>
 
             <div>

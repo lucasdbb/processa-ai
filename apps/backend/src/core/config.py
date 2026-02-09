@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
-    SUPABASE_OUTPUTS_BUCKET: str = "supabase-outputs"
+    SUPABASE_AI_BUCKET: str = "supabase-outputs"
+    SUPABASE_OFFICE_BUCKET: str = "office-documents"
 
     # Stripe
     STRIPE_SECRET_KEY: str = ""
@@ -32,6 +33,8 @@ class Settings(BaseSettings):
     # Google Integration
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = ""
+    ENCRYPTION_KEY: str = ""
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"

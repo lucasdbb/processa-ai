@@ -2,12 +2,10 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ProcessSelect } from '@/components/ui/process-select'
-import { ClientSelect } from '@/components/ui/client-select'
 import { deadlinesService, type DeadlineCreate } from '@/services/deadlines-service'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import type { Process } from '@/services/processes-service'
-import type { Client } from '@/services/clients-service'
 
 interface ProcessWithClient extends Process {
   client_name?: string
@@ -33,8 +31,6 @@ interface DeadlineFormDialogProps {
   defaultDate?: string
   /** Processo pre-selecionado (para fluxo de cadeia) */
   preselectedProcess?: ProcessWithClient
-  /** Filtrar processos por cliente específico */
-  clientId?: string
   onSave: (deadline: Omit<Deadline, 'id'> & { id?: string }) => void
 }
 
@@ -56,7 +52,6 @@ function DeadlineFormDialogBody({
   deadline,
   defaultDate,
   preselectedProcess,
-  clientId,
   isEditing,
   onClose,
   onSave,
@@ -64,7 +59,6 @@ function DeadlineFormDialogBody({
   deadline?: Deadline
   defaultDate?: string
   preselectedProcess?: ProcessWithClient
-  clientId?: string
   isEditing: boolean
   onClose: () => void
   onSave: (deadline: Omit<Deadline, 'id'> & { id?: string }) => void
@@ -73,7 +67,6 @@ function DeadlineFormDialogBody({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [, setSelectedProcess] = useState<ProcessWithClient | null>(preselectedProcess ?? null)
   const [isSaving, setIsSaving] = useState(false)
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(clientId ?? null)
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -104,11 +97,16 @@ function DeadlineFormDialogBody({
     setIsSaving(true)
 
     try {
+      // Combine date + time into ISO datetime string
+      const dueDate = formData.time
+        ? `${formData.date}T${formData.time}:00`
+        : `${formData.date}T00:00:00`
+
       if (isEditing && deadline?.id) {
         // Update existente
         await deadlinesService.update(deadline.id, {
           title: formData.title,
-          due_date: formData.date,
+          due_date: dueDate,
           description: formData.description || undefined,
           priority: mapPriorityToApi(formData.priority),
           reminder_days_before: formData.notifyBefore,
@@ -125,7 +123,7 @@ function DeadlineFormDialogBody({
         const payload: DeadlineCreate = {
           process_id: formData.processId,
           title: formData.title,
-          due_date: formData.date,
+          due_date: dueDate,
           description: formData.description || undefined,
           priority: mapPriorityToApi(formData.priority),
           reminder_days_before: formData.notifyBefore,
@@ -224,30 +222,6 @@ function DeadlineFormDialogBody({
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Cliente (opcional - filtrar processos) */}
-        {!clientId && !preselectedProcess && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Filtro (Opcional)</h3>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Cliente (filtrar processos)
-              </label>
-              <ClientSelect
-                value={selectedClientId || ''}
-                onChange={(clientId: string | null, _client: Client | null) => {
-                  setSelectedClientId(clientId)
-                  // Limpar processo selecionado quando cliente mudar
-                  if (formData.processId) {
-                    setFormData(prev => ({ ...prev, processId: '', processNumber: '' }))
-                  }
-                }}
-                placeholder="Selecione um cliente para filtrar processos..."
-              />
-            </div>
-          </div>
-        )}
-
         {/* Processo */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-foreground">Processo</h3>
@@ -260,10 +234,9 @@ function DeadlineFormDialogBody({
               value={formData.processId}
               onChange={handleProcessChange}
               initialProcess={initialProcess}
-              clientId={selectedClientId ?? clientId}
               error={errors.processId}
               placeholder="Buscar processo por numero ou tipo..."
-              disabled={!!preselectedProcess}
+              disabled={isEditing || !!preselectedProcess}
             />
           </div>
         </div>
@@ -388,7 +361,7 @@ function DeadlineFormDialogBody({
         {/* Descricao */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
-            Descricao/Observacoes
+            Descrição/Observações
           </label>
           <textarea
             value={formData.description}
@@ -423,7 +396,7 @@ function DeadlineFormDialogBody({
   )
 }
 
-export function DeadlineFormDialog({ isOpen, onClose, deadline, defaultDate, preselectedProcess, clientId, onSave }: DeadlineFormDialogProps) {
+export function DeadlineFormDialog({ isOpen, onClose, deadline, defaultDate, preselectedProcess, onSave }: DeadlineFormDialogProps) {
   const isEditing = !!deadline
 
   return (
@@ -434,7 +407,6 @@ export function DeadlineFormDialog({ isOpen, onClose, deadline, defaultDate, pre
           deadline={deadline}
           defaultDate={defaultDate}
           preselectedProcess={preselectedProcess}
-          clientId={clientId}
           isEditing={isEditing}
           onClose={onClose}
           onSave={onSave}

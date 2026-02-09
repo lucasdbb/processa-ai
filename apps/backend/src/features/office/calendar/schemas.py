@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -8,6 +8,8 @@ EventType = Literal["audiencia", "prazo", "reuniao", "other"]
 EventStatus = Literal["confirmed", "tentative", "cancelled"]
 EventSource = Literal["local", "google"]
 SyncStatus = Literal["synced", "pending_sync", "conflict"]
+DeadlinePriority = Literal["low", "medium", "high", "urgent"]
+DeadlineStatusType = Literal["pending", "completed", "cancelled"]
 
 
 # === Event Schemas ===
@@ -24,6 +26,9 @@ class EventCreateRequest(BaseModel):
     cliente_id: str | None = None
     color: str | None = None
     reminder_minutes: list[int] = Field(default_factory=lambda: [15, 60])
+    priority: DeadlinePriority | None = None
+    deadline_status: DeadlineStatusType | None = None
+    reminder_days_before: int | None = Field(None, ge=0, le=30)
 
 
 class EventUpdateRequest(BaseModel):
@@ -38,6 +43,9 @@ class EventUpdateRequest(BaseModel):
     cliente_id: str | None = None
     color: str | None = None
     reminder_minutes: list[int] | None = None
+    priority: DeadlinePriority | None = None
+    deadline_status: DeadlineStatusType | None = None
+    reminder_days_before: int | None = Field(None, ge=0, le=30)
 
 
 class EventResponse(BaseModel):
@@ -59,6 +67,10 @@ class EventResponse(BaseModel):
     reminder_minutes: list[int]
     source: EventSource
     sync_status: SyncStatus
+    priority: str | None = None
+    deadline_status: str | None = None
+    completed_at: datetime | None = None
+    reminder_days_before: int | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -69,10 +81,12 @@ class EventListResponse(BaseModel):
 
 
 class EventListParams(BaseModel):
-    start: datetime
-    end: datetime
+    start: date
+    end: date
     calendar_id: str | None = None
     event_type: EventType | None = None
+    priority: DeadlinePriority | None = None
+    deadline_status: DeadlineStatusType | None = None
 
 
 # === Calendar Schemas ===

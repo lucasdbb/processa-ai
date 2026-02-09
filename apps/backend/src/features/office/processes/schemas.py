@@ -95,6 +95,7 @@ class ProcessDocumentSummary(BaseModel):
     name: str
     mime_type: str | None
     file_size: int | None
+    file_url: str | None
     created_at: datetime
 
 

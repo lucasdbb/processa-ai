@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useEffect } from 'react'
 import { Calendar, dateFnsLocalizer, type View } from 'react-big-calendar'
-import { format, parse, startOfWeek, getDay, startOfMonth, endOfMonth, addMonths, subMonths, startOfWeek as startOfWeekFn, endOfWeek, startOfDay, endOfDay } from 'date-fns'
+import { format, parse, startOfWeek, getDay, startOfMonth, endOfMonth, addDays, endOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -49,7 +49,7 @@ const locales = { 'pt-BR': ptBR }
 const localizer = dateFnsLocalizer({
   format,
   parse,
-  startOfWeek: () => startOfWeek(new Date(), { locale: ptBR }),
+  startOfWeek: (date: Date) => startOfWeek(date, { locale: ptBR }),
   getDay,
   locales,
 })
@@ -95,7 +95,7 @@ export function PrazosCalendar({ onSelectSlot, onSelectEvent }: PrazosCalendarPr
   const [isLoading, setIsLoading] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [currentView, setCurrentView] = useState<View>('month')
-  const [loadedRange, setLoadedRange] = useState<{ start: string; end: string } | null>(null)
+  const [loadedRange, setLoadedRange] = useState<string | null>(null)
   
   const { colorScheme, defaultView } = useCalendarSettingsStore()
 
@@ -104,53 +104,53 @@ export function PrazosCalendar({ onSelectSlot, onSelectEvent }: PrazosCalendarPr
     setCurrentView(defaultView)
   }, [defaultView])
 
-  const fetchEvents = useCallback(async (date: Date, view: View) => {
+  const fetchEvents = useCallback(async (date: Date, view: View, force = false) => {
     let start: Date
     let end: Date
 
-    // Define range based on view
+    // Define range based on view — fetch only what's visible
     switch (view) {
       case 'month':
-        start = startOfMonth(subMonths(date, 1))
-        end = endOfMonth(addMonths(date, 1))
+        // Full calendar grid: first visible Monday to last visible Sunday
+        start = startOfWeek(startOfMonth(date), { locale: ptBR })
+        end = endOfWeek(endOfMonth(date), { locale: ptBR })
         break
       case 'week':
-        start = startOfWeekFn(subMonths(date, 1), { locale: ptBR })
-        end = endOfWeek(addMonths(date, 1), { locale: ptBR })
+        start = startOfWeek(date, { locale: ptBR })
+        end = endOfWeek(date, { locale: ptBR })
         break
       case 'day':
-        start = startOfDay(date)
-        end = endOfDay(date)
+        start = date
+        end = date
         break
       case 'agenda':
-        start = startOfDay(date)
-        end = endOfDay(addMonths(date, 1))
+        start = date
+        end = addDays(date, 60)
         break
       default:
         start = startOfMonth(date)
         end = endOfMonth(date)
     }
 
-    const startISO = start.toISOString()
-    const endISO = end.toISOString()
+    // Use date-only format (YYYY-MM-DD) — no timezone offset issues
+    const startStr = format(start, 'yyyy-MM-dd')
+    const endStr = format(end, 'yyyy-MM-dd')
+    const rangeKey = `${startStr}_${endStr}`
 
-    // Avoid refetching the same range
-    if (loadedRange && loadedRange.start === startISO && loadedRange.end === endISO) {
+    // Avoid refetching the same range (unless forced)
+    if (!force && loadedRange === rangeKey) {
       return
     }
 
     setIsLoading(true)
     try {
-      const params = new URLSearchParams({
-        start: startISO,
-        end: endISO,
-      })
-      const res = await fetchWithCredentials(`${API_URL}/office/calendar/events?${params.toString()}`)
+      const params = new URLSearchParams({ start: startStr, end: endStr })
+      const res = await fetchWithCredentials(`${API_URL}/office/calendar/events?${params}`)
       if (!res.ok) throw new Error('Erro ao carregar eventos')
 
       const data = (await res.json()) as EventListResponse
       setEvents(data.events.map(mapEventResponse))
-      setLoadedRange({ start: startISO, end: endISO })
+      setLoadedRange(rangeKey)
     } catch {
       toast.error('Erro ao carregar eventos do calendário')
     } finally {
@@ -164,19 +164,20 @@ export function PrazosCalendar({ onSelectSlot, onSelectEvent }: PrazosCalendarPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Fetch events when date or view changes
+  // Fetch events when date changes
   const handleNavigate = useCallback(
-    (date: Date, view: View) => {
+    (date: Date) => {
       setCurrentDate(date)
-      void fetchEvents(date, view)
+      void fetchEvents(date, currentView)
     },
-    [fetchEvents]
+    [fetchEvents, currentView]
   )
 
+  // Fetch events when view changes (force refetch since range changes)
   const handleViewChange = useCallback(
     (view: View) => {
       setCurrentView(view)
-      void fetchEvents(currentDate, view)
+      void fetchEvents(currentDate, view, true)
     },
     [currentDate, fetchEvents]
   )
@@ -212,8 +213,8 @@ export function PrazosCalendar({ onSelectSlot, onSelectEvent }: PrazosCalendarPr
   }
 
   return (
-    <div className={cn('bg-card border border-border rounded-xl p-4', `calendar-${colorScheme}`)}>
-      <div style={{ minHeight: 600 }}>
+    <div className={cn(`calendar-${colorScheme}`)}>
+      <div style={{ height: 700 }}>
         <Calendar<CalendarEvent>
           localizer={localizer}
           events={events}
@@ -232,6 +233,7 @@ export function PrazosCalendar({ onSelectSlot, onSelectEvent }: PrazosCalendarPr
           culture="pt-BR"
           step={30}
           timeslots={2}
+          length={60}
           formats={{
             monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy', { locale: ptBR }),
             weekdayFormat: (date: Date) => format(date, 'EEE', { locale: ptBR }),

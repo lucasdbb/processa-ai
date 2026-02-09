@@ -163,7 +163,7 @@ class AiService:
 
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        bucket = (settings.SUPABASE_OUTPUTS_BUCKET or "").strip()
+        bucket = (settings.SUPABASE_AI_BUCKET or "").strip()
         if not base_url or not api_key or not bucket:
             raise WorkerException(
                 status_code=500,
@@ -263,7 +263,7 @@ class AiService:
         """
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        bucket = (settings.SUPABASE_OUTPUTS_BUCKET or "").strip()
+        bucket = (settings.SUPABASE_AI_BUCKET or "").strip()
         if not base_url or not api_key or not bucket:
             raise WorkerException(
                 status_code=500,

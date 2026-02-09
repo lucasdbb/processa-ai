@@ -1,8 +1,12 @@
 from uuid import UUID, uuid4
 
+import httpx
 from psycopg.rows import dict_row
 
+from src.core.config import settings
 from src.core.db import get_pool
+from src.core.logging import logger
+from src.core.supabase import get_supabase
 from src.features.office.documents.schemas import (
     DocumentCreate,
     DocumentListParams,
@@ -180,9 +184,111 @@ class DocumentsService:
                 row = await cur.fetchone()
                 return DocumentResponse(**_convert_uuids_to_str(row)) if row else None
 
-    async def delete_document(self, user_id: str, document_id: str) -> bool:
-        """Delete a document."""
+    async def create_document_with_file(
+        self,
+        user_id: str,
+        data: DocumentCreate,
+        file_content: bytes,
+        filename: str,
+        content_type: str,
+    ) -> DocumentResponse:
+        """Create a document and upload file to Supabase Storage."""
+        doc_id = str(uuid4())
+        storage_path = f"{user_id}/{doc_id}/{filename}"
+        bucket = settings.SUPABASE_OFFICE_BUCKET
+
+        supabase = get_supabase()
+        supabase.storage.from_(bucket).upload(
+            path=storage_path,
+            file=file_content,
+            file_options={"content-type": content_type},
+        )
+
+        # Store the storage path (not a public URL) — signed URLs are generated on demand
+        file_url = storage_path
+
         pool = await get_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO office_api.documents (
+                        id, user_id, name, type, status, file_url, file_size,
+                        mime_type, process_id, client_id, description
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING *
+                    """,
+                    (
+                        doc_id,
+                        user_id,
+                        data.name,
+                        data.type,
+                        data.status,
+                        file_url,
+                        len(file_content),
+                        content_type,
+                        data.process_id,
+                        data.client_id,
+                        data.description,
+                    ),
+                )
+                row = await cur.fetchone()
+                return DocumentResponse(**_convert_uuids_to_str(row))
+
+    async def get_download_url(self, file_url: str, expires_in: int = 3600, filename: str | None = None) -> str:
+        """Generate a signed URL for downloading a document (same pattern as AI service)."""
+        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
+        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
+        bucket = settings.SUPABASE_OFFICE_BUCKET
+
+        # Handle legacy entries that stored full public URL instead of storage path
+        if file_url.startswith("http"):
+            marker = f"/object/public/{bucket}/"
+            idx = file_url.find(marker)
+            if idx != -1:
+                file_url = file_url[idx + len(marker):]
+
+        sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{file_url}"
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                sign_url,
+                headers={
+                    "apikey": api_key,
+                    "Authorization": f"Bearer {api_key}",
+                },
+                json={"expiresIn": expires_in},
+            )
+
+        if resp.status_code >= 400:
+            logger.error(f"Failed to generate signed URL: {resp.text}")
+            raise Exception("Failed to generate signed URL")
+
+        data = resp.json()
+        signed_path = data.get("signedURL") or data.get("signedUrl") or ""
+
+        if signed_path.startswith("/"):
+            if signed_path.startswith("/object/"):
+                signed_url = f"{base_url}/storage/v1{signed_path}"
+            else:
+                signed_url = f"{base_url}{signed_path}"
+        else:
+            signed_url = signed_path
+
+        # Add download parameter to force download instead of inline preview
+        if filename:
+            from urllib.parse import quote
+            sep = "&" if "?" in signed_url else "?"
+            signed_url = f"{signed_url}{sep}download={quote(filename)}"
+
+        return signed_url
+
+    async def delete_document(self, user_id: str, document_id: str) -> bool:
+        """Delete a document and its file from storage."""
+        pool = await get_pool()
+
+        # Get doc info first to delete from storage
+        doc = await self.get_document(user_id, document_id)
 
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
@@ -190,7 +296,21 @@ class DocumentsService:
                     "DELETE FROM office_api.documents WHERE user_id = %s AND id = %s",
                     (user_id, document_id),
                 )
-                return cur.rowcount > 0
+                deleted = cur.rowcount > 0
+
+        if deleted and doc and doc.file_url:
+            try:
+                bucket = settings.SUPABASE_OFFICE_BUCKET
+                storage_path = f"{user_id}/{document_id}/"
+                supabase = get_supabase()
+                files = supabase.storage.from_(bucket).list(storage_path)
+                if files:
+                    paths = [f"{storage_path}{f['name']}" for f in files]
+                    supabase.storage.from_(bucket).remove(paths)
+            except Exception as e:
+                logger.warning(f"Failed to delete file from storage: {e}")
+
+        return deleted
 
 
 documents_service = DocumentsService()

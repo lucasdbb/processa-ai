@@ -70,35 +70,10 @@ export default function PrazosPage() {
     void fetchDeadlines()
   }, [fetchDeadlines])
 
-  const handleSaveDeadline = async (deadlineData: SaveDeadlinePayload) => {
-    try {
-      if ('id' in deadlineData && deadlineData.id) {
-        // Update existing deadline
-        await deadlinesService.update(deadlineData.id, {
-          title: deadlineData.title,
-          due_date: deadlineData.date,
-          description: deadlineData.description,
-        })
-        toast.success('Prazo atualizado com sucesso!')
-      } else {
-        // Create new deadline
-        await deadlinesService.create({
-          title: deadlineData.title,
-          process_id: deadlineData.processId || '1', // Mock process ID
-          due_date: deadlineData.date,
-          description: deadlineData.description,
-          reminder_days_before: deadlineData.notifyBefore || 3,
-        })
-        toast.success('Prazo criado com sucesso!')
-      }
-      
-      // Reload deadlines
-      await fetchDeadlines()
-      setIsFormOpen(false)
-    } catch (error) {
-      console.error('Error saving deadline:', error)
-      toast.error('Erro ao salvar prazo. Tente novamente.')
-    }
+  const handleSaveDeadline = async (_deadlineData: SaveDeadlinePayload) => {
+    // API call is already handled by the form dialog
+    await fetchDeadlines()
+    setIsFormOpen(false)
   }
 
   const handleNewDeadline = () => {
@@ -118,20 +93,32 @@ export default function PrazosPage() {
   }
 
   const handleEditDeadline = (deadline: Deadline) => {
+    // Parse datetime into separate date and time parts
+    const dueDateStr = deadline.due_date || ''
+    const dateOnly = dueDateStr.includes('T') ? dueDateStr.split('T')[0] : dueDateStr
+    let timeOnly = ''
+    if (dueDateStr.includes('T')) {
+      const d = new Date(dueDateStr)
+      const h = d.getHours().toString().padStart(2, '0')
+      const m = d.getMinutes().toString().padStart(2, '0')
+      if (h !== '00' || m !== '00') timeOnly = `${h}:${m}`
+    }
+
     // Transform API Deadline to form shape
     const formDeadline: EditingDeadline = {
       id: deadline.id || '',
       title: deadline.title || '',
       processNumber: deadline.process_id || '',
       processId: deadline.process_id,
-      date: deadline.due_date || '',
+      date: dateOnly,
+      time: timeOnly,
       type: 'outros' as const,
       priority: (deadline.priority as 'alta' | 'media' | 'baixa') || 'media',
       description: deadline.description || undefined,
       notifyBefore: deadline.reminder_days_before || 3,
     }
     setEditingDeadline(formDeadline)
-    setDefaultFormDate(deadline.due_date)
+    setDefaultFormDate(dateOnly)
     setIsFormOpen(true)
   }
 

@@ -35,11 +35,12 @@ class CalendarService:
                 event_type, status,
                 processo_id, cliente_id, color,
                 reminder_minutes, source, sync_status,
-                created_at, updated_at
+                created_at, updated_at,
+                priority, deadline_status, completed_at, reminder_days_before
             FROM office_api.events
             WHERE user_id = %s
-              AND start_at >= %s
-              AND end_at <= %s
+              AND end_at::date >= %s
+              AND start_at::date <= %s
         """
         query_params: list[Any] = [user_id, params.start, params.end]
 
@@ -50,6 +51,14 @@ class CalendarService:
         if params.event_type:
             query += " AND event_type = %s"
             query_params.append(params.event_type)
+
+        if params.priority:
+            query += " AND priority = %s"
+            query_params.append(params.priority)
+
+        if params.deadline_status:
+            query += " AND deadline_status = %s"
+            query_params.append(params.deadline_status)
 
         query += " ORDER BY start_at ASC"
 
@@ -63,7 +72,7 @@ class CalendarService:
                 # Get total count
                 count_query = """
                     SELECT COUNT(*) FROM office_api.events
-                    WHERE user_id = %s AND start_at >= %s AND end_at <= %s
+                    WHERE user_id = %s AND end_at::date >= %s AND start_at::date <= %s
                 """
                 await cur.execute(count_query, [user_id, params.start, params.end], prepare=False)
                 total_row = await cur.fetchone()
@@ -83,7 +92,8 @@ class CalendarService:
                 event_type, status,
                 processo_id, cliente_id, color,
                 reminder_minutes, source, sync_status,
-                created_at, updated_at
+                created_at, updated_at,
+                priority, deadline_status, completed_at, reminder_days_before
             FROM office_api.events
             WHERE id = %s AND user_id = %s
         """
@@ -112,6 +122,11 @@ class CalendarService:
         event_id = str(uuid4())
         now = datetime.now(timezone.utc)
 
+        # Default deadline_status to 'pending' if event_type is 'prazo' and status not set
+        deadline_status = data.deadline_status
+        if data.event_type == "prazo" and deadline_status is None:
+            deadline_status = "pending"
+
         query = """
             INSERT INTO office_api.events (
                 id, user_id, calendar_id,
@@ -120,7 +135,8 @@ class CalendarService:
                 event_type, status,
                 processo_id, cliente_id, color,
                 reminder_minutes, source, sync_status,
-                created_at, updated_at
+                created_at, updated_at,
+                priority, deadline_status, completed_at, reminder_days_before
             ) VALUES (
                 %s, %s, %s,
                 %s, %s, %s,
@@ -128,7 +144,8 @@ class CalendarService:
                 %s, %s,
                 %s, %s, %s,
                 %s, %s, %s,
-                %s, %s
+                %s, %s,
+                %s, %s, %s, %s
             )
             RETURNING
                 id, user_id, calendar_id, google_event_id,
@@ -137,7 +154,8 @@ class CalendarService:
                 event_type, status,
                 processo_id, cliente_id, color,
                 reminder_minutes, source, sync_status,
-                created_at, updated_at
+                created_at, updated_at,
+                priority, deadline_status, completed_at, reminder_days_before
         """
 
         params = [
@@ -160,6 +178,10 @@ class CalendarService:
             "pending_sync",
             now,
             now,
+            data.priority,
+            deadline_status,
+            None,  # completed_at
+            data.reminder_days_before,
         ]
 
         try:
@@ -248,6 +270,22 @@ class CalendarService:
             updates.append("reminder_minutes = %s")
             params.append(data.reminder_minutes)
 
+        if data.priority is not None:
+            updates.append("priority = %s")
+            params.append(data.priority)
+
+        if data.deadline_status is not None:
+            updates.append("deadline_status = %s")
+            params.append(data.deadline_status)
+            # When marking as completed, set completed_at
+            if data.deadline_status == "completed":
+                updates.append("completed_at = %s")
+                params.append(datetime.now(timezone.utc))
+
+        if data.reminder_days_before is not None:
+            updates.append("reminder_days_before = %s")
+            params.append(data.reminder_days_before)
+
         if not updates:
             return await self.get_event(user_id, event_id)
 
@@ -271,7 +309,8 @@ class CalendarService:
                 event_type, status,
                 processo_id, cliente_id, color,
                 reminder_minutes, source, sync_status,
-                created_at, updated_at
+                created_at, updated_at,
+                priority, deadline_status, completed_at, reminder_days_before
         """
 
         try:
@@ -300,12 +339,33 @@ class CalendarService:
             )
 
     async def delete_event(self, user_id: str, event_id: str) -> None:
-        """Delete an event."""
-        # First check if event exists
-        await self.get_event(user_id, event_id)
+        """Delete an event and sync deletion with Google Calendar if connected."""
+        # First get the event to check if it has google_event_id
+        event = await self.get_event(user_id, event_id)
 
+        # If event is synced with Google, delete from Google first
+        if event.google_event_id:
+            logger.info(
+                f"Event {event_id} is synced with Google, attempting to delete from Google Calendar"
+            )
+            # Import here to avoid circular dependency
+            from src.features.office.calendar.google_sync import google_sync_service
+
+            deleted_from_google = await google_sync_service.delete_event_from_google(
+                user_id, event.google_event_id
+            )
+            if deleted_from_google:
+                logger.info(
+                    f"Successfully deleted event {event_id} from Google Calendar"
+                )
+            else:
+                logger.warning(
+                    f"Could not delete event {event_id} from Google Calendar, "
+                    f"but proceeding with local deletion"
+                )
+
+        # Delete from local database
         pool = await get_pool()
-
         query = "DELETE FROM office_api.events WHERE id = %s AND user_id = %s"
 
         try:
@@ -348,6 +408,10 @@ class CalendarService:
             sync_status=row[17],
             created_at=row[18],
             updated_at=row[19],
+            priority=row[20],
+            deadline_status=row[21],
+            completed_at=row[22],
+            reminder_days_before=row[23],
         )
 
 

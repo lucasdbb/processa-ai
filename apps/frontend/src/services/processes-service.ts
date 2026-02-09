@@ -91,6 +91,11 @@ export interface ProcessTimelineEvent {
   title: string;
   description: string | null;
   event_date: string;
+  documents?: Array<{
+    id: string;
+    name: string;
+    file_url: string;
+  }>;
   created_at: string;
 }
 
@@ -99,6 +104,7 @@ export interface ProcessDocumentSummary {
   name: string;
   mime_type: string | null;
   file_size: number | null;
+  file_url: string | null;
   created_at: string;
 }
 

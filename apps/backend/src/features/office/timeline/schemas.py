@@ -22,6 +22,17 @@ TimelineEventType = Literal[
 ]
 
 
+class DocumentSummary(BaseModel):
+    """Summary of a document linked to a timeline event."""
+    
+    id: UUID
+    name: str
+    type: str
+    file_url: str | None
+    file_size: int | None
+    mime_type: str | None
+
+
 class TimelineEventCreate(BaseModel):
     """Schema for creating a timeline event."""
 
@@ -31,6 +42,7 @@ class TimelineEventCreate(BaseModel):
     description: str | None = None
     event_date: datetime | None = None  # Se None, usa created_at
     metadata: dict | None = None  # Dados extras (ex: document_id, deadline_id)
+    document_ids: list[UUID] | None = None  # IDs dos documentos a vincular
 
 
 class TimelineEventUpdate(BaseModel):
@@ -40,6 +52,7 @@ class TimelineEventUpdate(BaseModel):
     description: str | None = None
     event_date: datetime | None = None
     metadata: dict | None = None
+    document_ids: list[UUID] | None = None  # IDs dos documentos a vincular/atualizar
 
 
 class TimelineEventResponse(BaseModel):
@@ -53,6 +66,7 @@ class TimelineEventResponse(BaseModel):
     description: str | None
     event_date: datetime
     metadata: dict | None
+    documents: list[DocumentSummary] = []  # Documentos vinculados
     created_at: datetime
     updated_at: datetime
 

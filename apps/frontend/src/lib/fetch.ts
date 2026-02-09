@@ -25,9 +25,19 @@ export async function fetchWithCredentials(
 
   // Get Supabase session token
   const supabase = createClient();
-  const {
+  let {
     data: { session },
   } = await supabase.auth.getSession();
+
+  // If session is missing, try refreshing before giving up
+  if (!session?.access_token) {
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      session = data.session;
+    } catch {
+      // ignore refresh errors
+    }
+  }
 
   // Add required headers
   const headers = new Headers(init?.headers);

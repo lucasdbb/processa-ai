@@ -204,11 +204,11 @@ class ClientsService:
                         p.court,
                         p.value,
                         (
-                            SELECT MIN(d.due_date)::text
-                            FROM office_api.deadlines d
-                            WHERE d.process_id = p.id
-                              AND d.due_date >= CURRENT_DATE
-                              AND d.status != 'completed'
+                            SELECT MIN(e.start_at)::text
+                            FROM office_api.events e
+                            WHERE e.processo_id = p.id AND e.event_type = 'prazo'
+                              AND e.start_at >= CURRENT_DATE
+                              AND e.deadline_status != 'completed'
                         ) as next_deadline
                     FROM office_api.processes p
                     WHERE p.user_id = %s AND p.client_id = %s

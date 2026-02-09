@@ -139,11 +139,11 @@ export default function ClientesPage() {
           action={!search ? { label: 'Novo Cliente', onClick: () => setShowClientDialog(true) } : undefined}
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {clients.map((client) => (
             <Link key={client.id} to={`/app/clientes/${client.id}`}>
-              <div className="group p-3.5 bg-card border border-border rounded-lg hover:shadow-sm hover:border-primary/50 transition-all duration-200">
-                <div className="flex items-center gap-3">
+              <div className="group p-3 bg-card border border-border rounded-lg hover:shadow-sm hover:border-primary/50 transition-all duration-200">
+                <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center text-xs font-semibold shrink-0">
                     {client.name
                       .split(' ')
@@ -153,7 +153,7 @@ export default function ClientesPage() {
                       .slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                       <h3 className="text-sm font-semibold text-foreground truncate">{client.name}</h3>
                       <span
                         className={cn(
@@ -168,7 +168,7 @@ export default function ClientesPage() {
                         {getStatusLabel(client.status)}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground">
                       {client.cpf_cnpj && (
                         <span className="flex items-center gap-1">
                           <FileText className="h-3 w-3" />

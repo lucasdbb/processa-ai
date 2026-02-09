@@ -108,7 +108,15 @@ async def delete_material(material_id: str, user_role: str = Depends(get_user_ro
     return await service.delete_material(material_id)
 
 
+@router.get("/{slug}/download-url", status_code=status.HTTP_200_OK)
+async def get_download_url(slug: str, user_id: str = Depends(get_user_id)):
+    """Returns the signed download URL as JSON (CORS-friendly)"""
+    url = await service.get_download_redirect_url(slug)
+    return {"download_url": url}
+
+
 @router.get("/{slug}/download", status_code=status.HTTP_302_FOUND)
 async def download_material(slug: str, user_id: str = Depends(get_user_id)):
     url = await service.get_download_redirect_url(slug)
     return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+

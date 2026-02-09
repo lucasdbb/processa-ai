@@ -107,33 +107,43 @@ export default function MaterialsPage() {
       }
 
       const slug = encodeURIComponent(item.slug)
-      const url = `${API_URL}/materials/${slug}/download`
+      const url = `${API_URL}/materials/${slug}/download-url`
 
       setDownloadingSlug(item.slug)
       try {
+        // Get the signed download URL from backend
         const res = await fetchWithCredentials(url, { method: 'GET' })
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
             requestAuth()
             return
           }
-          throw new Error('Falha ao iniciar download')
+          throw new Error('Falha ao obter URL de download')
         }
 
-        const blob = await res.blob()
-        const objectUrl = URL.createObjectURL(blob)
+        const data = await res.json()
+        const downloadUrl = data.download_url
+
+        if (!downloadUrl) {
+          throw new Error('URL de download inválida')
+        }
+
+        // Download file directly via anchor tag (no CORS issues)
         const element = document.createElement('a')
         const ext = EXT_BY_MIME[item.mime_type] || 'pdf'
         const baseName = toSafeFilename(item.title || item.slug)
 
-        element.href = objectUrl
+        element.href = downloadUrl
         element.download = `${baseName}.${ext}`
+        element.target = '_blank'
+        element.rel = 'noopener noreferrer'
         document.body.appendChild(element)
         element.click()
         document.body.removeChild(element)
-        URL.revokeObjectURL(objectUrl)
+
+        toast.success('Download iniciado!')
       } catch {
-        window.location.href = url
+        toast.error('Erro ao baixar material. Tente novamente.')
       } finally {
         setDownloadingSlug(null)
       }

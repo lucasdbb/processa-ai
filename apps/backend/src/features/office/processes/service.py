@@ -200,13 +200,13 @@ class ProcessesService:
                     SELECT
                         id,
                         title,
-                        due_date::text as due_date,
-                        status,
+                        start_at::text as due_date,
+                        deadline_status as status,
                         priority,
-                        (due_date - CURRENT_DATE) as days_until
-                    FROM office_api.deadlines
-                    WHERE user_id = %s AND process_id = %s
-                    ORDER BY due_date ASC
+                        (start_at::date - CURRENT_DATE) as days_until
+                    FROM office_api.events
+                    WHERE user_id = %s AND processo_id = %s AND event_type = 'prazo'
+                    ORDER BY start_at ASC
                     LIMIT 10
                     """,
                     (str(user_id), str(process_id)),
@@ -219,9 +219,9 @@ class ProcessesService:
                     """
                     SELECT
                         COUNT(*) as total,
-                        COUNT(*) FILTER (WHERE due_date < CURRENT_DATE AND status != 'completed') as overdue
-                    FROM office_api.deadlines
-                    WHERE user_id = %s AND process_id = %s
+                        COUNT(*) FILTER (WHERE start_at < CURRENT_DATE AND deadline_status != 'completed') as overdue
+                    FROM office_api.events
+                    WHERE user_id = %s AND processo_id = %s AND event_type = 'prazo'
                     """,
                     (str(user_id), str(process_id)),
                 )
@@ -258,7 +258,7 @@ class ProcessesService:
                 # Get documents
                 await cur.execute(
                     """
-                    SELECT id, name, mime_type, file_size, created_at
+                    SELECT id, name, mime_type, file_size, file_url, created_at
                     FROM office_api.documents
                     WHERE user_id = %s AND process_id = %s
                     ORDER BY created_at DESC

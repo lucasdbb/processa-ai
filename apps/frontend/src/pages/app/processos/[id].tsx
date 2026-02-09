@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -13,7 +13,10 @@ import {
   Plus,
   Trash2,
   TrendingUp,
-  ExternalLink,
+  Download,
+  MoreVertical,
+  Archive,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -22,6 +25,8 @@ import { cn } from '@/lib/utils'
 import { DeadlineFormDialog } from '@/components/forms/deadline-form-dialog'
 import { ProcessFormDialog, type ProcessFormData } from '@/components/forms/process-form-dialog'
 import { DocumentFormDialog } from '@/components/forms/document-form-dialog'
+import { TimelineFormDialog } from '@/components/forms/timeline-form-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import {
   processesService,
@@ -29,6 +34,7 @@ import {
 } from '@/services/processes-service'
 import { deadlinesService, type Deadline } from '@/services/deadlines-service'
 import { documentsService, type Document } from '@/services/documents-service'
+import { timelineService } from '@/services/timeline-service'
 
 type Tab = 'resumo' | 'andamentos' | 'prazos' | 'documentos'
 
@@ -41,6 +47,17 @@ export default function ProcessoDetalhePage() {
   const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null)
   const [showDocumentDialog, setShowDocumentDialog] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
+  const [showTimelineDialog, setShowTimelineDialog] = useState(false)
+  const [editingTimelineEvent, setEditingTimelineEvent] = useState<any>(null)
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteTimelineModal, setShowDeleteTimelineModal] = useState(false)
+  const [timelineToDelete, setTimelineToDelete] = useState<{ id: string; title: string; documents: any[] } | null>(null)
+  const [deleteTimelineDocuments, setDeleteTimelineDocuments] = useState(false)
+  const [isDeletingTimeline, setIsDeletingTimeline] = useState(false)
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
 
   const [process, setProcess] = useState<ProcessDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -63,6 +80,17 @@ export default function ProcessoDetalhePage() {
   useEffect(() => {
     void fetchProcess()
   }, [fetchProcess])
+
+  // Close actions menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const processForDialog: ProcessFormData | undefined = process
     ? {
@@ -154,6 +182,71 @@ export default function ProcessoDetalhePage() {
     return colors[eventType] || 'bg-gray-500'
   }
 
+  const handleArchiveProcess = async () => {
+    if (!id) return
+    try {
+      await processesService.update(id, { status: 'archived' })
+      toast.success('Processo arquivado com sucesso')
+      await fetchProcess()
+      setShowActionsMenu(false)
+    } catch (error) {
+      console.error('Error archiving process:', error)
+      toast.error('Erro ao arquivar processo')
+    }
+  }
+
+  const handleDeleteProcess = async () => {
+    if (!id || !deleteConfirmation) return
+    setIsDeleting(true)
+    try {
+      await processesService.delete(id)
+      toast.success('Processo excluído com sucesso')
+      navigate('/app/processos')
+    } catch (error) {
+      console.error('Error deleting process:', error)
+      toast.error('Erro ao excluir processo')
+      setShowDeleteModal(false)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleEditTimelineEvent = (event: any) => {
+    setEditingTimelineEvent(event)
+    setShowTimelineDialog(true)
+  }
+
+  const handleDeleteTimelineEvent = async () => {
+    if (!timelineToDelete) return
+    setIsDeletingTimeline(true)
+    try {
+      // Delete timeline event
+      await timelineService.delete(timelineToDelete.id)
+      
+      // If user chose to delete documents, delete them
+      if (deleteTimelineDocuments && timelineToDelete.documents?.length > 0) {
+        for (const doc of timelineToDelete.documents) {
+          try {
+            await documentsService.delete(doc.id)
+          } catch (error) {
+            console.error('Error deleting document:', doc.id, error)
+          }
+        }
+      }
+      
+      toast.success('Andamento excluído com sucesso')
+      await fetchProcess()
+      setShowDeleteTimelineModal(false)
+      setTimelineToDelete(null)
+      setDeleteTimelineDocuments(false)
+    } catch (error) {
+      console.error('Error deleting timeline event:', error)
+      toast.error('Erro ao excluir andamento')
+    } finally {
+      setIsDeletingTimeline(false)
+    }
+  }
+
   const tabs: { id: Tab; label: string }[] = [
     { id: 'resumo', label: 'Resumo' },
     { id: 'andamentos', label: 'Andamentos' },
@@ -225,10 +318,10 @@ export default function ProcessoDetalhePage() {
                 <span className="font-medium text-foreground">{process.client.name}</span>
                 <Link
                   to={`/app/clientes/${process.client.id}`}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
+                  className="text-xs text-primary hover:underline"
                   title="Ver cliente"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  (ver perfil)
                 </Link>
               </div>
               {process.defendant && (
@@ -282,7 +375,7 @@ export default function ProcessoDetalhePage() {
                   </button>
                   <button
                     onClick={() => {
-                      toast.info('Funcionalidade de andamentos em desenvolvimento')
+                      setShowTimelineDialog(true)
                     }}
                     className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
                   >
@@ -309,6 +402,40 @@ export default function ProcessoDetalhePage() {
               <Edit className="h-4 w-4" />
               Editar
             </button>
+            {/* Actions Menu */}
+            <div className="relative" ref={actionsMenuRef}>
+              <button
+                onClick={() => setShowActionsMenu(!showActionsMenu)}
+                className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Mais ações"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showActionsMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={handleArchiveProcess}
+                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <Archive className="h-4 w-4" />
+                      Arquivar
+                    </button>
+                    <div className="border-t border-border my-1" />
+                    <button
+                      onClick={() => {
+                        setShowDeleteModal(true)
+                        setShowActionsMenu(false)
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir Processo
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -435,13 +562,77 @@ export default function ProcessoDetalhePage() {
                   <div className="flex-1 pb-6">
                     <div className="p-4 rounded-lg border border-border bg-card">
                       <div className="flex items-start justify-between gap-4 mb-2">
-                        <h3 className="font-semibold text-foreground">{event.title}</h3>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatShortDate(event.event_date)}
-                        </span>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground">{event.title}</h3>
+                          <span className="text-xs text-muted-foreground">
+                            {formatShortDate(event.event_date)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditTimelineEvent(event)}
+                            className="p-1.5 rounded hover:bg-accent transition-colors"
+                            title="Editar andamento"
+                          >
+                            <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setTimelineToDelete({
+                                id: event.id,
+                                title: event.title,
+                                documents: event.documents || [],
+                              })
+                              setShowDeleteTimelineModal(true)
+                            }}
+                            className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                            title="Excluir andamento"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
+                        </div>
                       </div>
                       {event.description && (
-                        <p className="text-sm text-muted-foreground">{event.description}</p>
+                        <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
+                      )}
+                      {event.documents && event.documents.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Documentos vinculados:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {event.documents.map((doc) => (
+                              <button
+                                key={doc.id}
+                                onClick={async () => {
+                                  try {
+                                    // Get signed URL from backend
+                                    const url = await documentsService.getDownloadUrl(doc.id)
+                                    // Download from signed URL (no credentials needed)
+                                    const res = await fetch(url)
+                                    if (!res.ok) throw new Error('Download failed')
+                                    const blob = await res.blob()
+                                    const blobUrl = URL.createObjectURL(blob)
+                                    const element = document.createElement('a')
+                                    element.href = blobUrl
+                                    element.download = doc.name
+                                    document.body.appendChild(element)
+                                    element.click()
+                                    document.body.removeChild(element)
+                                    URL.revokeObjectURL(blobUrl)
+                                    toast.success('Download iniciado')
+                                  } catch {
+                                    toast.error('Erro ao baixar documento')
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-xs transition-colors"
+                              >
+                                <FileText className="h-3 w-3" />
+                                <span className="truncate max-w-[180px]">{doc.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -572,7 +763,7 @@ export default function ProcessoDetalhePage() {
                 {process.documents.map((doc) => (
                   <div
                     key={doc.id}
-                    className="p-4 rounded-lg border border-border bg-card"
+                    className="p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3 flex-1">
@@ -586,6 +777,35 @@ export default function ProcessoDetalhePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {doc.file_url && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                // Get signed URL from backend
+                                const url = await documentsService.getDownloadUrl(doc.id)
+                                // Download from signed URL (no credentials needed)
+                                const res = await fetch(url)
+                                if (!res.ok) throw new Error('Download failed')
+                                const blob = await res.blob()
+                                const blobUrl = URL.createObjectURL(blob)
+                                const element = document.createElement('a')
+                                element.href = blobUrl
+                                element.download = doc.name
+                                document.body.appendChild(element)
+                                element.click()
+                                document.body.removeChild(element)
+                                URL.revokeObjectURL(blobUrl)
+                                toast.success('Download iniciado')
+                              } catch {
+                                toast.error('Erro ao baixar documento')
+                              }
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                            title="Baixar arquivo"
+                          >
+                            <Download className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        )}
                         <button
                           onClick={async () => {
                             try {
@@ -694,7 +914,7 @@ export default function ProcessoDetalhePage() {
               client_id: editingDocument.client_id,
               description: editingDocument.description,
             } : undefined}
-            onSave={async (docData) => {
+            onSave={async (docData, file) => {
               try {
                 if (editingDocument) {
                   await documentsService.update(editingDocument.id, {
@@ -706,6 +926,16 @@ export default function ProcessoDetalhePage() {
                     description: docData.description || undefined,
                   })
                   toast.success('Documento atualizado com sucesso!')
+                } else if (file) {
+                  await documentsService.createWithFile({
+                    name: docData.name,
+                    type: docData.type,
+                    status: docData.status,
+                    process_id: id,
+                    client_id: docData.client_id || undefined,
+                    description: docData.description || undefined,
+                  }, file)
+                  toast.success('Documento enviado com sucesso!')
                 } else {
                   await documentsService.create({
                     name: docData.name,
@@ -726,6 +956,171 @@ export default function ProcessoDetalhePage() {
               }
             }}
           />
+          <TimelineFormDialog
+            isOpen={showTimelineDialog}
+            onClose={() => {
+              setShowTimelineDialog(false)
+              setEditingTimelineEvent(null)
+            }}
+            processId={id || ''}
+            event={editingTimelineEvent}
+            onSave={() => {
+              setShowTimelineDialog(false)
+              setEditingTimelineEvent(null)
+              void fetchProcess()
+            }}
+          />
+
+          {/* Delete Timeline Event Modal */}
+          <Dialog open={showDeleteTimelineModal} onOpenChange={setShowDeleteTimelineModal}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Excluir Andamento?
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Você está prestes a excluir o andamento: <strong className="text-foreground">"{timelineToDelete?.title}"</strong>
+                </p>
+                
+                {timelineToDelete?.documents && timelineToDelete.documents.length > 0 && (
+                  <>
+                    <div className="rounded-lg border border-border bg-muted/50 p-3">
+                      <p className="text-sm font-medium text-foreground mb-2">
+                        Este andamento possui {timelineToDelete.documents.length} documento(s) vinculado(s):
+                      </p>
+                      <ul className="space-y-1">
+                        {timelineToDelete.documents.map((doc) => (
+                          <li key={doc.id} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <FileText className="h-3 w-3" />
+                            {doc.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg border border-orange-500/50 bg-orange-500/10">
+                      <div className="relative flex items-center justify-center mt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={deleteTimelineDocuments}
+                          onChange={(e) => setDeleteTimelineDocuments(e.target.checked)}
+                          className="h-4 w-4 rounded border-border text-destructive focus:ring-destructive focus:ring-offset-0"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-foreground block mb-1">
+                          Excluir também os documentos vinculados
+                        </span>
+                        <span className="text-xs text-orange-700 dark:text-orange-300">
+                          Os documentos serão permanentemente removidos do sistema
+                        </span>
+                      </div>
+                    </label>
+                  </>
+                )}
+                
+                {(!timelineToDelete?.documents || timelineToDelete.documents.length === 0) && (
+                  <p className="text-xs text-muted-foreground">
+                    Este andamento não possui documentos vinculados.
+                  </p>
+                )}
+              </div>
+              <DialogFooter className="gap-2">
+                <button
+                  onClick={() => {
+                    setShowDeleteTimelineModal(false)
+                    setTimelineToDelete(null)
+                    setDeleteTimelineDocuments(false)
+                  }}
+                  disabled={isDeletingTimeline}
+                  className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteTimelineEvent}
+                  disabled={isDeletingTimeline}
+                  className="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                >
+                  {isDeletingTimeline ? 'Excluindo...' : 'Excluir Andamento'}
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Confirmation Modal */}
+          <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Excluir Processo {process.process_number}?
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Esta ação não pode ser desfeita. Ao excluir este processo, <strong className="text-foreground">todos os dados relacionados serão permanentemente removidos</strong>:
+                </p>
+                <div className="rounded-lg border border-border bg-muted/50 p-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Prazos:</span>
+                    <span className="font-semibold text-foreground">{process.deadlines_count || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Andamentos:</span>
+                    <span className="font-semibold text-foreground">{process.timeline_count || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Documentos:</span>
+                    <span className="font-semibold text-foreground">{process.documents_count || 0}</span>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-orange-500/50 bg-orange-500/10 p-3 text-xs text-orange-700 dark:text-orange-300">
+                  <strong>Também serão excluídos em cascata:</strong>
+                  <ul className="list-disc list-inside mt-1.5 space-y-0.5 ml-1">
+                    <li>Eventos de calendário vinculados</li>
+                    <li>Notas e observações do processo</li>
+                    <li>Honorários vinculados</li>
+                  </ul>
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={deleteConfirmation}
+                      onChange={(e) => setDeleteConfirmation(e.target.checked)}
+                      className="h-4 w-4 rounded border-border text-destructive focus:ring-destructive focus:ring-offset-0"
+                    />
+                  </div>
+                  <span className="text-sm text-foreground group-hover:text-foreground/80">
+                    Entendo as consequências e desejo excluir permanentemente este processo
+                  </span>
+                </label>
+              </div>
+              <DialogFooter className="gap-2">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeleteConfirmation(false)
+                  }}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteProcess}
+                  disabled={!deleteConfirmation || isDeleting}
+                  className="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? 'Excluindo...' : 'Excluir Processo'}
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

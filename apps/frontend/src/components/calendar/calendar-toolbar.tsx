@@ -46,7 +46,7 @@ export function CalendarToolbar({ label, onNavigate, onView, view }: ToolbarProp
             className={cn(
               'px-3 py-1.5 text-xs font-medium transition-colors',
               view === v
-                ? 'bg-slate-900 text-white'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-background text-muted-foreground hover:bg-muted'
             )}
           >

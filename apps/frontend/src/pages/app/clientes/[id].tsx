@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -15,12 +15,16 @@ import {
   Calendar,
   Pin,
   Trash2,
+  MoreVertical,
+  Archive,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 import { ClientFormDialog } from '@/components/forms/client-form-dialog'
 import { NoteFormDialog } from '@/components/forms/note-form-dialog'
@@ -48,6 +52,11 @@ export default function ClienteDetalhePage() {
   const [editingFee, setEditingFee] = useState<Fee | null>(null)
   const [fees, setFees] = useState<Fee[]>([])
   const [isLoadingFees, setIsLoadingFees] = useState(false)
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
 
   const [client, setClient] = useState<ClientDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -90,6 +99,17 @@ export default function ClienteDetalhePage() {
       void fetchFees()
     }
   }, [activeTab, fetchFees])
+
+  // Close actions menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const clientForDialog: Client | undefined = client
     ? {
@@ -182,6 +202,35 @@ export default function ClienteDetalhePage() {
     } catch (error) {
       console.error('Error deleting fee:', error)
       toast.error('Erro ao excluir honorário')
+    }
+  }
+
+  const handleArchiveClient = async () => {
+    if (!id) return
+    try {
+      await clientsService.update(id, { status: 'archived' })
+      toast.success('Cliente arquivado com sucesso')
+      await fetchClient()
+      setShowActionsMenu(false)
+    } catch (error) {
+      console.error('Error archiving client:', error)
+      toast.error('Erro ao arquivar cliente')
+    }
+  }
+
+  const handleDeleteClient = async () => {
+    if (!id || !deleteConfirmation) return
+    setIsDeleting(true)
+    try {
+      await clientsService.delete(id)
+      toast.success('Cliente excluído com sucesso')
+      navigate('/app/clientes')
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      toast.error('Erro ao excluir cliente')
+      setShowDeleteModal(false)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -427,6 +476,40 @@ export default function ClienteDetalhePage() {
             <Edit className="h-4 w-4" />
             Editar
           </button>
+          {/* Actions Menu */}
+          <div className="relative" ref={actionsMenuRef}>
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Mais ações"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+            {showActionsMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={handleArchiveClient}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <Archive className="h-4 w-4" />
+                    Arquivar
+                  </button>
+                  <div className="border-t border-border my-1" />
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(true)
+                      setShowActionsMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir Cliente
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -459,42 +542,42 @@ export default function ClienteDetalhePage() {
         {activeTab === 'resumo' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-2.5 mb-2">
                 <FolderKanban className="h-5 w-5 text-muted-foreground" />
                 <h3 className="font-semibold">Processos</h3>
               </div>
-              <p className="text-3xl font-bold text-foreground">{client.processes_count}</p>
-              <p className="text-sm text-muted-foreground mt-1">Cadastrados</p>
+              <p className="text-2xl font-bold text-foreground">{client.processes_count}</p>
+              <p className="text-sm text-muted-foreground">Cadastrados</p>
             </div>
             <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-2.5 mb-2">
                 <Calculator className="h-5 w-5 text-muted-foreground" />
                 <h3 className="font-semibold">Honorários</h3>
               </div>
-              <p className="text-3xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-foreground">
                 {formatCurrency(client.fees_summary.total_amount)}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">Total contratado</p>
+              <p className="text-sm text-muted-foreground">Total contratado</p>
             </div>
             <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-2.5 mb-2">
                 <StickyNote className="h-5 w-5 text-muted-foreground" />
                 <h3 className="font-semibold">Notas</h3>
               </div>
-              <p className="text-3xl font-bold text-foreground">{client.notes_count}</p>
-              <p className="text-sm text-muted-foreground mt-1">Anotações</p>
+              <p className="text-2xl font-bold text-foreground">{client.notes_count}</p>
+              <p className="text-sm text-muted-foreground">Anotações</p>
             </div>
 
             {/* Recent Processes */}
             {client.processes.length > 0 && (
               <div className="md:col-span-3">
-                <h3 className="font-semibold mb-3">Processos Recentes</h3>
+                <h3 className="font-semibold mb-2">Processos Recentes</h3>
                 <div className="space-y-2">
                   {client.processes.slice(0, 3).map((process) => (
                     <Link
                       key={process.id}
                       to={`/app/processos/${process.id}`}
-                      className="block p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                      className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-start justify-between">
                         <div>
@@ -521,7 +604,7 @@ export default function ClienteDetalhePage() {
         )}
 
         {activeTab === 'processos' && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {client.processes.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FolderKanban className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -538,7 +621,7 @@ export default function ClienteDetalhePage() {
                 <Link
                   key={process.id}
                   to={`/app/processos/${process.id}`}
-                  className="block p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                  className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -842,6 +925,86 @@ export default function ClienteDetalhePage() {
           onSave={handleSaveFee}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Excluir {client?.name}?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Esta ação não pode ser desfeita. Ao excluir este cliente, <strong className="text-foreground">todos os dados relacionados serão permanentemente removidos</strong>:
+            </p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3 space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Processos:</span>
+                <span className="font-semibold text-foreground">{client?.processes_count || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Honorários:</span>
+                <span className="font-semibold text-foreground">{fees.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Notas:</span>
+                <span className="font-semibold text-foreground">{client?.notes_count || 0}</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-orange-500/50 bg-orange-500/10 p-3 text-xs text-orange-700 dark:text-orange-300">
+              <strong>Também serão excluídos em cascata:</strong>
+              <ul className="list-disc list-inside mt-1.5 space-y-0.5 ml-1">
+                <li>Todos os prazos e deadlines dos processos</li>
+                <li>Histórico completo da timeline dos processos</li>
+                <li>Eventos de calendário vinculados</li>
+                <li>Documentos anexados</li>
+              </ul>
+            </div>
+            {client && client.processes_count > 0 && (
+              <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-yellow-700 dark:text-yellow-300">
+                  <strong>Atenção:</strong> Este cliente possui processos ativos. Considere arquivar em vez de excluir.
+                </div>
+              </div>
+            )}
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="relative flex items-center justify-center mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.checked)}
+                  className="h-4 w-4 rounded border-border text-destructive focus:ring-destructive focus:ring-offset-0"
+                />
+              </div>
+              <span className="text-sm text-foreground group-hover:text-foreground/80">
+                Entendo as consequências e desejo excluir permanentemente este cliente
+              </span>
+            </label>
+          </div>
+          <DialogFooter className="gap-2">
+            <button
+              onClick={() => {
+                setShowDeleteModal(false)
+                setDeleteConfirmation(false)
+              }}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDeleteClient}
+              disabled={!deleteConfirmation || isDeleting}
+              className="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? 'Excluindo...' : 'Excluir Cliente'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

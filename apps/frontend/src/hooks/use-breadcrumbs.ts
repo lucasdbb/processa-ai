@@ -11,7 +11,7 @@ const ROUTE_LABELS: Record<string, string> = {
   app: "Dashboard",
   clientes: "Clientes",
   processos: "Processos",
-  prazos: "Prazos",
+  calendario: "Calendário",
   calculadoras: "Calculadoras",
   ia: "IA Jurídica",
   documentos: "Documentos",

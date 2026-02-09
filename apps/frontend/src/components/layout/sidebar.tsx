@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   Users,
   FolderKanban,
-  CalendarClock,
+  CalendarDays,
   Calculator,
   Bot,
   FileText,
@@ -74,7 +74,7 @@ const getNavigationGroups = (
       items: [
         { name: 'Clientes', href: '/app/clientes', icon: Users },
         { name: 'Processos', href: '/app/processos', icon: FolderKanban },
-        { name: 'Prazos', href: '/app/prazos', icon: CalendarClock },
+        { name: 'Calendário', href: '/app/calendario', icon: CalendarDays },
       ],
     },
     {

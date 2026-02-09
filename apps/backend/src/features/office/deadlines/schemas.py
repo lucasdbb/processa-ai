@@ -12,7 +12,7 @@ class DeadlineCreate(BaseModel):
     process_id: UUID
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
-    due_date: date
+    due_date: datetime
     priority: DeadlinePriority = "medium"
     reminder_days_before: int = Field(default=3, ge=0, le=30)
 
@@ -20,7 +20,7 @@ class DeadlineCreate(BaseModel):
 class DeadlineUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
-    due_date: date | None = None
+    due_date: datetime | None = None
     priority: DeadlinePriority | None = None
     status: DeadlineStatus | None = None
     reminder_days_before: int | None = Field(None, ge=0, le=30)
@@ -32,7 +32,7 @@ class DeadlineResponse(BaseModel):
     process_id: UUID
     title: str
     description: str | None
-    due_date: date
+    due_date: datetime
     priority: DeadlinePriority
     status: DeadlineStatus
     completed_at: datetime | None

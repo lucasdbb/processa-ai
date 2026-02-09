@@ -123,13 +123,13 @@ export function CommandPalette() {
         },
       },
       {
-        id: 'go-deadlines',
-        name: 'Prazos',
-        description: 'Ver calendario de prazos',
+        id: 'go-calendar',
+        name: 'Calendário',
+        description: 'Ver calendario e prazos',
         icon: CalendarClock,
         category: 'navigation',
         action: () => {
-          navigate('/app/prazos')
+          navigate('/app/calendario')
           closeAndReset()
         },
       },

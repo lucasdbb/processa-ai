@@ -22,7 +22,7 @@ import ClientesPage from '@/pages/app/clientes'
 import ClienteDetalhePage from '@/pages/app/clientes/[id]'
 import ProcessosPage from '@/pages/app/processos'
 import ProcessoDetalhePage from '@/pages/app/processos/[id]'
-import PrazosPage from '@/pages/app/prazos'
+import CalendarioPage from '@/pages/app/calendario'
 import DocumentosPage from '@/pages/app/documentos'
 import NotificacoesPage from '@/pages/app/notificacoes'
 import ConfiguracoesPage from '@/pages/app/configuracoes'
@@ -134,7 +134,13 @@ export const router = createBrowserRouter([
       },
       {
         path: 'prazos',
-        element: <PrazosPage />,
+        loader: () => {
+          throw redirect('/app/calendario')
+        },
+      },
+      {
+        path: 'calendario',
+        element: <CalendarioPage />,
       },
       {
         path: 'calculadoras',

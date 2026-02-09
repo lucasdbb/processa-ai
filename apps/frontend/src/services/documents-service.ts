@@ -91,6 +91,34 @@ export const documentsService = {
     return res.json();
   },
 
+  async createWithFile(data: DocumentCreate, file: File): Promise<Document> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("name", data.name);
+    if (data.type) formData.append("type", data.type);
+    if (data.status) formData.append("document_status", data.status);
+    if (data.process_id) formData.append("process_id", data.process_id);
+    if (data.client_id) formData.append("client_id", data.client_id);
+    if (data.description) formData.append("description", data.description);
+
+    const res = await fetchWithCredentials(
+      `${API_URL}/office/documents/upload`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+    if (!res.ok) throw new Error("Failed to upload document");
+    return res.json();
+  },
+
+  async getDownloadUrl(id: string): Promise<string> {
+    const res = await fetchWithCredentials(`${API_URL}/office/documents/${id}/download`);
+    if (!res.ok) throw new Error("Failed to get download URL");
+    const data = await res.json();
+    return data.download_url;
+  },
+
   async delete(id: string): Promise<void> {
     const res = await fetchWithCredentials(
       `${API_URL}/office/documents/${id}`,
