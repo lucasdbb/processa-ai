@@ -296,15 +296,35 @@ export default function DocumentosPage() {
                     </p>
                   </div>
                   {doc.file_url && (
-                    <a
-                      href={doc.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={async () => {
+                        try {
+                          const url = await fetchWithCredentials(
+                            `${API_URL}/office/documents/${doc.id}/download`
+                          )
+                          if (!url.ok) throw new Error('Download failed')
+                          const data = await url.json() as { download_url: string }
+                          const res = await fetch(data.download_url)
+                          if (!res.ok) throw new Error('Download failed')
+                          const blob = await res.blob()
+                          const blobUrl = URL.createObjectURL(blob)
+                          const element = document.createElement('a')
+                          element.href = blobUrl
+                          element.download = doc.name
+                          document.body.appendChild(element)
+                          element.click()
+                          document.body.removeChild(element)
+                          URL.revokeObjectURL(blobUrl)
+                          toast.success('Download iniciado')
+                        } catch {
+                          toast.error('Erro ao baixar documento')
+                        }
+                      }}
                       className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors shrink-0"
                       title="Baixar documento"
                     >
                       <Download className="h-4 w-4" />
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>

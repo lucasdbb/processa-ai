@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils'
 import { ClientSelect } from '@/components/ui/client-select'
 import { ProcessSelect } from '@/components/ui/process-select'
+import { toast } from 'sonner'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 
 interface Document {
   id: string
@@ -251,14 +253,35 @@ function DocumentFormDialogBody({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-foreground truncate">Arquivo anexado</p>
-              <a
-                href={document.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const url = await fetchWithCredentials(
+                      `${API_URL}/office/documents/${document.id}/download`
+                    )
+                    if (!url.ok) throw new Error('Download failed')
+                    const data = await url.json() as { download_url: string }
+                    const res = await fetch(data.download_url)
+                    if (!res.ok) throw new Error('Download failed')
+                    const blob = await res.blob()
+                    const blobUrl = URL.createObjectURL(blob)
+                    const element = document.createElement('a')
+                    element.href = blobUrl
+                    element.download = document.name
+                    document.body.appendChild(element)
+                    element.click()
+                    document.body.removeChild(element)
+                    URL.revokeObjectURL(blobUrl)
+                    toast.success('Download iniciado')
+                  } catch {
+                    toast.error('Erro ao baixar documento')
+                  }
+                }}
                 className="text-xs text-primary hover:underline"
               >
-                Abrir arquivo
-              </a>
+                Baixar arquivo
+              </button>
             </div>
           </div>
         )}

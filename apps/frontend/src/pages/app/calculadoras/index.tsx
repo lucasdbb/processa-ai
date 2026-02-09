@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCalculators } from '@/features/calculators/context'
+import { ClientSelector } from '@/components/forms/client-selector'
 import type { LucideIcon } from 'lucide-react'
 
 type RescisaoDetalhes = {
@@ -99,6 +100,7 @@ export default function CalculadorasHubPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [resultado, setResultado] = useState<Resultado | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     salario: '',
     dataAdmissao: '',
@@ -139,6 +141,7 @@ export default function CalculadorasHubPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
+          ...(selectedClientId && { client_id: selectedClientId }),
           salario_mensal: parseFloat(formData.salario) || 0,
           data_admissao: formData.dataAdmissao,
           data_rescisao: formData.dataRescisao,
@@ -252,12 +255,20 @@ export default function CalculadorasHubPage() {
             <h1 className="text-2xl font-bold text-foreground">{current.name}</h1>
             <p className="text-muted-foreground mt-1">{current.description}</p>
           </div>
-          <Link
-            to="/app/calculadoras"
-            className="inline-flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            Ver todas
-          </Link>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <ClientSelector
+              value={selectedClientId}
+              onChange={(id) => setSelectedClientId(id)}
+              className="w-64"
+              label="Cliente"
+            />
+            <Link
+              to="/app/calculadoras"
+              className="inline-flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              Ver todas
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

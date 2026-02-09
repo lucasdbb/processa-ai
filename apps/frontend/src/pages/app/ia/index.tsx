@@ -11,6 +11,7 @@ import { useAiTools } from '@/features/ai/context'
 import type { ChatMessage } from '@/features/ai/types'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { ClientSelector } from '@/components/forms/client-selector'
 
 export default function IAHubPage() {
   const { toolId } = useParams<{ toolId?: string }>()
@@ -43,6 +44,7 @@ export default function IAHubPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const [isChatLoading, setIsChatLoading] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
 
   const currentTool = useMemo(() => {
     if (!activeSlug) return null
@@ -76,6 +78,7 @@ export default function IAHubPage() {
     setChatInput('')
     setIsGenerating(false)
     setIsChatLoading(false)
+    setSelectedClientId(null)
   }, [setCnisPdfUrl])
 
   useLayoutEffect(() => {
@@ -167,6 +170,9 @@ export default function IAHubPage() {
         formData.append('file', cnisFile as File)
         formData.append('user_id', user.id)
         formData.append('store_pdf', 'true')
+        if (selectedClientId) {
+          formData.append('client_id', selectedClientId)
+        }
 
         // Determine which endpoint to use based on tool slug
         const endpoint = activeSlug === 'process_summary'
@@ -273,6 +279,7 @@ export default function IAHubPage() {
         },
         body: JSON.stringify({
           message: prompt,
+          ...(selectedClientId && { client_id: selectedClientId }),
         }),
       })
 
@@ -440,14 +447,22 @@ export default function IAHubPage() {
       </div>
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="bg-slate-900 p-4 rounded-2xl shadow-lg">
-            <Brain className="h-7 w-7 text-white" strokeWidth={1.5} />
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center space-x-4">
+            <div className="bg-slate-900 p-4 rounded-2xl shadow-lg">
+              <Brain className="h-7 w-7 text-white" strokeWidth={1.5} />
+            </div>
+            <div>
+              {currentTool?.name ? <h2 className="text-xl font-bold text-foreground tracking-tight">{currentTool.name}</h2> : null}
+              {currentTool?.description ? <p className="text-muted-foreground mt-1">{currentTool.description}</p> : null}
+            </div>
           </div>
-          <div>
-            {currentTool?.name ? <h2 className="text-xl font-bold text-foreground tracking-tight">{currentTool.name}</h2> : null}
-            {currentTool?.description ? <p className="text-muted-foreground mt-1">{currentTool.description}</p> : null}
-          </div>
+          <ClientSelector
+            value={selectedClientId}
+            onChange={(id) => setSelectedClientId(id)}
+            className="w-64 flex-shrink-0"
+            label="Cliente"
+          />
         </div>
 
         {currentTool ? (

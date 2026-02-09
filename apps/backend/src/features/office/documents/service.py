@@ -1,4 +1,6 @@
 from uuid import UUID, uuid4
+import re
+import unicodedata
 
 import httpx
 from psycopg.rows import dict_row
@@ -21,6 +23,40 @@ MOCK_DOCUMENTS: list[dict] = []
 def _convert_uuids_to_str(row: dict) -> dict:
     """Convert UUID objects to strings in a row dict."""
     return {k: str(v) if isinstance(v, UUID) else v for k, v in row.items()}
+
+
+def _sanitize_filename(filename: str) -> str:
+    """
+    Sanitize filename to be safe for Supabase Storage.
+    - Removes accents/diacritics
+    - Replaces spaces and special chars with underscores
+    - Keeps only alphanumeric, dots, dashes, and underscores
+    - Preserves file extension
+    """
+    if not filename:
+        return "document"
+    
+    # Split extension if present
+    parts = filename.rsplit('.', 1)
+    name = parts[0]
+    ext = f".{parts[1]}" if len(parts) > 1 else ""
+    
+    # Normalize unicode characters (NFD = decompose accents)
+    nfd = unicodedata.normalize('NFD', name)
+    # Remove diacritics/accents (category Mn = non-spacing marks)
+    without_accents = ''.join(c for c in nfd if unicodedata.category(c) != 'Mn')
+    # Replace spaces and non-alphanumeric chars with underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9._-]+', '_', without_accents)
+    # Remove leading/trailing underscores and dashes
+    sanitized = sanitized.strip('_-')
+    # Collapse multiple consecutive underscores/dashes
+    sanitized = re.sub(r'[_-]{2,}', '_', sanitized)
+    
+    # Fallback if nothing left
+    if not sanitized:
+        sanitized = "document"
+    
+    return sanitized + ext
 
 
 class DocumentsService:
@@ -194,7 +230,9 @@ class DocumentsService:
     ) -> DocumentResponse:
         """Create a document and upload file to Supabase Storage."""
         doc_id = str(uuid4())
-        storage_path = f"{user_id}/{doc_id}/{filename}"
+        # Sanitize filename to avoid Supabase Storage InvalidKey errors
+        safe_filename = _sanitize_filename(filename)
+        storage_path = f"{user_id}/{doc_id}/{safe_filename}"
         bucket = settings.SUPABASE_OFFICE_BUCKET
 
         supabase = get_supabase()
