@@ -302,7 +302,7 @@ export default function IAHubPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [cnisFile, currentTool, isCnisAnalysis, prompt, setCnisPdfUrl])
+  }, [activeSlug, cnisFile, currentTool, isCnisAnalysis, prompt, selectedClientId, setCnisPdfUrl])
 
   const handleDownload = useCallback(() => {
     if (isCnisAnalysis) {
