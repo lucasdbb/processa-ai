@@ -17,19 +17,17 @@ class Settings(BaseSettings):
     JOBS_QUEUE_KEY: str = "jobs"
     JOB_STATUS_TTL_S: int = 86400
 
-    # n8n Integration (for AI jobs)
-    N8N_BASE_URL: str = "http://localhost:5678"
-    N8N_AUTH_USER: str = ""
-    N8N_AUTH_PASSWORD: str = ""
-    N8N_TIMEOUT_S: int = 120
+    # AI Providers (replaces n8n integration)
+    OPENAI_API_KEY: str = ""
+    MISTRAL_API_KEY: str = ""
+    LLM_MODEL: str = "gpt-4.1-mini"
 
     # Google Integration (for office jobs)
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
-    # Callback URL for n8n progress updates
-    AI_WORKER_CALLBACK_BASE_URL: str = ""
-    PORT: int = 8001  # Used for callback URL generation
+    # Worker
+    PORT: int = 8001
 
 
 settings = Settings()

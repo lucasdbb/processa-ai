@@ -16,6 +16,9 @@ dependencies = [
     "redis>=5.0.8",
     # Supabase
     "supabase>=2.0.0",
+    # AI Providers (replaces n8n)
+    "openai>=1.60.0",
+    "mistralai>=1.5.0",
     # Google Integration (for office jobs)
     "google-auth>=2.38.0",
     "google-auth-oauthlib>=1.2.1",

@@ -94,16 +94,13 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
       - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
-      # n8n
-      - N8N_BASE_URL=${N8N_BASE_URL}
-      - N8N_AUTH_USER=${N8N_AUTH_USER}
-      - N8N_AUTH_PASSWORD=${N8N_AUTH_PASSWORD}
-      - N8N_TIMEOUT_S=${N8N_TIMEOUT_S:-120}
+      # AI Providers
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4.1-mini}
       # Google (for office jobs)
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      # Callback
-      - AI_WORKER_CALLBACK_BASE_URL=http://backend:8000
       - PORT=8001
     networks:
       - processa-network

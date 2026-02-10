@@ -1,14 +1,13 @@
 """Processa AI - Async Job Worker
 
 This worker processes jobs from a Redis queue for:
-- AI jobs (CNIS analysis, etc.)
+- AI jobs (CNIS analysis, Process Summary)
 - Office jobs (Google Calendar sync, etc.)
 """
 
 import asyncio
 import base64
 import hashlib
-import os
 import uuid
 
 from src.core.ai_worker_store import (
@@ -22,6 +21,7 @@ from src.core.ai_worker_store import (
 from src.core.config import settings
 from src.core.db import init_db
 from src.core.logging import logger
+from src.core.progress import ProgressReporter
 from src.core.queue import dequeue_job, set_job_status
 from src.handlers.ai_service import AiService
 
@@ -40,7 +40,7 @@ async def _safe_set_job_status(job_id: str, status_payload: dict) -> None:
 
 
 async def _handle_ai_job(job: dict) -> None:
-    """Handle AI-related jobs (CNIS analysis, etc.)."""
+    """Handle AI-related jobs (CNIS analysis, Process Summary)."""
     job_id = str(job.get("job_id") or "").strip()
     if not job_id:
         return
@@ -59,20 +59,12 @@ async def _handle_ai_job(job: dict) -> None:
     if job_type not in ("cnis_analysis", "process_summary"):
         await _safe_set_job_status(
             job_id,
-            {
-                "job_id": job_id,
-                "status": "failed",
-                "error": "Tipo inválido",
-            },
+            {"job_id": job_id, "status": "failed", "error": "Tipo inválido"},
         )
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Tipo inválido")
-                await add_job_event(
-                    job_uuid=job_uuid,
-                    event_type="failed",
-                    message="Tipo inválido",
-                )
+                await add_job_event(job_uuid=job_uuid, event_type="failed", message="Tipo inválido")
             except Exception:
                 logger.exception("Failed to persist job failure in database")
         return
@@ -81,19 +73,13 @@ async def _handle_ai_job(job: dict) -> None:
     if not isinstance(payload, dict):
         await _safe_set_job_status(
             job_id,
-            {
-                "job_id": job_id,
-                "status": "failed",
-                "error": "Payload inválido",
-            },
+            {"job_id": job_id, "status": "failed", "error": "Payload inválido"},
         )
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Payload inválido")
                 await add_job_event(
-                    job_uuid=job_uuid,
-                    event_type="failed",
-                    message="Payload inválido",
+                    job_uuid=job_uuid, event_type="failed", message="Payload inválido"
                 )
             except Exception:
                 logger.exception("Failed to persist job failure in database")
@@ -104,8 +90,7 @@ async def _handle_ai_job(job: dict) -> None:
     storage_path = str(payload.get("storage_path") or "").strip()
     user_id = str(payload.get("user_id") or "").strip()
 
-    # Se temos bucket e storage_path, gerar signed URL com service role key
-    # Isso substitui qualquer file_url que possa ter vindo no payload
+    # If we have bucket + storage_path, generate a signed URL (replaces any file_url in payload)
     if bucket and storage_path:
         try:
             import httpx
@@ -114,7 +99,7 @@ async def _handle_ai_job(job: dict) -> None:
             api_key = settings.SUPABASE_SERVICE_ROLE_KEY
 
             sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
-            logger.info(f"Generating signed URL from bucket={bucket}, path={storage_path[:50]}...")
+            logger.info("Generating signed URL from bucket=%s, path=%s...", bucket, storage_path[:50])
 
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(
@@ -128,38 +113,30 @@ async def _handle_ai_job(job: dict) -> None:
                 if resp.status_code == 200:
                     data = resp.json()
                     signed_path = data.get("signedURL") or ""
-                    # Se a resposta for um caminho relativo, construir URL completa
                     if signed_path.startswith("/"):
                         file_url = f"{base_url}{signed_path}"
                     else:
                         file_url = signed_path
-                    logger.info(f"Generated signed URL successfully: {file_url[:100]}")
+                    logger.info("Generated signed URL successfully")
                 else:
                     logger.error(
-                        f"Failed to generate signed URL: status {resp.status_code}, body: {resp.text[:200]}"
+                        "Failed to generate signed URL: status %d, body: %s",
+                        resp.status_code,
+                        resp.text[:200],
                     )
         except Exception as e:
-            logger.error(f"Failed to generate signed URL: {e}", exc_info=True)
-
-    logger.info(f"Job {job_id} - file_url: {file_url[:100] if file_url else 'EMPTY'}")
-    logger.info(f"Job {job_id} - user_id: {user_id}")
+            logger.error("Failed to generate signed URL: %s", e, exc_info=True)
 
     if not file_url or not user_id:
         await _safe_set_job_status(
             job_id,
-            {
-                "job_id": job_id,
-                "status": "failed",
-                "error": "Dados inválidos",
-            },
+            {"job_id": job_id, "status": "failed", "error": "Dados inválidos"},
         )
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Dados inválidos")
                 await add_job_event(
-                    job_uuid=job_uuid,
-                    event_type="failed",
-                    message="Dados inválidos",
+                    job_uuid=job_uuid, event_type="failed", message="Dados inválidos"
                 )
             except Exception:
                 logger.exception("Failed to persist job failure in database")
@@ -171,26 +148,21 @@ async def _handle_ai_job(job: dict) -> None:
     expires_in = int(payload.get("signed_url_expires_in") or 600)
     input_document_id = payload.get("input_document_id")
 
-    await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 10})
+    # Mark as processing
+    await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 5})
     if job_uuid:
         try:
-            await mark_job_processing(job_uuid=job_uuid, progress=10)
+            await mark_job_processing(job_uuid=job_uuid, progress=5)
             await add_job_event(
-                job_uuid=job_uuid,
-                event_type="processing",
-                payload={"progress": 10},
+                job_uuid=job_uuid, event_type="processing", payload={"progress": 5}
             )
         except Exception:
             logger.exception("Failed to persist job processing in database")
 
-    try:
-        callback_base_url = (settings.AI_WORKER_CALLBACK_BASE_URL or "").strip().rstrip("/")
-        if not callback_base_url:
-            host = "host.docker.internal" if os.path.exists("/.dockerenv") else "127.0.0.1"
-            callback_base_url = f"http://{host}:{settings.PORT}"
-        callback_url = f"{callback_base_url}/api/v1/ai/jobs/progress"
+    # Create progress reporter for real-time updates
+    progress = ProgressReporter(job_id=job_id, job_uuid=job_uuid)
 
-        # Route to appropriate analysis method based on job_type
+    try:
         if job_type == "process_summary":
             result = await ai_service.analyze_process_summary(
                 file_url=file_url,
@@ -200,7 +172,7 @@ async def _handle_ai_job(job: dict) -> None:
                 store_input_pdf=store_input_pdf,
                 signed_url_expires_in=expires_in,
                 job_id=job_id,
-                callback_url=callback_url,
+                progress=progress,
             )
         else:  # cnis_analysis
             result = await ai_service.analyze_cnis(
@@ -211,18 +183,13 @@ async def _handle_ai_job(job: dict) -> None:
                 store_input_pdf=store_input_pdf,
                 signed_url_expires_in=expires_in,
                 job_id=job_id,
-                callback_url=callback_url,
+                progress=progress,
             )
     except Exception as e:
         err = str(getattr(e, "detail", None) or str(e) or "Erro")
         await _safe_set_job_status(
             job_id,
-            {
-                "job_id": job_id,
-                "status": "failed",
-                "progress": 100,
-                "error": err,
-            },
+            {"job_id": job_id, "status": "failed", "progress": 100, "error": err},
         )
         if job_uuid:
             try:
@@ -244,7 +211,6 @@ async def _handle_ai_job(job: dict) -> None:
         status["result"] = {"audit_score": audit_score}
         result_payload["audit_score"] = audit_score
 
-    # Para process_summary, incluir structured_summary
     structured_summary = result.get("structured_summary")
     if structured_summary is not None and isinstance(structured_summary, dict):
         status["result"] = {
@@ -284,7 +250,7 @@ async def _handle_ai_job(job: dict) -> None:
                         metadata={"endpoint": job_type},
                     )
                     if input_doc_id:
-                        logger.info(f"Input document saved: {input_doc_id}")
+                        logger.info("Input document saved: %s", input_doc_id)
                 except Exception:
                     logger.exception("Failed to persist input document in database")
 
@@ -320,17 +286,14 @@ async def _handle_ai_job(job: dict) -> None:
                 logger.exception("Failed to persist document in database")
                 doc_id = None
 
-            # Retornar apenas document_id, não download_url
-            # O frontend deve usar GET /api/ai/documents/{document_id}/download para obter URL fresca
             if doc_id:
                 status["result"] = {
                     **(status.get("result") or {}),
                     "document_id": str(doc_id),
                 }
                 result_payload["document_id"] = str(doc_id)
-                logger.info(f"Output document saved: {doc_id}")
+                logger.info("Output document saved: %s", doc_id)
             else:
-                # Fallback: retornar bucket e storage_path se não conseguir criar documento
                 status["result"] = {
                     **(status.get("result") or {}),
                     "bucket": bucket,
@@ -339,7 +302,6 @@ async def _handle_ai_job(job: dict) -> None:
                 result_payload["bucket"] = bucket
                 result_payload["storage_path"] = storage_path
         else:
-            # Sem job_uuid ou informações de storage - retornar PDF em base64
             if isinstance(pdf_bytes, (bytes, bytearray)):
                 status["result"] = {
                     **(status.get("result") or {}),
@@ -360,9 +322,7 @@ async def _handle_ai_job(job: dict) -> None:
         try:
             await mark_job_completed(job_uuid=job_uuid, result_payload=result_payload)
             await add_job_event(
-                job_uuid=job_uuid,
-                event_type="completed",
-                payload={"progress": 100},
+                job_uuid=job_uuid, event_type="completed", payload={"progress": 100}
             )
         except Exception:
             logger.exception("Failed to persist job completion in database")
@@ -373,11 +333,7 @@ async def _handle_office_job(job: dict) -> None:
     job_id = str(job.get("job_id") or "").strip()
     job_type = str(job.get("type") or "").strip()
 
-    logger.info(f"Processing office job: {job_id} (type: {job_type})")
-
-    # TODO: Implement office job handlers
-    # - calendar_sync: Sync events with Google Calendar
-    # - calendar_webhook: Process Google Calendar webhook notifications
+    logger.info("Processing office job: %s (type: %s)", job_id, job_type)
 
     await _safe_set_job_status(
         job_id,
@@ -393,26 +349,19 @@ async def _handle_job(job: dict) -> None:
     """Route job to appropriate handler based on job type."""
     job_type = str(job.get("type") or "").strip()
 
-    # AI jobs
     if job_type in ("cnis_analysis", "process_summary"):
         await _handle_ai_job(job)
         return
 
-    # Office jobs
     if job_type.startswith("calendar_") or job_type.startswith("office_"):
         await _handle_office_job(job)
         return
 
-    # Unknown job type
     job_id = str(job.get("job_id") or "").strip()
     if job_id:
         await _safe_set_job_status(
             job_id,
-            {
-                "job_id": job_id,
-                "status": "failed",
-                "error": f"Unknown job type: {job_type}",
-            },
+            {"job_id": job_id, "status": "failed", "error": f"Unknown job type: {job_type}"},
         )
 
 
@@ -432,12 +381,12 @@ async def run_worker() -> None:
 
         job_id = job.get("job_id", "unknown")
         job_type = job.get("type", "unknown")
-        logger.info(f"Processing job: {job_id} (type: {job_type})")
+        logger.info("Processing job: %s (type: %s)", job_id, job_type)
 
         try:
             await _handle_job(job)
         except Exception:
-            logger.exception(f"Unhandled error processing job: {job_id}")
+            logger.exception("Unhandled error processing job: %s", job_id)
 
 
 def main() -> None:

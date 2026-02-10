@@ -7,12 +7,15 @@ import httpx
 from markdown_pdf import MarkdownPdf, Section
 
 from src.core.config import settings
-from src.core.db import get_pool
 from src.core.logging import logger
+from src.core.progress import ProgressReporter
+from src.handlers.pipeline import run_document_analysis
+from src.handlers.prompts.cnis import CNIS_PROMPT
+from src.handlers.prompts.process_summary import PROCESS_SUMMARY_PROMPT
 
 
 class WorkerException(Exception):
-    """Exception for worker errors (replaces FastAPI WorkerException in worker context)."""
+    """Exception for worker errors."""
 
     def __init__(self, detail: str, status_code: int = 500):
         self.detail = detail
@@ -21,9 +24,14 @@ class WorkerException(Exception):
 
 
 class AiService:
+    # ------------------------------------------------------------------ #
+    #  Cache
+    # ------------------------------------------------------------------ #
+
     async def _check_cache(self, *, input_hash: str, endpoint_key: str) -> dict | None:
-        """Verifica se existe análise em cache para o hash fornecido."""
         try:
+            from src.core.db import get_pool
+
             pool = await get_pool()
         except RuntimeError:
             return None
@@ -49,18 +57,23 @@ class AiService:
 
                     result_payload, created_at = row
                     logger.info(
-                        f"Cache hit para hash {input_hash[:16]}... (criado em {created_at})"
+                        "Cache hit for hash %s... (created %s)",
+                        input_hash[:16],
+                        created_at,
                     )
                     return result_payload or {}
         except Exception:
             logger.exception("Erro ao verificar cache")
             return None
 
+    # ------------------------------------------------------------------ #
+    #  Path / filename helpers
+    # ------------------------------------------------------------------ #
+
     def _sanitize_path_segment(self, value: str | None, *, default: str) -> str:
         v = (value or "").strip()
         if not v:
             return default
-
         cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "-", v).strip("-._")
         return cleaned or default
 
@@ -80,16 +93,16 @@ class AiService:
             name = f"{name}.pdf"
         return name
 
+    # ------------------------------------------------------------------ #
+    #  Supabase Storage helpers
+    # ------------------------------------------------------------------ #
+
     async def _generate_signed_url(self, *, bucket: str, storage_path: str, expires_in: int) -> str:
-        """Gera uma signed URL para um arquivo no Supabase Storage."""
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
 
         if not base_url or not api_key:
-            raise WorkerException(
-                status_code=500,
-                detail="Supabase Storage não configurado",
-            )
+            raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
 
         sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
         try:
@@ -103,15 +116,9 @@ class AiService:
                     json={"expiresIn": int(expires_in)},
                 )
         except httpx.TimeoutException:
-            raise WorkerException(
-                status_code=504,
-                detail="Tempo limite ao gerar URL assinada",
-            )
+            raise WorkerException(status_code=504, detail="Tempo limite ao gerar URL assinada")
         except httpx.RequestError:
-            raise WorkerException(
-                status_code=502,
-                detail="Erro de conexão ao gerar URL assinada",
-            )
+            raise WorkerException(status_code=502, detail="Erro de conexão ao gerar URL assinada")
 
         if signed.status_code >= 400:
             body = (signed.text or "").strip()
@@ -133,10 +140,7 @@ class AiService:
         if isinstance(data, dict):
             signed_url = data.get("signedURL") or data.get("signedUrl")
         if not signed_url or not isinstance(signed_url, str):
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta inválida ao gerar URL assinada",
-            )
+            raise WorkerException(status_code=502, detail="Resposta inválida ao gerar URL assinada")
 
         return signed_url
 
@@ -150,27 +154,15 @@ class AiService:
         endpoint: str,
         expires_in: int,
     ) -> dict:
-        """
-        Faz upload de um PDF de input para o Supabase Storage.
-
-        Retorna:
-        - bucket: nome do bucket
-        - storage_path: caminho no storage
-        - signed_url: URL assinada para acesso
-        - document_id: ID do documento no banco (opcional)
-        """
+        """Upload input PDF to Supabase Storage."""
         from src.core.ai_worker_store import create_document
 
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
         bucket = (settings.SUPABASE_AI_BUCKET or "").strip()
         if not base_url or not api_key or not bucket:
-            raise WorkerException(
-                status_code=500,
-                detail="Supabase Storage não configurado",
-            )
+            raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
 
-        # Gera hash e path de armazenamento
         sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
         slug = self._slugify_filename(filename)
         storage_filename = f"{sha}_{slug}.pdf"
@@ -178,9 +170,7 @@ class AiService:
         cid = self._sanitize_path_segment(client_id, default="no_client")
         ep = self._sanitize_path_segment(endpoint, default="unknown")
 
-        # Upload vai para pasta input/
         storage_path = f"{uid}/{cid}/{ep}/input/{storage_filename}"
-
         upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
         headers = {
             "apikey": api_key,
@@ -193,14 +183,10 @@ class AiService:
             async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(upload_url, headers=headers, content=pdf_bytes)
         except httpx.TimeoutException:
-            raise WorkerException(
-                status_code=504,
-                detail="Tempo limite ao subir PDF para storage",
-            )
+            raise WorkerException(status_code=504, detail="Tempo limite ao subir PDF para storage")
         except httpx.RequestError:
             raise WorkerException(
-                status_code=502,
-                detail="Erro de conexão ao subir PDF para storage",
+                status_code=502, detail="Erro de conexão ao subir PDF para storage"
             )
 
         if resp.status_code >= 400:
@@ -214,12 +200,10 @@ class AiService:
                 ),
             )
 
-        # Gera signed URL
         signed_url = await self._generate_signed_url(
             bucket=bucket, storage_path=storage_path, expires_in=expires_in
         )
 
-        # Salva registro no banco
         document_id = None
         try:
             document_id = await create_document(
@@ -230,9 +214,9 @@ class AiService:
                 storage_path=storage_path,
                 bucket=bucket,
                 size_bytes=len(pdf_bytes),
-                linked_document_id=None,  # Input não tem documento linkado
+                linked_document_id=None,
             )
-            logger.info(f"Input document saved: {document_id}")
+            logger.info("Input document saved: %s", document_id)
         except Exception:
             logger.exception("Failed to save input document in database")
 
@@ -254,21 +238,12 @@ class AiService:
         expires_in: int,
         output: bool = False,
     ) -> dict:
-        """
-        Faz upload de PDF para o Supabase Storage.
-        Estrutura: user_id/client_id/job_uuid/hash_[input|output].pdf
-
-        Args:
-            output: Se True, usa sufixo "_output", senão "_input"
-        """
+        """Upload PDF to Supabase Storage. Structure: user_id/client_id/job_uuid/hash_[input|output].pdf"""
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
         bucket = (settings.SUPABASE_AI_BUCKET or "").strip()
         if not base_url or not api_key or not bucket:
-            raise WorkerException(
-                status_code=500,
-                detail="Supabase Storage não configurado",
-            )
+            raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
 
         sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
         suffix = "_output" if output else "_input"
@@ -290,14 +265,10 @@ class AiService:
             async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(upload_url, headers=headers, content=pdf_bytes)
         except httpx.TimeoutException:
-            raise WorkerException(
-                status_code=504,
-                detail="Tempo limite ao subir PDF para storage",
-            )
+            raise WorkerException(status_code=504, detail="Tempo limite ao subir PDF para storage")
         except httpx.RequestError:
             raise WorkerException(
-                status_code=502,
-                detail="Erro de conexão ao subir PDF para storage",
+                status_code=502, detail="Erro de conexão ao subir PDF para storage"
             )
 
         if resp.status_code >= 400:
@@ -311,7 +282,6 @@ class AiService:
                 ),
             )
 
-        # Usar método extraído para gerar signed URL
         signed_url = await self._generate_signed_url(
             bucket=bucket, storage_path=storage_path, expires_in=expires_in
         )
@@ -326,6 +296,10 @@ class AiService:
             "storage_path": storage_path,
             "download_url": download_url,
         }
+
+    # ------------------------------------------------------------------ #
+    #  PDF generation
+    # ------------------------------------------------------------------ #
 
     async def _markdown_to_pdf_and_store(
         self,
@@ -360,10 +334,7 @@ class AiService:
     def _markdown_to_pdf_bytes(self, markdown: str, *, title: str | None = None) -> bytes:
         text = (markdown or "").strip()
         if not text:
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta vazia do n8n",
-            )
+            raise WorkerException(status_code=502, detail="Resposta vazia da análise")
 
         try:
             pdf = MarkdownPdf(toc_level=2, optimize=True)
@@ -378,16 +349,10 @@ class AiService:
             raise
         except Exception as e:
             logger.error("Falha ao gerar PDF do markdown", exc_info=e)
-            raise WorkerException(
-                status_code=502,
-                detail="Falha ao gerar PDF",
-            )
+            raise WorkerException(status_code=502, detail="Falha ao gerar PDF")
 
         if not pdf_bytes.lstrip().startswith(b"%PDF"):
-            raise WorkerException(
-                status_code=502,
-                detail="Falha ao gerar PDF",
-            )
+            raise WorkerException(status_code=502, detail="Falha ao gerar PDF")
 
         return pdf_bytes
 
@@ -397,139 +362,136 @@ class AiService:
             raise WorkerException(status_code=400, detail="file_url inválido")
 
         try:
-            async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.get(url)
         except httpx.TimeoutException:
-            raise WorkerException(
-                status_code=504,
-                detail="Tempo limite ao baixar o arquivo",
-            )
+            raise WorkerException(status_code=504, detail="Tempo limite ao baixar o arquivo")
         except httpx.RequestError:
-            raise WorkerException(
-                status_code=502,
-                detail="Erro ao baixar o arquivo",
-            )
+            raise WorkerException(status_code=502, detail="Erro ao baixar o arquivo")
 
         if resp.status_code >= 400:
-            raise WorkerException(
-                status_code=502,
-                detail="Falha ao baixar o arquivo",
-            )
+            raise WorkerException(status_code=502, detail="Falha ao baixar o arquivo")
 
         pdf_bytes = resp.content
-
         content_type = (resp.headers.get("content-type") or "").lower()
         looks_like_pdf = pdf_bytes.lstrip().startswith(b"%PDF")
         if "application/pdf" not in content_type and not looks_like_pdf:
-            raise WorkerException(
-                status_code=400,
-                detail="Envie um arquivo PDF",
-            )
+            raise WorkerException(status_code=400, detail="Envie um arquivo PDF")
 
         return pdf_bytes
 
-    async def _call_n8n_cnis_workflow(
+    # ------------------------------------------------------------------ #
+    #  Analysis methods (pipeline replaces n8n)
+    # ------------------------------------------------------------------ #
+
+    async def _run_analysis_pipeline(
         self,
         *,
-        pdf_url: str,
-        job_id: str | None = None,
-        callback_url: str | None = None,
+        file_url: str,
+        endpoint_key: str,
+        prompt_config,
+        user_id: str,
+        client_id: str | None,
+        store_pdf: bool,
+        store_input_pdf: bool,
+        signed_url_expires_in: int,
+        job_id: str | None,
+        progress: ProgressReporter | None,
     ) -> dict:
-        from src.core.ai_worker_store import get_endpoint_by_key
+        """Shared analysis logic for both CNIS and Process Summary.
 
-        endpoint = await get_endpoint_by_key("cnis_analysis")
-        if not endpoint or not endpoint.get("n8n_workflow_id"):
-            raise WorkerException(
-                status_code=500,
-                detail="Endpoint cnis_analysis não configurado no banco de dados",
+        1. Download and hash PDF
+        2. Store input PDF if requested
+        3. Check cache
+        4. Run pipeline (OCR -> Analyze -> Audit)
+        5. Store output PDF if requested
+        """
+        pdf_bytes = await self._download_pdf_bytes(file_url)
+        inferred_filename = self._infer_pdf_filename_from_url(file_url)
+        input_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+        # Store input PDF for history
+        input_storage = None
+        if store_input_pdf and job_id:
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            input_storage = await self._upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes,
+                user_id=user_id,
+                client_id=client_id,
+                job_uuid=job_uuid_str,
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+                output=False,
             )
 
-        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{endpoint['n8n_workflow_id']}"
-
-        auth = None
-        if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:
-            auth = (settings.N8N_AUTH_USER, settings.N8N_AUTH_PASSWORD)
-
-        payload = {
-            "pdf_url": pdf_url,
-            "job_id": job_id,
-            "callback_url": callback_url,
-        }
-
-        try:
-            logger.info(f"Chamando workflow {webhook_url} (job_id={job_id})")
-
-            async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
-                resp = await client.post(
-                    webhook_url,
-                    json=payload,
-                    auth=auth,
+        # Check cache
+        cached = await self._check_cache(input_hash=input_hash, endpoint_key=endpoint_key)
+        if cached and cached.get("markdown"):
+            logger.info("Returning cached result for hash %s...", input_hash[:16])
+            cached["cached"] = True
+            if input_storage:
+                cached["input_storage"] = input_storage
+            if store_pdf and not cached.get("storage_path") and job_id:
+                job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+                stored = await self._markdown_to_pdf_and_store(
+                    markdown=cached["markdown"],
+                    filename=inferred_filename,
+                    user_id=user_id,
+                    client_id=client_id,
+                    job_uuid=job_uuid_str,
+                    expires_in=signed_url_expires_in,
                 )
-        except httpx.TimeoutException:
-            raise WorkerException(
-                status_code=504,
-                detail="Tempo limite ao aguardar resposta do n8n",
-            )
-        except httpx.RequestError as e:
-            logger.error("Erro de conexão com n8n", exc_info=e)
-            raise WorkerException(
-                status_code=502,
-                detail="Erro de conexão com o serviço de análise",
-            )
+                cached.update(stored)
+            return cached
 
-        try:
-            data = resp.json()
-        except Exception:
-            content_type = (resp.headers.get("content-type") or "").lower()
-            body_preview = ""
-            if "application/json" not in content_type:
-                body_preview = (resp.text or "").strip().replace("\n", " ")[:300]
-            raise WorkerException(
-                status_code=502,
-                detail=(
-                    "Resposta inválida do n8n"
-                    + (f" (status {resp.status_code})" if resp.status_code else "")
-                    + (f": {body_preview}" if body_preview else "")
-                ),
-            )
+        # Run pipeline (OCR -> Analyze -> Audit)
+        pipeline_result = await run_document_analysis(
+            pdf_url=file_url,
+            prompt=prompt_config,
+            progress=progress,
+        )
 
-        if resp.status_code >= 400:
-            detail = "Erro ao processar CNIS"
-            if isinstance(data, dict):
-                detail = data.get("message") or detail
-            raise WorkerException(status_code=502, detail=detail)
-
-        if not isinstance(data, dict):
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta inválida do n8n",
-            )
-
-        if data.get("status") == "error":
-            raise WorkerException(
-                status_code=502,
-                detail=data.get("message", "Erro no processamento do CNIS"),
-            )
-
-        if data.get("status") != "ok":
-            raise WorkerException(
-                status_code=502,
-                detail=f"Status inesperado do n8n: {data.get('status')}",
-            )
-
-        markdown = data.get("text")
+        markdown = pipeline_result.markdown
         if not markdown:
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta do n8n não contém 'text'",
-            )
+            raise WorkerException(status_code=502, detail="Pipeline retornou resposta vazia")
 
-        metadata = data.get("metadata", {})
-        return {
-            "markdown": str(markdown),
-            "audit_score": metadata.get("audit_score"),
-            "metadata": metadata,
+        response: dict = {
+            "audit_score": pipeline_result.audit_score,
+            "markdown": markdown,
+            "input_hash": input_hash,
         }
+
+        # Include structured_summary for process_summary
+        structured_summary = pipeline_result.audit_metadata.get("structured_summary")
+        if isinstance(structured_summary, dict):
+            response["structured_summary"] = structured_summary
+
+        if input_storage:
+            response["input_storage"] = input_storage
+
+        if store_pdf and job_id:
+            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
+                raise WorkerException(
+                    status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
+                )
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            stored = await self._markdown_to_pdf_and_store(
+                markdown=markdown,
+                filename=inferred_filename,
+                user_id=user_id,
+                client_id=client_id,
+                job_uuid=job_uuid_str,
+                expires_in=signed_url_expires_in,
+            )
+            response.update(stored)
+            return response
+
+        title = inferred_filename
+        if title.lower().endswith(".pdf"):
+            title = title[:-4]
+        content = self._markdown_to_pdf_bytes(markdown, title=title)
+        response["content"] = content
+        return response
 
     async def analyze_cnis(
         self,
@@ -541,198 +503,20 @@ class AiService:
         store_input_pdf: bool = True,
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
-        callback_url: str | None = None,
+        progress: ProgressReporter | None = None,
     ) -> dict:
-        pdf_bytes = await self._download_pdf_bytes(file_url)
-        inferred_filename = self._infer_pdf_filename_from_url(file_url)
-
-        # Verificar cache baseado no hash do arquivo
-        input_hash = hashlib.sha256(pdf_bytes).hexdigest()
-
-        # Salvar PDF de input para histórico (se solicitado)
-        input_storage = None
-        if store_input_pdf and job_id:
-            # Extrai o UUID do job_id (formato: "ai:uuid")
-            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            input_storage = await self._upload_pdf_to_supabase(
-                pdf_bytes=pdf_bytes,
-                user_id=user_id,
-                client_id=client_id,
-                job_uuid=job_uuid_str,
-                filename=inferred_filename,
-                expires_in=signed_url_expires_in,
-                output=False,
-            )
-
-        cached = await self._check_cache(input_hash=input_hash, endpoint_key="cnis_analysis")
-        if cached and cached.get("markdown"):
-            logger.info(f"Retornando resultado do cache para hash {input_hash[:16]}...")
-            cached["cached"] = True
-            if input_storage:
-                cached["input_storage"] = input_storage
-            if store_pdf and not cached.get("storage_path") and job_id:
-                # Gerar PDF do cache se necessário
-                job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-                stored = await self._markdown_to_pdf_and_store(
-                    markdown=cached["markdown"],
-                    filename=inferred_filename,
-                    user_id=user_id,
-                    client_id=client_id,
-                    job_uuid=job_uuid_str,
-                    expires_in=signed_url_expires_in,
-                )
-                cached.update(stored)
-            return cached
-
-        result = await self._call_n8n_cnis_workflow(
-            pdf_url=file_url, job_id=job_id, callback_url=callback_url
+        return await self._run_analysis_pipeline(
+            file_url=file_url,
+            endpoint_key="cnis_analysis",
+            prompt_config=CNIS_PROMPT,
+            user_id=user_id,
+            client_id=client_id,
+            store_pdf=store_pdf,
+            store_input_pdf=store_input_pdf,
+            signed_url_expires_in=signed_url_expires_in,
+            job_id=job_id,
+            progress=progress,
         )
-        markdown = (result.get("markdown") or "").strip()
-        if not markdown:
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta inválida do n8n",
-            )
-
-        response = {
-            "audit_score": result.get("audit_score"),
-            "markdown": markdown,
-            "input_hash": input_hash,
-        }
-
-        if input_storage:
-            response["input_storage"] = input_storage
-
-        if store_pdf and job_id:
-            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
-                raise WorkerException(
-                    status_code=400,
-                    detail="SUPABASE_SERVICE_ROLE_KEY não configurada",
-                )
-
-            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            stored = await self._markdown_to_pdf_and_store(
-                markdown=markdown,
-                filename=inferred_filename,
-                user_id=user_id,
-                client_id=client_id,
-                job_uuid=job_uuid_str,
-                expires_in=signed_url_expires_in,
-            )
-            response.update(stored)
-            return response
-
-        title = inferred_filename
-        if title.lower().endswith(".pdf"):
-            title = title[:-4]
-
-        content = self._markdown_to_pdf_bytes(markdown, title=title)
-        response["content"] = content
-        return response
-
-    async def _call_n8n_process_summary_workflow(
-        self,
-        *,
-        pdf_url: str,
-        job_id: str | None = None,
-        callback_url: str | None = None,
-    ) -> dict:
-        from src.core.ai_worker_store import get_endpoint_by_key
-
-        endpoint = await get_endpoint_by_key("process_summary")
-        if not endpoint or not endpoint.get("n8n_workflow_id"):
-            raise WorkerException(
-                status_code=500,
-                detail="Endpoint process_summary não configurado no banco de dados",
-            )
-
-        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{endpoint['n8n_workflow_id']}"
-
-        auth = None
-        if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:
-            auth = (settings.N8N_AUTH_USER, settings.N8N_AUTH_PASSWORD)
-
-        payload = {
-            "pdf_url": pdf_url,
-            "job_id": job_id,
-            "callback_url": callback_url,
-        }
-
-        try:
-            logger.info(f"Chamando workflow {webhook_url} (job_id={job_id})")
-
-            async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
-                resp = await client.post(
-                    webhook_url,
-                    json=payload,
-                    auth=auth,
-                )
-        except httpx.TimeoutException:
-            raise WorkerException(
-                status_code=504,
-                detail="Tempo limite ao aguardar resposta do n8n",
-            )
-        except httpx.RequestError as e:
-            logger.error("Erro de conexão com n8n", exc_info=e)
-            raise WorkerException(
-                status_code=502,
-                detail="Erro de conexão com o serviço de análise",
-            )
-
-        try:
-            data = resp.json()
-        except Exception:
-            content_type = (resp.headers.get("content-type") or "").lower()
-            body_preview = ""
-            if "application/json" not in content_type:
-                body_preview = (resp.text or "").strip().replace("\n", " ")[:300]
-            raise WorkerException(
-                status_code=502,
-                detail=(
-                    "Resposta inválida do n8n"
-                    + (f" (status {resp.status_code})" if resp.status_code else "")
-                    + (f": {body_preview}" if body_preview else "")
-                ),
-            )
-
-        if resp.status_code >= 400:
-            detail = "Erro ao processar resumo de processo"
-            if isinstance(data, dict):
-                detail = data.get("message") or detail
-            raise WorkerException(status_code=502, detail=detail)
-
-        if not isinstance(data, dict):
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta inválida do n8n",
-            )
-
-        if data.get("status") == "error":
-            raise WorkerException(
-                status_code=502,
-                detail=data.get("message", "Erro no processamento do resumo de processo"),
-            )
-
-        if data.get("status") != "ok":
-            raise WorkerException(
-                status_code=502,
-                detail=f"Status inesperado do n8n: {data.get('status')}",
-            )
-
-        markdown = data.get("text")
-        if not markdown:
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta do n8n não contém 'text'",
-            )
-
-        metadata = data.get("metadata", {})
-        return {
-            "markdown": str(markdown),
-            "audit_score": metadata.get("audit_score"),
-            "structured_summary": metadata.get("structured_summary"),
-            "metadata": metadata,
-        }
 
     async def analyze_process_summary(
         self,
@@ -744,91 +528,17 @@ class AiService:
         store_input_pdf: bool = True,
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
-        callback_url: str | None = None,
+        progress: ProgressReporter | None = None,
     ) -> dict:
-        """Analisa um PDF de processo e gera resumo executivo."""
-        pdf_bytes = await self._download_pdf_bytes(file_url)
-        inferred_filename = self._infer_pdf_filename_from_url(file_url)
-
-        # Verificar cache baseado no hash do arquivo
-        input_hash = hashlib.sha256(pdf_bytes).hexdigest()
-
-        # Salvar PDF de input para histórico (se solicitado)
-        input_storage = None
-        if store_input_pdf and job_id:
-            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            input_storage = await self._upload_pdf_to_supabase(
-                pdf_bytes=pdf_bytes,
-                user_id=user_id,
-                client_id=client_id,
-                job_uuid=job_uuid_str,
-                filename=inferred_filename,
-                expires_in=signed_url_expires_in,
-                output=False,
-            )
-
-        cached = await self._check_cache(input_hash=input_hash, endpoint_key="process_summary")
-        if cached and cached.get("markdown"):
-            logger.info(f"Retornando resultado do cache para hash {input_hash[:16]}...")
-            cached["cached"] = True
-            if input_storage:
-                cached["input_storage"] = input_storage
-            if store_pdf and not cached.get("storage_path") and job_id:
-                job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-                stored = await self._markdown_to_pdf_and_store(
-                    markdown=cached["markdown"],
-                    filename=inferred_filename,
-                    user_id=user_id,
-                    client_id=client_id,
-                    job_uuid=job_uuid_str,
-                    expires_in=signed_url_expires_in,
-                )
-                cached.update(stored)
-            return cached
-
-        result = await self._call_n8n_process_summary_workflow(
-            pdf_url=file_url, job_id=job_id, callback_url=callback_url
+        return await self._run_analysis_pipeline(
+            file_url=file_url,
+            endpoint_key="process_summary",
+            prompt_config=PROCESS_SUMMARY_PROMPT,
+            user_id=user_id,
+            client_id=client_id,
+            store_pdf=store_pdf,
+            store_input_pdf=store_input_pdf,
+            signed_url_expires_in=signed_url_expires_in,
+            job_id=job_id,
+            progress=progress,
         )
-        markdown = (result.get("markdown") or "").strip()
-        if not markdown:
-            raise WorkerException(
-                status_code=502,
-                detail="Resposta inválida do n8n",
-            )
-
-        response = {
-            "audit_score": result.get("audit_score"),
-            "structured_summary": result.get("structured_summary"),
-            "markdown": markdown,
-            "input_hash": input_hash,
-        }
-
-        if input_storage:
-            response["input_storage"] = input_storage
-
-        if store_pdf and job_id:
-            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
-                raise WorkerException(
-                    status_code=400,
-                    detail="SUPABASE_SERVICE_ROLE_KEY não configurada",
-                )
-
-            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            stored = await self._markdown_to_pdf_and_store(
-                markdown=markdown,
-                filename=inferred_filename,
-                user_id=user_id,
-                client_id=client_id,
-                job_uuid=job_uuid_str,
-                expires_in=signed_url_expires_in,
-            )
-            response.update(stored)
-            return response
-
-        title = inferred_filename
-        if title.lower().endswith(".pdf"):
-            title = title[:-4]
-
-        content = self._markdown_to_pdf_bytes(markdown, title=title)
-        response["content"] = content
-        return response
