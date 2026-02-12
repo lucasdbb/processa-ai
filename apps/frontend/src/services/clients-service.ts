@@ -72,10 +72,21 @@ export interface ClientNoteSummary {
   updated_at: string;
 }
 
+export interface ClientServiceSummary {
+  total_amount: number;
+  total_paid: number;
+  total_pending: number;
+  services_count: number;
+  active_count: number;
+  completed_count: number;
+}
+
 export interface ClientDetail extends Client {
   processes: ClientProcessSummary[];
   processes_count: number;
   fees_summary: ClientFeeSummary;
+  services_summary: ClientServiceSummary;
+  services_count: number;
   recent_notes: ClientNoteSummary[];
   notes_count: number;
 }

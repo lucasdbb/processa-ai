@@ -338,7 +338,7 @@ export default function IAPage() {
     URL.revokeObjectURL(url)
 
     toast.success('Documento baixado com sucesso!')
-  }, [currentTool?.name, generatedPdfUrl, generatedText, isAuthenticated, isCnisAnalysis])
+  }, [currentTool?.name, generatedPdfUrl, generatedText, isAuthenticated, isCnisAnalysis, openRegisterModal])
 
   const sendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || isChatLoading) return

@@ -96,6 +96,17 @@ class ClientNoteSummary(BaseModel):
     updated_at: datetime
 
 
+class ClientServiceSummary(BaseModel):
+    """Summary of services for client detail view."""
+
+    total_amount: float
+    total_paid: float
+    total_pending: float
+    services_count: int
+    active_count: int
+    completed_count: int
+
+
 class ClientDetailResponse(BaseModel):
     """Aggregated client detail response."""
 
@@ -119,6 +130,8 @@ class ClientDetailResponse(BaseModel):
     processes: list[ClientProcessSummary]
     processes_count: int
     fees_summary: ClientFeeSummary
+    services_summary: ClientServiceSummary
+    services_count: int
     recent_notes: list[ClientNoteSummary]
     notes_count: int
 

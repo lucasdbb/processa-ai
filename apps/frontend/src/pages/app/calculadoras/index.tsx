@@ -94,7 +94,7 @@ export default function CalculadorasHubPage() {
   const current = useMemo(() => {
     if (!selectedCalculator) return null
     return calculators.find((c) => c.id === selectedCalculator) || null
-  }, [selectedCalculator])
+  }, [calculators, selectedCalculator])
 
   const { user } = useUser()
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -189,7 +189,7 @@ export default function CalculadorasHubPage() {
     } finally {
       setIsCalculating(false)
     }
-  }, [formData, user])
+  }, [formData, selectedClientId, user])
 
   const calcularAposentadoria = useCallback(() => {
     const idade = parseInt(formData.idade) || 0

@@ -14,7 +14,6 @@ interface Note {
 interface NoteFormDialogProps {
   isOpen: boolean
   onClose: () => void
-  clientId: string
   note?: Note
   onSave: (note: Omit<Note, 'id'> & { id?: string }) => void | Promise<void>
 }
@@ -197,7 +196,7 @@ function NoteFormDialogBody({
   )
 }
 
-export function NoteFormDialog({ isOpen, onClose, clientId: _clientId, note, onSave }: NoteFormDialogProps) {
+export function NoteFormDialog({ isOpen, onClose, note, onSave }: NoteFormDialogProps) {
   const isEditing = !!note
 
   return (

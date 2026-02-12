@@ -11,8 +11,8 @@ import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { AiToolsProvider } from '@/features/ai/context'
-import { CalculatorsProvider } from '@/features/calculators/context'
+import { AiToolsProvider } from '@/features/ai/provider'
+import { CalculatorsProvider } from '@/features/calculators/provider'
 
 function RouteLoadingBar() {
   const navigation = useNavigation()

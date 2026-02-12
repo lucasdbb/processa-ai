@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { fetchCalculators } from './api'
+import { createContext, useContext } from 'react'
 import type { CalculatorItem } from './api'
 
 interface CalculatorsContextValue {
@@ -8,28 +7,7 @@ interface CalculatorsContextValue {
   getCalculatorBySlug: (slug: string) => CalculatorItem | undefined
 }
 
-const CalculatorsContext = createContext<CalculatorsContextValue | undefined>(undefined)
-
-export function CalculatorsProvider({ children }: { children: ReactNode }) {
-  const [calculators, setCalculators] = useState<CalculatorItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    fetchCalculators()
-      .then((calculators) => setCalculators(calculators))
-      .finally(() => setIsLoading(false))
-  }, [])
-
-  const getCalculatorBySlug = (slug: string) => {
-    return calculators.find((calc) => calc.slug === slug)
-  }
-
-  return (
-    <CalculatorsContext.Provider value={{ calculators, isLoading, getCalculatorBySlug }}>
-      {children}
-    </CalculatorsContext.Provider>
-  )
-}
+export const CalculatorsContext = createContext<CalculatorsContextValue | undefined>(undefined)
 
 export function useCalculators() {
   const context = useContext(CalculatorsContext)

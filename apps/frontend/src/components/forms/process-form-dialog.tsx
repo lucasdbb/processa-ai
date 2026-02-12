@@ -270,24 +270,25 @@ function ProcessFormDialogBody({
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Cliente */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Cliente</h3>
+        {/* Cliente - só mostra se não houver cliente pré-selecionado */}
+        {!preselectedClient && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Cliente</h3>
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
-              Selecione o Cliente <span className="text-destructive">*</span>
-            </label>
-            <ClientSelect
-              value={formData.client_id}
-              onChange={handleClientChange}
-              initialClient={initialClient}
-              error={errors.client_id}
-              placeholder="Buscar cliente por nome, CPF ou email..."
-              disabled={!!preselectedClient}
-            />
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Selecione o Cliente <span className="text-destructive">*</span>
+              </label>
+              <ClientSelect
+                value={formData.client_id}
+                onChange={handleClientChange}
+                initialClient={initialClient}
+                error={errors.client_id}
+                placeholder="Buscar cliente por nome, CPF ou email..."
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Informacoes Basicas */}
         <div className="space-y-4">

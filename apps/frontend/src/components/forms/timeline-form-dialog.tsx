@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
@@ -72,12 +72,23 @@ export function TimelineFormDialog({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Load documents when dialog opens
+  const loadDocuments = useCallback(async () => {
+    setIsLoadingDocs(true)
+    try {
+      const { documents } = await documentsService.list({ process_id: processId })
+      setAvailableDocuments(documents)
+    } catch {
+      toast.error('Erro ao carregar documentos')
+    } finally {
+      setIsLoadingDocs(false)
+    }
+  }, [processId])
+
   useEffect(() => {
     if (isOpen && processId) {
       loadDocuments()
     }
-  }, [isOpen, processId])
+  }, [isOpen, processId, loadDocuments])
 
   // Set selected documents when editing
   useEffect(() => {
@@ -109,18 +120,6 @@ export function TimelineFormDialog({
       fileInputRef.current.value = ''
     }
   }, [event])
-
-  const loadDocuments = async () => {
-    setIsLoadingDocs(true)
-    try {
-      const { documents } = await documentsService.list({ process_id: processId })
-      setAvailableDocuments(documents)
-    } catch {
-      toast.error('Erro ao carregar documentos')
-    } finally {
-      setIsLoadingDocs(false)
-    }
-  }
 
   const resetForm = () => {
     setTitle('')

@@ -209,7 +209,7 @@ export default function ConfiguracoesPage() {
         })
         .finally(() => setLoadingBilling(false))
     }
-  }, [isBillingOpen])
+  }, [isBillingOpen, subscription])
 
   const handleOpenPortal = async () => {
     setOpeningPortal(true)

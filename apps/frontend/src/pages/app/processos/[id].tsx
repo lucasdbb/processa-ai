@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -31,12 +31,14 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import {
   processesService,
   type ProcessDetail,
+  type ProcessTimelineEvent,
 } from '@/services/processes-service'
 import { deadlinesService, type Deadline } from '@/services/deadlines-service'
 import { documentsService, type Document } from '@/services/documents-service'
-import { timelineService } from '@/services/timeline-service'
+import { timelineService, type TimelineEventType } from '@/services/timeline-service'
 
 type Tab = 'resumo' | 'andamentos' | 'prazos' | 'documentos'
+type EditingTimelineEvent = ComponentProps<typeof TimelineFormDialog>['event']
 
 export default function ProcessoDetalhePage() {
   const { id } = useParams<{ id: string }>()
@@ -48,13 +50,13 @@ export default function ProcessoDetalhePage() {
   const [showDocumentDialog, setShowDocumentDialog] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
   const [showTimelineDialog, setShowTimelineDialog] = useState(false)
-  const [editingTimelineEvent, setEditingTimelineEvent] = useState<any>(null)
+  const [editingTimelineEvent, setEditingTimelineEvent] = useState<EditingTimelineEvent>(undefined)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteTimelineModal, setShowDeleteTimelineModal] = useState(false)
-  const [timelineToDelete, setTimelineToDelete] = useState<{ id: string; title: string; documents: any[] } | null>(null)
+  const [timelineToDelete, setTimelineToDelete] = useState<ProcessTimelineEvent | null>(null)
   const [deleteTimelineDocuments, setDeleteTimelineDocuments] = useState(false)
   const [isDeletingTimeline, setIsDeletingTimeline] = useState(false)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
@@ -211,8 +213,15 @@ export default function ProcessoDetalhePage() {
     }
   }
 
-  const handleEditTimelineEvent = (event: any) => {
-    setEditingTimelineEvent(event)
+  const handleEditTimelineEvent = (event: ProcessTimelineEvent) => {
+    setEditingTimelineEvent({
+      id: event.id,
+      title: event.title,
+      event_type: event.event_type as TimelineEventType,
+      description: event.description || undefined,
+      event_date: event.event_date,
+      documents: event.documents?.map((doc) => ({ id: doc.id, name: doc.name })) || [],
+    })
     setShowTimelineDialog(true)
   }
 
@@ -224,7 +233,7 @@ export default function ProcessoDetalhePage() {
       await timelineService.delete(timelineToDelete.id)
       
       // If user chose to delete documents, delete them
-      if (deleteTimelineDocuments && timelineToDelete.documents?.length > 0) {
+      if (deleteTimelineDocuments && timelineToDelete.documents?.length) {
         for (const doc of timelineToDelete.documents) {
           try {
             await documentsService.delete(doc.id)
@@ -578,11 +587,7 @@ export default function ProcessoDetalhePage() {
                           </button>
                           <button
                             onClick={() => {
-                              setTimelineToDelete({
-                                id: event.id,
-                                title: event.title,
-                                documents: event.documents || [],
-                              })
+                              setTimelineToDelete(event)
                               setShowDeleteTimelineModal(true)
                             }}
                             className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
@@ -911,6 +916,7 @@ export default function ProcessoDetalhePage() {
               status: editingDocument.status,
               file_url: editingDocument.file_url,
               process_id: editingDocument.process_id,
+              service_id: editingDocument.service_id,
               client_id: editingDocument.client_id,
               description: editingDocument.description,
             } : undefined}
@@ -960,13 +966,13 @@ export default function ProcessoDetalhePage() {
             isOpen={showTimelineDialog}
             onClose={() => {
               setShowTimelineDialog(false)
-              setEditingTimelineEvent(null)
+              setEditingTimelineEvent(undefined)
             }}
             processId={id || ''}
             event={editingTimelineEvent}
             onSave={() => {
               setShowTimelineDialog(false)
-              setEditingTimelineEvent(null)
+              setEditingTimelineEvent(undefined)
               void fetchProcess()
             }}
           />

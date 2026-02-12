@@ -22,6 +22,7 @@ import ClientesPage from '@/pages/app/clientes'
 import ClienteDetalhePage from '@/pages/app/clientes/[id]'
 import ProcessosPage from '@/pages/app/processos'
 import ProcessoDetalhePage from '@/pages/app/processos/[id]'
+import ServicoDetalhePage from '@/pages/app/servicos/[id]'
 import CalendarioPage from '@/pages/app/calendario'
 import DocumentosPage from '@/pages/app/documentos'
 import NotificacoesPage from '@/pages/app/notificacoes'
@@ -127,6 +128,10 @@ export const router = createBrowserRouter([
       {
         path: 'processos/:id',
         element: <ProcessoDetalhePage />,
+      },
+      {
+        path: 'servicos/:id',
+        element: <ServicoDetalhePage />,
       },
       {
         path: 'notificacoes',

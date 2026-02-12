@@ -147,7 +147,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
         setIsGoogleLoading(false)
       }
       // Se sucesso, o usuário será redirecionado para Google
-    } catch (error) {
+    } catch {
       setApiError('Erro inesperado. Tente novamente.')
       setIsGoogleLoading(false)
     }

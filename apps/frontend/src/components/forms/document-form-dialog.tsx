@@ -13,6 +13,7 @@ interface Document {
   status: 'draft' | 'final' | 'archived'
   file_url: string | null
   process_id: string | null
+  service_id: string | null
   client_id: string | null
   description: string | null
 }
@@ -22,15 +23,17 @@ interface DocumentFormDialogProps {
   onClose: () => void
   document?: Document
   preselectedProcessId?: string
+  preselectedServiceId?: string
   preselectedClientId?: string
   onSave: (document: Omit<Document, 'id' | 'file_url'> & { id?: string; file_url?: string }, file?: File) => void | Promise<void>
 }
 
-const getInitialFormData = (document?: Document, preselectedProcessId?: string, preselectedClientId?: string) => ({
+const getInitialFormData = (document?: Document, preselectedProcessId?: string, preselectedServiceId?: string, preselectedClientId?: string) => ({
   name: document?.name ?? '',
   type: document?.type ?? ('other' as const),
   status: document?.status ?? ('draft' as const),
   process_id: document?.process_id ?? preselectedProcessId ?? '',
+  service_id: document?.service_id ?? preselectedServiceId ?? '',
   client_id: document?.client_id ?? preselectedClientId ?? '',
   description: document?.description ?? '',
 })
@@ -51,8 +54,9 @@ const getFileTypeLabel = (mimeType: string) => {
 }
 
 function DocumentFormDialogBody({
-  document,
+  document: currentDocument,
   preselectedProcessId,
+  preselectedServiceId,
   preselectedClientId,
   isEditing,
   onClose,
@@ -60,12 +64,13 @@ function DocumentFormDialogBody({
 }: {
   document?: Document
   preselectedProcessId?: string
+  preselectedServiceId?: string
   preselectedClientId?: string
   isEditing: boolean
   onClose: () => void
   onSave: (document: Omit<Document, 'id' | 'file_url'> & { id?: string; file_url?: string }, file?: File) => void | Promise<void>
 }) {
-  const [formData, setFormData] = useState(() => getInitialFormData(document, preselectedProcessId, preselectedClientId))
+  const [formData, setFormData] = useState(() => getInitialFormData(currentDocument, preselectedProcessId, preselectedServiceId, preselectedClientId))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -73,10 +78,10 @@ function DocumentFormDialogBody({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setFormData(getInitialFormData(document, preselectedProcessId, preselectedClientId))
+    setFormData(getInitialFormData(currentDocument, preselectedProcessId, preselectedServiceId, preselectedClientId))
     setErrors({})
     setSelectedFile(null)
-  }, [document, preselectedProcessId, preselectedClientId])
+  }, [currentDocument, preselectedProcessId, preselectedServiceId, preselectedClientId])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -92,8 +97,8 @@ function DocumentFormDialogBody({
     if (!validate()) return
     setIsSaving(true)
     try {
-      if (isEditing && document) {
-        await onSave({ ...formData, id: document.id, file_url: document.file_url || undefined }, selectedFile || undefined)
+      if (isEditing && currentDocument) {
+        await onSave({ ...formData, id: currentDocument.id, file_url: currentDocument.file_url || undefined }, selectedFile || undefined)
       } else {
         await onSave(formData, selectedFile || undefined)
       }
@@ -246,7 +251,7 @@ function DocumentFormDialogBody({
         )}
 
         {/* Existing file indicator for editing */}
-        {isEditing && document?.file_url && (
+        {isEditing && currentDocument?.file_url && (
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
               ARQ
@@ -258,7 +263,7 @@ function DocumentFormDialogBody({
                 onClick={async () => {
                   try {
                     const url = await fetchWithCredentials(
-                      `${API_URL}/office/documents/${document.id}/download`
+                      `${API_URL}/office/documents/${currentDocument.id}/download`
                     )
                     if (!url.ok) throw new Error('Download failed')
                     const data = await url.json() as { download_url: string }
@@ -266,12 +271,12 @@ function DocumentFormDialogBody({
                     if (!res.ok) throw new Error('Download failed')
                     const blob = await res.blob()
                     const blobUrl = URL.createObjectURL(blob)
-                    const element = document.createElement('a')
+                    const element = window.document.createElement('a')
                     element.href = blobUrl
-                    element.download = document.name
-                    document.body.appendChild(element)
+                    element.download = currentDocument.name
+                    window.document.body.appendChild(element)
                     element.click()
-                    document.body.removeChild(element)
+                    window.document.body.removeChild(element)
                     URL.revokeObjectURL(blobUrl)
                     toast.success('Download iniciado')
                   } catch {
@@ -418,14 +423,15 @@ function DocumentFormDialogBody({
   )
 }
 
-export function DocumentFormDialog({ isOpen, onClose, document, preselectedProcessId, preselectedClientId, onSave }: DocumentFormDialogProps) {
-  const isEditing = !!document
+export function DocumentFormDialog({ isOpen, onClose, document: currentDocument, preselectedProcessId, preselectedServiceId, preselectedClientId, onSave }: DocumentFormDialogProps) {
+  const isEditing = !!currentDocument
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DocumentFormDialogBody
-        document={document}
+        document={currentDocument}
         preselectedProcessId={preselectedProcessId}
+        preselectedServiceId={preselectedServiceId}
         preselectedClientId={preselectedClientId}
         isEditing={isEditing}
         onClose={onClose}

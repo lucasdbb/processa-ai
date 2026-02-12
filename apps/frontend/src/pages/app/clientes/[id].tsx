@@ -5,7 +5,6 @@ import {
   Mail,
   Phone,
   FileText,
-  Calculator,
   FolderKanban,
   DollarSign,
   StickyNote,
@@ -18,6 +17,7 @@ import {
   MoreVertical,
   Archive,
   AlertTriangle,
+  Briefcase,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -29,6 +29,7 @@ import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 import { ClientFormDialog } from '@/components/forms/client-form-dialog'
 import { NoteFormDialog } from '@/components/forms/note-form-dialog'
 import { FeesFormDialog } from '@/components/forms/fees-form-dialog'
+import { ServiceFormDialog } from '@/components/forms/service-form-dialog'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import {
   clientsService,
@@ -37,8 +38,9 @@ import {
 } from '@/services/clients-service'
 import { notesService, type Note } from '../../../services/notes-service'
 import { feesService, type Fee } from '@/services/fees-service'
+import { servicesService, type Service } from '@/services/services-service'
 
-type Tab = 'resumo' | 'processos' | 'honorarios' | 'notas'
+type Tab = 'resumo' | 'atividades' | 'financeiro' | 'notas'
 
 export default function ClienteDetalhePage() {
   const { id } = useParams<{ id: string }>()
@@ -48,10 +50,14 @@ export default function ClienteDetalhePage() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showNoteDialog, setShowNoteDialog] = useState(false)
   const [showFeeDialog, setShowFeeDialog] = useState(false)
+  const [showServiceDialog, setShowServiceDialog] = useState(false)
   const [editingNote, setEditingNote] = useState<Note | null>(null)
   const [editingFee, setEditingFee] = useState<Fee | null>(null)
+  const [editingService, setEditingService] = useState<Service | null>(null)
   const [fees, setFees] = useState<Fee[]>([])
+  const [services, setServices] = useState<Service[]>([])
   const [isLoadingFees, setIsLoadingFees] = useState(false)
+  const [isLoadingServices, setIsLoadingServices] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState(false)
@@ -90,15 +96,40 @@ export default function ClienteDetalhePage() {
     }
   }, [id])
 
+  const fetchServices = useCallback(async () => {
+    if (!id) return
+    setIsLoadingServices(true)
+    try {
+      const response = await servicesService.list(id)
+      setServices(response.services)
+    } catch (error) {
+      console.error('Error fetching services:', error)
+      toast.error('Erro ao carregar serviços')
+    } finally {
+      setIsLoadingServices(false)
+    }
+  }, [id])
+
   useEffect(() => {
     void fetchClient()
   }, [fetchClient])
 
   useEffect(() => {
-    if (activeTab === 'honorarios') {
+    if (activeTab === 'financeiro') {
       void fetchFees()
+      void fetchServices()
     }
-  }, [activeTab, fetchFees])
+  }, [activeTab, fetchFees, fetchServices])
+
+  useEffect(() => {
+    if (activeTab === 'atividades') {
+      void fetchServices()
+    }
+    // Carregar serviços também no resumo para mostrar "Serviços Recentes"
+    if (activeTab === 'resumo') {
+      void fetchServices()
+    }
+  }, [activeTab, fetchServices])
 
   // Close actions menu on outside click
   useEffect(() => {
@@ -205,6 +236,47 @@ export default function ClienteDetalhePage() {
     }
   }
 
+  const handleSaveService = async (serviceData: Partial<Service> & { id?: string }) => {
+    if (!id) return
+
+    try {
+      if (serviceData.id) {
+        // Update existing service
+        await servicesService.update(serviceData.id, serviceData)
+        toast.success('Serviço atualizado com sucesso')
+      } else {
+        // Create new service
+        await servicesService.create({
+          client_id: id,
+          name: serviceData.name!,
+          category: serviceData.category!,
+          value: serviceData.value || null,
+          notes: serviceData.notes || null,
+        })
+        toast.success('Serviço criado com sucesso')
+      }
+      await Promise.all([fetchClient(), fetchServices()])
+      setShowServiceDialog(false)
+      setEditingService(null)
+    } catch (error) {
+      console.error('Error saving service:', error)
+      toast.error('Erro ao salvar serviço')
+    }
+  }
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este serviço?')) return
+
+    try {
+      await servicesService.delete(serviceId)
+      toast.success('Serviço excluído com sucesso')
+      await Promise.all([fetchClient(), fetchServices()])
+    } catch (error) {
+      console.error('Error deleting service:', error)
+      toast.error('Erro ao excluir serviço')
+    }
+  }
+
   const handleArchiveClient = async () => {
     if (!id) return
     try {
@@ -275,6 +347,44 @@ export default function ClienteDetalhePage() {
     return statuses[status] || status
   }
 
+  const getServiceCategoryLabel = (category: string) => {
+    const categories: Record<string, string> = {
+      previdenciario: 'Previdenciário',
+      trabalhista: 'Trabalhista',
+      civel: 'Cível',
+      tributario: 'Tributário',
+      familiar: 'Familiar',
+      empresarial: 'Empresarial',
+      imobiliario: 'Imobiliário',
+      administrativo: 'Administrativo',
+      consultoria: 'Consultoria',
+      outro: 'Outro',
+    }
+    return categories[category] || category
+  }
+
+  const getServiceStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'text-blue-600 dark:text-blue-400'
+      case 'completed':
+        return 'text-green-600 dark:text-green-400'
+      case 'cancelled':
+        return 'text-gray-600 dark:text-gray-400'
+      default:
+        return 'text-muted-foreground'
+    }
+  }
+
+  const getServiceStatusLabel = (status: string) => {
+    const statuses: Record<string, string> = {
+      active: 'Ativo',
+      completed: 'Concluído',
+      cancelled: 'Cancelado',
+    }
+    return statuses[status] || status
+  }
+
   const formatCPF = (cpf: string) => {
     return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
   }
@@ -337,8 +447,8 @@ export default function ClienteDetalhePage() {
 
   const tabs: { id: Tab; label: string; icon: typeof FolderKanban }[] = [
     { id: 'resumo', label: 'Resumo', icon: FileText },
-    { id: 'processos', label: 'Processos', icon: FolderKanban },
-    { id: 'honorarios', label: 'Honorários', icon: DollarSign },
+    { id: 'atividades', label: 'Atividades', icon: FolderKanban },
+    { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
     { id: 'notas', label: 'Notas', icon: StickyNote },
   ]
 
@@ -458,6 +568,16 @@ export default function ClienteDetalhePage() {
                 </button>
                 <button
                   onClick={() => {
+                    setEditingService(null)
+                    setShowServiceDialog(true)
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Novo Serviço
+                </button>
+                <button
+                  onClick={() => {
                     setEditingNote(null)
                     setShowNoteDialog(true)
                   }}
@@ -538,42 +658,181 @@ export default function ClienteDetalhePage() {
       </div>
 
       {/* Tab Content */}
-      <div className="pb-6">
+      <div className="pb-6 hide-scrollbar">
         {activeTab === 'resumo' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-2.5 mb-2">
-                <FolderKanban className="h-5 w-5 text-muted-foreground" />
-                <h3 className="font-semibold">Processos</h3>
+          <div className="space-y-6">
+            {/* Dashboard Financeiro Unificado */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Faturamento Total</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="p-6 rounded-lg border border-border bg-card">
+                  <h3 className="text-sm text-muted-foreground mb-2">Total</h3>
+                  <p className="text-2xl font-bold text-foreground">
+                    {formatCurrency(client.fees_summary.total_amount + client.services_summary.total_amount)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Honorários + Serviços
+                  </p>
+                </div>
+                <div className="p-6 rounded-lg border border-green-500/20 bg-green-500/10">
+                  <h3 className="text-sm text-green-600 dark:text-green-400 mb-2">Recebido</h3>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(client.fees_summary.total_paid + client.services_summary.total_paid)}
+                  </p>
+                </div>
+                <div className="p-6 rounded-lg border border-orange-500/20 bg-orange-500/10">
+                  <h3 className="text-sm text-orange-600 dark:text-orange-400 mb-2">Pendente</h3>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {formatCurrency(client.fees_summary.total_pending + client.services_summary.total_pending)}
+                  </p>
+                </div>
+                <div className="p-6 rounded-lg border border-red-500/20 bg-red-500/10">
+                  <h3 className="text-sm text-red-600 dark:text-red-400 mb-2">Vencido</h3>
+                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    {formatCurrency(client.fees_summary.total_overdue)}
+                  </p>
+                </div>
               </div>
-              <p className="text-2xl font-bold text-foreground">{client.processes_count}</p>
-              <p className="text-sm text-muted-foreground">Cadastrados</p>
-            </div>
-            <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-2.5 mb-2">
-                <Calculator className="h-5 w-5 text-muted-foreground" />
-                <h3 className="font-semibold">Honorários</h3>
-              </div>
-              <p className="text-2xl font-bold text-foreground">
-                {formatCurrency(client.fees_summary.total_amount)}
-              </p>
-              <p className="text-sm text-muted-foreground">Total contratado</p>
-            </div>
-            <div className="p-6 rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-2.5 mb-2">
-                <StickyNote className="h-5 w-5 text-muted-foreground" />
-                <h3 className="font-semibold">Notas</h3>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{client.notes_count}</p>
-              <p className="text-sm text-muted-foreground">Anotações</p>
             </div>
 
-            {/* Recent Processes */}
-            {client.processes.length > 0 && (
-              <div className="md:col-span-3">
-                <h3 className="font-semibold mb-2">Processos Recentes</h3>
-                <div className="space-y-2">
-                  {client.processes.slice(0, 3).map((process) => (
+            {/* Contadores de Atividades */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-6 rounded-lg border border-border bg-card">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <FolderKanban className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-semibold">Processos</h3>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{client.processes_count}</p>
+                <p className="text-sm text-muted-foreground">Cadastrados</p>
+              </div>
+              <div className="p-6 rounded-lg border border-border bg-card">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <Briefcase className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-semibold">Serviços</h3>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {client.services_summary.services_count}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {client.services_summary.active_count} ativo(s)
+                </p>
+              </div>
+              <div className="p-6 rounded-lg border border-border bg-card">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <StickyNote className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-semibold">Notas</h3>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{client.notes_count}</p>
+                <p className="text-sm text-muted-foreground">Anotações</p>
+              </div>
+            </div>
+
+            {/* Atividade Recente - Processos e Serviços lado a lado */}
+            {(client.processes.length > 0 || services.length > 0) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Processos Recentes */}
+                <div>
+                  <h3 className="font-semibold mb-3">Processos Recentes</h3>
+                  {client.processes.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <FolderKanban className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p>Nenhum processo cadastrado</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {client.processes.slice(0, 3).map((process) => (
+                        <Link
+                          key={process.id}
+                          to={`/app/processos/${process.id}`}
+                          className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-medium text-foreground">{process.number}</h4>
+                              <p className="text-sm text-muted-foreground mt-1">{process.type}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className={cn('px-2 py-1 rounded text-xs', getStatusColor(process.status))}>
+                                {getStatusLabel(process.status)}
+                              </span>
+                              {process.next_deadline && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Próximo prazo: {process.next_deadline}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Serviços Recentes */}
+                <div>
+                  <h3 className="font-semibold mb-3">Serviços Recentes</h3>
+                  {isLoadingServices ? (
+                    <div className="flex items-center justify-center py-8">
+                      <LoadingSpinner size="sm" />
+                    </div>
+                  ) : services.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p>Nenhum serviço cadastrado</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {services.slice(0, 3).map((service) => (
+                        <Link
+                          key={service.id}
+                          to={`/app/servicos/${service.id}`}
+                          className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-medium text-foreground">{service.name}</h4>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {getServiceCategoryLabel(service.category)}
+                              </p>
+                            </div>
+                            <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
+                              {getServiceStatusLabel(service.status)}
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'atividades' && (
+          <div className="space-y-8">
+            {/* Seção Processos */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <FolderKanban className="h-5 w-5" />
+                  Processos
+                </h3>
+                <button
+                  onClick={() => setShowProcessDialog(true)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  + Novo Processo
+                </button>
+              </div>
+              <div className="space-y-2">
+                {client.processes.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FolderKanban className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>Nenhum processo cadastrado</p>
+                  </div>
+                ) : (
+                  client.processes.map((process) => (
                     <Link
                       key={process.id}
                       to={`/app/processos/${process.id}`}
@@ -581,8 +840,16 @@ export default function ClienteDetalhePage() {
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <h4 className="font-medium text-foreground">{process.number}</h4>
+                          <h4 className="font-semibold text-foreground">{process.number}</h4>
                           <p className="text-sm text-muted-foreground mt-1">{process.type}</p>
+                          {process.court && (
+                            <p className="text-sm text-muted-foreground">{process.court}</p>
+                          )}
+                          {process.value && (
+                            <p className="text-sm text-muted-foreground">
+                              Valor: {formatCurrency(process.value)}
+                            </p>
+                          )}
                         </div>
                         <div className="text-right">
                           <span className={cn('px-2 py-1 rounded text-xs', getStatusColor(process.status))}>
@@ -596,83 +863,92 @@ export default function ClienteDetalhePage() {
                         </div>
                       </div>
                     </Link>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-            )}
-          </div>
-        )}
+            </div>
 
-        {activeTab === 'processos' && (
-          <div className="space-y-2">
-            {client.processes.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <FolderKanban className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>Nenhum processo cadastrado</p>
+            {/* Divider */}
+            <div className="border-t border-border" />
+
+            {/* Seção Serviços Extrajudiciais */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  Serviços Extrajudiciais
+                </h3>
                 <button
-                  onClick={() => setShowProcessDialog(true)}
-                  className="mt-4 text-primary hover:underline"
+                  onClick={() => {
+                    setEditingService(null)
+                    setShowServiceDialog(true)
+                  }}
+                  className="text-sm text-primary hover:underline"
                 >
-                  Cadastrar primeiro processo
+                  + Novo Serviço
                 </button>
               </div>
-            ) : (
-              client.processes.map((process) => (
-                <Link
-                  key={process.id}
-                  to={`/app/processos/${process.id}`}
-                  className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground">{process.number}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{process.type}</p>
-                      {process.court && (
-                        <p className="text-sm text-muted-foreground">{process.court}</p>
-                      )}
-                      {process.value && (
-                        <p className="text-sm text-muted-foreground">
-                          Valor: {formatCurrency(process.value)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <span className={cn('px-2 py-1 rounded text-xs', getStatusColor(process.status))}>
-                        {getStatusLabel(process.status)}
-                      </span>
-                      {process.next_deadline && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Próximo prazo: {process.next_deadline}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
+              {isLoadingServices ? (
+                <div className="flex items-center justify-center py-12">
+                  <LoadingSpinner size="lg" />
+                </div>
+              ) : services.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>Nenhum serviço cadastrado</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {services.map((service) => (
+                    <Link
+                      key={service.id}
+                      to={`/app/servicos/${service.id}`}
+                      className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-semibold text-foreground">{service.name}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {getServiceCategoryLabel(service.category)}
+                          </p>
+                          {service.value && (
+                            <p className="text-sm text-muted-foreground">
+                              Valor: {formatCurrency(service.value)}
+                            </p>
+                          )}
+                        </div>
+                        <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
+                          {getServiceStatusLabel(service.status)}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {activeTab === 'honorarios' && (
+        {activeTab === 'financeiro' && (
           <div className="space-y-6">
-            {/* Summary Cards */}
+            {/* Dashboard Financeiro Unificado */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="p-6 rounded-lg border border-border bg-card">
                 <h3 className="text-sm text-muted-foreground mb-2">Total</h3>
                 <p className="text-2xl font-bold text-foreground">
-                  {formatCurrency(client.fees_summary.total_amount)}
+                  {formatCurrency(client.fees_summary.total_amount + client.services_summary.total_amount)}
                 </p>
               </div>
               <div className="p-6 rounded-lg border border-green-500/20 bg-green-500/10">
-                <h3 className="text-sm text-green-600 dark:text-green-400 mb-2">Pago</h3>
+                <h3 className="text-sm text-green-600 dark:text-green-400 mb-2">Recebido</h3>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(client.fees_summary.total_paid)}
+                  {formatCurrency(client.fees_summary.total_paid + client.services_summary.total_paid)}
                 </p>
               </div>
               <div className="p-6 rounded-lg border border-orange-500/20 bg-orange-500/10">
                 <h3 className="text-sm text-orange-600 dark:text-orange-400 mb-2">Pendente</h3>
                 <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  {formatCurrency(client.fees_summary.total_pending)}
+                  {formatCurrency(client.fees_summary.total_pending + client.services_summary.total_pending)}
                 </p>
               </div>
               <div className="p-6 rounded-lg border border-red-500/20 bg-red-500/10">
@@ -685,30 +961,34 @@ export default function ClienteDetalhePage() {
 
             {/* Summary count */}
             <p className="text-sm text-muted-foreground">
-              Total de {client.fees_summary.fees_count} honorário(s) cadastrado(s)
+              Total de {client.fees_summary.fees_count} honorário(s) e {client.services_summary.services_count} serviço(s) cadastrado(s)
             </p>
 
-            {/* Fees List */}
-            {isLoadingFees ? (
+            {/* Lista Unificada de Itens Financeiros */}
+            {isLoadingFees || isLoadingServices ? (
               <div className="flex items-center justify-center py-12">
                 <LoadingSpinner size="lg" />
               </div>
-            ) : fees.length === 0 ? (
+            ) : fees.length === 0 && services.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>Nenhum honorário cadastrado</p>
-                <p className="text-sm mt-2">Clique no botão acima para adicionar o primeiro</p>
+                <p>Nenhum item financeiro cadastrado</p>
+                <p className="text-sm mt-2">Use o botão Adicionar acima para criar honorários ou serviços</p>
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Honorários */}
                 {fees.map((fee) => (
                   <div
-                    key={fee.id}
+                    key={`fee-${fee.id}`}
                     className="p-4 rounded-lg border border-border bg-card"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            Honorário
+                          </span>
                           <h3 className="font-medium text-foreground">{fee.description}</h3>
                           <span className={cn('text-xs font-medium', getFeeStatusColor(fee.status))}>
                             {getFeeStatusLabel(fee.status)}
@@ -751,6 +1031,65 @@ export default function ClienteDetalhePage() {
                           onClick={() => handleDeleteFee(fee.id)}
                           className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
                           title="Excluir honorário"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Serviços */}
+                {services.map((service) => (
+                  <div
+                    key={`service-${service.id}`}
+                    className="p-4 rounded-lg border border-border bg-card"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                            Serviço
+                          </span>
+                          <h3 className="font-medium text-foreground">{service.name}</h3>
+                          <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
+                            {getServiceStatusLabel(service.status)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {getServiceCategoryLabel(service.category)}
+                        </p>
+                        <div className="flex items-center gap-4 text-sm">
+                          {service.value && (
+                            <span className="font-semibold text-foreground">
+                              {formatCurrency(service.value)}
+                            </span>
+                          )}
+                          {service.paid_amount > 0 && (
+                            <span className="text-green-600 dark:text-green-400">
+                              Pago: {formatCurrency(service.paid_amount)}
+                            </span>
+                          )}
+                        </div>
+                        {service.notes && (
+                          <p className="text-sm text-muted-foreground mt-2">{service.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={() => {
+                            setEditingService(service)
+                            setShowServiceDialog(true)
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                          title="Editar serviço"
+                        >
+                          <Edit className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteService(service.id)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+                          title="Excluir serviço"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </button>
@@ -874,7 +1213,6 @@ export default function ClienteDetalhePage() {
             setShowNoteDialog(false)
             setEditingNote(null)
           }}
-          clientId={client.id}
           note={editingNote || undefined}
           onSave={async (noteData) => {
             try {
@@ -926,6 +1264,19 @@ export default function ClienteDetalhePage() {
         />
       )}
 
+      {/* Dialog para adicionar/editar serviço */}
+      {client && (
+        <ServiceFormDialog
+          isOpen={showServiceDialog}
+          onClose={() => {
+            setShowServiceDialog(false)
+            setEditingService(null)
+          }}
+          service={editingService || undefined}
+          onSave={handleSaveService}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent className="sm:max-w-md">
@@ -947,6 +1298,10 @@ export default function ClienteDetalhePage() {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Honorários:</span>
                 <span className="font-semibold text-foreground">{fees.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Serviços:</span>
+                <span className="font-semibold text-foreground">{client?.services_count || 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Notas:</span>

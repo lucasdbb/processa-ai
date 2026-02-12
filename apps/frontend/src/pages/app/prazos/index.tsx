@@ -15,8 +15,6 @@ export default function PrazosPage() {
   const [defaultFormDate, setDefaultFormDate] = useState<string | undefined>(undefined)
 
   type EditingDeadline = ComponentProps<typeof DeadlineFormDialog>['deadline']
-  type SaveDeadlinePayload = Parameters<ComponentProps<typeof DeadlineFormDialog>['onSave']>[0]
-
   const [editingDeadline, setEditingDeadline] = useState<EditingDeadline>(undefined)
 
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
@@ -70,7 +68,7 @@ export default function PrazosPage() {
     void fetchDeadlines()
   }, [fetchDeadlines])
 
-  const handleSaveDeadline = async (_deadlineData: SaveDeadlinePayload) => {
+  const handleSaveDeadline = async () => {
     // API call is already handled by the form dialog
     await fetchDeadlines()
     setIsFormOpen(false)

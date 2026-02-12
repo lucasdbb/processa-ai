@@ -17,6 +17,7 @@ class DocumentCreate(BaseModel):
     file_size: int | None = Field(None, ge=0)
     mime_type: str | None = None
     process_id: str | None = None
+    service_id: str | None = None
     client_id: str | None = None
     description: str | None = None
 
@@ -31,6 +32,7 @@ class DocumentUpdate(BaseModel):
     file_size: int | None = Field(None, ge=0)
     mime_type: str | None = None
     process_id: str | None = None
+    service_id: str | None = None
     client_id: str | None = None
     description: str | None = None
 
@@ -45,6 +47,7 @@ class DocumentResponse(BaseModel):
     file_size: int | None
     mime_type: str | None
     process_id: str | None
+    service_id: str | None
     client_id: str | None
     description: str | None
     created_at: datetime
@@ -61,6 +64,7 @@ class DocumentListParams(BaseModel):
     type: DocumentType | None = None
     status: DocumentStatus | None = None
     process_id: str | None = None
+    service_id: str | None = None
     client_id: str | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)

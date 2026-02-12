@@ -12,6 +12,7 @@ from src.features.office.clients.schemas import (
     ClientNoteSummary,
     ClientProcessSummary,
     ClientResponse,
+    ClientServiceSummary,
     ClientUpdate,
 )
 
@@ -279,11 +280,38 @@ class ClientsService:
                 notes_count_row = await cur.fetchone()
                 notes_count = notes_count_row["count"] if notes_count_row else 0
 
+                # Get services summary
+                await cur.execute(
+                    """
+                    SELECT
+                        COALESCE(SUM(value), 0) as total_amount,
+                        COALESCE(SUM(paid_amount), 0) as total_paid,
+                        COALESCE(SUM(COALESCE(value, 0) - paid_amount), 0) as total_pending,
+                        COUNT(*) as services_count,
+                        COUNT(*) FILTER (WHERE status = 'active') as active_count,
+                        COUNT(*) FILTER (WHERE status = 'completed') as completed_count
+                    FROM office_api.services
+                    WHERE user_id = %s AND client_id = %s
+                    """,
+                    (str(user_id), str(client_id)),
+                )
+                services_row = await cur.fetchone()
+                services_summary = ClientServiceSummary(
+                    total_amount=float(services_row["total_amount"]) if services_row else 0,
+                    total_paid=float(services_row["total_paid"]) if services_row else 0,
+                    total_pending=float(services_row["total_pending"]) if services_row else 0,
+                    services_count=services_row["services_count"] if services_row else 0,
+                    active_count=services_row["active_count"] if services_row else 0,
+                    completed_count=services_row["completed_count"] if services_row else 0,
+                )
+
                 return ClientDetailResponse(
                     **client_row,
                     processes=processes,
                     processes_count=len(processes),
                     fees_summary=fees_summary,
+                    services_summary=services_summary,
+                    services_count=services_summary.services_count,
                     recent_notes=recent_notes,
                     notes_count=notes_count,
                 )

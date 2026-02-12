@@ -10,6 +10,7 @@ export interface Document {
   file_size: number | null;
   mime_type: string | null;
   process_id: string | null;
+  service_id: string | null;
   client_id: string | null;
   description: string | null;
   created_at: string;
@@ -24,6 +25,7 @@ export interface DocumentCreate {
   file_size?: number;
   mime_type?: string;
   process_id?: string;
+  service_id?: string;
   client_id?: string;
   description?: string;
 }
@@ -35,6 +37,7 @@ export interface DocumentListParams {
   type?: "ai_analysis" | "calculation" | "petition" | "contract" | "other";
   status?: "draft" | "final" | "archived";
   process_id?: string;
+  service_id?: string;
   client_id?: string;
   limit?: number;
   offset?: number;
@@ -52,6 +55,7 @@ export const documentsService = {
     if (params?.type) searchParams.set("type", params.type);
     if (params?.status) searchParams.set("status", params.status);
     if (params?.process_id) searchParams.set("process_id", params.process_id);
+    if (params?.service_id) searchParams.set("service_id", params.service_id);
     if (params?.client_id) searchParams.set("client_id", params.client_id);
     if (params?.limit) searchParams.set("limit", params.limit.toString());
     if (params?.offset) searchParams.set("offset", params.offset.toString());
@@ -98,6 +102,7 @@ export const documentsService = {
     if (data.type) formData.append("type", data.type);
     if (data.status) formData.append("document_status", data.status);
     if (data.process_id) formData.append("process_id", data.process_id);
+    if (data.service_id) formData.append("service_id", data.service_id);
     if (data.client_id) formData.append("client_id", data.client_id);
     if (data.description) formData.append("description", data.description);
 
