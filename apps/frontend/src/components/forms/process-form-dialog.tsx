@@ -264,180 +264,182 @@ function ProcessFormDialogBody({
   } : preselectedClient
 
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
+    <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogHeader className="p-6 pb-2 shrink-0">
         <DialogTitle>{isEditing ? 'Editar Processo' : 'Novo Processo'}</DialogTitle>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Cliente - só mostra se não houver cliente pré-selecionado */}
-        {!preselectedClient && (
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-6">
+          {/* Cliente - só mostra se não houver cliente pré-selecionado */}
+          {!preselectedClient && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">Cliente</h3>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Selecione o Cliente <span className="text-destructive">*</span>
+                </label>
+                <ClientSelect
+                  value={formData.client_id}
+                  onChange={handleClientChange}
+                  initialClient={initialClient}
+                  error={errors.client_id}
+                  placeholder="Buscar cliente por nome, CPF ou email..."
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Informacoes Basicas */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Cliente</h3>
+            <h3 className="text-sm font-semibold text-foreground">Informacoes do Processo</h3>
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Selecione o Cliente <span className="text-destructive">*</span>
-              </label>
-              <ClientSelect
-                value={formData.client_id}
-                onChange={handleClientChange}
-                initialClient={initialClient}
-                error={errors.client_id}
-                placeholder="Buscar cliente por nome, CPF ou email..."
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Informacoes Basicas */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Informacoes do Processo</h3>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
-              Numero do Processo <span className="text-destructive">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.process_number}
-              onChange={(e) => handleChange('process_number', e.target.value)}
-              className={cn(
-                'w-full px-3 py-2 bg-background border rounded-lg text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                errors.process_number ? 'border-destructive' : 'border-border'
-              )}
-              placeholder="0000000-00.0000.0.00.0000"
-            />
-            {errors.process_number && <p className="mt-1 text-xs text-destructive">{errors.process_number}</p>}
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Tipo de Processo <span className="text-destructive">*</span>
-              </label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                className={cn(
-                  'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                  errors.type ? 'border-destructive' : 'border-border'
-                )}
-              >
-                <option value="">Selecione...</option>
-                {processTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-              {errors.type && <p className="mt-1 text-xs text-destructive">{errors.type}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Vara/Tribunal <span className="text-destructive">*</span>
+                Numero do Processo <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
-                value={formData.court}
-                onChange={(e) => handleChange('court', e.target.value)}
+                value={formData.process_number}
+                onChange={(e) => handleChange('process_number', e.target.value)}
                 className={cn(
-                  'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                  errors.court ? 'border-destructive' : 'border-border'
+                  'w-full px-3 py-2 bg-background border rounded-lg text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                  errors.process_number ? 'border-destructive' : 'border-border'
                 )}
-                placeholder="1a Vara do Trabalho de Sao Paulo"
+                placeholder="0000000-00.0000.0.00.0000"
               />
-              {errors.court && <p className="mt-1 text-xs text-destructive">{errors.court}</p>}
+              {errors.process_number && <p className="mt-1 text-xs text-destructive">{errors.process_number}</p>}
             </div>
-          </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Valor da Causa
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Tipo de Processo <span className="text-destructive">*</span>
+                </label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => handleChange('type', e.target.value)}
+                  className={cn(
+                    'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                    errors.type ? 'border-destructive' : 'border-border'
+                  )}
+                >
+                  <option value="">Selecione...</option>
+                  {processTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                {errors.type && <p className="mt-1 text-xs text-destructive">{errors.type}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Vara/Tribunal <span className="text-destructive">*</span>
+                </label>
                 <input
                   type="text"
-                  inputMode="numeric"
-                  value={formData.value}
-                  onChange={(e) => handleChange('value', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="0,00"
+                  value={formData.court}
+                  onChange={(e) => handleChange('court', e.target.value)}
+                  className={cn(
+                    'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                    errors.court ? 'border-destructive' : 'border-border'
+                  )}
+                  placeholder="1a Vara do Trabalho de Sao Paulo"
+                />
+                {errors.court && <p className="mt-1 text-xs text-destructive">{errors.court}</p>}
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Valor da Causa
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.value}
+                    onChange={(e) => handleChange('value', e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Data de Distribuicao
+                </label>
+                <input
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => handleChange('start_date', e.target.value)}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Data de Distribuicao
-              </label>
-              <input
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => handleChange('start_date', e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {isEditing && (
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => handleChange('status', e.target.value as ProcessFormData['status'])}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="active">Ativo</option>
-                <option value="archived">Arquivado</option>
-              </select>
-            </div>
-          )}
-        </div>
-
-        {/* Partes */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Parte Contraria</h3>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
-              Reu/Reclamado <span className="text-destructive">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.defendant}
-              onChange={(e) => handleChange('defendant', e.target.value)}
-              className={cn(
-                'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                errors.defendant ? 'border-destructive' : 'border-border'
-              )}
-              placeholder="Nome do reu"
-            />
-            {errors.defendant && (
-              <p className="mt-1 text-xs text-destructive">{errors.defendant}</p>
+            {isEditing && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleChange('status', e.target.value as ProcessFormData['status'])}
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="active">Ativo</option>
+                  <option value="archived">Arquivado</option>
+                </select>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Descricao */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1.5">
-            Observacoes
-          </label>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
-            rows={2}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-            placeholder="Observacoes sobre o processo..."
-          />
+          {/* Partes */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Parte Contraria</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Reu/Reclamado <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.defendant}
+                onChange={(e) => handleChange('defendant', e.target.value)}
+                className={cn(
+                  'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                  errors.defendant ? 'border-destructive' : 'border-border'
+                )}
+                placeholder="Nome do reu"
+              />
+              {errors.defendant && (
+                <p className="mt-1 text-xs text-destructive">{errors.defendant}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Descricao */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Observacoes
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => handleChange('notes', e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+              placeholder="Observacoes sobre o processo..."
+            />
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-border shrink-0 bg-background">
           <button
             type="button"
             onClick={onClose}

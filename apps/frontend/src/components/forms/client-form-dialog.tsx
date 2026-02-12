@@ -247,14 +247,15 @@ function ClientFormDialogBody({
   }
 
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
+    <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogHeader className="p-6 pb-2 shrink-0">
         <DialogTitle>{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Tipo de Pessoa */}
-        <div className="space-y-2">
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-5">
+          {/* Tipo de Pessoa */}
+          <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground">
             Tipo de Pessoa <span className="text-destructive">*</span>
           </label>
@@ -445,14 +446,15 @@ function ClientFormDialogBody({
           <textarea
             value={formData.notes}
             onChange={(e) => handleChange('notes', e.target.value)}
-            rows={3}
+            rows={2}
             className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
             placeholder="Adicione observações sobre o cliente..."
           />
         </div>
+        </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-border shrink-0 bg-background">
           <button
             type="button"
             onClick={onClose}

@@ -216,14 +216,15 @@ function DeadlineFormDialogBody({
   } : preselectedProcess
 
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
+    <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogHeader className="p-6 pb-2 shrink-0">
         <DialogTitle>{isEditing ? 'Editar Prazo' : 'Novo Prazo'}</DialogTitle>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Processo */}
-        <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-5">
+          {/* Processo */}
+          <div className="space-y-4">
           <h3 className="text-sm font-semibold text-foreground">Processo</h3>
 
           <div>
@@ -371,9 +372,10 @@ function DeadlineFormDialogBody({
             placeholder="Adicione observacoes sobre este prazo..."
           />
         </div>
+        </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-border shrink-0 bg-background">
           <button
             type="button"
             onClick={onClose}

@@ -227,14 +227,14 @@ export function TimelineFormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2 shrink-0">
           <DialogTitle>
             {isEditing ? 'Editar Andamento' : 'Novo Andamento'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-5">
           {/* Event Type */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -431,7 +431,7 @@ export function TimelineFormDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 p-4 border-t border-border shrink-0 bg-background">
           <button
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-accent transition-colors"
