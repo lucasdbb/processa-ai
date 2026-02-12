@@ -62,6 +62,7 @@ class ProcessListParams(BaseModel):
     search: str | None = None
     status: ProcessStatus | None = None
     client_id: UUID | None = None
+    court: str | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
 

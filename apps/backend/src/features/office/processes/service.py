@@ -47,6 +47,10 @@ class ProcessesService:
             where_conditions.append("client_id = %s")
             query_params.append(str(params.client_id))
 
+        if params.court:
+            where_conditions.append("court = %s")
+            query_params.append(params.court)
+
         where_clause = " AND ".join(where_conditions)
 
         async with pool.connection() as conn:

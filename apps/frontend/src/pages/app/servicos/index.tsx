@@ -1,13 +1,33 @@
 import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Filter, Briefcase } from 'lucide-react'
+import { Search, Plus, Filter, Briefcase, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { servicesService, type Service, type ServiceStatus } from '@/services/services-service'
+import { servicesService, type Service, type ServiceStatus, type ServiceCategory } from '@/services/services-service'
 import { ServiceFormDialog } from '@/components/forms/service-form-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
+
+const CATEGORIES: ServiceCategory[] = [
+  'previdenciario',
+  'trabalhista',
+  'civel',
+  'tributario',
+  'familiar',
+  'empresarial',
+  'imobiliario',
+  'administrativo',
+  'consultoria',
+  'outro',
+]
 
 const getServiceCategoryLabel = (category: string) => {
   const labels: Record<string, string> = {
@@ -37,6 +57,7 @@ const getServiceStatusLabel = (status: string) => {
 export default function ServicosPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | ServiceStatus>('all')
+  const [categoryFilter, setCategoryFilter] = useState<ServiceCategory | 'all'>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   type SaveServicePayload = Parameters<ComponentProps<typeof ServiceFormDialog>['onSave']>[0]
@@ -47,11 +68,12 @@ export default function ServicosPage() {
   // const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchServices = useCallback(async (searchQuery: string, statusFilter: string) => {
+  const fetchServices = useCallback(async (searchQuery: string, statusFilter: string, catFilter: string) => {
     setIsLoading(true)
     try {
       const status = statusFilter !== 'all' ? (statusFilter as ServiceStatus) : undefined
-      const res = await servicesService.list(undefined, undefined, status, searchQuery.trim())
+      const category = catFilter !== 'all' ? (catFilter as ServiceCategory) : undefined
+      const res = await servicesService.list(undefined, category, status, searchQuery.trim())
       
       setServices(res.services)
       // setTotal(res.total)
@@ -66,11 +88,11 @@ export default function ServicosPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      void fetchServices(search, filter)
+      void fetchServices(search, filter, categoryFilter)
     }, search ? 300 : 0)
 
     return () => clearTimeout(timeout)
-  }, [search, filter, fetchServices])
+  }, [search, filter, categoryFilter, fetchServices])
 
   const handleSaveService = async (serviceData: SaveServicePayload) => {
     try {
@@ -90,7 +112,7 @@ export default function ServicosPage() {
       }
       setIsFormOpen(false)
       setEditingService(undefined)
-      await fetchServices(search, filter)
+      await fetchServices(search, filter, categoryFilter)
     } catch (error) {
       console.error('Error saving service:', error)
       toast.error('Erro ao salvar serviço')
@@ -143,7 +165,31 @@ export default function ServicosPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
+                <Filter className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {categoryFilter === 'all'
+                    ? 'Todas categorias'
+                    : getServiceCategoryLabel(categoryFilter)}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem onClick={() => setCategoryFilter('all')}>
+                Todas categorias
+              </DropdownMenuItem>
+              {CATEGORIES.map((cat) => (
+                <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)}>
+                  {getServiceCategoryLabel(cat)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
           <InfoTooltip content="Filtre serviços por status" />
           <div className="flex rounded-md border border-border overflow-hidden">
             {(['all', 'active', 'completed', 'cancelled'] as const).map((f) => (
