@@ -70,6 +70,23 @@ class ProcessesService:
                 processes = [ProcessResponse(**row) for row in rows]
                 return processes, total
 
+    async def count_processes(self, user_id: UUID) -> dict[str, int]:
+        """Count active processes for a user."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT COUNT(*) as total
+                    FROM office_api.processes
+                    WHERE user_id = %s AND status = 'active'
+                    """,
+                    (str(user_id),),
+                )
+                row = await cur.fetchone()
+                return {"total": row["total"] if row else 0}
+
     async def get_process(self, user_id: UUID, process_id: UUID) -> ProcessResponse | None:
         """Get a single process by ID."""
         pool = await get_pool()

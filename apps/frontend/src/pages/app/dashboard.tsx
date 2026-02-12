@@ -12,6 +12,7 @@ import {
   FileText,
   Clock,
   Banknote,
+  Briefcase,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/features/auth/hooks/use-user'
@@ -23,6 +24,7 @@ import {
   type ProcessesSummary,
   type ActivityItem,
 } from '@/services/dashboard-service'
+import { servicesService } from '@/services/services-service'
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
 import { TourButton } from '@/features/onboarding/tour-button'
 import { RevenueChart } from '@/components/charts/revenue-chart'
@@ -59,25 +61,28 @@ export default function DashboardPage() {
   const [financial, setFinancial] = useState<FinancialStats | null>(null)
   const [processesSummary, setProcessesSummary] = useState<ProcessesSummary | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [servicesCount, setServicesCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setLoading(true)
-        const [statsData, deadlinesData, financialData, processesData, activityData] =
+        const [statsData, deadlinesData, financialData, processesData, activityData, servicesData] =
           await Promise.all([
             dashboardService.getStats(),
             dashboardService.getUpcomingDeadlines(5),
             dashboardService.getFinancialStats().catch(() => null),
             dashboardService.getProcessesSummary().catch(() => null),
             dashboardService.getRecentActivity(8).catch(() => []),
+            servicesService.count().catch(() => ({ total: 0 })),
           ])
         setStats(statsData)
         setDeadlines(deadlinesData)
         setFinancial(financialData)
         setProcessesSummary(processesData)
         setActivity(activityData)
+        setServicesCount(servicesData.total)
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
       } finally {
@@ -113,6 +118,14 @@ export default function DashboardPage() {
           changeType: 'neutral',
           icon: FolderKanban,
           href: '/app/processos',
+        },
+        {
+          name: 'Serviços Ativos',
+          value: servicesCount.toString(),
+          change: undefined,
+          changeType: 'neutral',
+          icon: Briefcase,
+          href: '/app/servicos',
         },
         {
           name: 'Prazos Hoje',

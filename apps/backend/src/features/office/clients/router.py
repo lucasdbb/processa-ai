@@ -38,6 +38,14 @@ async def list_clients(
     return ClientListResponse(clients=clients, total=total)
 
 
+@router.get("/count")
+async def count_clients(
+    user_id: UUID = Depends(get_user_id),
+):
+    """Count active clients for the current user."""
+    return await clients_service.count_clients(user_id)
+
+
 @router.get("/{client_id}", response_model=ClientResponse)
 async def get_client(
     client_id: UUID,

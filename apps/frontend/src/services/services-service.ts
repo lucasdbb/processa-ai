@@ -86,11 +86,13 @@ export const servicesService = {
     clientId?: string,
     category?: ServiceCategory,
     status?: ServiceStatus,
+    search?: string,
   ): Promise<ServicesListResponse> {
     const params = new URLSearchParams();
     if (clientId) params.append("client_id", clientId);
     if (category) params.append("category", category);
     if (status) params.append("status", status);
+    if (search) params.append("search", search);
 
     const url = `${API_URL}/office/services${params.toString() ? `?${params.toString()}` : ""}`;
     const response = await fetchWithCredentials(url, {
@@ -100,6 +102,18 @@ export const servicesService = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.detail || "Failed to fetch services");
+    }
+
+    return response.json();
+  },
+
+  async count(): Promise<{ total: number }> {
+    const response = await fetchWithCredentials(`${API_URL}/office/services/count`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to count services");
     }
 
     return response.json();

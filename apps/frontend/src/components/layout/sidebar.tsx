@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Users,
   FolderKanban,
+  Briefcase,
   CalendarDays,
   Calculator,
   Bot,
@@ -74,6 +75,7 @@ const getNavigationGroups = (
       items: [
         { name: 'Clientes', href: '/app/clientes', icon: Users },
         { name: 'Processos', href: '/app/processos', icon: FolderKanban },
+        { name: 'Serviços', href: '/app/servicos', icon: Briefcase },
         { name: 'Calendário', href: '/app/calendario', icon: CalendarDays },
       ],
     },

@@ -12,6 +12,7 @@ import {
   Settings,
   Plus,
   Search,
+  Briefcase,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -62,6 +63,17 @@ export function CommandPalette() {
         category: 'action',
         action: () => {
           navigate('/app/processos?new=true')
+          closeAndReset()
+        },
+      },
+      {
+        id: 'new-service',
+        name: 'Novo serviço',
+        description: 'Cadastrar um novo serviço',
+        icon: Plus,
+        category: 'action',
+        action: () => {
+          navigate('/app/servicos?new=true')
           closeAndReset()
         },
       },
@@ -119,6 +131,17 @@ export function CommandPalette() {
         category: 'navigation',
         action: () => {
           navigate('/app/processos')
+          closeAndReset()
+        },
+      },
+      {
+        id: 'go-services',
+        name: 'Serviços',
+        description: 'Gerenciar serviços',
+        icon: Briefcase,
+        category: 'navigation',
+        action: () => {
+          navigate('/app/servicos')
           closeAndReset()
         },
       },

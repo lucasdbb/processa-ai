@@ -76,6 +76,7 @@ class ServiceListResponse(BaseModel):
 class ServiceListParams(BaseModel):
     """Schema for service list parameters."""
 
+    search: str | None = None
     client_id: UUID | None = None
     category: ServiceCategory | None = None
     status: ServiceStatus | None = None

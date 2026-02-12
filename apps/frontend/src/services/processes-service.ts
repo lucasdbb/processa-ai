@@ -134,6 +134,18 @@ export const processesService = {
     return res.json();
   },
 
+  async count(): Promise<{ total: number }> {
+    const response = await fetchWithCredentials(`${API_URL}/office/processes/count`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to count processes");
+    }
+
+    return response.json();
+  },
+
   async get(id: string): Promise<Process> {
     const res = await fetchWithCredentials(`${API_URL}/office/processes/${id}`);
     if (!res.ok) throw new Error("Failed to fetch process");

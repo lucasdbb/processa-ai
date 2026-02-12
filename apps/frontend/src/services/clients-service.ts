@@ -105,6 +105,18 @@ export const clientsService = {
     return res.json();
   },
 
+  async count(): Promise<{ total: number }> {
+    const response = await fetchWithCredentials(`${API_URL}/office/clients/count`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to count clients");
+    }
+
+    return response.json();
+  },
+
   async get(id: string): Promise<Client> {
     const res = await fetchWithCredentials(`${API_URL}/office/clients/${id}`);
     if (!res.ok) throw new Error("Failed to fetch client");

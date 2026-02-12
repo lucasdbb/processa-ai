@@ -40,6 +40,14 @@ async def list_processes(
     return ProcessListResponse(processes=processes, total=total)
 
 
+@router.get("/count")
+async def count_processes(
+    user_id: UUID = Depends(get_user_id),
+):
+    """Count active processes for the current user."""
+    return await processes_service.count_processes(user_id)
+
+
 @router.get("/{process_id}", response_model=ProcessResponse)
 async def get_process(
     process_id: UUID,

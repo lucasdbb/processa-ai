@@ -26,6 +26,7 @@ router = APIRouter(
 
 @router.get("", response_model=ServiceListResponse)
 async def list_services(
+    search: str | None = Query(None, description="Search by name"),
     client_id: UUID | None = Query(None, description="Filter by client ID"),
     category: ServiceCategory | None = Query(None, description="Filter by category"),
     service_status: ServiceStatus | None = Query(None, alias="status", description="Filter by status"),
@@ -35,6 +36,7 @@ async def list_services(
 ):
     """List services for the current user."""
     params = ServiceListParams(
+        search=search,
         client_id=client_id,
         category=category,
         status=service_status,
@@ -43,6 +45,14 @@ async def list_services(
     )
     services, total = await services_service.list_services(user_id, params)
     return ServiceListResponse(services=services, total=total)
+
+
+@router.get("/count")
+async def count_services(
+    user_id: UUID = Depends(get_user_id),
+):
+    """Count active services for the current user."""
+    return await services_service.count_services(user_id)
 
 
 @router.get("/summary/{client_id}", response_model=ServiceSummaryResponse)

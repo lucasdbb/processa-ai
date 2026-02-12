@@ -71,6 +71,23 @@ class ClientsService:
                 clients = [ClientResponse(**row) for row in rows]
                 return clients, total
 
+    async def count_clients(self, user_id: UUID) -> dict[str, int]:
+        """Count active clients for a user."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT COUNT(*) as total
+                    FROM office_api.clients
+                    WHERE user_id = %s AND status = 'active'
+                    """,
+                    (str(user_id),),
+                )
+                row = await cur.fetchone()
+                return {"total": row["total"] if row else 0}
+
     async def get_client(self, user_id: UUID, client_id: UUID) -> ClientResponse | None:
         """Get a single client by ID."""
         pool = await get_pool()

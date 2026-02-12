@@ -11,6 +11,7 @@ const ROUTE_LABELS: Record<string, string> = {
   app: "Dashboard",
   clientes: "Clientes",
   processos: "Processos",
+  servicos: "Serviços",
   calendario: "Calendário",
   calculadoras: "Calculadoras",
   ia: "IA Jurídica",
@@ -69,6 +70,8 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
         label = "Detalhes do Cliente";
       } else if (previousSegment === "processos") {
         label = "Detalhes do Processo";
+      } else if (previousSegment === "servicos") {
+        label = "Detalhes do Serviço";
       } else if (previousSegment === "materiais") {
         label = "Detalhes do Material";
       } else {
