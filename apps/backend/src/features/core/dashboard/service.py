@@ -226,7 +226,7 @@ class DashboardService:
                     # Get total received
                     await cur.execute(
                         """
-                        SELECT COALESCE(SUM(paid_amount), 0) as total
+                        SELECT COALESCE(SUM(amount), 0) as total
                         FROM office_api.fees
                         WHERE user_id = %s AND status = 'paid'
                         """,
@@ -238,9 +238,9 @@ class DashboardService:
                     # Get total pending
                     await cur.execute(
                         """
-                        SELECT COALESCE(SUM(amount - paid_amount), 0) as total
+                        SELECT COALESCE(SUM(amount), 0) as total
                         FROM office_api.fees
-                        WHERE user_id = %s AND status IN ('pending', 'partial')
+                        WHERE user_id = %s AND status = 'pending'
                         """,
                         (user_id,),
                     )
@@ -250,7 +250,7 @@ class DashboardService:
                     # Get total overdue
                     await cur.execute(
                         """
-                        SELECT COALESCE(SUM(amount - paid_amount), 0) as total
+                        SELECT COALESCE(SUM(amount), 0) as total
                         FROM office_api.fees
                         WHERE user_id = %s AND status = 'overdue'
                         """,
@@ -274,10 +274,10 @@ class DashboardService:
                         # Get received amount for this month
                         await cur.execute(
                             """
-                            SELECT COALESCE(SUM(paid_amount), 0) as total
+                            SELECT COALESCE(SUM(amount), 0) as total
                             FROM office_api.fees
                             WHERE user_id = %s
-                              AND status IN ('paid', 'partial')
+                              AND status = 'paid'
                               AND paid_date >= %s
                               AND paid_date < %s
                             """,
@@ -289,10 +289,10 @@ class DashboardService:
                         # Get pending amount for this month
                         await cur.execute(
                             """
-                            SELECT COALESCE(SUM(amount - paid_amount), 0) as total
+                            SELECT COALESCE(SUM(amount), 0) as total
                             FROM office_api.fees
                             WHERE user_id = %s
-                              AND status IN ('pending', 'partial', 'overdue')
+                              AND status IN ('pending', 'overdue')
                               AND due_date >= %s
                               AND due_date < %s
                             """,
@@ -334,7 +334,7 @@ class DashboardService:
                         """
                         SELECT
                             due_date,
-                            amount - paid_amount as overdue_amount
+                            amount as overdue_amount
                         FROM office_api.fees
                         WHERE user_id = %s AND status = 'overdue'
                         """,
@@ -490,7 +490,7 @@ class DashboardService:
 
                         SELECT
                             'payment' as type,
-                            'Pagamento recebido: R$ ' || paid_amount::TEXT as description,
+                            'Pagamento recebido: R$ ' || amount::TEXT as description,
                             fee_type as detail,
                             paid_date::TIMESTAMPTZ as time
                         FROM office_api.fees

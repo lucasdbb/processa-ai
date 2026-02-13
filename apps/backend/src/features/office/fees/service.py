@@ -1,4 +1,4 @@
-"""Fees/Honorarios service."""
+"""Fees/Honorários service."""
 
 from decimal import Decimal
 from typing import Any
@@ -37,6 +37,10 @@ class FeesService:
         if params.process_id:
             where_conditions.append("process_id = %s")
             query_params.append(str(params.process_id))
+
+        if params.service_id:
+            where_conditions.append("service_id = %s")
+            query_params.append(str(params.service_id))
 
         if params.fee_type:
             where_conditions.append("fee_type = %s")
@@ -99,16 +103,17 @@ class FeesService:
                 await cur.execute(
                     """
                     INSERT INTO office_api.fees (
-                        user_id, client_id, process_id, fee_type,
-                        description, amount, paid_amount, due_date, paid_date, status, notes
+                        user_id, client_id, process_id, service_id, fee_type,
+                        description, amount, due_date, paid_date, status, notes
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, 0, %s, NULL, 'pending', %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NULL, 'pending', %s)
                     RETURNING *, paid_date as paid_at
                     """,
                     (
                         str(user_id),
                         str(data.client_id),
                         str(data.process_id) if data.process_id else None,
+                        str(data.service_id) if data.service_id else None,
                         data.fee_type,
                         data.description,
                         data.amount,
@@ -117,6 +122,11 @@ class FeesService:
                     ),
                 )
                 row = await cur.fetchone()
+
+                # Sync service paid_amount if fee is linked to a service
+                if data.service_id:
+                    await self._sync_service_paid_amount(conn, user_id, data.service_id)
+
                 return FeeResponse(**row)
 
     async def update_fee(self, user_id: UUID, fee_id: UUID, data: FeeUpdate) -> FeeResponse | None:
@@ -137,6 +147,17 @@ class FeesService:
 
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
+                # Get old service_id before update
+                await cur.execute(
+                    """
+                    SELECT service_id FROM office_api.fees
+                    WHERE user_id = %s AND id = %s
+                    """,
+                    (str(user_id), str(fee_id)),
+                )
+                old_fee = await cur.fetchone()
+                old_service_id = old_fee["service_id"] if old_fee and old_fee["service_id"] else None
+
                 await cur.execute(
                     f"""
                     UPDATE office_api.fees
@@ -147,6 +168,18 @@ class FeesService:
                     values + [str(user_id), str(fee_id)],
                 )
                 row = await cur.fetchone()
+
+                # Sync service paid_amount if fee is/was linked to a service
+                new_service_id = data.service_id if "service_id" in update_data else old_service_id
+
+                # Sync old service if it changed or if status changed
+                if old_service_id and (old_service_id != new_service_id or "status" in update_data):
+                    await self._sync_service_paid_amount(conn, user_id, old_service_id)
+
+                # Sync new service if it's different from old or if status changed
+                if new_service_id and (new_service_id != old_service_id or "status" in update_data):
+                    await self._sync_service_paid_amount(conn, user_id, new_service_id)
+
                 return FeeResponse(**row) if row else None
 
     async def delete_fee(self, user_id: UUID, fee_id: UUID) -> bool:
@@ -154,7 +187,18 @@ class FeesService:
         pool = await get_pool()
 
         async with pool.connection() as conn:
-            async with conn.cursor() as cur:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                # Get fee info before deleting to sync service if needed
+                await cur.execute(
+                    """
+                    SELECT service_id FROM office_api.fees
+                    WHERE user_id = %s AND id = %s
+                    """,
+                    (str(user_id), str(fee_id)),
+                )
+                fee_row = await cur.fetchone()
+                service_id = fee_row["service_id"] if fee_row else None
+
                 await cur.execute(
                     """
                     DELETE FROM office_api.fees
@@ -162,7 +206,38 @@ class FeesService:
                     """,
                     (str(user_id), str(fee_id)),
                 )
-                return cur.rowcount > 0
+                deleted = cur.rowcount > 0
+
+                # Sync service paid_amount if fee was linked to a service
+                if deleted and service_id:
+                    await self._sync_service_paid_amount(conn, user_id, service_id)
+
+                return deleted
+
+    async def _sync_service_paid_amount(self, conn: Any, user_id: UUID, service_id: UUID) -> None:
+        """Sync service paid_amount with sum of linked fees that are paid."""
+        async with conn.cursor(row_factory=dict_row) as cur:
+            # Calculate total paid from fees linked to this service with status='paid'
+            await cur.execute(
+                """
+                SELECT COALESCE(SUM(amount), 0) as total_paid
+                FROM office_api.fees
+                WHERE user_id = %s AND service_id = %s AND status = 'paid'
+                """,
+                (str(user_id), str(service_id)),
+            )
+            row = await cur.fetchone()
+            total_paid = row["total_paid"] if row else 0
+
+            # Update service paid_amount
+            await cur.execute(
+                """
+                UPDATE office_api.services
+                SET paid_amount = %s, updated_at = NOW()
+                WHERE user_id = %s AND id = %s
+                """,
+                (total_paid, str(user_id), str(service_id)),
+            )
 
     async def get_summary_by_client(self, user_id: UUID, client_id: UUID) -> FeeSummaryResponse:
         """Get fee summary for a client."""
@@ -174,9 +249,9 @@ class FeesService:
                     """
                     SELECT
                         COALESCE(SUM(amount), 0) as total_amount,
-                        COALESCE(SUM(paid_amount), 0) as total_paid,
-                        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount - paid_amount ELSE 0 END), 0) as total_pending,
-                        COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount - paid_amount ELSE 0 END), 0) as total_overdue,
+                        COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) as total_paid,
+                        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as total_pending,
+                        COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END), 0) as total_overdue,
                         COUNT(*) as fees_count,
                         COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_count,
                         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
@@ -202,37 +277,27 @@ class FeesService:
 
                 return FeeSummaryResponse(**row)
 
-    async def mark_as_paid(
-        self, user_id: UUID, fee_id: UUID, paid_amount: Decimal | None = None
-    ) -> FeeResponse | None:
+    async def mark_as_paid(self, user_id: UUID, fee_id: UUID) -> FeeResponse | None:
         """Mark a fee as paid."""
         pool = await get_pool()
 
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
-                # Get current fee
-                await cur.execute(
-                    "SELECT *, paid_date as paid_at FROM office_api.fees WHERE user_id = %s AND id = %s",
-                    (str(user_id), str(fee_id)),
-                )
-                fee = await cur.fetchone()
-                if not fee:
-                    return None
-
-                # Calculate new amount paid
-                new_paid_amount = paid_amount or fee["amount"]
-                new_status = "paid" if new_paid_amount >= fee["amount"] else "partial"
-
                 await cur.execute(
                     """
                     UPDATE office_api.fees
-                    SET paid_amount = %s, status = %s, paid_at = NOW(), updated_at = NOW()
+                    SET status = 'paid', paid_date = NOW(), updated_at = NOW()
                     WHERE user_id = %s AND id = %s
-                    RETURNING *
+                    RETURNING *, paid_date as paid_at
                     """,
-                    (new_paid_amount, new_status, str(user_id), str(fee_id)),
+                    (str(user_id), str(fee_id)),
                 )
                 row = await cur.fetchone()
+
+                # Get service_id to sync if needed
+                if row and row.get("service_id"):
+                    await self._sync_service_paid_amount(conn, user_id, row["service_id"])
+
                 return FeeResponse(**row) if row else None
 
 

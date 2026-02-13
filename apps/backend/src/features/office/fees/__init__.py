@@ -1,1 +1,1 @@
-# Fees/Honorarios module
+# Fees/Honorários module

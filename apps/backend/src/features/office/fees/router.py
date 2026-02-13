@@ -1,4 +1,4 @@
-"""Fees/Honorarios router."""
+"""Fees/Honorários router."""
 
 from decimal import Decimal
 from uuid import UUID
@@ -27,6 +27,7 @@ router = APIRouter(
 async def list_fees(
     client_id: UUID | None = Query(None, description="Filter by client ID"),
     process_id: UUID | None = Query(None, description="Filter by process ID"),
+    service_id: UUID | None = Query(None, description="Filter by service ID"),
     fee_type: FeeType | None = Query(None, description="Filter by fee type"),
     fee_status: FeeStatus | None = Query(None, alias="status", description="Filter by status"),
     limit: int = Query(50, ge=1, le=100, description="Max results"),
@@ -37,6 +38,7 @@ async def list_fees(
     params = FeeListParams(
         client_id=client_id,
         process_id=process_id,
+        service_id=service_id,
         fee_type=fee_type,
         status=fee_status,
         limit=limit,

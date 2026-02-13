@@ -163,17 +163,17 @@ export default function ProcessosPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Processos</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Acompanhe seus processos e prazos.</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Processos</h1>
+          <p className="text-muted-foreground mt-1">Acompanhe seus processos e prazos.</p>
         </div>
         <button
           onClick={handleNewProcess}
           data-tour="new-process-btn"
-          className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 text-white rounded-md text-sm font-medium hover:bg-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
           Novo Processo
@@ -256,20 +256,20 @@ export default function ProcessosPage() {
         <div className="space-y-3">
           {processes.map((process) => (
             <Link key={process.id} to={`/app/processos/${process.id}`}>
-              <div className="group p-3.5 bg-card border border-border rounded-lg hover:shadow-sm hover:border-primary/50 transition-all duration-200">
+              <div className="group p-4 bg-card border border-border rounded-lg hover:shadow-md hover:border-primary/50 transition-all duration-200">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="p-2 bg-primary/10 rounded-md shrink-0 group-hover:bg-primary/20 transition-colors">
-                      <FolderKanban className="h-4 w-4 text-primary" />
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="p-2.5 bg-primary/10 rounded-lg shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <FolderKanban className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <h3 className="font-mono text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                      <div className="flex items-center gap-3 flex-wrap mb-1">
+                        <h3 className="font-mono text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                           {process.number}
                         </h3>
                         <span
                           className={cn(
-                            'px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full',
+                            'px-2.5 py-0.5 text-xs font-medium rounded-full',
                             process.status === 'active'
                               ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                               : 'bg-muted text-muted-foreground'
@@ -278,26 +278,26 @@ export default function ProcessosPage() {
                           {process.status === 'active' ? 'Ativo' : 'Arquivado'}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-sm text-muted-foreground truncate mb-0.5">
                         {process.type} • {process.court}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         <span className="font-medium text-foreground">{process.client_name}</span> vs{' '}
                         <span className="font-medium text-foreground">{process.defendant}</span>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-6 shrink-0">
                     {process.next_deadline && (
-                      <div className="px-2.5 py-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded text-[10px] font-semibold">
+                      <div className="px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-md text-xs font-semibold">
                         {process.next_deadline}
                       </div>
                     )}
                     <div className="text-right">
-                      <p className="text-sm font-bold text-foreground">
+                      <p className="text-base font-bold text-foreground">
                         {formatCurrency(process.value)}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">Valor</p>
+                      <p className="text-xs text-muted-foreground">Valor</p>
                     </div>
                   </div>
                 </div>

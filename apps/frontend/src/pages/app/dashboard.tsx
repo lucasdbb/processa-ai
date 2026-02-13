@@ -144,7 +144,7 @@ export default function DashboardPage() {
           href: '/app/calendario',
         },
         {
-          name: 'Calculos Este Mes',
+          name: 'Cálculos Neste Mês',
           value: stats.calculations_this_month.toString(),
           change:
             stats.calculations_change_percent !== 0
@@ -179,9 +179,9 @@ export default function DashboardPage() {
       {/* Header */}
       <div data-tour="welcome" className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Ola, {firstName}!</h1>
+          <h1 className="text-2xl font-bold text-foreground">Olá, {firstName}!</h1>
           <p className="text-muted-foreground mt-1">
-            Aqui esta um resumo da sua atividade.
+            Aqui está um resumo da sua atividade.
           </p>
         </div>
         <TourButton tourId="dashboard" />
@@ -262,7 +262,7 @@ export default function DashboardPage() {
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
             <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
               <Banknote className="h-4 w-4" />
-              <span className="text-xs font-semibold">Total Honorarios</span>
+              <span className="text-xs font-semibold">Total Honorários</span>
             </div>
             <p className="text-lg font-bold text-blue-600 dark:text-blue-500 mt-1">
               {formatCurrency(financial.total_fees)}
@@ -312,7 +312,7 @@ export default function DashboardPage() {
         {/* Prazos Proximos */}
         <div data-tour="deadlines" className="bg-card border border-border rounded-xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h2 className="font-semibold text-foreground">Prazos Proximos</h2>
+            <h2 className="font-semibold text-foreground">Prazos Próximos</h2>
             <Link
               to="/app/calendario"
               className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
@@ -436,10 +436,10 @@ export default function DashboardPage() {
         <div className="bg-card border border-border rounded-xl">
           <div className="px-5 py-4 border-b border-border">
             <h2 className="font-semibold text-foreground">
-              Honorarios em Atraso (Aging Report)
+              Honorários em Atraso (Aging Report)
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Distribuicao dos honorarios vencidos por faixa de dias
+              Distribuição dos honorários vencidos por faixa de dias
             </p>
           </div>
           <div className="p-5">

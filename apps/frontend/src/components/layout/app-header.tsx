@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 
 // Mock notifications data

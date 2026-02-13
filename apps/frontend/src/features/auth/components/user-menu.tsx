@@ -1,4 +1,4 @@
-import { LogOut, Shield, ChevronDown, LayoutDashboard } from 'lucide-react'
+import { LogOut, ChevronDown, LayoutDashboard } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {

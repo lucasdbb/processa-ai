@@ -1,0 +1,1 @@
+"""Fee payments module."""

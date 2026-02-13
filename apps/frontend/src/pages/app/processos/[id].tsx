@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, useRef, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowLeft,
   Calendar,
   User,
   Building2,
@@ -129,30 +128,6 @@ export default function ProcessoDetalhePage() {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      active: 'bg-green-500/10 text-green-500',
-      pending: 'bg-yellow-500/10 text-yellow-500',
-      suspended: 'bg-orange-500/10 text-orange-500',
-      archived: 'bg-gray-500/10 text-gray-500',
-      concluded: 'bg-blue-500/10 text-blue-500',
-      cancelled: 'bg-red-500/10 text-red-500',
-    }
-    const labels: Record<string, string> = {
-      active: 'Ativo',
-      pending: 'Pendente',
-      suspended: 'Suspenso',
-      archived: 'Arquivado',
-      concluded: 'Concluído',
-      cancelled: 'Cancelado',
-    }
-    return (
-      <span className={cn('px-2 py-1 rounded text-xs font-medium', styles[status] || styles.active)}>
-        {labels[status] || status}
-      </span>
-    )
   }
 
   const getPriorityColor = (priority: string | null) => {
@@ -283,29 +258,34 @@ export default function ProcessoDetalhePage() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Back Button */}
-      <Link
-        to="/app/processos"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar aos Processos
-      </Link>
-
+    <div className="space-y-8">
       {/* Process Header */}
       <div className="p-4 rounded-lg border border-border bg-card">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           {/* Left: Title + Info */}
           <div className="flex-1 space-y-3">
             {/* Title + Status */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-foreground">{process.process_number}</h1>
-              {getStatusBadge(process.status)}
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-bold text-foreground">{process.process_number}</h1>
+              <span className={cn('px-2.5 py-1 rounded-full text-xs font-semibold uppercase', 
+                process.status === 'active' ? 'bg-green-500/10 text-green-500' :
+                process.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                process.status === 'suspended' ? 'bg-orange-500/10 text-orange-500' :
+                process.status === 'archived' ? 'bg-gray-500/10 text-gray-500' :
+                process.status === 'concluded' ? 'bg-blue-500/10 text-blue-500' :
+                'bg-red-500/10 text-red-500'
+              )}>
+                {process.status === 'active' ? 'Ativo' :
+                 process.status === 'pending' ? 'Pendente' :
+                 process.status === 'suspended' ? 'Suspenso' :
+                 process.status === 'archived' ? 'Arquivado' :
+                 process.status === 'concluded' ? 'Concluído' :
+                 'Cancelado'}
+              </span>
             </div>
             
             {/* Metadata Chips */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary font-medium">
                 {process.type}
               </span>
@@ -450,17 +430,17 @@ export default function ProcessoDetalhePage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-border">
-        <div className="flex gap-1 overflow-x-auto">
+      <div className="border-b border-border pb-1">
+        <div className="flex gap-2 overflow-x-auto p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
+                'flex items-center gap-2 px-4 py-2 rounded-full transition-all whitespace-nowrap text-sm font-medium',
                 activeTab === tab.id
-                  ? 'border-primary text-foreground font-medium'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
               {tab.label}
@@ -496,9 +476,18 @@ export default function ProcessoDetalhePage() {
                 Próximos prazos ({process.deadlines_count})
               </h3>
               {process.deadlines.length === 0 ? (
-                <div className="p-6 rounded-lg border border-border bg-card text-center text-muted-foreground">
+                <div className="p-8 rounded-lg border border-dashed border-border text-center text-muted-foreground">
                   <Clock className="h-8 w-8 mx-auto mb-2 opacity-30" />
                   <p>Nenhum prazo cadastrado</p>
+                  <button
+                    onClick={() => {
+                      setEditingDeadline(null)
+                      setShowDeadlineDialog(true)
+                    }}
+                    className="mt-2 text-primary hover:underline font-medium"
+                  >
+                    Adicionar Prazo
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -552,9 +541,15 @@ export default function ProcessoDetalhePage() {
         {activeTab === 'andamentos' && (
           <div className="space-y-4">
             {process.timeline.length === 0 ? (
-              <div className="p-6 rounded-lg border border-border bg-card text-center text-muted-foreground">
+              <div className="p-8 rounded-lg border border-dashed border-border text-center text-muted-foreground">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
                 <p>Nenhum andamento registrado</p>
+                <button
+                  onClick={() => setShowTimelineDialog(true)}
+                  className="mt-2 text-primary hover:underline font-medium"
+                >
+                  Adicionar Andamento
+                </button>
               </div>
             ) : (
               process.timeline.map((event, index) => (
@@ -650,13 +645,14 @@ export default function ProcessoDetalhePage() {
         {activeTab === 'prazos' && (
           <div className="space-y-2">
             {process.deadlines.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-lg">
                 <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p>Nenhum prazo cadastrado</p>
                 <button
                   onClick={() => setShowDeadlineDialog(true)}
-                  className="mt-4 text-primary hover:underline"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
+                  <Plus className="h-4 w-4" />
                   Cadastrar primeiro prazo
                 </button>
               </div>
@@ -665,7 +661,7 @@ export default function ProcessoDetalhePage() {
                 <div
                   key={deadline.id}
                   className={cn(
-                    'p-3 rounded-md border bg-card',
+                    'p-4 rounded-lg border bg-card',
                     deadline.days_until < 0
                       ? 'border-red-500/30 bg-red-500/5'
                       : deadline.days_until <= 3
@@ -750,7 +746,7 @@ export default function ProcessoDetalhePage() {
         {activeTab === 'documentos' && (
           <div className="space-y-3">
             {process.documents.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-lg">
                 <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p>Nenhum documento anexado</p>
                 <button
@@ -758,8 +754,9 @@ export default function ProcessoDetalhePage() {
                     setEditingDocument(null)
                     setShowDocumentDialog(true)
                   }}
-                  className="mt-4 text-primary hover:underline"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
+                  <Plus className="h-4 w-4" />
                   Adicionar primeiro documento
                 </button>
               </div>

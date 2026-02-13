@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Briefcase, DollarSign, Edit, FileText, MoreVertical, Plus, Trash2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, DollarSign, Edit, FileText, MoreVertical, Plus, Trash2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -10,7 +10,7 @@ import { documentsService, type Document } from '@/services/documents-service'
 import { ServiceFormDialog } from '@/components/forms/service-form-dialog'
 import { DocumentFormDialog } from '@/components/forms/document-form-dialog'
 
-type Tab = 'resumo' | 'documentos' | 'financeiro'
+type Tab = 'resumo' | 'documentos'
 
 type SaveServicePayload = Parameters<ComponentProps<typeof ServiceFormDialog>['onSave']>[0]
 type SaveDocumentPayload = Parameters<ComponentProps<typeof DocumentFormDialog>['onSave']>[0]
@@ -50,11 +50,11 @@ const getServiceCategoryLabel = (category: string) => {
 
 const getServiceStatusColor = (status: string) => {
   const colors: Record<string, string> = {
-    active: 'text-blue-500',
-    completed: 'text-green-500',
-    cancelled: 'text-gray-500',
+    active: 'bg-green-500/10 text-green-500',
+    completed: 'bg-blue-500/10 text-blue-500',
+    cancelled: 'bg-gray-500/10 text-gray-500',
   }
-  return colors[status] || 'text-gray-500'
+  return colors[status] || 'bg-gray-500/10 text-gray-500'
 }
 
 const getServiceStatusLabel = (status: string) => {
@@ -223,25 +223,6 @@ export default function ServicoDetalhePage() {
     }
   }
 
-  const handleMarkAsPaid = async () => {
-    if (!service) return
-    const remainingAmount = (service.value || 0) - service.paid_amount
-    const amountStr = prompt(`Digite o valor do pagamento (Saldo: ${formatCurrency(remainingAmount)}):`)
-    if (!amountStr) return
-    const amount = parseFloat(amountStr.replace(/[^\d,]/g, '').replace(',', '.'))
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Valor inválido')
-      return
-    }
-    try {
-      await servicesService.pay(id!, amount)
-      toast.success('Pagamento registrado')
-      fetchService()
-    } catch (error) {
-      console.error('Error registering payment:', error)
-      toast.error('Erro ao registrar pagamento')
-    }
-  }
 
   const handleDeleteService = async () => {
     if (!service) return
@@ -267,39 +248,32 @@ export default function ServicoDetalhePage() {
   }
 
   const tabs = [
-    { id: 'resumo' as const, label: 'Resumo', icon: Briefcase },
-    { id: 'documentos' as const, label: 'Documentos', icon: FileText },
-    { id: 'financeiro' as const, label: 'Financeiro', icon: DollarSign },
+    { id: 'resumo' as const, label: 'Resumo' },
+    { id: 'documentos' as const, label: 'Documentos' },
   ]
-
-  const paymentPercentage = service.value ? (service.paid_amount / service.value) * 100 : 0
-
+  
   return (
-    <div className="space-y-4">
-      {/* Back Button */}
-      <Link
-        to={`/app/clientes/${service.client_id}`}
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar para cliente
-      </Link>
-
+    <div className="space-y-8">
       {/* Header */}
       <div className="p-4 rounded-lg border border-border bg-card">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           {/* Left: Title + Info */}
           <div className="flex-1 space-y-3">
             {/* Title + Status */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-foreground">{service.name}</h1>
-              <span className={cn('px-2 py-1 rounded text-xs font-medium', getServiceStatusColor(service.status))}>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-bold text-foreground">{service.name}</h1>
+              <span
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-xs font-semibold uppercase',
+                  getServiceStatusColor(service.status)
+                )}
+              >
                 {getServiceStatusLabel(service.status)}
               </span>
             </div>
 
             {/* Metadata Chips */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary font-medium">
                 {getServiceCategoryLabel(service.category)}
               </span>
@@ -395,31 +369,27 @@ export default function ServicoDetalhePage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-border">
-        <div className="flex gap-1 overflow-x-auto hide-scrollbar">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
-                  activeTab === tab.id
-                    ? 'border-primary text-foreground font-medium'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            )
-          })}
+      <div className="border-b border-border pb-1">
+        <div className="flex gap-2 overflow-x-auto p-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-full transition-all whitespace-nowrap text-sm font-medium',
+                activeTab === tab.id
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Tab Content */}
-      <div className="pb-6 hide-scrollbar">
+      <div className="pb-6">
         {activeTab === 'resumo' && (
           <div className="space-y-6">
             {/* Financial Summary */}
@@ -427,25 +397,36 @@ export default function ServicoDetalhePage() {
               <h3 className="text-lg font-semibold mb-3">Resumo Financeiro</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-6 rounded-lg border border-border bg-card">
-                  <h3 className="text-sm text-muted-foreground mb-2">Valor Total</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm text-muted-foreground">Valor Total</h3>
+                  </div>
                   <p className="text-2xl font-bold text-foreground">
                     {formatCurrency(service.value)}
                   </p>
                 </div>
                 <div className="p-6 rounded-lg border border-border bg-card">
-                  <h3 className="text-sm text-muted-foreground mb-2">Valor Pago</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <h3 className="text-sm text-muted-foreground">Valor Pago</h3>
+                  </div>
                   <p className="text-2xl font-bold text-green-500">
                     {formatCurrency(service.paid_amount)}
                   </p>
                   <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-green-500 transition-all"
-                      style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
+                      style={{
+                        width: `${Math.min(service.value ? (service.paid_amount / service.value) * 100 : 0, 100)}%`,
+                      }}
                     />
                   </div>
                 </div>
                 <div className="p-6 rounded-lg border border-border bg-card">
-                  <h3 className="text-sm text-muted-foreground mb-2">Saldo Pendente</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-orange-500" />
+                    <h3 className="text-sm text-muted-foreground">Saldo Pendente</h3>
+                  </div>
                   <p className="text-2xl font-bold text-orange-500">
                     {formatCurrency(service.value ? service.value - service.paid_amount : 0)}
                   </p>
@@ -510,16 +491,6 @@ export default function ServicoDetalhePage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Documentos do Serviço</h3>
-              <button
-                onClick={() => {
-                  setShowDocumentDialog(true)
-                  setEditingDocument(null)
-                }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar Documento
-              </button>
             </div>
 
             {isLoadingDocuments ? (
@@ -527,18 +498,9 @@ export default function ServicoDetalhePage() {
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             ) : documents.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-lg">
                 <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p>Nenhum documento cadastrado</p>
-                <button
-                  onClick={() => {
-                    setShowDocumentDialog(true)
-                    setEditingDocument(null)
-                  }}
-                  className="mt-4 text-sm text-primary hover:underline"
-                >
-                  Adicionar primeiro documento
-                </button>
               </div>
             ) : (
               <div className="space-y-2">
@@ -604,71 +566,6 @@ export default function ServicoDetalhePage() {
           </div>
         )}
 
-        {activeTab === 'financeiro' && (
-          <div className="space-y-6">
-            {/* Payment Progress */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Progresso de Pagamento</h3>
-              <div className="p-6 rounded-lg border border-border bg-card">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Progresso</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {paymentPercentage.toFixed(0)}%
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleMarkAsPaid}
-                    disabled={service.status === 'completed'}
-                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Registrar Pagamento
-                  </button>
-                </div>
-                <div className="h-3 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all"
-                    style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
-                  <span>Pago: {formatCurrency(service.paid_amount)}</span>
-                  <span>Total: {formatCurrency(service.value)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Financial Details */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Detalhes Financeiros</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-6 rounded-lg border border-border bg-card">
-                  <h3 className="text-sm text-muted-foreground mb-2">Valor Total</h3>
-                  <p className="text-2xl font-bold text-foreground">
-                    {formatCurrency(service.value)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Valor do serviço</p>
-                </div>
-                <div className="p-6 rounded-lg border border-border bg-card">
-                  <h3 className="text-sm text-muted-foreground mb-2">Valor Pago</h3>
-                  <p className="text-2xl font-bold text-green-500">
-                    {formatCurrency(service.paid_amount)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {paymentPercentage.toFixed(0)}% do total
-                  </p>
-                </div>
-                <div className="p-6 rounded-lg border border-border bg-card">
-                  <h3 className="text-sm text-muted-foreground mb-2">Saldo Pendente</h3>
-                  <p className="text-2xl font-bold text-orange-500">
-                    {formatCurrency(service.value ? service.value - service.paid_amount : 0)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">A receber</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Dialogs */}

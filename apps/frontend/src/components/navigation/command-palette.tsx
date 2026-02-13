@@ -80,7 +80,7 @@ export function CommandPalette() {
       {
         id: 'open-calculator',
         name: 'Abrir calculadora',
-        description: 'Acessar calculadoras juridicas',
+        description: 'Acessar calculadoras jurídicas',
         icon: Calculator,
         category: 'action',
         action: () => {
@@ -148,7 +148,7 @@ export function CommandPalette() {
       {
         id: 'go-calendar',
         name: 'Calendário',
-        description: 'Ver calendario e prazos',
+        description: 'Ver calendário e prazos',
         icon: CalendarClock,
         category: 'navigation',
         action: () => {
@@ -159,7 +159,7 @@ export function CommandPalette() {
       {
         id: 'go-calculators',
         name: 'Calculadoras',
-        description: 'Calculadoras juridicas',
+        description: 'Calculadoras jurídicas',
         icon: Calculator,
         category: 'navigation',
         action: () => {
@@ -169,8 +169,8 @@ export function CommandPalette() {
       },
       {
         id: 'go-ai',
-        name: 'IA Juridica',
-        description: 'Ferramentas de inteligencia artificial',
+        name: 'IA Jurídica',
+        description: 'Ferramentas de inteligência artificial',
         icon: Bot,
         category: 'navigation',
         action: () => {
@@ -192,7 +192,7 @@ export function CommandPalette() {
       {
         id: 'go-materials',
         name: 'Materiais',
-        description: 'Downloads disponiveis',
+        description: 'Downloads disponíveis',
         icon: BookOpen,
         category: 'navigation',
         action: () => {
@@ -202,8 +202,8 @@ export function CommandPalette() {
       },
       {
         id: 'go-settings',
-        name: 'Configuracoes',
-        description: 'Preferencias da conta',
+        name: 'Configurações',
+        description: 'Preferências da conta',
         icon: Settings,
         category: 'navigation',
         action: () => {
@@ -441,8 +441,8 @@ export function CommandPalette() {
               )}
 
               {/* Commands */}
-              {renderGroup('Acoes Rapidas', groupedCommands.action, actionStartIndex)}
-              {renderGroup('Navegacao', groupedCommands.navigation, navigationStartIndex)}
+              {renderGroup('Ações Rápidas', groupedCommands.action, actionStartIndex)}
+              {renderGroup('Navegação', groupedCommands.navigation, navigationStartIndex)}
             </>
           )}
         </div>

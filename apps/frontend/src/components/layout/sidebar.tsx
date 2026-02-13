@@ -107,7 +107,7 @@ const getNavigationGroups = (
 }
 
 const bottomNavigation: NavItem[] = [
-  { name: 'Configuracoes', href: '/app/configuracoes', icon: Settings },
+  { name: 'Configurações', href: '/app/configuracoes', icon: Settings },
   { name: 'Ajuda', href: '/app/ajuda', icon: HelpCircle },
 ]
 

@@ -143,7 +143,7 @@ function FeesFormDialogBody({
             ...basePayload,
             description: `${basePayload.description} - Parcela ${i + 1}/${installmentCount}`,
             due_date: dueDateStr,
-            status: 'pending',
+            status: 'pending' as const,
           }
         })
         await onSaveBatch(installments)

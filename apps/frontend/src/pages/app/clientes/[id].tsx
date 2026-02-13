@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowLeft,
   Mail,
   Phone,
   FileText,
@@ -18,6 +17,9 @@ import {
   Archive,
   AlertTriangle,
   Briefcase,
+  ChevronDown,
+  ChevronRight,
+  Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -62,6 +64,7 @@ export default function ClienteDetalhePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const actionsMenuRef = useRef<HTMLDivElement>(null)
 
   const [client, setClient] = useState<ClientDetail | null>(null)
@@ -193,6 +196,62 @@ export default function ClienteDetalhePage() {
     }
   }
 
+  const toggleGroup = (groupId: string) => {
+    setCollapsedGroups((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(groupId)) {
+        newSet.delete(groupId)
+      } else {
+        newSet.add(groupId)
+      }
+      return newSet
+    })
+  }
+
+  type FeeGroupRef = ClientDetail['processes'][number] | Service | undefined
+
+  const groupFeesBySource = () => {
+    const groups = new Map<string, { type: 'process' | 'service'; ref: FeeGroupRef; fees: Fee[] }>()
+
+    fees.forEach((fee) => {
+      if (fee.process_id) {
+        const key = `process-${fee.process_id}`
+        if (!groups.has(key)) {
+          const process = client?.processes.find((p) => p.id === fee.process_id)
+          groups.set(key, { type: 'process', ref: process, fees: [] })
+        }
+        groups.get(key)!.fees.push(fee)
+      } else if (fee.service_id) {
+        const key = `service-${fee.service_id}`
+        if (!groups.has(key)) {
+          const service = services.find((s) => s.id === fee.service_id)
+          groups.set(key, { type: 'service', ref: service, fees: [] })
+        }
+        groups.get(key)!.fees.push(fee)
+      }
+    })
+
+    return Array.from(groups.entries()).map(([key, value]) => ({ key, ...value }))
+  }
+
+  const getProcessFeeStats = (processId: string) => {
+    const processFees = fees.filter((f) => f.process_id === processId)
+    const total = processFees.length
+    const paid = processFees.filter((f) => f.status === 'paid').length
+    const totalAmount = processFees.reduce((sum, f) => sum + Number(f.amount), 0)
+    const paidAmount = processFees.filter((f) => f.status === 'paid').reduce((sum, f) => sum + Number(f.amount), 0)
+    return { total, paid, totalAmount, paidAmount }
+  }
+
+  const getServiceFeeStats = (serviceId: string) => {
+    const serviceFees = fees.filter((f) => f.service_id === serviceId)
+    const total = serviceFees.length
+    const paid = serviceFees.filter((f) => f.status === 'paid').length
+    const totalAmount = serviceFees.reduce((sum, f) => sum + Number(f.amount), 0)
+    const paidAmount = serviceFees.filter((f) => f.status === 'paid').reduce((sum, f) => sum + Number(f.amount), 0)
+    return { total, paid, totalAmount, paidAmount }
+  }
+
   const handleSaveFee = async (feeData: Partial<Fee> & { id?: string }) => {
     if (!id) return
 
@@ -210,6 +269,7 @@ export default function ClienteDetalhePage() {
           amount: feeData.amount!,
           due_date: feeData.due_date || null,
           process_id: feeData.process_id || null,
+          service_id: feeData.service_id || null,
           notes: feeData.notes || null,
         })
         toast.success('Honorário criado com sucesso')
@@ -223,6 +283,33 @@ export default function ClienteDetalhePage() {
     }
   }
 
+  const handleSaveBatchFees = async (fees: Array<Partial<Fee>>) => {
+    if (!id) return
+
+    try {
+      // Create all fees sequentially
+      for (const feeData of fees) {
+        await feesService.create({
+          client_id: id,
+          fee_type: feeData.fee_type!,
+          description: feeData.description!,
+          amount: feeData.amount!,
+          due_date: feeData.due_date || null,
+          process_id: feeData.process_id || null,
+          service_id: feeData.service_id || null,
+          notes: feeData.notes || null,
+        })
+      }
+      toast.success(`${fees.length} parcelas criadas com sucesso`)
+      await Promise.all([fetchClient(), fetchFees()])
+      setShowFeeDialog(false)
+      setEditingFee(null)
+    } catch (error) {
+      console.error('Error saving fees:', error)
+      toast.error('Erro ao criar parcelas')
+    }
+  }
+
   const handleDeleteFee = async (feeId: string) => {
     if (!confirm('Tem certeza que deseja excluir este honorário?')) return
 
@@ -233,6 +320,19 @@ export default function ClienteDetalhePage() {
     } catch (error) {
       console.error('Error deleting fee:', error)
       toast.error('Erro ao excluir honorário')
+    }
+  }
+
+  const handleMarkAsPaid = async (fee: Fee) => {
+    try {
+      await feesService.update(fee.id, {
+        status: 'paid',
+      })
+      toast.success('Honorário marcado como pago')
+      await Promise.all([fetchClient(), fetchFees()])
+    } catch (error) {
+      console.error('Error marking fee as paid:', error)
+      toast.error('Erro ao marcar como pago')
     }
   }
 
@@ -264,19 +364,6 @@ export default function ClienteDetalhePage() {
     }
   }
 
-  const handleDeleteService = async (serviceId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este serviço?')) return
-
-    try {
-      await servicesService.delete(serviceId)
-      toast.success('Serviço excluído com sucesso')
-      await Promise.all([fetchClient(), fetchServices()])
-    } catch (error) {
-      console.error('Error deleting service:', error)
-      toast.error('Erro ao excluir serviço')
-    }
-  }
-
   const handleArchiveClient = async () => {
     if (!id) return
     try {
@@ -304,19 +391,6 @@ export default function ClienteDetalhePage() {
     } finally {
       setIsDeleting(false)
     }
-  }
-
-  const getFeeTypeLabel = (type: string) => {
-    const types: Record<string, string> = {
-      initial: 'Honorários Iniciais',
-      success: 'Honorários de Êxito',
-      monthly: 'Mensalidade',
-      hourly: 'Por Hora',
-      hearing: 'Por Audiência',
-      petition: 'Por Petição',
-      other: 'Outros',
-    }
-    return types[type] || type
   }
 
   const getFeeStatusColor = (status: string) => {
@@ -454,7 +528,7 @@ export default function ClienteDetalhePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center py-12">
         <LoadingSpinner size="lg" />
       </div>
     )
@@ -473,31 +547,24 @@ export default function ClienteDetalhePage() {
 
   const fullAddress = [client.address, client.city, client.state].filter(Boolean).join(', ')
 
-  return (
-    <div className="space-y-4">
-      {/* Back Button */}
-      <Link
-        to="/app/clientes"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar aos Clientes
-      </Link>
+  const feeGroups = groupFeesBySource()
 
+  return (
+    <div className="space-y-8">
       {/* Client Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 p-4 rounded-lg border border-border bg-card">
-        <div className="flex items-start gap-3">
-          <Avatar className="h-14 w-14">
-            <AvatarFallback className="bg-slate-900 text-white text-base">
+        <div className="flex items-start gap-4">
+          <Avatar className="h-16 w-16">
+            <AvatarFallback className="bg-slate-900 text-white text-lg">
               {getInitials(client.name)}
             </AvatarFallback>
           </Avatar>
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-foreground">{client.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
               <span
                 className={cn(
-                  'px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase',
+                  'px-2.5 py-1 rounded-full text-xs font-semibold uppercase',
                   client.status === 'active'
                     ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                     : 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
@@ -506,7 +573,7 @@ export default function ClienteDetalhePage() {
                 {client.status === 'active' ? 'Ativo' : 'Inativo'}
               </span>
             </div>
-            <div className="space-y-2 text-xs text-muted-foreground">
+            <div className="space-y-2 text-sm text-muted-foreground">
               {/* Linha 1: CPF, Telefone, Email */}
               <div className="flex flex-wrap items-center gap-3">
                 {client.cpf_cnpj && <span>CPF/CNPJ: {formatCPFOrCNPJ(client.cpf_cnpj)}</span>}
@@ -523,289 +590,206 @@ export default function ClienteDetalhePage() {
                   </span>
                 )}
               </div>
+
               {/* Linha 2: Endereço */}
               {fullAddress && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {fullAddress}
+                <div className="flex items-start gap-1">
+                  <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span>{fullAddress}</span>
                 </div>
               )}
-              {/* Linha 3: Cliente desde */}
-              <div className="flex items-center gap-1">
+
+              {/* Linha 3: Data de cadastro */}
+              <div className="flex items-center gap-1 text-xs">
                 <Calendar className="h-3 w-3" />
-                Cliente desde: {formatDate(client.created_at)}
+                <span>Cliente desde {formatDate(client.created_at)}</span>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Dropdown Adicionar */}
-          <div className="relative group">
-            <button
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar
-            </button>
-            <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              <div className="py-1">
-                <button
-                  onClick={() => setShowProcessDialog(true)}
-                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                >
-                  <FolderKanban className="h-4 w-4" />
-                  Novo Processo
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingFee(null)
-                    setShowFeeDialog(true)
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                >
-                  <DollarSign className="h-4 w-4" />
-                  Novo Honorário
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingService(null)
-                    setShowServiceDialog(true)
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                >
-                  <Briefcase className="h-4 w-4" />
-                  Novo Serviço
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingNote(null)
-                    setShowNoteDialog(true)
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                >
-                  <StickyNote className="h-4 w-4" />
-                  Nova Nota
-                </button>
-              </div>
-            </div>
-          </div>
+
+        {/* Actions menu */}
+        <div className="relative" ref={actionsMenuRef}>
           <button
-            onClick={() => setShowEditDialog(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm bg-muted text-foreground hover:bg-muted/80 transition-colors"
+            onClick={() => setShowActionsMenu(!showActionsMenu)}
+            className="p-2 rounded-lg hover:bg-accent transition-colors"
           >
-            <Edit className="h-4 w-4" />
-            Editar
+            <MoreVertical className="h-5 w-5 text-muted-foreground" />
           </button>
-          {/* Actions Menu */}
-          <div className="relative" ref={actionsMenuRef}>
-            <button
-              onClick={() => setShowActionsMenu(!showActionsMenu)}
-              className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Mais ações"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-            {showActionsMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
-                <div className="py-1">
-                  <button
-                    onClick={handleArchiveClient}
-                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                  >
-                    <Archive className="h-4 w-4" />
-                    Arquivar
-                  </button>
-                  <div className="border-t border-border my-1" />
-                  <button
-                    onClick={() => {
-                      setShowDeleteModal(true)
-                      setShowActionsMenu(false)
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Excluir Cliente
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+
+          {showActionsMenu && (
+            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-popover shadow-lg z-10">
+              <button
+                onClick={() => {
+                  setShowEditDialog(true)
+                  setShowActionsMenu(false)
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Editar Cliente
+              </button>
+              <button
+                onClick={handleArchiveClient}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <Archive className="h-4 w-4" />
+                Arquivar Cliente
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(true)
+                  setShowActionsMenu(false)
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+                Excluir Cliente
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-border">
-        <div className="flex gap-1 overflow-x-auto">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap',
-                  activeTab === tab.id
-                    ? 'border-primary text-foreground font-medium'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            )
-          })}
+        <div className="flex gap-6">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-3 border-b-2 transition-colors',
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              <span className="font-medium">{tab.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Tab Content */}
-      <div className="pb-6 hide-scrollbar">
+      <div>
         {activeTab === 'resumo' && (
-          <div className="space-y-6">
-            {/* Dashboard Financeiro Unificado */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <h3 className="text-lg font-semibold mb-3">Faturamento Total</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-6 rounded-lg border border-border bg-card">
-                  <h3 className="text-sm text-muted-foreground mb-2">Total</h3>
-                  <p className="text-2xl font-bold text-foreground">
-                    {formatCurrency(client.fees_summary.total_amount + client.services_summary.total_amount)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Honorários + Serviços
-                  </p>
-                </div>
-                <div className="p-6 rounded-lg border border-green-500/20 bg-green-500/10">
-                  <h3 className="text-sm text-green-600 dark:text-green-400 mb-2">Recebido</h3>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(client.fees_summary.total_paid + client.services_summary.total_paid)}
-                  </p>
-                </div>
-                <div className="p-6 rounded-lg border border-orange-500/20 bg-orange-500/10">
-                  <h3 className="text-sm text-orange-600 dark:text-orange-400 mb-2">Pendente</h3>
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {formatCurrency(client.fees_summary.total_pending + client.services_summary.total_pending)}
-                  </p>
-                </div>
-                <div className="p-6 rounded-lg border border-red-500/20 bg-red-500/10">
-                  <h3 className="text-sm text-red-600 dark:text-red-400 mb-2">Vencido</h3>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                    {formatCurrency(client.fees_summary.total_overdue)}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <FolderKanban className="h-5 w-5" />
+                  Processos Recentes
+                </h3>
+                <Link to={`#`} onClick={() => setActiveTab('atividades')} className="text-sm text-primary hover:underline">
+                  Ver todos
+                </Link>
               </div>
-            </div>
-
-            {/* Contadores de Atividades */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-6 rounded-lg border border-border bg-card">
-                <div className="flex items-center gap-2.5 mb-2">
-                  <FolderKanban className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold">Processos</h3>
-                </div>
-                <p className="text-2xl font-bold text-foreground">{client.processes_count}</p>
-                <p className="text-sm text-muted-foreground">Cadastrados</p>
-              </div>
-              <div className="p-6 rounded-lg border border-border bg-card">
-                <div className="flex items-center gap-2.5 mb-2">
-                  <Briefcase className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold">Serviços</h3>
-                </div>
-                <p className="text-2xl font-bold text-foreground">
-                  {client.services_summary.services_count}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {client.services_summary.active_count} ativo(s)
-                </p>
-              </div>
-              <div className="p-6 rounded-lg border border-border bg-card">
-                <div className="flex items-center gap-2.5 mb-2">
-                  <StickyNote className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold">Notas</h3>
-                </div>
-                <p className="text-2xl font-bold text-foreground">{client.notes_count}</p>
-                <p className="text-sm text-muted-foreground">Anotações</p>
-              </div>
-            </div>
-
-            {/* Atividade Recente - Processos e Serviços lado a lado */}
-            {(client.processes.length > 0 || services.length > 0) && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Processos Recentes */}
-                <div>
-                  <h3 className="font-semibold mb-3">Processos Recentes</h3>
-                  {client.processes.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                      <FolderKanban className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      <p>Nenhum processo cadastrado</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {client.processes.slice(0, 3).map((process) => (
-                        <Link
-                          key={process.id}
-                          to={`/app/processos/${process.id}`}
-                          className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-medium text-foreground">{process.number}</h4>
-                              <p className="text-sm text-muted-foreground mt-1">{process.type}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className={cn('px-2 py-1 rounded text-xs', getStatusColor(process.status))}>
-                                {getStatusLabel(process.status)}
-                              </span>
-                              {process.next_deadline && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Próximo prazo: {process.next_deadline}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Serviços Recentes */}
-                <div>
-                  <h3 className="font-semibold mb-3">Serviços Recentes</h3>
-                  {isLoadingServices ? (
-                    <div className="flex items-center justify-center py-8">
-                      <LoadingSpinner size="sm" />
-                    </div>
-                  ) : services.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                      <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      <p>Nenhum serviço cadastrado</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {services.slice(0, 3).map((service) => (
-                        <Link
-                          key={service.id}
-                          to={`/app/servicos/${service.id}`}
-                          className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-medium text-foreground">{service.name}</h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {getServiceCategoryLabel(service.category)}
-                              </p>
-                            </div>
-                            <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
-                              {getServiceStatusLabel(service.status)}
+              <div className="space-y-2">
+                {client.processes.slice(0, 3).map((process) => {
+                  const stats = getProcessFeeStats(process.id)
+                  return (
+                    <Link
+                      key={process.id}
+                      to={`/app/processos/${process.id}`}
+                      className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="font-semibold text-foreground">{process.number}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">{process.type}</p>
+                        </div>
+                        <span className={cn('text-xs font-medium', getStatusColor(process.status))}>
+                          {getStatusLabel(process.status)}
+                        </span>
+                      </div>
+                      {stats.total > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>
+                              {stats.paid}/{stats.total} parcelas pagas
                             </span>
+                            <span className="font-medium">{formatCurrency(stats.paidAmount)}</span>
                           </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-green-500 transition-all"
+                              style={{
+                                width: `${stats.total > 0 ? (stats.paid / stats.total) * 100 : 0}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </Link>
+                  )
+                })}
+                {client.processes.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    <FolderKanban className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p>Nenhum processo cadastrado</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            <div>
+              <h3 className="font-semibold mb-3">Serviços Recentes</h3>
+              {isLoadingServices ? (
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner size="sm" />
+                </div>
+              ) : services.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p>Nenhum serviço cadastrado</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {services.slice(0, 3).map((service) => {
+                    const stats = getServiceFeeStats(service.id)
+                    return (
+                      <Link
+                        key={service.id}
+                        to={`/app/servicos/${service.id}`}
+                        className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="font-medium text-foreground">{service.name}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {getServiceCategoryLabel(service.category)}
+                            </p>
+                          </div>
+                          <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
+                            {getServiceStatusLabel(service.status)}
+                          </span>
+                        </div>
+                        {stats.total > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>
+                                {stats.paid}/{stats.total} parcelas pagas
+                              </span>
+                              <span className="font-medium">{formatCurrency(stats.paidAmount)}</span>
+                            </div>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 transition-all"
+                                style={{
+                                  width: `${stats.total > 0 ? (stats.paid / stats.total) * 100 : 0}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -832,38 +816,59 @@ export default function ClienteDetalhePage() {
                     <p>Nenhum processo cadastrado</p>
                   </div>
                 ) : (
-                  client.processes.map((process) => (
-                    <Link
-                      key={process.id}
-                      to={`/app/processos/${process.id}`}
-                      className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-foreground">{process.number}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{process.type}</p>
-                          {process.court && (
-                            <p className="text-sm text-muted-foreground">{process.court}</p>
-                          )}
-                          {process.value && (
-                            <p className="text-sm text-muted-foreground">
-                              Valor: {formatCurrency(process.value)}
-                            </p>
-                          )}
+                  client.processes.map((process) => {
+                    const stats = getProcessFeeStats(process.id)
+                    return (
+                      <Link
+                        key={process.id}
+                        to={`/app/processos/${process.id}`}
+                        className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground">{process.number}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">{process.type}</p>
+                            {process.court && (
+                              <p className="text-sm text-muted-foreground">{process.court}</p>
+                            )}
+                            {process.value && (
+                              <p className="text-sm text-muted-foreground">
+                                Valor: {formatCurrency(process.value)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className={cn('px-2 py-1 rounded text-xs', getStatusColor(process.status))}>
+                              {getStatusLabel(process.status)}
+                            </span>
+                            {process.next_deadline && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Próximo prazo: {process.next_deadline}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <span className={cn('px-2 py-1 rounded text-xs', getStatusColor(process.status))}>
-                            {getStatusLabel(process.status)}
-                          </span>
-                          {process.next_deadline && (
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Próximo prazo: {process.next_deadline}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  ))
+                        {stats.total > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>
+                                {stats.paid}/{stats.total} parcelas pagas
+                              </span>
+                              <span className="font-medium">{formatCurrency(stats.paidAmount)}</span>
+                            </div>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 transition-all"
+                                style={{
+                                  width: `${stats.total > 0 ? (stats.paid / stats.total) * 100 : 0}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </Link>
+                    )
+                  })
                 )}
               </div>
             </div>
@@ -899,30 +904,51 @@ export default function ClienteDetalhePage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {services.map((service) => (
-                    <Link
-                      key={service.id}
-                      to={`/app/servicos/${service.id}`}
-                      className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-foreground">{service.name}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {getServiceCategoryLabel(service.category)}
-                          </p>
-                          {service.value && (
-                            <p className="text-sm text-muted-foreground">
-                              Valor: {formatCurrency(service.value)}
+                  {services.map((service) => {
+                    const stats = getServiceFeeStats(service.id)
+                    return (
+                      <Link
+                        key={service.id}
+                        to={`/app/servicos/${service.id}`}
+                        className="block p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground">{service.name}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {getServiceCategoryLabel(service.category)}
                             </p>
-                          )}
+                            {service.value && (
+                              <p className="text-sm text-muted-foreground">
+                                Valor: {formatCurrency(service.value)}
+                              </p>
+                            )}
+                          </div>
+                          <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
+                            {getServiceStatusLabel(service.status)}
+                          </span>
                         </div>
-                        <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
-                          {getServiceStatusLabel(service.status)}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
+                        {stats.total > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>
+                                {stats.paid}/{stats.total} parcelas pagas
+                              </span>
+                              <span className="font-medium">{formatCurrency(stats.paidAmount)}</span>
+                            </div>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 transition-all"
+                                style={{
+                                  width: `${stats.total > 0 ? (stats.paid / stats.total) * 100 : 0}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </Link>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -931,24 +957,24 @@ export default function ClienteDetalhePage() {
 
         {activeTab === 'financeiro' && (
           <div className="space-y-6">
-            {/* Dashboard Financeiro Unificado */}
+            {/* Dashboard Financeiro */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="p-6 rounded-lg border border-border bg-card">
                 <h3 className="text-sm text-muted-foreground mb-2">Total</h3>
                 <p className="text-2xl font-bold text-foreground">
-                  {formatCurrency(client.fees_summary.total_amount + client.services_summary.total_amount)}
+                  {formatCurrency(client.fees_summary.total_amount)}
                 </p>
               </div>
               <div className="p-6 rounded-lg border border-green-500/20 bg-green-500/10">
                 <h3 className="text-sm text-green-600 dark:text-green-400 mb-2">Recebido</h3>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(client.fees_summary.total_paid + client.services_summary.total_paid)}
+                  {formatCurrency(client.fees_summary.total_paid)}
                 </p>
               </div>
               <div className="p-6 rounded-lg border border-orange-500/20 bg-orange-500/10">
                 <h3 className="text-sm text-orange-600 dark:text-orange-400 mb-2">Pendente</h3>
                 <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  {formatCurrency(client.fees_summary.total_pending + client.services_summary.total_pending)}
+                  {formatCurrency(client.fees_summary.total_pending)}
                 </p>
               </div>
               <div className="p-6 rounded-lg border border-red-500/20 bg-red-500/10">
@@ -961,142 +987,146 @@ export default function ClienteDetalhePage() {
 
             {/* Summary count */}
             <p className="text-sm text-muted-foreground">
-              Total de {client.fees_summary.fees_count} honorário(s) e {client.services_summary.services_count} serviço(s) cadastrado(s)
+              Total de {client.fees_summary.fees_count} honorário(s) cadastrado(s)
             </p>
 
-            {/* Lista Unificada de Itens Financeiros */}
-            {isLoadingFees || isLoadingServices ? (
+            {/* Lista de Honorários Agrupados */}
+            {isLoadingFees ? (
               <div className="flex items-center justify-center py-12">
                 <LoadingSpinner size="lg" />
               </div>
-            ) : fees.length === 0 && services.length === 0 ? (
+            ) : fees.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>Nenhum item financeiro cadastrado</p>
-                <p className="text-sm mt-2">Use o botão Adicionar acima para criar honorários ou serviços</p>
+                <p>Nenhum honorário cadastrado</p>
+                <p className="text-sm mt-2">Use o botão Adicionar acima para criar honorários</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {/* Honorários */}
-                {fees.map((fee) => (
-                  <div
-                    key={`fee-${fee.id}`}
-                    className="p-4 rounded-lg border border-border bg-card"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                            Honorário
-                          </span>
-                          <h3 className="font-medium text-foreground">{fee.description}</h3>
-                          <span className={cn('text-xs font-medium', getFeeStatusColor(fee.status))}>
-                            {getFeeStatusLabel(fee.status)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {getFeeTypeLabel(fee.fee_type)}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="font-semibold text-foreground">
-                            {formatCurrency(fee.amount)}
-                          </span>
-                          {fee.paid_amount > 0 && (
-                            <span className="text-green-600 dark:text-green-400">
-                              Pago: {formatCurrency(fee.paid_amount)}
-                            </span>
-                          )}
-                          {fee.due_date && (
-                            <span className="text-muted-foreground">
-                              Venc.: {formatShortDate(fee.due_date)}
-                            </span>
-                          )}
-                        </div>
-                        {fee.notes && (
-                          <p className="text-sm text-muted-foreground mt-2">{fee.notes}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => {
-                            setEditingFee(fee)
-                            setShowFeeDialog(true)
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-accent transition-colors"
-                          title="Editar honorário"
-                        >
-                          <Edit className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteFee(fee.id)}
-                          className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
-                          title="Excluir honorário"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                {feeGroups.map((group) => {
+                  const isCollapsed = collapsedGroups.has(group.key)
+                  const total = group.fees.reduce((sum, fee) => sum + Number(fee.amount), 0)
+                  const paid = group.fees.filter((f) => f.status === 'paid').reduce((sum, fee) => sum + Number(fee.amount), 0)
+                  const paidCount = group.fees.filter((f) => f.status === 'paid').length
+                  const totalCount = group.fees.length
 
-                {/* Serviços */}
-                {services.map((service) => (
-                  <div
-                    key={`service-${service.id}`}
-                    className="p-4 rounded-lg border border-border bg-card"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                            Serviço
-                          </span>
-                          <h3 className="font-medium text-foreground">{service.name}</h3>
-                          <span className={cn('text-xs font-medium', getServiceStatusColor(service.status))}>
-                            {getServiceStatusLabel(service.status)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {getServiceCategoryLabel(service.category)}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm">
-                          {service.value && (
-                            <span className="font-semibold text-foreground">
-                              {formatCurrency(service.value)}
-                            </span>
+                  const badgeConfig =
+                    group.type === 'process'
+                      ? { label: 'Processo', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' }
+                      : { label: 'Serviço', className: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' }
+
+                  const groupName =
+                    group.type === 'process'
+                      ? group.ref?.number || 'Processo desconhecido'
+                      : group.ref?.name || 'Serviço desconhecido'
+
+                  return (
+                    <div key={group.key} className="rounded-lg border border-border bg-card overflow-hidden">
+                      {/* Group Header */}
+                      <button
+                        onClick={() => toggleGroup(group.key)}
+                        className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          {isCollapsed ? (
+                            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                           )}
-                          {service.paid_amount > 0 && (
-                            <span className="text-green-600 dark:text-green-400">
-                              Pago: {formatCurrency(service.paid_amount)}
-                            </span>
-                          )}
+
+                          <span className={cn('px-2 py-0.5 rounded text-[10px] font-semibold uppercase border min-w-[70px] text-center inline-block', badgeConfig.className)}>
+                            {badgeConfig.label}
+                          </span>
+
+                          <div className="flex-1 text-left">
+                            <h4 className="font-semibold text-foreground">{groupName}</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {paidCount}/{totalCount} parcelas pagas
+                            </p>
+                          </div>
                         </div>
-                        {service.notes && (
-                          <p className="text-sm text-muted-foreground mt-2">{service.notes}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => {
-                            setEditingService(service)
-                            setShowServiceDialog(true)
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-accent transition-colors"
-                          title="Editar serviço"
-                        >
-                          <Edit className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteService(service.id)}
-                          className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
-                          title="Excluir serviço"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </button>
-                      </div>
+
+                        <div className="flex items-center gap-6 text-sm">
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Total</p>
+                            <p className="font-semibold text-foreground">{formatCurrency(total)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Pago</p>
+                            <p className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(paid)}</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Progress Bar */}
+                      {!isCollapsed && (
+                        <div className="px-4 pb-3">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-green-500 transition-all"
+                              style={{ width: `${totalCount > 0 ? (paidCount / totalCount) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Fees List */}
+                      {!isCollapsed && (
+                        <div className="border-t border-border bg-muted/20">
+                          {group.fees.map((fee) => (
+                            <div
+                              key={fee.id}
+                              className="p-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h5 className="text-sm font-medium text-foreground">{fee.description}</h5>
+                                    <span className={cn('text-xs font-medium', getFeeStatusColor(fee.status))}>
+                                      {getFeeStatusLabel(fee.status)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span className="font-semibold text-foreground">{formatCurrency(Number(fee.amount))}</span>
+                                    {fee.due_date && <span>Venc.: {formatShortDate(fee.due_date)}</span>}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 ml-3">
+                                  {fee.status !== 'paid' && fee.status !== 'cancelled' && (
+                                    <button
+                                      onClick={() => handleMarkAsPaid(fee)}
+                                      className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors"
+                                      title="Marcar como pago"
+                                    >
+                                      <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      setEditingFee(fee)
+                                      setShowFeeDialog(true)
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                                    title="Editar honorário"
+                                  >
+                                    <Edit className="h-4 w-4 text-muted-foreground" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteFee(fee.id)}
+                                    className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
+                                    title="Excluir honorário"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -1135,7 +1165,8 @@ export default function ClienteDetalhePage() {
                             const fullNote = await notesService.get(note.id)
                             setEditingNote(fullNote)
                             setShowNoteDialog(true)
-                          } catch {
+                          } catch (error) {
+                            console.error('Error fetching note:', error)
                             toast.error('Erro ao carregar nota')
                           }
                         }}
@@ -1146,14 +1177,14 @@ export default function ClienteDetalhePage() {
                       </button>
                       <button
                         onClick={async () => {
-                          if (confirm('Tem certeza que deseja excluir esta nota?')) {
-                            try {
-                              await notesService.delete(note.id)
-                              toast.success('Nota excluída com sucesso')
-                              await fetchClient()
-                            } catch {
-                              toast.error('Erro ao excluir nota')
-                            }
+                          if (!confirm('Tem certeza que deseja excluir esta nota?')) return
+                          try {
+                            await notesService.delete(note.id)
+                            toast.success('Nota excluída com sucesso')
+                            await fetchClient()
+                          } catch (error) {
+                            console.error('Error deleting note:', error)
+                            toast.error('Erro ao excluir nota')
                           }
                         }}
                         className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors"
@@ -1166,20 +1197,62 @@ export default function ClienteDetalhePage() {
                 </div>
               ))
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Floating Action Button (Adicionar) */}
+      <div className="fixed bottom-8 right-8 z-50">
+        <div className="relative group">
+          <button className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all">
+            <Plus className="h-5 w-5" />
+            <span className="font-semibold">Adicionar</span>
+          </button>
+
+          {/* Dropdown menu */}
+          <div className="absolute bottom-full right-0 mb-2 w-48 rounded-lg border border-border bg-popover shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+            <button
+              onClick={() => setShowProcessDialog(true)}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 rounded-t-lg"
+            >
+              <FolderKanban className="h-4 w-4" />
+              Novo Processo
+            </button>
+            <button
+              onClick={() => {
+                setEditingService(null)
+                setShowServiceDialog(true)
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+            >
+              <Briefcase className="h-4 w-4" />
+              Novo Serviço
+            </button>
+            <button
+              onClick={() => {
+                setEditingFee(null)
+                setShowFeeDialog(true)
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+            >
+              <DollarSign className="h-4 w-4" />
+              Novo Honorário
+            </button>
             <button
               onClick={() => {
                 setEditingNote(null)
                 setShowNoteDialog(true)
               }}
-              className="w-full p-4 rounded-lg border border-dashed border-border hover:bg-accent transition-colors text-sm text-muted-foreground"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 rounded-b-lg"
             >
-              + Adicionar nova nota
+              <StickyNote className="h-4 w-4" />
+              Nova Nota
             </button>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Dialog para criar processo */}
+      {/* Dialog para adicionar processo */}
       {clientForDialog && (
         <ProcessFormDialog
           isOpen={showProcessDialog}
@@ -1260,7 +1333,13 @@ export default function ClienteDetalhePage() {
             number: p.number,
             title: `${p.type} - ${p.court || 'Sem comarca'}`,
           }))}
+          services={services.map((s) => ({
+            id: s.id,
+            name: s.name,
+            category: s.category,
+          }))}
           onSave={handleSaveFee}
+          onSaveBatch={handleSaveBatchFees}
         />
       )}
 

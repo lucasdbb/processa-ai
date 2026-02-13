@@ -13,18 +13,17 @@ export type FeeStatus =
   | "pending" // Aguardando pagamento
   | "paid" // Pago
   | "overdue" // Em atraso
-  | "cancelled" // Cancelado
-  | "partial"; // Parcialmente pago
+  | "cancelled"; // Cancelado
 
 export interface Fee {
   id: string;
   user_id: string;
   client_id: string;
   process_id: string | null;
+  service_id: string | null;
   fee_type: FeeType;
   description: string;
   amount: number;
-  paid_amount: number;
   due_date: string | null;
   paid_at: string | null;
   status: FeeStatus;
@@ -36,6 +35,7 @@ export interface Fee {
 export interface FeeCreate {
   client_id: string;
   process_id?: string | null;
+  service_id?: string | null;
   fee_type: FeeType;
   description: string;
   amount: number;
@@ -44,10 +44,11 @@ export interface FeeCreate {
 }
 
 export interface FeeUpdate {
+  process_id?: string | null;
+  service_id?: string | null;
   fee_type?: FeeType;
   description?: string;
   amount?: number;
-  paid_amount?: number;
   due_date?: string | null;
   paid_at?: string | null;
   status?: FeeStatus;
@@ -68,10 +69,11 @@ export interface FeesListResponse {
 }
 
 export const feesService = {
-  async list(clientId?: string, processId?: string): Promise<FeesListResponse> {
+  async list(clientId?: string, processId?: string, serviceId?: string): Promise<FeesListResponse> {
     const params = new URLSearchParams();
     if (clientId) params.append("client_id", clientId);
     if (processId) params.append("process_id", processId);
+    if (serviceId) params.append("service_id", serviceId);
 
     const url = `${API_URL}/office/fees${params.toString() ? `?${params.toString()}` : ""}`;
     const response = await fetchWithCredentials(url, {

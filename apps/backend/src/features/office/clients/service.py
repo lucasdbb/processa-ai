@@ -253,7 +253,7 @@ class ClientsService:
                     """
                     SELECT
                         COALESCE(SUM(amount), 0) as total_amount,
-                        COALESCE(SUM(CASE WHEN status = 'paid' THEN paid_amount ELSE 0 END), 0) as total_paid,
+                        COALESCE(SUM(paid_amount), 0) as total_paid,
                         COALESCE(SUM(CASE WHEN status = 'pending' THEN amount - COALESCE(paid_amount, 0) ELSE 0 END), 0) as total_pending,
                         COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount - COALESCE(paid_amount, 0) ELSE 0 END), 0) as total_overdue,
                         COUNT(*) as fees_count

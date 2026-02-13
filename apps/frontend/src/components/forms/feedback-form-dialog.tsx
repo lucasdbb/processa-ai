@@ -39,7 +39,7 @@ export function FeedbackFormDialog({ isOpen, onClose }: FeedbackFormDialogProps)
       setContent('')
       setType('suggestion')
       onClose()
-    } catch (error) {
+    } catch {
       toast.error('Erro ao enviar feedback. Tente novamente.')
     } finally {
       setIsSubmitting(false)

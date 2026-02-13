@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Mail, Phone, MapPin, FileText, User } from 'lucide-react'
+import { Search, Plus, Mail, Phone, MapPin, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { phoneMask } from '@/lib/masks'
 import { clientsService, type Client } from '@/services/clients-service'
 import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -139,12 +140,12 @@ export default function ClientesPage() {
           action={!search ? { label: 'Novo Cliente', onClick: () => setShowClientDialog(true) } : undefined}
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {clients.map((client) => (
             <Link key={client.id} to={`/app/clientes/${client.id}`}>
-              <div className="group p-3 bg-card border border-border rounded-lg hover:shadow-sm hover:border-primary/50 transition-all duration-200">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center text-xs font-semibold shrink-0">
+              <div className="group p-3.5 bg-card border border-border rounded-lg hover:shadow-sm hover:border-primary/50 transition-all duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                     {client.name
                       .split(' ')
                       .map((n) => n[0])
@@ -153,49 +154,58 @@ export default function ClientesPage() {
                       .slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                      <h3 className="text-sm font-semibold text-foreground truncate">{client.name}</h3>
-                      <span
-                        className={cn(
-                          'px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full',
-                          client.status === 'active'
-                            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                            : client.status === 'inactive'
-                            ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-                            : 'bg-muted text-muted-foreground'
-                        )}
-                      >
-                        {getStatusLabel(client.status)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground">
-                      {client.cpf_cnpj && (
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {client.cpf_cnpj}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                          {client.name}
+                        </h3>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full',
+                            client.status === 'active'
+                              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                              : client.status === 'inactive'
+                              ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                              : 'bg-muted text-muted-foreground'
+                          )}
+                        >
+                          {getStatusLabel(client.status)}
                         </span>
-                      )}
-                      {client.phone && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {client.phone}
-                        </span>
-                      )}
-                      {client.email && (
-                        <span className="flex items-center gap-1 truncate">
-                          <Mail className="h-3 w-3" />
-                          {client.email}
-                        </span>
-                      )}
-                      {client.city && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {client.city}{client.state ? `, ${client.state}` : ''}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-muted-foreground">
+                      </div>
+                      <span className="text-[10px] text-muted-foreground hidden sm:block">
                         Cadastrado em {formatDate(client.created_at)}
                       </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {(client.phone || client.email) ? (
+                        <div className="flex items-center gap-3 truncate">
+                          {client.phone && (
+                            <span className="flex items-center gap-1.5">
+                              <Phone className="h-3 w-3" />
+                              {phoneMask(client.phone)}
+                            </span>
+                          )}
+                          {client.email && (
+                            <span className="flex items-center gap-1.5 truncate">
+                              <Mail className="h-3 w-3" />
+                              {client.email}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="italic opacity-50">Sem contato cadastrado</span>
+                      )}
+                      
+                      {client.city && (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-border shrink-0" />
+                          <span className="flex items-center gap-1.5 truncate">
+                            <MapPin className="h-3 w-3" />
+                            {client.city}{client.state ? `, ${client.state}` : ''}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

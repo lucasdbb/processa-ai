@@ -68,7 +68,7 @@ def upgrade() -> None:
                 public.update_updated_at_column();
     """)
 
-    # 2. Fees/Honorarios Table
+    # 2. Fees/Honorários Table
     op.execute("""
         CREATE TABLE IF NOT EXISTS office_api.fees (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
