@@ -199,7 +199,7 @@ export default function ServicosPage() {
                 className={cn(
                   'px-2.5 py-1.5 text-xs font-medium transition-colors',
                   filter === f
-                    ? 'bg-slate-900 text-white'
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-background text-muted-foreground hover:bg-muted'
                 )}
               >

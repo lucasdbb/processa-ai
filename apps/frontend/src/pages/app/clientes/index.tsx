@@ -78,15 +78,15 @@ export default function ClientesPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Clientes</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Gerencie seus clientes e seus dados.</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Clientes</h1>
+          <p className="text-muted-foreground mt-1">Gerencie seus clientes e seus dados.</p>
         </div>
         <button
           onClick={() => setShowClientDialog(true)}
           data-tour="new-client-btn"
-          className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
           Novo Cliente
@@ -114,7 +114,7 @@ export default function ClientesPage() {
                 className={cn(
                   'px-2.5 py-1.5 text-xs font-medium transition-colors',
                   filter === f
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-background text-muted-foreground hover:bg-muted'
                 )}
               >
@@ -143,9 +143,9 @@ export default function ClientesPage() {
         <div className="space-y-3">
           {clients.map((client) => (
             <Link key={client.id} to={`/app/clientes/${client.id}`}>
-              <div className="group p-3.5 bg-card border border-border rounded-lg hover:shadow-sm hover:border-primary/50 transition-all duration-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              <div className="group p-4 bg-card border border-border rounded-lg hover:shadow-md hover:border-primary/50 transition-all duration-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm font-semibold shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                     {client.name
                       .split(' ')
                       .map((n) => n[0])
@@ -156,7 +156,7 @@ export default function ClientesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                        <h3 className="text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                           {client.name}
                         </h3>
                         <span

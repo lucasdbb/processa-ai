@@ -550,7 +550,7 @@ export default function ClienteDetalhePage() {
   const feeGroups = groupFeesBySource()
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Client Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 p-4 rounded-lg border border-border bg-card">
         <div className="flex items-start gap-4">
@@ -652,28 +652,28 @@ export default function ClienteDetalhePage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-border">
-        <div className="flex gap-6">
+      <div className="border-b border-border pb-1">
+        <div className="flex gap-2 overflow-x-auto p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-3 border-b-2 transition-colors',
+                'flex items-center gap-2 px-4 py-2 rounded-full transition-all whitespace-nowrap text-sm font-medium',
                 activeTab === tab.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
               <tab.icon className="h-4 w-4" />
-              <span className="font-medium">{tab.label}</span>
+              {tab.label}
             </button>
           ))}
         </div>
       </div>
 
       {/* Tab Content */}
-      <div>
+      <div className="pb-6">
         {activeTab === 'resumo' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
@@ -682,9 +682,6 @@ export default function ClienteDetalhePage() {
                   <FolderKanban className="h-5 w-5" />
                   Processos Recentes
                 </h3>
-                <Link to={`#`} onClick={() => setActiveTab('atividades')} className="text-sm text-primary hover:underline">
-                  Ver todos
-                </Link>
               </div>
               <div className="space-y-2">
                 {client.processes.slice(0, 3).map((process) => {
@@ -735,7 +732,12 @@ export default function ClienteDetalhePage() {
             </div>
 
             <div>
-              <h3 className="font-semibold mb-3">Serviços Recentes</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Briefcase className="h-5 w-5" />
+                  Serviços Recentes
+                </h3>
+              </div>
               {isLoadingServices ? (
                 <div className="flex items-center justify-center py-8">
                   <LoadingSpinner size="sm" />
@@ -794,7 +796,7 @@ export default function ClienteDetalhePage() {
         )}
 
         {activeTab === 'atividades' && (
-          <div className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Seção Processos */}
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -802,12 +804,6 @@ export default function ClienteDetalhePage() {
                   <FolderKanban className="h-5 w-5" />
                   Processos
                 </h3>
-                <button
-                  onClick={() => setShowProcessDialog(true)}
-                  className="text-sm text-primary hover:underline"
-                >
-                  + Novo Processo
-                </button>
               </div>
               <div className="space-y-2">
                 {client.processes.length === 0 ? (
@@ -873,9 +869,6 @@ export default function ClienteDetalhePage() {
               </div>
             </div>
 
-            {/* Divider */}
-            <div className="border-t border-border" />
-
             {/* Seção Serviços Extrajudiciais */}
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -883,15 +876,6 @@ export default function ClienteDetalhePage() {
                   <Briefcase className="h-5 w-5" />
                   Serviços Extrajudiciais
                 </h3>
-                <button
-                  onClick={() => {
-                    setEditingService(null)
-                    setShowServiceDialog(true)
-                  }}
-                  className="text-sm text-primary hover:underline"
-                >
-                  + Novo Serviço
-                </button>
               </div>
               {isLoadingServices ? (
                 <div className="flex items-center justify-center py-12">
@@ -1017,8 +1001,8 @@ export default function ClienteDetalhePage() {
 
                   const groupName =
                     group.type === 'process'
-                      ? group.ref?.number || 'Processo desconhecido'
-                      : group.ref?.name || 'Serviço desconhecido'
+                      ? (group.ref as ClientDetail['processes'][number] | undefined)?.number || 'Processo desconhecido'
+                      : (group.ref as Service | undefined)?.name || 'Serviço desconhecido'
 
                   return (
                     <div key={group.key} className="rounded-lg border border-border bg-card overflow-hidden">
@@ -1202,18 +1186,12 @@ export default function ClienteDetalhePage() {
       </div>
 
       {/* Floating Action Button (Adicionar) */}
-      <div className="fixed bottom-8 right-8 z-50">
-        <div className="relative group">
-          <button className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all">
-            <Plus className="h-5 w-5" />
-            <span className="font-semibold">Adicionar</span>
-          </button>
-
-          {/* Dropdown menu */}
-          <div className="absolute bottom-full right-0 mb-2 w-48 rounded-lg border border-border bg-popover shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+      <div className="fixed bottom-6 right-6 z-50 group">
+        <div className="absolute bottom-full right-0 mb-4 w-48 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+          <div className="py-1">
             <button
               onClick={() => setShowProcessDialog(true)}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 rounded-t-lg"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
             >
               <FolderKanban className="h-4 w-4" />
               Novo Processo
@@ -1223,7 +1201,7 @@ export default function ClienteDetalhePage() {
                 setEditingService(null)
                 setShowServiceDialog(true)
               }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
             >
               <Briefcase className="h-4 w-4" />
               Novo Serviço
@@ -1233,7 +1211,7 @@ export default function ClienteDetalhePage() {
                 setEditingFee(null)
                 setShowFeeDialog(true)
               }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
             >
               <DollarSign className="h-4 w-4" />
               Novo Honorário
@@ -1243,13 +1221,18 @@ export default function ClienteDetalhePage() {
                 setEditingNote(null)
                 setShowNoteDialog(true)
               }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 rounded-b-lg"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
             >
               <StickyNote className="h-4 w-4" />
               Nova Nota
             </button>
           </div>
         </div>
+        <button
+          className="flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
       </div>
 
       {/* Dialog para adicionar processo */}

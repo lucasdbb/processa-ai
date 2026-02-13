@@ -227,7 +227,7 @@ export default function ProcessosPage() {
                 className={cn(
                   'px-2.5 py-1.5 text-xs font-medium transition-colors',
                   filter === f
-                    ? 'bg-slate-900 text-white'
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-background text-muted-foreground hover:bg-muted'
                 )}
               >
@@ -264,7 +264,7 @@ export default function ProcessosPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 flex-wrap mb-1">
-                        <h3 className="font-mono text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                        <h3 className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors">
                           {process.number}
                         </h3>
                         <span

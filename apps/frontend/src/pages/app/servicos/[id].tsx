@@ -253,7 +253,7 @@ export default function ServicoDetalhePage() {
   ]
   
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header */}
       <div className="p-4 rounded-lg border border-border bg-card">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -309,35 +309,6 @@ export default function ServicoDetalhePage() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <div className="relative group">
-              <button
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar
-              </button>
-              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      setShowDocumentDialog(true)
-                      setEditingDocument(null)
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Novo Documento
-                  </button>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowEditDialog(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-border bg-background hover:bg-accent transition-colors"
-            >
-              <Edit className="h-4 w-4" />
-              Editar
-            </button>
             {/* Actions Menu */}
             <div className="relative" ref={actionsMenuRef}>
               <button
@@ -350,6 +321,16 @@ export default function ServicoDetalhePage() {
               {showActionsMenu && (
                 <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
                   <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowEditDialog(true)
+                        setShowActionsMenu(false)
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Editar Serviço
+                    </button>
                     <button
                       onClick={() => {
                         setShowDeleteModal(true)
@@ -367,6 +348,18 @@ export default function ServicoDetalhePage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Action Button */}
+      <button
+        onClick={() => {
+          setShowDocumentDialog(true)
+          setEditingDocument(null)
+        }}
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
+        title="Novo Documento"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       {/* Tabs */}
       <div className="border-b border-border pb-1">
