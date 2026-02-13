@@ -13,6 +13,7 @@ import {
   Clock,
   Banknote,
   Briefcase,
+  Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/features/auth/hooks/use-user'
@@ -25,6 +26,7 @@ import {
   type ActivityItem,
 } from '@/services/dashboard-service'
 import { servicesService } from '@/services/services-service'
+import { creditsService, type UserCredits } from '@/services/credits-service'
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
 import { TourButton } from '@/features/onboarding/tour-button'
 import { RevenueChart } from '@/components/charts/revenue-chart'
@@ -62,13 +64,14 @@ export default function DashboardPage() {
   const [processesSummary, setProcessesSummary] = useState<ProcessesSummary | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [servicesCount, setServicesCount] = useState<number>(0)
+  const [credits, setCredits] = useState<UserCredits | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setLoading(true)
-        const [statsData, deadlinesData, financialData, processesData, activityData, servicesData] =
+        const [statsData, deadlinesData, financialData, processesData, activityData, servicesData, creditsData] =
           await Promise.all([
             dashboardService.getStats(),
             dashboardService.getUpcomingDeadlines(5),
@@ -76,6 +79,7 @@ export default function DashboardPage() {
             dashboardService.getProcessesSummary().catch(() => null),
             dashboardService.getRecentActivity(8).catch(() => []),
             servicesService.count().catch(() => ({ total: 0 })),
+            creditsService.getCredits().catch(() => null),
           ])
         setStats(statsData)
         setDeadlines(deadlinesData)
@@ -83,6 +87,7 @@ export default function DashboardPage() {
         setProcessesSummary(processesData)
         setActivity(activityData)
         setServicesCount(servicesData.total)
+        setCredits(creditsData)
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
       } finally {
@@ -153,6 +158,14 @@ export default function DashboardPage() {
                 : 'neutral',
           icon: Calculator,
           href: '/app/calculadoras',
+        },
+        {
+          name: 'Recursos IA Utilizados',
+          value: credits ? (credits.subscription.used + credits.purchased.used).toString() : '0',
+          change: credits ? `${credits.total_available} disponíveis` : undefined,
+          changeType: 'neutral',
+          icon: Bot,
+          href: '/app/ia',
         },
       ]
     : []
@@ -434,49 +447,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
-      {/* Quick Actions */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <h2 className="font-semibold text-foreground mb-4">Acoes Rapidas</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Link
-            to="/app/clientes?new=true"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-muted-foreground/50 hover:bg-muted/50 transition-all text-center"
-          >
-            <div className="p-3 bg-muted rounded-xl">
-              <Users className="h-5 w-5 text-foreground" />
-            </div>
-            <span className="text-sm font-medium text-foreground">Novo Cliente</span>
-          </Link>
-          <Link
-            to="/app/processos?new=true"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-muted-foreground/50 hover:bg-muted/50 transition-all text-center"
-          >
-            <div className="p-3 bg-muted rounded-xl">
-              <FolderKanban className="h-5 w-5 text-foreground" />
-            </div>
-            <span className="text-sm font-medium text-foreground">Novo Processo</span>
-          </Link>
-          <Link
-            to="/app/calculadoras/rescisao"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-muted-foreground/50 hover:bg-muted/50 transition-all text-center"
-          >
-            <div className="p-3 bg-muted rounded-xl">
-              <Calculator className="h-5 w-5 text-foreground" />
-            </div>
-            <span className="text-sm font-medium text-foreground">Calcular Rescisao</span>
-          </Link>
-          <Link
-            to="/app/calendario"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-muted-foreground/50 hover:bg-muted/50 transition-all text-center"
-          >
-            <div className="p-3 bg-muted rounded-xl">
-              <CalendarClock className="h-5 w-5 text-foreground" />
-            </div>
-            <span className="text-sm font-medium text-foreground">Calendário</span>
-          </Link>
-        </div>
-      </div>
     </div>
   )
 }

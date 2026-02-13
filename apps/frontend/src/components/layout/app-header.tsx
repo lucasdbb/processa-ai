@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -6,6 +6,7 @@ import { useTheme } from 'next-themes'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useState, useEffect } from 'react'
 import { creditsService, type UserCredits } from '@/services/credits-service'
+import { FeedbackFormDialog } from '@/components/forms/feedback-form-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +16,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useAuth } from '@/features/auth/hooks/use-auth'
 
 // Mock notifications data
 const mockNotifications = [
@@ -57,9 +59,11 @@ export function AppHeader() {
   const { open: openCommandPalette } = useCommandPaletteStore()
   const { resolvedTheme, setTheme } = useTheme()
   const { user } = useUser()
-  const { logout } = useAuthStore()
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const [credits, setCredits] = useState<UserCredits | null>(null)
   const [, setLoadingCredits] = useState(false)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
 
   const isDark = resolvedTheme === 'dark'
 
@@ -78,9 +82,9 @@ export function AppHeader() {
     }
   }, [user])
 
-  const handleLogout = () => {
-    logout()
-    window.location.href = '/'
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
   }
 
   const unreadCount = mockNotifications.filter((n) => !n.read).length
@@ -141,7 +145,7 @@ export function AppHeader() {
         <div className="flex items-center gap-2">
           {/* Credits Display */}
           {credits && (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
@@ -249,7 +253,7 @@ export function AppHeader() {
           </button>
 
           {/* Notificacoes */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
                 className="relative h-10 w-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -344,7 +348,7 @@ export function AppHeader() {
           </DropdownMenu>
 
           {/* Menu Usuario */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 h-10 pl-2 pr-3 rounded-lg hover:bg-accent transition-colors">
                 <Avatar className="h-8 w-8">
@@ -366,23 +370,46 @@ export function AppHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/app/configuracoes">Minha Conta</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/app/configuracoes">Assinatura</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/app/configuracoes">Preferencias</Link>
+              {user?.role === 'admin' && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className={cn(
+                      "flex items-center w-full cursor-pointer",
+                      isDark ? "text-red-400 focus:text-red-300 focus:bg-red-900/10" : "text-red-600 focus:text-red-700 focus:bg-red-50"
+                    )}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Painel Admin</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem onClick={() => setIsFeedbackOpen(true)}>
+                <MessageSquarePlus className="mr-2 h-4 w-4" />
+                <span>Enviar Sugestão</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                Sair
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className={cn(
+                  "flex items-center w-full cursor-pointer",
+                  isDark
+                    ? "text-red-400 focus:text-red-300 focus:bg-red-900/10"
+                    : "text-red-600 focus:text-red-700 focus:bg-red-50"
+                )}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sair</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+
+      <FeedbackFormDialog
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+      />
     </header>
   )
 }

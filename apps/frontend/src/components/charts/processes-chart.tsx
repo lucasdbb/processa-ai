@@ -23,45 +23,49 @@ interface ProcessesChartProps {
 
 export function ProcessesChart({ data, total }: ProcessesChartProps) {
   return (
-    <div className="w-full h-[280px] relative">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={70}
-            outerRadius={100}
-            dataKey="count"
-            nameKey="label"
-            stroke="hsl(var(--card))"
-            strokeWidth={3}
-          >
-            {data.map((entry) => (
-              <Cell
-                key={entry.status}
-                fill={STATUS_COLORS[entry.status] || "#6b7280"}
-              />
-            ))}
-          </Pie>
-          <Tooltip
-            formatter={(value: number | undefined, name: string | undefined) => [value ?? 0, name ?? '']}
-            contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              borderColor: "hsl(var(--border))",
-              borderRadius: "8px",
-              fontSize: "12px",
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      {/* Center text */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-3xl font-bold text-foreground">{total}</span>
-        <span className="text-xs text-muted-foreground">processos</span>
+    <div className="w-full flex flex-col items-center gap-4">
+      <div className="w-full h-[250px] relative">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={70}
+              outerRadius={100}
+              dataKey="count"
+              nameKey="label"
+              stroke="hsl(var(--card))"
+              strokeWidth={3}
+            >
+              {data.map((entry) => (
+                <Cell
+                  key={entry.status}
+                  fill={STATUS_COLORS[entry.status] || "#6b7280"}
+                />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value: number | undefined, name: string | undefined) => [value ?? 0, name ?? '']}
+              contentStyle={{
+                backgroundColor: "hsl(var(--card))",
+                borderColor: "hsl(var(--border))",
+                borderRadius: "8px",
+                fontSize: "12px",
+                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        {/* Center text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-3xl font-bold text-foreground">{total}</span>
+          <span className="text-xs text-muted-foreground">processos</span>
+        </div>
       </div>
+      
       {/* Legend */}
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
         {data
           .filter((d) => d.count > 0)
           .map((item) => (

@@ -92,26 +92,6 @@ export function UserMenu({ user }: UserMenuProps) {
               <span>Meu Painel</span>
             </Link>
           </DropdownMenuItem>
-          {(user.role === 'admin' || user.role === 'author') && (
-            <DropdownMenuItem asChild className="rounded-none p-0 focus:bg-transparent">
-              <Link
-                to="/admin"
-                className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150 cursor-pointer focus:outline-none"
-              >
-                <Shield className="w-4 h-4 mr-3 text-red-500" />
-                <span className="flex items-center gap-2">
-                  Painel Admin
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    Admin
-                  </span>
-                </span>
-              </Link>
-            </DropdownMenuItem>
-          )}
         </div>
         {!isAppRoute && (
           <>
