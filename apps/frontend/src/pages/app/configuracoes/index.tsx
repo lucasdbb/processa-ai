@@ -56,6 +56,7 @@ export default function ConfiguracoesPage() {
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [loadingBilling, setLoadingBilling] = useState(false)
   const [openingPortal, setOpeningPortal] = useState(false)
+  const [showPortalConfirm, setShowPortalConfirm] = useState(false)
 
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -227,7 +228,12 @@ export default function ConfiguracoesPage() {
       console.error('Error opening portal:', error)
       toast.error('Erro ao abrir portal de gerenciamento')
       setOpeningPortal(false)
+      setShowPortalConfirm(false)
     }
+  }
+
+  const confirmOpenPortal = () => {
+    setShowPortalConfirm(true)
   }
 
   const handleDeleteAccount = async () => {
@@ -988,7 +994,7 @@ export default function ConfiguracoesPage() {
                             </button>
 
                             <button
-                              onClick={handleOpenPortal}
+                              onClick={confirmOpenPortal}
                               disabled={openingPortal}
                               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -1097,6 +1103,19 @@ export default function ConfiguracoesPage() {
         cancelText="Cancelar"
         variant="danger"
         isLoading={isDeletingAccount}
+      />
+
+      {/* Portal Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showPortalConfirm}
+        onClose={() => setShowPortalConfirm(false)}
+        onConfirm={handleOpenPortal}
+        title="Gerenciar Assinatura"
+        description="Você será redirecionado para o portal de pagamentos seguro do Stripe. Atenção: Ao alterar seu plano, seus créditos mensais serão redefinidos imediatamente para o limite do novo plano escolhido. Créditos não utilizados do plano atual não serão acumulados."
+        confirmText={openingPortal ? 'Redirecionando...' : 'Entendi, ir para o portal'}
+        cancelText="Cancelar"
+        variant="info"
+        isLoading={openingPortal}
       />
     </div>
   )

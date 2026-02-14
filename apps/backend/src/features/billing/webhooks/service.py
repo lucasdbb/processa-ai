@@ -447,12 +447,41 @@ class WebhooksService:
         if not subscription_id:
             raise PermanentError("subscription.updated missing subscription id")
 
-        plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
+        # Check for plan change (upgrade/downgrade)
+        # previous_attributes contains fields that changed
+        previous_attributes = subscription.get("previous_attributes", {})
+        price_changed = False
+        
+        # Check if items changed (which implies price/plan change)
+        if "items" in previous_attributes:
+             price_changed = True
+        # Or if the price ID in the first item is different from what we might have expected?
+        # Simpler: check if the new price ID maps to a different plan than what we have stored
+        
+        new_price_id = subscription["items"]["data"][0]["price"]["id"]
+        new_plan_id = self._get_plan_id_from_price(new_price_id)
 
         try:
+            # Get current stored plan
+            current_sub = (
+                self.supabase.table("subscriptions")
+                .select("plan_id, user_id")
+                .eq("stripe_subscription_id", subscription_id)
+                .single()
+                .execute()
+            )
+            
+            user_id = None
+            old_plan_id = None
+            
+            if current_sub.data:
+                user_id = current_sub.data.get("user_id")
+                old_plan_id = current_sub.data.get("plan_id")
+
+            # Update subscription
             self.supabase.table("subscriptions").update(
                 {
-                    "plan_id": plan_id,
+                    "plan_id": new_plan_id,
                     "status": subscription["status"],
                     "current_period_start": datetime.fromtimestamp(
                         subscription["current_period_start"], tz=timezone.utc
@@ -463,7 +492,17 @@ class WebhooksService:
                     "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
                 }
             ).eq("stripe_subscription_id", subscription_id).execute()
-            logger.info(f"Subscription updated: {subscription_id}, plan: {plan_id}")
+            
+            logger.info(f"Subscription updated: {subscription_id}, plan: {new_plan_id}")
+
+            # Handle Proration / Plan Change Credits
+            # If plan changed AND subscription is active
+            if user_id and old_plan_id and new_plan_id != old_plan_id and subscription["status"] == "active":
+                logger.info(f"Plan changed from {old_plan_id} to {new_plan_id} for user {user_id}. Resetting credits to new plan limit.")
+                # Reset monthly credits to the new plan's limit immediately.
+                # User gets the new plan's credits (whether upgrade or downgrade).
+                await self._reset_monthly_credits(user_id, new_plan_id)
+                
         except Exception as e:
             logger.error(f"Failed to update subscription: {e}")
             raise TransientError(f"Failed to update subscription in database: {e}")
@@ -475,6 +514,7 @@ class WebhooksService:
             raise PermanentError("subscription.deleted missing subscription id")
 
         try:
+            # 1. Update subscription status
             result = (
                 self.supabase.table("subscriptions")
                 .update(
@@ -487,7 +527,25 @@ class WebhooksService:
                 .eq("stripe_subscription_id", subscription_id)
                 .execute()
             )
-            logger.info(f"Subscription canceled: {subscription_id}")
+            
+            # 2. Reset monthly credits to 0 immediately
+            # Since the subscription is gone, the user loses access to the plan's credits.
+            if result.data and len(result.data) > 0:
+                user_id = result.data[0].get("user_id")
+                if user_id:
+                     # Reset monthly credits to 0 (Free plan default or just zeroed out)
+                     # Assuming 'free' plan has 0 monthly credits or small amount.
+                     # Better: explicitly call reset with 0 or the free plan limit.
+                     
+                     # Check free plan limit
+                     free_plan_res = self.supabase.table("billing_plans").select("monthly_credits").eq("slug", "free").single().execute()
+                     free_credits = free_plan_res.data.get("monthly_credits", 0) if free_plan_res.data else 0
+                     
+                     await self.supabase.rpc(
+                        "reset_monthly_credits", 
+                        {"p_user_id": user_id, "p_new_amount": free_credits}
+                     ).execute()
+                     logger.info(f"Subscription canceled: {subscription_id}. Credits reset to free tier ({free_credits}).")
 
             # Send subscription canceled email
             if result.data and len(result.data) > 0:

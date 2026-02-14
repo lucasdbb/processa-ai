@@ -205,6 +205,8 @@ class CreditsService:
         
         # 3. Criar checkout session
         # Preço em centavos. Criar line item ad-hoc
+        # SEGURANÇA: Usamos o preço do BANCO DE DADOS (package["price_cents"]), 
+        # ignorando qualquer input de preço que pudesse vir do frontend (se viesse).
         line_items = [{
             "price_data": {
                 "currency": "brl",
@@ -212,7 +214,7 @@ class CreditsService:
                     "name": f"Pacote de Créditos: {package['name']}",
                     "description": f"{package['credits']} créditos para usar na plataforma",
                 },
-                "unit_amount": package["price_cents"],
+                "unit_amount": package["price_cents"], # Preço oficial do banco
             },
             "quantity": 1,
         }]
@@ -226,7 +228,7 @@ class CreditsService:
             metadata={
                 "user_id": user_id,
                 "package_id": package_id,
-                "credits": str(package["credits"]),
+                "credits": str(package["credits"]), # Quantidade oficial do banco
                 "type": "credit_purchase"
             }
         )
