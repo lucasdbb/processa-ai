@@ -51,7 +51,6 @@ def retrieve_subscription(subscription_id: str) -> stripe.Subscription:
     """Retrieve a Stripe subscription with retry."""
     return stripe.Subscription.retrieve(
         subscription_id,
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
 
 
@@ -60,7 +59,6 @@ def retrieve_customer(customer_id: str) -> stripe.Customer:
     """Retrieve a Stripe customer with retry."""
     return stripe.Customer.retrieve(
         customer_id,
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
 
 
@@ -71,7 +69,6 @@ def create_customer(email: str, name: str | None = None, metadata: dict | None =
         email=email,
         name=name,
         metadata=metadata or {},
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
 
 
@@ -97,7 +94,6 @@ def create_checkout_session(
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata or {},
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
 
 
@@ -107,7 +103,6 @@ def create_portal_session(customer: str, return_url: str) -> stripe.billing_port
     return stripe.billing_portal.Session.create(
         customer=customer,
         return_url=return_url,
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
 
 
@@ -117,7 +112,6 @@ def list_invoices(customer: str, limit: int = 10) -> stripe.ListObject:
     return stripe.Invoice.list(
         customer=customer,
         limit=limit,
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
 
 
@@ -126,7 +120,6 @@ def retrieve_invoice(invoice_id: str) -> stripe.Invoice:
     """Retrieve a Stripe invoice with retry."""
     return stripe.Invoice.retrieve(
         invoice_id,
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
 
 
@@ -135,5 +128,4 @@ def retrieve_charge(charge_id: str) -> stripe.Charge:
     """Retrieve a Stripe charge with retry."""
     return stripe.Charge.retrieve(
         charge_id,
-        request_options={"timeout": STRIPE_TIMEOUT},
     )
