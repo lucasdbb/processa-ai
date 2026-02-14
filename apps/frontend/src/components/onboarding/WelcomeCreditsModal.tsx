@@ -54,11 +54,12 @@ export function WelcomeCreditsModal() {
           origin: { y: 0.6 }
         })
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to claim credits:', error)
-      if (error.status === 409) {
+      const err = error as { status?: number }
+      if (err.status === 409) {
         toast.error('Este CPF já recebeu os créditos de boas-vindas.')
-      } else if (error.status === 429) {
+      } else if (err.status === 429) {
         toast.error('Muitas tentativas. Tente novamente mais tarde.')
       } else {
         toast.error('Erro ao reivindicar créditos. Tente novamente.')

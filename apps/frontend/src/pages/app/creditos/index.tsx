@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useCreditsStore } from '@/stores/credits-store'
-import { creditsService } from '@/services/credits-service'
+import { creditsService, type CreditHistoryResponse } from '@/services/credits-service'
 import { Coins, CreditCard, CheckCircle2, History, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -14,7 +14,7 @@ export default function CreditosPage() {
   const { credits, packages, costs, fetchCredits, fetchPackages, fetchCosts, isLoading } = useCreditsStore()
   const [purchasingId, setPurchasingId] = useState<string | null>(null)
   const [historyPage, setHistoryPage] = useState(1)
-  const [historyData, setHistoryData] = useState<any>(null)
+  const [historyData, setHistoryData] = useState<CreditHistoryResponse | null>(null)
   const [loadingHistory, setLoadingHistory] = useState(false)
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function CreditosPage() {
         window.location.href // Redirect back here
       )
       window.location.href = checkout_url
-    } catch (error) {
+    } catch {
       toast.error('Erro ao iniciar compra. Tente novamente.')
       setPurchasingId(null)
     }
@@ -191,7 +191,7 @@ export default function CreditosPage() {
                 <div className="flex justify-center py-8">
                   <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                 </div>
-              ) : historyData?.transactions.length > 0 ? (
+              ) : historyData && historyData.transactions.length > 0 ? (
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
@@ -203,7 +203,7 @@ export default function CreditosPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {historyData.transactions.map((tx: any) => (
+                      {historyData.transactions.map((tx) => (
                         <TableRow key={tx.id}>
                           <TableCell className="text-muted-foreground text-xs">
                             {formatDate(tx.created_at)}
