@@ -78,17 +78,22 @@ def create_customer(email: str, name: str | None = None, metadata: dict | None =
 @stripe_retry
 def create_checkout_session(
     customer: str,
-    price_id: str,
-    success_url: str,
-    cancel_url: str,
+    price_id: str | None = None,
+    success_url: str = "",
+    cancel_url: str = "",
     metadata: dict | None = None,
+    mode: str = "subscription",
+    line_items: list[dict] | None = None,
 ) -> stripe.checkout.Session:
     """Create a Stripe checkout session with retry."""
+    if line_items is None and price_id:
+        line_items = [{"price": price_id, "quantity": 1}]
+    
     return stripe.checkout.Session.create(
         customer=customer,
         payment_method_types=["card"],
-        line_items=[{"price": price_id, "quantity": 1}],
-        mode="subscription",
+        line_items=line_items,
+        mode=mode,
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata or {},

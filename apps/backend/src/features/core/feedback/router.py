@@ -22,7 +22,7 @@ async def list_feedback(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: Optional[str] = Query(None),
-    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     current_user = Depends(get_current_admin)
 ):
     service = FeedbackService()

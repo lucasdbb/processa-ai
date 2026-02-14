@@ -184,8 +184,42 @@ class WebhooksService:
 
         return {"received": True}
 
+    async def _handle_credit_purchase(self, session: dict) -> None:
+        """Handle checkout.session.completed for credit purchase."""
+        user_id = session.get("metadata", {}).get("user_id")
+        credits_str = session.get("metadata", {}).get("credits")
+        
+        if not user_id or not credits_str:
+             logger.warning("checkout.session.completed (payment) missing metadata")
+             return
+             
+        try:
+            credits_amount = int(credits_str)
+            
+            # Grant credits
+            self.supabase.rpc(
+                "grant_credits_to_user",
+                {
+                    "p_user_id": user_id,
+                    "p_amount": credits_amount,
+                    "p_reason": "credit_purchase",
+                    "p_credit_type": "purchased"
+                }
+            ).execute()
+            logger.info(f"Granted {credits_amount} purchased credits to user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to grant purchased credits: {e}")
+            raise TransientError(f"Failed to grant credits: {e}")
+
     async def _handle_checkout_completed(self, session: dict) -> None:
         """Handle checkout.session.completed event."""
+        mode = session.get("mode")
+        
+        if mode == "payment":
+            # Credit purchase
+            await self._handle_credit_purchase(session)
+            return
+
         customer_id = session.get("customer")
         subscription_id = session.get("subscription")
         user_id = session.get("metadata", {}).get("user_id")

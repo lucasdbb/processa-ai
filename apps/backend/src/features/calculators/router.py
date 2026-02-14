@@ -16,6 +16,7 @@ from src.features.calculators.schemas import (
     RescisaoTrabalhistaResponse,
 )
 from src.features.calculators.service import CalculatorsService
+from src.features.billing.credits.service import credits_service
 
 router = APIRouter()
 
@@ -73,6 +74,14 @@ async def rescisao_trabalhista(
 
     calculation_id = uuid.uuid4()
     calculator_key = "trabalhista.rescisao-trabalhista"
+
+    # Consumir créditos
+    credit_result = await credits_service.consume_credits(user_id, 'calculator_rescisao')
+    if not credit_result.success:
+         raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes"
+        )
 
     input_payload = data.model_dump(mode="json")
     try:
@@ -148,12 +157,16 @@ async def rescisao_trabalhista(
             "pdf": pdf,
         }
     except HTTPException as e:
+        # Reembolsar
+        await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_calculator_rescisao_error")
         try:
             await mark_calculation_failed(calculation_id=calculation_id, error=str(e.detail))
         except Exception:
             pass
         raise
     except Exception:
+        # Reembolsar
+        await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_calculator_rescisao_error")
         try:
             await mark_calculation_failed(calculation_id=calculation_id, error="Erro ao calcular")
         except Exception:

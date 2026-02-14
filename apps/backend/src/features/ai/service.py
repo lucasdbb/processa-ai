@@ -10,6 +10,7 @@ from markdown_pdf import MarkdownPdf, Section
 from src.core.config import settings
 from src.core.db import get_pool
 from src.core.logging import logger
+from src.features.billing.credits.service import credits_service
 
 
 class AiService:
@@ -559,9 +560,23 @@ class AiService:
                 cached.update(stored)
             return cached
 
-        result = await self._call_n8n_cnis_workflow(
-            pdf_url=file_url, job_id=job_id, callback_url=callback_url
-        )
+        # Consumir créditos antes de processar
+        credit_result = await credits_service.consume_credits(user_id, 'cnis_analysis')
+        if not credit_result.success:
+             raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Créditos insuficientes para realizar esta análise."
+            )
+
+        try:
+            result = await self._call_n8n_cnis_workflow(
+                pdf_url=file_url, job_id=job_id, callback_url=callback_url
+            )
+        except Exception as e:
+            # Reembolsar em caso de erro no processamento
+            await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_cnis_analysis_error")
+            raise e
+
         markdown = (result.get("markdown") or "").strip()
         if not markdown:
             raise HTTPException(
@@ -749,9 +764,23 @@ class AiService:
                 cached.update(stored)
             return cached
 
-        result = await self._call_n8n_process_summary_workflow(
-            pdf_url=file_url, job_id=job_id, callback_url=callback_url
-        )
+        # Consumir créditos antes de processar
+        credit_result = await credits_service.consume_credits(user_id, 'process_summary')
+        if not credit_result.success:
+             raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Créditos insuficientes para realizar este resumo."
+            )
+
+        try:
+            result = await self._call_n8n_process_summary_workflow(
+                pdf_url=file_url, job_id=job_id, callback_url=callback_url
+            )
+        except Exception as e:
+            # Reembolsar em caso de erro no processamento
+            await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_process_summary_error")
+            raise e
+
         markdown = (result.get("markdown") or "").strip()
         if not markdown:
             raise HTTPException(
