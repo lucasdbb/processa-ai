@@ -27,6 +27,7 @@ import { useCalculators } from '@/features/calculators/context'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { CreditBalance } from './credit-balance'
 
 interface NavItem {
   name: string

@@ -18,6 +18,7 @@ const ROUTE_LABELS: Record<string, string> = {
   documentos: "Documentos",
   materiais: "Materiais",
   configuracoes: "Configurações",
+  creditos: "Créditos",
   ajuda: "Ajuda",
   novo: "Novo",
   editar: "Editar",

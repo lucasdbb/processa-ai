@@ -26,8 +26,11 @@ from src.features.ai.schemas import (
     JobProgressCallback,
     JobStatusResponse,
     ProcessSummaryRequest,
+    ChatRequest,
+    ChatResponse,
 )
 from src.features.ai.service import AiService
+from src.core.auth import get_user_id
 
 router = APIRouter()
 
@@ -510,6 +513,41 @@ async def get_ai_job(
         result=(current.get("result") if isinstance(current.get("result"), dict) else None),
         error=(str(current.get("error")) if current.get("error") else None),
     )
+
+
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def chat_message(
+    data: ChatRequest,
+    user_id: str = Depends(get_user_id),
+    _internal=Depends(require_internal_auth),
+):
+    """Envia mensagem para o chat jurídico."""
+    if not data.message.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mensagem obrigatória")
+
+    service = AiService()
+    try:
+        result = await service.chat(
+            message=data.message,
+            user_id=user_id,
+            client_id=data.client_id,
+        )
+        return ChatResponse(
+            response=result["response"],
+            credits_consumed=result["credits_consumed"]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Erro no chat")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
 @router.post(

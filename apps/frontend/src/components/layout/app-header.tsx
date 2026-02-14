@@ -230,7 +230,13 @@ export function AppHeader() {
                   </div>
                 </div>
 
-                <div className="px-4 pb-4">
+                <div className="px-4 pb-4 space-y-2">
+                  <Link
+                    to="/app/creditos"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-sm font-semibold py-2.5 transition-colors"
+                  >
+                    Ver Histórico Completo
+                  </Link>
                   <Link
                     to="/planos"
                     className="flex items-center justify-center gap-2 rounded-lg bg-foreground text-background text-sm font-semibold py-2.5 hover:opacity-90 transition-opacity"

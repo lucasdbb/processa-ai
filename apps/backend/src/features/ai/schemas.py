@@ -103,3 +103,13 @@ class AiToolsListResponse(BaseModel):
     """Lista de ferramentas de IA disponíveis."""
 
     tools: list[AiToolResponse]
+
+
+class ChatRequest(BaseModel):
+    message: str
+    client_id: str | None = None
+
+
+class ChatResponse(BaseModel):
+    response: str
+    credits_consumed: int

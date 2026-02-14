@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Calculator, ArrowRight, Loader2 } from 'lucide-react'
+import { Calculator, ArrowRight, Loader2, Coins } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCalculators } from '@/features/calculators/context'
+import { useCreditsStore } from '@/stores/credits-store'
 import { ClientSelector } from '@/components/forms/client-selector'
 import type { LucideIcon } from 'lucide-react'
 
@@ -71,6 +72,11 @@ interface CalculatorConfig {
 export default function CalculadorasHubPage() {
   const { calculatorId } = useParams<{ calculatorId?: string }>()
   const { calculators: calculatorsFromContext } = useCalculators()
+  const { credits, fetchCredits, costs, fetchCosts } = useCreditsStore()
+
+  useEffect(() => {
+    fetchCosts()
+  }, [fetchCosts])
 
   // Build calculators array from context
   const calculators = useMemo<CalculatorConfig[]>(() => {
@@ -90,6 +96,21 @@ export default function CalculadorasHubPage() {
     if (calculatorId === 'rescisao' || calculatorId === 'aposentadoria') return calculatorId
     return null
   }, [calculatorId])
+
+  const costDisplay = useMemo(() => {
+    if (!selectedCalculator) return null
+    
+    let featureKey = ''
+    if (selectedCalculator === 'rescisao') featureKey = 'calculator_rescisao'
+    else if (selectedCalculator === 'aposentadoria') featureKey = 'calculator_aposentadoria'
+    
+    const costItem = costs.find(c => c.feature_key === featureKey)
+    if (costItem) return `${costItem.cost} créditos`
+    
+    // Fallback defaults
+    if (selectedCalculator === 'rescisao') return '2 créditos'
+    return 'Grátis (Beta)'
+  }, [selectedCalculator, costs])
 
   const current = useMemo(() => {
     if (!selectedCalculator) return null
@@ -132,6 +153,13 @@ export default function CalculadorasHubPage() {
     if (!user?.id) {
       toast.error('Usuário não autenticado')
       return
+    }
+
+    // Check credits
+    await fetchCredits()
+    if (credits && credits.total_available < 10) { // Assuming 10 for calculator
+       toast.error('Créditos insuficientes. Recarregue para continuar.')
+       return
     }
 
     setIsCalculating(true)
@@ -184,39 +212,81 @@ export default function CalculadorasHubPage() {
           total: data.detalhes.total,
         },
       })
+      
+      // Update credits
+      fetchCredits()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao calcular rescisão')
     } finally {
       setIsCalculating(false)
     }
-  }, [formData, selectedClientId, user])
+  }, [formData, selectedClientId, user, credits, fetchCredits])
 
-  const calcularAposentadoria = useCallback(() => {
-    const idade = parseInt(formData.idade) || 0
-    const tempoContrib = parseInt(formData.tempoContribuicao) || 0
-    const salario = parseFloat(formData.salarioContribuicao) || 0
+  const calcularAposentadoria = useCallback(async () => {
+    if (!user?.id) {
+      toast.error('Usuário não autenticado')
+      return
+    }
 
-    const idadeMinima = formData.sexo === 'masculino' ? 65 : 62
-    const tempoMinimoContrib = 15
+    // Check credits
+    await fetchCredits()
+    if (credits && credits.total_available < 2) { // Assuming 2 for aposentadoria
+       toast.error('Créditos insuficientes. Recarregue para continuar.')
+       return
+    }
 
-    const podeAposentar = idade >= idadeMinima && tempoContrib >= tempoMinimoContrib
-    const anosRestantes = Math.max(0, idadeMinima - idade)
-    const tempoRestante = Math.max(0, tempoMinimoContrib - tempoContrib)
+    setIsCalculating(true)
+    try {
+      const res = await fetchWithCredentials(`${API_URL}/calculators/previdencia/aposentadoria`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          ...(selectedClientId && { client_id: selectedClientId }),
+          sexo: formData.sexo,
+          tipo_aposentadoria: formData.tipoAposentadoria,
+          idade: parseInt(formData.idade) || 0,
+          tempo_contribuicao: parseInt(formData.tempoContribuicao) || 0,
+          salario_contribuicao: parseFloat(formData.salarioContribuicao) || 0,
+        }),
+      })
 
-    const beneficio = podeAposentar ? salario * 0.6 + (tempoContrib - 15) * 0.02 * salario : 0
+      if (!res.ok) {
+        const error = await res.json().catch(() => null)
+        throw new Error((error as { detail?: string } | null)?.detail || 'Erro ao calcular aposentadoria')
+      }
 
-    setResultado({
-      tipo: 'aposentadoria',
-      detalhes: {
-        podeAposentar,
-        anosRestantes,
-        tempoRestante,
-        beneficio,
-        idadeMinima,
-        tempoMinimoContrib,
-      },
-    })
-  }, [formData])
+      const data = await res.json() as {
+        detalhes: {
+          pode_aposentar: boolean
+          anos_restantes: number
+          tempo_restante: number
+          beneficio: number
+          idade_minima: number
+          tempo_minimo_contrib: number
+        }
+      }
+
+      setResultado({
+        tipo: 'aposentadoria',
+        detalhes: {
+          podeAposentar: data.detalhes.pode_aposentar,
+          anosRestantes: data.detalhes.anos_restantes,
+          tempoRestante: data.detalhes.tempo_restante,
+          beneficio: data.detalhes.beneficio,
+          idadeMinima: data.detalhes.idade_minima,
+          tempoMinimoContrib: data.detalhes.tempo_minimo_contrib,
+        },
+      })
+      
+      // Update credits
+      fetchCredits()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao calcular aposentadoria')
+    } finally {
+      setIsCalculating(false)
+    }
+  }, [formData, selectedClientId, user, credits, fetchCredits])
 
   const handleCalculate = useCallback(async () => {
     setResultado(null)
@@ -252,7 +322,13 @@ export default function CalculadorasHubPage() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{current.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-foreground">{current.name}</h1>
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs font-medium text-yellow-600 dark:text-yellow-500">
+                <Coins className="w-3.5 h-3.5" />
+                <span>{costDisplay}</span>
+              </div>
+            </div>
             <p className="text-muted-foreground mt-1">{current.description}</p>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
@@ -262,12 +338,6 @@ export default function CalculadorasHubPage() {
               className="w-64"
               label="Cliente"
             />
-            <Link
-              to="/app/calculadoras"
-              className="inline-flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              Ver todas
-            </Link>
           </div>
         </div>
 

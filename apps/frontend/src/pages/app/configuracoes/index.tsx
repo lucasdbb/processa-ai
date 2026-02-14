@@ -13,6 +13,7 @@ import {
 import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '@/features/auth/services/auth-service'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useCreditsStore } from '@/stores/credits-store'
 import { useCalendarSettingsStore, type CalendarColorScheme } from '@/stores/calendar-settings-store'
 import { billingService, type SubscriptionStatus } from '@/services/billing-service'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -23,6 +24,7 @@ export default function ConfiguracoesPage() {
   const setUser = useAuthStore((state) => state.setUser)
   const { logout } = useAuthStore()
   const { resolvedTheme, setTheme } = useTheme()
+  const { credits, fetchCredits, isLoading: loadingCredits } = useCreditsStore()
 
   // Profile dropdown state
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -65,6 +67,7 @@ export default function ConfiguracoesPage() {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone ? phoneMask(user.phone) : '',
+    cpf: user?.cpf ? user.cpf : '',
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -116,19 +119,16 @@ export default function ConfiguracoesPage() {
     },
   ]
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const { name, value } = e.target
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
 
-      let processedValue = value
-      if (name === 'phone') {
-        processedValue = phoneMask(value)
-      }
+    let processedValue = value
+    if (name === 'phone') {
+      processedValue = phoneMask(value)
+    }
 
-      setFormData((prev) => ({ ...prev, [name]: processedValue }))
-    },
-    []
-  )
+    setFormData((prev) => ({ ...prev, [name]: processedValue }))
+  }
 
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -164,6 +164,7 @@ export default function ConfiguracoesPage() {
         const updateData = {
           name: formData.name,
           phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
+          cpf: formData.cpf,
           newsletter_opt_in: newsletterCheckboxRef.current?.checked || false,
           avatar_url: avatarPreview || undefined,
         }
@@ -189,6 +190,7 @@ export default function ConfiguracoesPage() {
     setFormData({
       name: user?.name || '',
       phone: user?.phone ? phoneMask(user.phone) : '',
+      cpf: user?.cpf ? user.cpf : '',
     })
     setAvatarPreview(null)
     if (newsletterCheckboxRef.current) {
@@ -196,20 +198,25 @@ export default function ConfiguracoesPage() {
     }
   }, [user])
 
-  // Load subscription data
+  // Load subscription and credits data
   useEffect(() => {
-    if (isBillingOpen && !subscription) {
-      setLoadingBilling(true)
-      billingService
-        .getSubscription()
-        .then(setSubscription)
-        .catch((error) => {
-          console.error('Error loading subscription:', error)
-          toast.error('Erro ao carregar informações da assinatura')
-        })
-        .finally(() => setLoadingBilling(false))
+    if (isBillingOpen) {
+      if (!subscription) {
+        setLoadingBilling(true)
+        billingService
+          .getSubscription()
+          .then(setSubscription)
+          .catch((error) => {
+            console.error('Error loading subscription:', error)
+            toast.error('Erro ao carregar informações da assinatura')
+          })
+          .finally(() => setLoadingBilling(false))
+      }
+      
+      // Load credits
+      fetchCredits()
     }
-  }, [isBillingOpen, subscription])
+  }, [isBillingOpen, subscription, fetchCredits])
 
   const handleOpenPortal = async () => {
     setOpeningPortal(true)
@@ -472,6 +479,28 @@ export default function ConfiguracoesPage() {
                           : formData.phone && isValidPhone(formData.phone)
                             ? 'border-green-500 focus:ring-green-500 bg-background'
                             : 'border-input focus:ring-primary bg-background'
+                    )}
+                  />
+                </div>
+
+                {/* CPF */}
+                <div>
+                  <label htmlFor="cpf" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                    CPF
+                  </label>
+                  <input
+                    type="text"
+                    id="cpf"
+                    name="cpf"
+                    value={formData.cpf}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    placeholder="000.000.000-00"
+                    className={cn(
+                      'w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all',
+                      !isEditing
+                        ? 'bg-muted text-muted-foreground border-input cursor-not-allowed'
+                        : 'border-input focus:ring-primary bg-background'
                     )}
                   />
                 </div>
@@ -910,15 +939,27 @@ export default function ConfiguracoesPage() {
                         </div>
                       ) : subscription ? (
                         <>
-                          {/* Status da Assinatura */}
-                          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                            <div className="flex items-center justify-between">
+                          {/* Status da Assinatura e Créditos */}
+                          <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between border-b border-border/50 pb-3">
                               <span className="text-sm font-medium text-muted-foreground">Status</span>
                               <span className={cn('text-sm font-semibold', statusInfo?.color)}>
                                 {statusInfo?.text}
                               </span>
                             </div>
                             
+                            {/* Saldo de Créditos */}
+                            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                               <span className="text-sm font-medium text-muted-foreground">Créditos Disponíveis</span>
+                               <span className="text-sm font-bold text-foreground">
+                                 {loadingCredits ? (
+                                   <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
+                                 ) : (
+                                   credits?.total_available || 0
+                                 )}
+                               </span>
+                            </div>
+
                             {subscription.status === 'active' && subscription.current_period_end && (
                               <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium text-muted-foreground">
@@ -937,8 +978,15 @@ export default function ConfiguracoesPage() {
                             )}
                           </div>
 
-                          {/* Botões de Ação */}
                           <div className="space-y-2">
+                            <button
+                              onClick={() => navigate('/app/creditos')}
+                              className="w-full px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              Comprar Créditos
+                            </button>
+
                             <button
                               onClick={handleOpenPortal}
                               disabled={openingPortal}
@@ -975,12 +1023,21 @@ export default function ConfiguracoesPage() {
                           <p className="text-sm text-muted-foreground">
                             Você ainda não possui uma assinatura ativa.
                           </p>
-                          <button
-                            onClick={() => navigate('/planos')}
-                            className="px-6 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
-                          >
-                            Ver Planos
-                          </button>
+                          <div className="flex flex-col gap-2">
+                             <button
+                              onClick={() => navigate('/app/creditos')}
+                              className="w-full px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              Comprar Créditos Avulsos
+                            </button>
+                            <button
+                              onClick={() => navigate('/planos')}
+                              className="px-6 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                            >
+                              Ver Planos de Assinatura
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

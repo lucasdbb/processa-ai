@@ -26,6 +26,10 @@ import {
   ArrowUpDown,
   Newspaper,
   Ban,
+  Coins,
+  BarChart,
+  PieChart,
+  ArrowUpRight,
 } from 'lucide-react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Cross2Icon } from '@radix-ui/react-icons'
@@ -34,7 +38,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +59,7 @@ import { cn, formatDate } from '@/lib/utils'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { toast } from 'sonner'
 import { feedbackService, type FeedbackResponse } from '@/services/feedback-service'
+import { creditsService, type AdminCreditsMetrics } from '@/services/credits-service'
 
 type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks'
 
@@ -210,6 +215,9 @@ export default function AdminPage() {
   const [isUpdatingFeedback, setIsUpdatingFeedback] = useState(false)
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackResponse['status']>('new')
 
+  const [creditStats, setCreditStats] = useState<AdminCreditsMetrics | null>(null)
+  const [isCreditStatsLoading, setIsCreditStatsLoading] = useState(false)
+
   useEffect(() => {
     if (!authLoading && !isAdmin && !isAuthor) {
       navigate('/')
@@ -352,6 +360,20 @@ export default function AdminPage() {
     }
   }, [feedbackStatusFilter, feedbackSortOrder])
 
+  const loadCreditStats = useCallback(async () => {
+    setIsCreditStatsLoading(true)
+    try {
+      const stats = await creditsService.getAdminStats()
+      setCreditStats(stats)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao carregar estatísticas de créditos'
+      // Não setar erro global para não bloquear outras abas
+      toast.error(message)
+    } finally {
+      setIsCreditStatsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (authLoading) return
     if (!isAdmin && !isAuthor) return
@@ -360,8 +382,9 @@ export default function AdminPage() {
       void loadUsers()
       void loadMaterials()
       void loadFeedbacks()
+      void loadCreditStats()
     }
-  }, [authLoading, isAdmin, isAuthor, loadMaterials, loadPosts, loadUsers, loadFeedbacks])
+  }, [authLoading, isAdmin, isAuthor, loadMaterials, loadPosts, loadUsers, loadFeedbacks, loadCreditStats])
 
   const handleArchivePost = async (postId: string) => {
     if (!isAdmin) {
@@ -658,10 +681,11 @@ export default function AdminPage() {
     if (isAdmin) {
       void loadUsers()
       void loadMaterials()
+      void loadCreditStats()
     }
   }
 
-  const isReloading = isPostsLoading || (isAdmin && (isUsersLoading || isMaterialsLoading))
+  const isReloading = isPostsLoading || (isAdmin && (isUsersLoading || isMaterialsLoading || isCreditStatsLoading))
 
   return (
     <div className="min-h-screen bg-muted/40 flex font-sans text-foreground">
@@ -833,6 +857,126 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-8">
+                {isAdmin ? (
+                  <section>
+                    <h3 className="text-lg font-semibold text-muted-foreground mb-4">Métricas de Créditos</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                            <Coins className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <span className="text-xs font-medium text-muted-foreground">Últimos 30 dias</span>
+                        </div>
+                        <p className="text-3xl font-bold text-foreground">
+                          {creditStats?.total_consumed_last_30d.toLocaleString('pt-BR') || 0}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">Créditos consumidos</p>
+                      </div>
+
+                      <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                            <BarChart className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <span className="text-xs font-medium text-muted-foreground">Total</span>
+                        </div>
+                        <p className="text-3xl font-bold text-foreground">
+                          {creditStats?.total_consumed_all_time.toLocaleString('pt-BR') || 0}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">Créditos consumidos (Histórico)</p>
+                      </div>
+
+                      <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                            <ArrowUpRight className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <span className="text-xs font-medium text-muted-foreground">Estimado</span>
+                        </div>
+                        <p className="text-3xl font-bold text-foreground">
+                          {(creditStats?.total_revenue_cents || 0) / 100 > 0 
+                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((creditStats?.total_revenue_cents || 0) / 100)
+                            : 'R$ 0,00'}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">Receita de Créditos Avulsos</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                       <Card className="overflow-hidden shadow-sm">
+                        <CardHeader className="border-b border-border">
+                          <CardTitle className="text-base font-semibold">Consumo por Funcionalidade</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                          {creditStats?.usage_by_feature && creditStats.usage_by_feature.length > 0 ? (
+                            <div className="divide-y divide-border">
+                              {creditStats.usage_by_feature
+                                .sort((a, b) => b.total_consumed - a.total_consumed)
+                                .map((item) => (
+                                <div key={item.feature_key} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                                      <PieChart className="w-4 h-4 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-sm text-foreground">
+                                        {item.feature_key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">{item.count} execuções</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-bold text-sm text-foreground">{item.total_consumed.toLocaleString('pt-BR')}</p>
+                                    <p className="text-xs text-muted-foreground">créditos</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center text-muted-foreground text-sm">Nenhum dado disponível</div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card className="overflow-hidden shadow-sm">
+                        <CardHeader className="border-b border-border">
+                          <CardTitle className="text-base font-semibold">Top Consumidores</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                          {creditStats?.top_consumers && creditStats.top_consumers.length > 0 ? (
+                            <div className="divide-y divide-border">
+                              {creditStats.top_consumers.map((consumer, index) => (
+                                <div key={consumer.user_id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                                      {index + 1}
+                                    </span>
+                                    <div>
+                                      <p className="font-medium text-sm text-foreground max-w-[150px] truncate" title={consumer.name || ''}>
+                                        {consumer.name || 'Usuário Sem Nome'}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground max-w-[150px] truncate" title={consumer.email || ''}>
+                                        {consumer.email || 'Sem email'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-bold text-sm text-foreground">{consumer.total_consumed.toLocaleString('pt-BR')}</p>
+                                    <p className="text-xs text-muted-foreground">créditos</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center text-muted-foreground text-sm">Nenhum dado disponível</div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </section>
+                ) : null}
+
                 {isAdmin ? (
                   <section>
                     <h3 className="text-lg font-semibold text-muted-foreground mb-4">Métricas de Usuários</h3>

@@ -1,6 +1,6 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Brain, Info } from 'lucide-react'
+import { Brain, Info, Coins } from 'lucide-react'
 import { toast } from 'sonner'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -8,6 +8,7 @@ import { normalizeMarkdown } from '@/lib/utils'
 
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useAiTools } from '@/features/ai/context'
+import { useCreditsStore } from '@/stores/credits-store'
 import type { ChatMessage } from '@/features/ai/types'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -17,8 +18,14 @@ export default function IAHubPage() {
   const { toolId } = useParams<{ toolId?: string }>()
   const { isLoading: isAuthLoading } = useUser()
   const { tools: aiTools, isLoading: isLoadingTools } = useAiTools()
+  const { credits, fetchCredits, costs, fetchCosts } = useCreditsStore()
 
   const allTools = useMemo(() => [...aiTools].sort((a, b) => a.order - b.order), [aiTools])
+
+  // Load costs
+  useEffect(() => {
+    fetchCosts()
+  }, [fetchCosts])
 
   // toolId is the URL slug, which matches the database 'key' column exactly
   const resolvedToolSlug = toolId || null
@@ -52,6 +59,29 @@ export default function IAHubPage() {
   }, [activeSlug, allTools])
 
   const isCnisAnalysis = currentTool?.variant === 'cnis'
+  
+  const costDisplay = useMemo(() => {
+    if (!currentTool) return null
+    
+    // Map tool variant/slug to feature key
+    // TODO: Improve mapping or add feature_key to tool definition
+    let featureKey = ''
+    if (currentTool.variant === 'chat') featureKey = 'ai_chat'
+    else if (currentTool.variant === 'cnis') featureKey = 'cnis_analysis'
+    else if (activeSlug === 'process_summary') featureKey = 'process_summary'
+    else featureKey = 'ai_chat' // Default fallback
+
+    const costItem = costs.find(c => c.feature_key === featureKey)
+    if (costItem) return `${costItem.cost} créditos`
+
+    // Fallbacks
+    if (featureKey === 'ai_chat') return '1 crédito'
+    if (featureKey === 'cnis_analysis') return '5 créditos'
+    if (featureKey === 'process_summary') return '5 créditos'
+    
+    return null
+  }, [currentTool, costs, activeSlug])
+
   const markdownToRender = normalizeMarkdown(generatedText)
 
   const previewHtml = useMemo(() => {
@@ -158,6 +188,14 @@ export default function IAHubPage() {
 
     try {
       if (isCnisAnalysis) {
+        // Check credits
+        await fetchCredits()
+        if (credits && credits.total_available < 10) { // Assuming 10 credits for CNIS
+           toast.error('Créditos insuficientes. Recarregue para continuar.')
+           setIsGenerating(false)
+           return
+        }
+
         // Get user from Supabase session
         const supabase = (await import('@/lib/supabase/client')).createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -229,6 +267,9 @@ export default function IAHubPage() {
           }
 
           if (statusData.status === 'completed') {
+            // Update credits after success
+            fetchCredits()
+
             // Job completed - get the result
             if (statusData.result?.document_id) {
               // Gerar nova URL assinada via endpoint de download
@@ -272,6 +313,17 @@ export default function IAHubPage() {
         throw new Error('Tempo esgotado. Tente novamente.')
       }
 
+      // Process Summary or other tools
+      // Check credits for process summary
+      if (activeSlug === 'process_summary') {
+        await fetchCredits()
+        if (credits && credits.total_available < 10) {
+           toast.error('Créditos insuficientes. Recarregue para continuar.')
+           setIsGenerating(false)
+           return
+        }
+      }
+
       const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
         method: 'POST',
         headers: {
@@ -297,12 +349,15 @@ export default function IAHubPage() {
       const data = (await response.json()) as { response?: string }
       setGeneratedText(data.response || '')
       toast.success('Documento gerado com sucesso!')
+      
+      // Update credits
+      fetchCredits()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar documento. Tente novamente.')
     } finally {
       setIsGenerating(false)
     }
-  }, [activeSlug, cnisFile, currentTool, isCnisAnalysis, prompt, selectedClientId, setCnisPdfUrl])
+  }, [activeSlug, cnisFile, currentTool, isCnisAnalysis, prompt, selectedClientId, setCnisPdfUrl, credits, fetchCredits])
 
   const handleDownload = useCallback(() => {
     if (isCnisAnalysis) {
@@ -339,6 +394,12 @@ export default function IAHubPage() {
   const sendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || isChatLoading) return
 
+    // Check credits for chat
+    if (credits && credits.total_available < 1) {
+       toast.error('Créditos insuficientes. Recarregue para continuar.')
+       return
+    }
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -367,6 +428,9 @@ export default function IAHubPage() {
         content: data.response || 'Desculpe, não consegui processar sua mensagem.',
       }
       setChatMessages((prev) => [...prev, assistantMessage])
+      
+      // Update credits
+      fetchCredits()
     } catch {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -377,7 +441,7 @@ export default function IAHubPage() {
     } finally {
       setIsChatLoading(false)
     }
-  }, [chatInput, isChatLoading])
+  }, [chatInput, isChatLoading, credits, fetchCredits])
 
   if (isAuthLoading || isLoadingTools) {
     return <LoadingSpinner fullScreen size="lg" />
@@ -453,7 +517,15 @@ export default function IAHubPage() {
               <Brain className="h-7 w-7 text-white" strokeWidth={1.5} />
             </div>
             <div>
-              {currentTool?.name ? <h2 className="text-xl font-bold text-foreground tracking-tight">{currentTool.name}</h2> : null}
+              <div className="flex items-center gap-3">
+                {currentTool?.name ? <h2 className="text-xl font-bold text-foreground tracking-tight">{currentTool.name}</h2> : null}
+                {costDisplay && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs font-medium text-yellow-600 dark:text-yellow-500">
+                    <Coins className="w-3.5 h-3.5" />
+                    <span>{costDisplay}</span>
+                  </div>
+                )}
+              </div>
               {currentTool?.description ? <p className="text-muted-foreground mt-1">{currentTool.description}</p> : null}
             </div>
           </div>

@@ -19,7 +19,10 @@ from src.features.billing.credits.schemas import (
     CreditPackage,
     PurchaseCheckoutResponse,
     CreditTransaction,
-    CreditHistoryResponse
+    CreditHistoryResponse,
+    AdminCreditsMetrics,
+    AdminUsageByFeature,
+    AdminTopConsumer
 )
 
 class CreditsService:
@@ -315,6 +318,39 @@ class CreditsService:
             total=total,
             page=page,
             page_size=page_size
+        )
+
+    async def get_admin_metrics(self) -> AdminCreditsMetrics:
+        """Busca métricas administrativas de créditos."""
+        
+        # 1. Usage Stats via RPC
+        stats_res = self.supabase.rpc("get_credits_usage_stats", {"days_limit": 30}).execute()
+        stats = stats_res.data[0] if stats_res.data else {}
+        
+        # 2. Top Consumers via RPC
+        top_res = self.supabase.rpc("get_top_consumers", {"limit_count": 10}).execute()
+        top_consumers = top_res.data or []
+        
+        # 3. Revenue Estimado (Credits Sold)
+        # Soma transações de compra (grant + purchased)
+        revenue_res = self.supabase.table("credit_transactions")\
+            .select("amount")\
+            .eq("transaction_type", "grant")\
+            .eq("credit_type", "purchased")\
+            .execute()
+            
+        total_credits_sold = sum(item['amount'] for item in revenue_res.data) if revenue_res.data else 0
+        # Estimativa: média R$0,80 por crédito = 80 centavos
+        estimated_revenue = int(total_credits_sold * 80)
+        
+        usage_data = stats.get("usage_by_feature", []) or []
+        
+        return AdminCreditsMetrics(
+            total_consumed_all_time=stats.get("total_consumed_all_time", 0),
+            total_consumed_last_30d=stats.get("total_consumed_period", 0),
+            total_revenue_cents=estimated_revenue,
+            usage_by_feature=[AdminUsageByFeature(**item) for item in usage_data],
+            top_consumers=[AdminTopConsumer(**item) for item in top_consumers]
         )
 
 credits_service = CreditsService()

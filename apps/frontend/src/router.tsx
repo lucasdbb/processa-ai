@@ -4,6 +4,7 @@ import { RootLayout } from '@/components/layout/root-layout'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AuthGuard } from '@/components/auth/auth-guard'
 import { AdminGuard } from '@/components/auth/admin-guard'
+import { RequirePlan } from '@/components/auth/require-plan'
 
 // Public pages
 import HomePage from '@/pages/home'
@@ -28,6 +29,7 @@ import CalendarioPage from '@/pages/app/calendario'
 import DocumentosPage from '@/pages/app/documentos'
 import NotificacoesPage from '@/pages/app/notificacoes'
 import ConfiguracoesPage from '@/pages/app/configuracoes'
+import CreditosPage from '@/pages/app/creditos'
 import AjudaPage from '@/pages/app/ajuda'
 
 // App pages (lazy loading - less frequently accessed)
@@ -115,20 +117,25 @@ export const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
-        path: 'clientes',
-        element: <ClientesPage />,
-      },
-      {
-        path: 'clientes/:id',
-        element: <ClienteDetalhePage />,
-      },
-      {
-        path: 'processos',
-        element: <ProcessosPage />,
-      },
-      {
-        path: 'processos/:id',
-        element: <ProcessoDetalhePage />,
+        element: <RequirePlan />,
+        children: [
+          {
+            path: 'clientes',
+            element: <ClientesPage />,
+          },
+          {
+            path: 'clientes/:id',
+            element: <ClienteDetalhePage />,
+          },
+          {
+            path: 'processos',
+            element: <ProcessosPage />,
+          },
+          {
+            path: 'processos/:id',
+            element: <ProcessoDetalhePage />,
+          },
+        ]
       },
       {
         path: 'servicos',
@@ -195,6 +202,10 @@ export const router = createBrowserRouter([
       {
         path: 'configuracoes',
         element: <ConfiguracoesPage />,
+      },
+      {
+        path: 'creditos',
+        element: <CreditosPage />,
       },
       {
         path: 'ajuda',

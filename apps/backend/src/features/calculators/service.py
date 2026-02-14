@@ -348,3 +348,119 @@ class CalculatorsService:
             endpoint="trabalhista/rescisao-trabalhista",
             expires_in=expires_in,
         )
+
+    def calculate_aposentadoria(
+        self,
+        *,
+        sexo: str,
+        tipo_aposentadoria: str,
+        idade: int,
+        tempo_contribuicao: int,
+        salario_contribuicao: float,
+    ) -> dict:
+        # Lógica simplificada (regra geral 65/62 anos, 15 anos contribuição)
+        # TODO: Expandir com regras de transição reais
+        
+        idade_minima = 65 if sexo == "masculino" else 62
+        tempo_minimo_contrib = 15
+        
+        pode_aposentar = (idade >= idade_minima) and (tempo_contribuicao >= tempo_minimo_contrib)
+        
+        anos_restantes = max(0, idade_minima - idade)
+        tempo_restante = max(0, tempo_minimo_contrib - tempo_contribuicao)
+        
+        # Cálculo simplificado do benefício: 60% + 2% por ano acima de 15/20 anos
+        # Baseado na regra pós-EC 103/2019
+        coeficiente = 0.60
+        anos_excedentes = max(0, tempo_contribuicao - 15) # Simplificação: usando 15 para ambos
+        if anos_excedentes > 0:
+            coeficiente += (anos_excedentes * 0.02)
+            
+        # Limita a 100% (ou mais se permitir >100%, mas regra geral teto é 100% da média, podendo passar em casos específicos)
+        # Vamos deixar passar de 100% pois a regra permite
+        
+        beneficio = salario_contribuicao * coeficiente if pode_aposentar else 0.0
+        
+        return {
+            "detalhes": {
+                "pode_aposentar": pode_aposentar,
+                "anos_restantes": anos_restantes,
+                "tempo_restante": tempo_restante,
+                "beneficio": beneficio,
+                "idade_minima": idade_minima,
+                "tempo_minimo_contrib": tempo_minimo_contrib,
+            },
+            "meta": {
+                "coeficiente_calculado": coeficiente
+            }
+        }
+
+    def _render_aposentadoria_markdown(self, *, input_payload: dict, output_payload: dict) -> str:
+        detalhes = (
+            output_payload.get("detalhes") if isinstance(output_payload, dict) else None
+        ) or {}
+
+        def money(v: object) -> str:
+            try:
+                return f"R$ {float(v):.2f}"
+            except Exception:
+                return "-"
+
+        lines: list[str] = []
+        lines.append("# Simulação de Aposentadoria")
+        lines.append("")
+        lines.append("## Parâmetros")
+        lines.append("")
+        lines.append(f"- Sexo: {input_payload.get('sexo', '').capitalize()}")
+        lines.append(f"- Idade atual: {input_payload.get('idade')} anos")
+        lines.append(f"- Tempo de contribuição: {input_payload.get('tempo_contribuicao')} anos")
+        lines.append(f"- Salário de contribuição: {money(input_payload.get('salario_contribuicao'))}")
+        lines.append("")
+        lines.append("## Resultado")
+        lines.append("")
+        
+        pode = detalhes.get('pode_aposentar')
+        status_text = "APROVADO - Requisitos atendidos" if pode else "PENDENTE - Requisitos não atendidos"
+        
+        lines.append(f"**Status: {status_text}**")
+        lines.append("")
+        
+        if pode:
+            lines.append(f"### Valor Estimado do Benefício: {money(detalhes.get('beneficio'))}")
+            lines.append("")
+            lines.append("> Nota: Este valor é uma estimativa baseada nas regras gerais. O valor real depende do cálculo da média de todos os salários de contribuição.")
+        else:
+            lines.append("### O que falta:")
+            lines.append("")
+            lines.append(f"- Idade mínima exigida: {detalhes.get('idade_minima')} anos (Faltam {detalhes.get('anos_restantes')} anos)")
+            lines.append(f"- Tempo de contribuição mínimo: {detalhes.get('tempo_minimo_contrib')} anos (Faltam {detalhes.get('tempo_restante')} anos)")
+            
+        lines.append("")
+        lines.append("---")
+        lines.append("Este relatório é uma simulação e não possui valor legal. Consulte um advogado previdenciário.")
+        
+        return "\n".join(lines)
+
+    async def export_aposentadoria_pdf(
+        self,
+        *,
+        input_payload: dict,
+        output_payload: dict,
+        user_id: str,
+        client_id: str | None,
+        calculation_id: str,
+        expires_in: int,
+    ) -> dict:
+        md = self._render_aposentadoria_markdown(
+            input_payload=input_payload,
+            output_payload=output_payload,
+        )
+        filename = f"simulacao-aposentadoria_{calculation_id}.pdf"
+        return await self.markdown_to_pdf_and_store(
+            markdown=md,
+            filename=filename,
+            user_id=user_id,
+            client_id=client_id,
+            endpoint="previdencia/aposentadoria",
+            expires_in=expires_in,
+        )

@@ -823,3 +823,88 @@ class AiService:
         content = self._markdown_to_pdf_bytes(markdown, title=title)
         response["content"] = content
         return response
+
+    async def _call_n8n_chat_workflow(
+        self,
+        *,
+        message: str,
+        user_id: str,
+        client_id: str | None = None,
+    ) -> dict:
+        webhook_url = f"{settings.N8N_BASE_URL}/webhook/{settings.N8N_CHAT_WORKFLOW_ID}"
+
+        auth = None
+        if settings.N8N_AUTH_USER and settings.N8N_AUTH_PASSWORD:
+            auth = (settings.N8N_AUTH_USER, settings.N8N_AUTH_PASSWORD)
+
+        payload = {
+            "message": message,
+            "user_id": user_id,
+            "client_id": client_id,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.N8N_TIMEOUT_S) as client:
+                resp = await client.post(
+                    webhook_url,
+                    json=payload,
+                    auth=auth,
+                )
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao aguardar resposta do chat",
+            )
+        except httpx.RequestError as e:
+            logger.error("Erro de conexão com n8n (chat)", exc_info=e)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro de conexão com o serviço de chat",
+            )
+
+        try:
+            data = resp.json()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Resposta inválida do serviço de chat",
+            )
+            
+        return data
+
+    async def chat(
+        self,
+        *,
+        message: str,
+        user_id: str,
+        client_id: str | None = None,
+    ) -> dict:
+        """Processa mensagem de chat jurídico."""
+        
+        # Consumir créditos (1 crédito por mensagem)
+        credit_result = await credits_service.consume_credits(user_id, 'chat_message')
+        if not credit_result.success:
+             raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Créditos insuficientes para enviar mensagem."
+            )
+
+        try:
+            result = await self._call_n8n_chat_workflow(
+                message=message, user_id=user_id, client_id=client_id
+            )
+            
+            # Se falhar no n8n, lançamos erro e reembolsamos?
+            # Se o n8n retornar erro explícito, sim.
+            if result.get("status") == "error":
+                 raise Exception(result.get("message", "Erro no chat"))
+                 
+            return {
+                "response": result.get("output", result.get("text", "")),
+                "credits_consumed": 1
+            }
+            
+        except Exception as e:
+            # Reembolsar em caso de erro
+            await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_chat_error")
+            raise e

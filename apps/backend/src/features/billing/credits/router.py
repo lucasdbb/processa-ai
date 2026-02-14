@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, Body, Query
 from typing import List
 
-from src.core.auth import get_user_id, verify_internal_token
+from src.core.auth import get_user_id, verify_internal_token, get_current_admin
 from src.features.billing.credits.service import credits_service
 from src.features.billing.credits.schemas import (
     CreditCheckResponse,
@@ -10,7 +10,8 @@ from src.features.billing.credits.schemas import (
     PurchaseCheckoutResponse,
     PurchaseCreditsRequest,
     CreditHistoryResponse,
-    ClaimWelcomeRequest
+    ClaimWelcomeRequest,
+    AdminCreditsMetrics
 )
 
 router = APIRouter(dependencies=[Depends(verify_internal_token)])
@@ -66,3 +67,11 @@ async def claim_welcome_credits(
     # Tenta pegar IP real se estiver atrás de proxy
     ip = request.headers.get("x-forwarded-for", request.client.host).split(",")[0].strip()
     return await credits_service.grant_welcome_credits(user_id, data.cpf, ip)
+
+
+@router.get("/admin/stats", response_model=AdminCreditsMetrics)
+async def get_admin_stats(
+    _admin = Depends(get_current_admin)
+):
+    """Retorna estatísticas administrativas de créditos."""
+    return await credits_service.get_admin_metrics()

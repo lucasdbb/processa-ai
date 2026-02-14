@@ -47,3 +47,22 @@ class CreditHistoryResponse(BaseModel):
 
 class ClaimWelcomeRequest(BaseModel):
     cpf: str
+
+# Admin Metrics Schemas
+class AdminUsageByFeature(BaseModel):
+    feature_key: str
+    total_consumed: int
+    count: int
+
+class AdminTopConsumer(BaseModel):
+    user_id: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    total_consumed: int
+
+class AdminCreditsMetrics(BaseModel):
+    total_consumed_all_time: int
+    total_consumed_last_30d: int
+    total_revenue_cents: int
+    usage_by_feature: List[AdminUsageByFeature]
+    top_consumers: List[AdminTopConsumer]

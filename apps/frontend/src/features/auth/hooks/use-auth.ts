@@ -126,6 +126,19 @@ export function useAuth() {
   const register = async (data: RegisterData) => {
     setLoading(true);
     try {
+      // Validação de email descartável (lista básica)
+      const disposableDomains = [
+        'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'throwawaymail.com',
+        'mailinator.com', 'yopmail.com', 'sharklasers.com', 'getnada.com',
+        'dispostable.com', 'tempr.email', 'temp-mail.org', 'temp-mail.ru',
+        'fake-email.com', 'email-fake.com', 'tempmail.net'
+      ];
+      
+      const emailDomain = data.email.split('@')[1]?.toLowerCase();
+      if (emailDomain && disposableDomains.some(d => emailDomain.includes(d))) {
+        throw new Error("Por favor, use um endereço de e-mail válido (não descartável).");
+      }
+
       const supabase = createClient();
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,

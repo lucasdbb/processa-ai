@@ -49,6 +49,37 @@ class RescisaoTrabalhistaResponse(BaseModel):
     pdf: PdfExport | None = None
 
 
+class AposentadoriaRequest(BaseModel):
+    user_id: str = Field(min_length=1)
+    client_id: str | None = None
+
+    sexo: str = Field(pattern="^(masculino|feminino)$")
+    tipo_aposentadoria: str = Field(default="tempo_contribuicao")
+    idade: int = Field(gt=0, le=150)
+    tempo_contribuicao: int = Field(ge=0, le=100)
+    salario_contribuicao: float = Field(ge=0)
+
+    export_pdf: bool = False
+    signed_url_expires_in: int = Field(default=3600, ge=60, le=60 * 60 * 24 * 7)
+
+
+class AposentadoriaDetalhes(BaseModel):
+    pode_aposentar: bool
+    anos_restantes: int
+    tempo_restante: int
+    beneficio: float
+    idade_minima: int
+    tempo_minimo_contrib: int
+
+
+class AposentadoriaResponse(BaseModel):
+    calculation_id: str
+    calculator_key: str
+    input: dict
+    detalhes: AposentadoriaDetalhes
+    pdf: PdfExport | None = None
+
+
 class CalculatorResponse(BaseModel):
     """Response para uma calculadora disponível."""
 

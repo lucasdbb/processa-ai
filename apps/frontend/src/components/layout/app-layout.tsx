@@ -13,6 +13,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { AiToolsProvider } from '@/features/ai/provider'
 import { CalculatorsProvider } from '@/features/calculators/provider'
+import { useBillingStore } from '@/stores/billing-store'
 
 function RouteLoadingBar() {
   const navigation = useNavigation()
@@ -39,13 +40,21 @@ function RouteLoadingBar() {
   )
 }
 
+import { WelcomeCreditsModal } from '@/components/onboarding/WelcomeCreditsModal'
+
 export function AppLayout() {
   const location = useLocation()
   const { isExpanded } = useSidebarStore()
   const { toggle: toggleCommandPalette } = useCommandPaletteStore()
+  const { fetchSubscription } = useBillingStore()
 
   // Initialize auth
   useAuth()
+
+  // Initialize billing
+  useEffect(() => {
+    fetchSubscription()
+  }, [fetchSubscription])
 
   // Keyboard shortcut for command palette
   useEffect(() => {
@@ -86,6 +95,7 @@ export function AppLayout() {
 
           <BottomNav />
           <CommandPalette />
+          <WelcomeCreditsModal />
         </div>
       </CalculatorsProvider>
     </AiToolsProvider>

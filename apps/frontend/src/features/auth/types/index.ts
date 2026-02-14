@@ -6,6 +6,8 @@ export interface User {
   name?: string;
   avatar_url?: string;
   phone?: string;
+  cpf?: string;
+  welcome_credits_claimed?: boolean;
   newsletter_opt_in?: boolean;
   role: UserRole;
   status: 'active' | 'suspended' | 'deleted';
@@ -30,6 +32,7 @@ export interface UpdateProfileData {
   email?: string;
   avatar_url?: string;
   phone?: string;
+  cpf?: string;
   newsletter_opt_in?: boolean;
 }
 
