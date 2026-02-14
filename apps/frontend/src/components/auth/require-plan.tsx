@@ -1,10 +1,10 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { useBillingStore } from '@/stores/billing-store'
 import { Loader2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function RequirePlan() {
-  const { subscription, isLoading, isPro } = useBillingStore()
+  const { isLoading, isPro } = useBillingStore()
 
   if (isLoading) {
     return (

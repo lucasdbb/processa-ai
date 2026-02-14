@@ -11,7 +11,6 @@ import {
   isValidPhone,
   cpfMask,
   isValidCpf,
-  removeDocumentMask,
 } from '@/lib/masks'
 import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '@/features/auth/services/auth-service'
