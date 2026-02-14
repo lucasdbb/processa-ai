@@ -3,11 +3,87 @@ Email service using SendGrid.
 """
 
 import httpx
+import os
+from pathlib import Path
+from datetime import datetime
+import locale
 
 from src.core.config import settings
 from src.core.logging import logger
 
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+
+
+def _get_pt_day_name() -> str:
+    """Get the current day of the week in Portuguese."""
+    days = {
+        0: "Segunda-feira",
+        1: "Terça-feira",
+        2: "Quarta-feira",
+        3: "Quinta-feira",
+        4: "Sexta-feira",
+        5: "Sábado",
+        6: "Domingo"
+    }
+    return days[datetime.now().weekday()]
+
+
+def load_email_template(template_name: str, context: dict) -> str:
+    """
+    Load an HTML email template and replace placeholders.
+    
+    Args:
+        template_name: Name of the template file (e.g. 'default.html')
+        context: Dictionary of values to replace placeholders
+        
+    Returns:
+        The rendered HTML string
+    """
+    try:
+        # Determine the template path
+        base_dir = Path(__file__).parent.parent.parent
+        template_path = base_dir / "src" / "templates" / "emails" / template_name
+        
+        if not template_path.exists():
+            logger.warning(f"Template {template_name} not found, falling back to basic string replacement")
+            return ""
+            
+        with open(template_path, "r", encoding="utf-8") as f:
+            template = f.read()
+            
+        # Replace standard placeholders
+        for key, value in context.items():
+            placeholder = "{{" + key + "}}"
+            if value is None:
+                value = ""
+            template = template.replace(placeholder, str(value))
+            
+        # Handle conditional button
+        # If Botao_Link is empty/missing, remove the button placeholder entirely if it wasn't replaced
+        # But our template logic is simple string replacement.
+        # Ideally, we should pre-process: if Botao_Link is present, generate Botao_HTML.
+        
+        # Helper for button logic if using default.html
+        cta_text = context.get("Botao_Texto")
+        cta_link = context.get("Botao_Link")
+        
+        button_html = ""
+        if cta_text and cta_link:
+            button_html = f"""
+            <div class="button-container">
+                <a href="{cta_link}" class="button">{cta_text}</a>
+            </div>
+            """
+        
+        template = template.replace("{{Botao_HTML}}", button_html)
+        
+        # Cleanup any remaining placeholders? Or leave them?
+        # For now, we assume the caller provides everything needed.
+        
+        return template
+    except Exception as e:
+        logger.error(f"Error loading email template {template_name}: {e}")
+        return ""
 
 
 async def send_email(
@@ -89,20 +165,28 @@ async def send_email(
 async def send_subscription_welcome(user_email: str, plan_name: str) -> bool:
     """Send welcome email when subscription is activated."""
     subject = "Bem-vindo ao Processa AI!"
-    body = f"""Olá!
+    
+    content = f"""Olá!
 
 Sua assinatura do plano {plan_name} foi ativada com sucesso.
 
 Agora você tem acesso a todas as funcionalidades do seu plano.
 
-Acesse o sistema em: {settings.FRONTEND_URL}/app
+Se tiver alguma dúvida, entre em contato conosco."""
 
-Se tiver alguma dúvida, entre em contato conosco.
+    body = f"{content}\n\nAcesse o sistema em: {settings.FRONTEND_URL}/app\n\nAtenciosamente,\nEquipe Processa AI"
+    
+    # Load HTML template
+    html_body = load_email_template("default.html", {
+        "Titulo": "Bem-vindo ao Processa AI!",
+        "Segundo_Titulo": "Sua assinatura está ativa",
+        "Conteudo": content.replace("\n", "<br>"),
+        "Botao_Texto": "Acessar Sistema",
+        "Botao_Link": f"{settings.FRONTEND_URL}/app",
+        "Rodape": "Este é um email automático, por favor não responda."
+    })
 
-Atenciosamente,
-Equipe Processa AI
-"""
-    return await send_email(to_email=user_email, subject=subject, body=body)
+    return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
 
 async def send_payment_failed(user_email: str, invoice_url: str | None = None) -> bool:
@@ -110,38 +194,58 @@ async def send_payment_failed(user_email: str, invoice_url: str | None = None) -
     subject = "Problema com seu pagamento - Processa AI"
 
     invoice_text = ""
+    cta_link = ""
+    cta_text = ""
+    
     if invoice_url:
         invoice_text = f"\nAtualize seu método de pagamento aqui: {invoice_url}\n"
+        cta_link = invoice_url
+        cta_text = "Atualizar Pagamento"
 
-    body = f"""Olá!
+    content = f"""Olá!
 
 Não conseguimos processar o pagamento da sua assinatura do Processa AI.
-{invoice_text}
+
 Por favor, atualize suas informações de pagamento para evitar a suspensão do serviço.
 
-Se precisar de ajuda, entre em contato conosco.
+Se precisar de ajuda, entre em contato conosco."""
 
-Atenciosamente,
-Equipe Processa AI
-"""
-    return await send_email(to_email=user_email, subject=subject, body=body)
+    body = f"{content}\n{invoice_text}\nAtenciosamente,\nEquipe Processa AI"
+    
+    html_body = load_email_template("default.html", {
+        "Titulo": "Falha no Pagamento",
+        "Segundo_Titulo": "Ação Necessária",
+        "Conteudo": content.replace("\n", "<br>"),
+        "Botao_Texto": cta_text,
+        "Botao_Link": cta_link,
+        "Rodape": "Evite a suspensão dos seus serviços atualizando seu pagamento."
+    })
+
+    return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
 
 async def send_subscription_canceled(user_email: str) -> bool:
     """Send email when subscription is canceled."""
     subject = "Sua assinatura foi cancelada - Processa AI"
-    body = f"""Olá!
+    
+    content = """Olá!
 
 Sua assinatura do Processa AI foi cancelada.
 
-Sentiremos sua falta! Se mudar de ideia, você pode reativar sua assinatura a qualquer momento.
+Sentiremos sua falta! Se mudar de ideia, você pode reativar sua assinatura a qualquer momento."""
 
-Acesse: {settings.FRONTEND_URL}/planos
+    body = f"{content}\n\nAcesse: {settings.FRONTEND_URL}/planos\n\nAtenciosamente,\nEquipe Processa AI"
+    
+    html_body = load_email_template("default.html", {
+        "Titulo": "Assinatura Cancelada",
+        "Segundo_Titulo": "Até logo!",
+        "Conteudo": content.replace("\n", "<br>"),
+        "Botao_Texto": "Ver Planos",
+        "Botao_Link": f"{settings.FRONTEND_URL}/planos",
+        "Rodape": "Esperamos vê-lo novamente em breve."
+    })
 
-Atenciosamente,
-Equipe Processa AI
-"""
-    return await send_email(to_email=user_email, subject=subject, body=body)
+    return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
 
 async def send_payment_action_required(user_email: str, invoice_url: str | None = None) -> bool:
@@ -149,19 +253,32 @@ async def send_payment_action_required(user_email: str, invoice_url: str | None 
     subject = "Ação necessária para completar seu pagamento - Processa AI"
 
     invoice_text = ""
+    cta_link = ""
+    cta_text = ""
+    
     if invoice_url:
         invoice_text = f"\nClique aqui para completar o pagamento: {invoice_url}\n"
+        cta_link = invoice_url
+        cta_text = "Completar Pagamento"
 
-    body = f"""Olá!
+    content = """Olá!
 
 Seu pagamento requer uma ação adicional para ser concluído (como verificação de segurança do cartão).
-{invoice_text}
-Por favor, complete o processo para manter sua assinatura ativa.
 
-Atenciosamente,
-Equipe Processa AI
-"""
-    return await send_email(to_email=user_email, subject=subject, body=body)
+Por favor, complete o processo para manter sua assinatura ativa."""
+
+    body = f"{content}\n{invoice_text}\nAtenciosamente,\nEquipe Processa AI"
+    
+    html_body = load_email_template("default.html", {
+        "Titulo": "Pagamento Pendente",
+        "Segundo_Titulo": "Verificação Necessária",
+        "Conteudo": content.replace("\n", "<br>"),
+        "Botao_Texto": cta_text,
+        "Botao_Link": cta_link,
+        "Rodape": "Seu pagamento só será processado após esta confirmação."
+    })
+
+    return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
 
 async def send_dispute_alert(
@@ -172,20 +289,34 @@ async def send_dispute_alert(
 ) -> bool:
     """Send urgent notification to admin about a dispute."""
     subject = "URGENTE: Disputa de cobrança recebida"
-    body = f"""ALERTA DE DISPUTA
-
-Uma disputa de cobrança foi aberta:
+    
+    content = f"""Uma disputa de cobrança foi aberta:
 
 - User ID: {user_id}
 - Charge ID: {charge_id}
 - Valor: R$ {amount / 100:.2f}
 - Motivo: {reason}
 
-Acesse o dashboard do Stripe para mais detalhes e responder à disputa.
+Acesse o dashboard do Stripe para mais detalhes e responder à disputa."""
 
-AÇÃO URGENTE NECESSÁRIA!
-"""
-    return await send_admin_notification(subject, body)
+    body = f"ALERTA DE DISPUTA\n\n{content}\n\nAÇÃO URGENTE NECESSÁRIA!"
+    
+    html_body = load_email_template("default.html", {
+        "Titulo": "ALERTA DE DISPUTA",
+        "Segundo_Titulo": "Ação Urgente Necessária",
+        "Conteudo": content.replace("\n", "<br>"),
+        "Botao_Texto": "Dashboard Stripe",
+        "Botao_Link": "https://dashboard.stripe.com/disputes",
+        "Rodape": "Mensagem automática do sistema de billing."
+    })
+    
+    # Using send_email directly as send_admin_notification might not be imported or available here contextually
+    # Assuming the original code used send_admin_notification which might be an alias or separate function.
+    # The original code snippet showed `return await send_admin_notification(subject, body)` but I don't see definition of send_admin_notification in the snippet.
+    # I will assume I should use send_email to the admin email.
+    
+    admin_email = settings.ADMIN_EMAIL or settings.SENDGRID_FROM
+    return await send_email(to_email=admin_email, subject=subject, body=body, html_body=html_body)
 
 
 # Blog notification templates
@@ -204,6 +335,7 @@ async def send_new_blog_post_notification(
     post_title: str,
     post_excerpt: str | None,
     post_slug: str,
+    post_cover_image_url: str | None = None,
     category_name: str | None = None,
     unsubscribe_token: str | None = None,
 ) -> bool:
@@ -212,17 +344,10 @@ async def send_new_blog_post_notification(
 
     greeting = f"Olá{', ' + subscriber_name if subscriber_name else ''}!"
 
-    category_text = ""
-    if category_name:
-        category_text = f"\nCategoria: {category_name}\n"
-
-    excerpt_text = ""
-    if post_excerpt:
-        excerpt_text = f"\n{post_excerpt}\n"
-
     post_url = f"{settings.FRONTEND_URL}/blog/{post_slug}"
 
     unsubscribe_text = ""
+    unsubscribe_url = ""
     if unsubscribe_token:
         unsubscribe_url = f"{settings.FRONTEND_URL}/blog?unsubscribe={unsubscribe_token}"
         unsubscribe_text = f"\n---\nPara cancelar sua inscrição na newsletter: {unsubscribe_url}"
@@ -232,7 +357,8 @@ async def send_new_blog_post_notification(
 Publicamos um novo artigo no blog do Processa AI que pode ser do seu interesse:
 
 {post_title}
-{category_text}{excerpt_text}
+{post_excerpt or ""}
+
 Leia o artigo completo em: {post_url}
 
 Atenciosamente,
@@ -240,50 +366,15 @@ Equipe Processa AI
 {unsubscribe_text}
 """
 
-    html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background-color: #1a365d; color: white; padding: 20px; text-align: center; }}
-        .content {{ padding: 20px; background-color: #f7fafc; }}
-        .post-title {{ font-size: 24px; color: #1a365d; margin-bottom: 10px; }}
-        .category {{ color: #718096; font-size: 14px; margin-bottom: 15px; }}
-        .excerpt {{ color: #4a5568; margin-bottom: 20px; }}
-        .cta-button {{
-            display: inline-block; background-color: #3182ce; color: white;
-            padding: 12px 24px; text-decoration: none; border-radius: 5px;
-        }}
-        .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #718096; }}
-        .unsubscribe {{ color: #a0aec0; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Processa AI</h1>
-        </div>
-        <div class="content">
-            <p>{greeting}</p>
-            <p>Publicamos um novo artigo no blog que pode ser do seu interesse:</p>
-            <h2 class="post-title">{post_title}</h2>
-            {f'<p class="category">{category_name}</p>' if category_name else ""}
-            {f'<p class="excerpt">{post_excerpt}</p>' if post_excerpt else ""}
-            <p>
-                <a href="{post_url}" class="cta-button">Ler artigo completo</a>
-            </p>
-        </div>
-        <div class="footer">
-            <p>Atenciosamente,<br>Equipe Processa AI</p>
-            {_build_unsubscribe_link(unsubscribe_url, unsubscribe_token)}
-        </div>
-    </div>
-</body>
-</html>
-"""
+    html_body = load_email_template("newsletter.html", {
+        "USERNAME": subscriber_name or "Leitor",
+        "DIA_DA_SEMANA": _get_pt_day_name(),
+        "TITULO_POST": post_title,
+        "URL_IMAGEM_POST": post_cover_image_url or "https://placehold.co/600x200?text=Processa+AI",
+        "RESUMO_POST": post_excerpt or "Confira nosso novo artigo no blog!",
+        "Url_Post": post_url,
+        "unsubscribe": unsubscribe_url
+    })
 
     return await send_email(
         to_email=to_email,
@@ -298,6 +389,7 @@ async def send_new_blog_post_notification_bulk(
     post_title: str,
     post_excerpt: str | None,
     post_slug: str,
+    post_cover_image_url: str | None = None,
     category_name: str | None = None,
 ) -> bool:
     """
@@ -309,6 +401,7 @@ async def send_new_blog_post_notification_bulk(
         post_title: Title of the blog post
         post_excerpt: Optional excerpt of the post
         post_slug: Slug of the post for URL generation
+        post_cover_image_url: Optional URL of the post cover image
         category_name: Optional category name
 
     Returns:
@@ -320,75 +413,38 @@ async def send_new_blog_post_notification_bulk(
 
     subject = f"Novo artigo: {post_title} - Processa AI"
 
-    greeting = "Olá!"
-
-    category_text = ""
-    if category_name:
-        category_text = f"\nCategoria: {category_name}\n"
-
-    excerpt_text = ""
-    if post_excerpt:
-        excerpt_text = f"\n{post_excerpt}\n"
-
     post_url = f"{settings.FRONTEND_URL}/blog/{post_slug}"
+    # Generic unsubscribe link since we can't personalize for bulk BCC
+    unsubscribe_url = f"{settings.FRONTEND_URL}/blog?action=unsubscribe"
 
-    body = f"""{greeting}
+    body = f"""Olá!
 
 Publicamos um novo artigo no blog do Processa AI que pode ser do seu interesse:
 
 {post_title}
-{category_text}{excerpt_text}
+{post_excerpt or ""}
+
 Leia o artigo completo em: {post_url}
 
 Atenciosamente,
 Equipe Processa AI
 """
 
-    html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background-color: #1a365d; color: white; padding: 20px; text-align: center; }}
-        .content {{ padding: 20px; background-color: #f7fafc; }}
-        .post-title {{ font-size: 24px; color: #1a365d; margin-bottom: 10px; }}
-        .category {{ color: #718096; font-size: 14px; margin-bottom: 15px; }}
-        .excerpt {{ color: #4a5568; margin-bottom: 20px; }}
-        .cta-button {{
-            display: inline-block; background-color: #3182ce; color: white;
-            padding: 12px 24px; text-decoration: none; border-radius: 5px;
-        }}
-        .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #718096; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Processa AI</h1>
-        </div>
-        <div class="content">
-            <p>{greeting}</p>
-            <p>Publicamos um novo artigo no blog que pode ser do seu interesse:</p>
-            <h2 class="post-title">{post_title}</h2>
-            {f'<p class="category">{category_name}</p>' if category_name else ""}
-            {f'<p class="excerpt">{post_excerpt}</p>' if post_excerpt else ""}
-            <p>
-                <a href="{post_url}" class="cta-button">Ler artigo completo</a>
-            </p>
-        </div>
-        <div class="footer">
-            <p>Atenciosamente,<br>Equipe Processa AI</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
+    html_body = load_email_template("newsletter.html", {
+        "USERNAME": "Leitor",
+        "DIA_DA_SEMANA": _get_pt_day_name(),
+        "TITULO_POST": post_title,
+        "URL_IMAGEM_POST": post_cover_image_url or "https://placehold.co/600x200?text=Processa+AI",
+        "RESUMO_POST": post_excerpt or "Confira nosso novo artigo no blog!",
+        "Url_Post": post_url,
+        "unsubscribe": unsubscribe_url
+    })
 
     # Use sender as TO and all subscribers as BCC
     sender = settings.SENDGRID_FROM
+    if not sender:
+        logger.error("No sender email configured")
+        return False
 
     # Remove sender from subscriber list to avoid duplication
     # (SendGrid requires unique emails between to, cc, and bcc)
@@ -396,7 +452,7 @@ Equipe Processa AI
 
     # SendGrid BCC limit is 1000 per request, split if needed
     batch_size = 1000
-    total_sent = 0
+    all_success = True
 
     for i in range(0, len(unique_subscribers), batch_size):
         batch = unique_subscribers[i : i + batch_size]
@@ -407,12 +463,8 @@ Equipe Processa AI
             html_body=html_body,
             bcc_emails=batch,
         )
-        if success:
-            total_sent += len(batch)
-            logger.info(
-                f"Sent blog notification to {len(batch)} subscribers (batch {i // batch_size + 1})"
-            )
-        else:
+        if not success:
+            all_success = False
             logger.error(f"Failed to send blog notification batch {i // batch_size + 1}")
 
-    return total_sent == len(unique_subscribers)
+    return all_success

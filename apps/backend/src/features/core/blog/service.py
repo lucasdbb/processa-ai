@@ -640,7 +640,7 @@ class BlogService:
         # Get post details
         post_res = (
             self.supabase.table("blog_posts")
-            .select("id, title, slug, excerpt, category_id")
+            .select("id, title, slug, excerpt, category_id, cover_image_url")
             .eq("id", post_id)
             .limit(1)
             .execute()
@@ -687,6 +687,7 @@ class BlogService:
                 post_title=post["title"],
                 post_excerpt=post.get("excerpt"),
                 post_slug=post["slug"],
+                post_cover_image_url=post.get("cover_image_url"),
                 category_name=category_name,
             )
 
