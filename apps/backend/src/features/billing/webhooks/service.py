@@ -388,7 +388,7 @@ class WebhooksService:
         try:
             result = (
                 self.supabase.table("subscriptions")
-                .select("user_id")
+                .select("user_id, status")
                 .eq("stripe_customer_id", customer_id)
                 .limit(1)
                 .execute()
@@ -402,6 +402,14 @@ class WebhooksService:
                 return
 
             user_id = result.data[0]["user_id"]
+            current_status = result.data[0]["status"]
+            
+            # If user already has an active subscription, this might be a race condition with checkout.session.completed
+            # We only want to process this if the subscription is NOT already active/trialing from checkout
+            if current_status in ["active", "trialing"] and subscription["status"] == "active":
+                 logger.info(f"Skipping subscription.created for user {user_id} (already active from checkout)")
+                 return
+
             plan_id = self._get_plan_id_from_price(
                 subscription["items"]["data"][0]["price"]["id"]
             )
@@ -421,11 +429,14 @@ class WebhooksService:
                 }
             ).eq("stripe_customer_id", customer_id).execute()
 
-            # Grant credits if subscription is active
-            if subscription["status"] == "active":
-                await self._grant_plan_credits(user_id, plan_id)
-
-            logger.info(f"Subscription created for user {user_id}: {subscription_id}")
+            # Grant credits ONLY if it wasn't processed by checkout (though checkout handles initial grant)
+            # Strategy: Let checkout handle initial grant. 
+            # If this event comes later or standalone, we grant ONLY if status changed to active and wasn't before.
+            # But safer approach: rely on checkout.session.completed for initial purchase credits.
+            # Rely on invoice.paid for renewals.
+            # So here we SKIP granting credits to avoid duplication.
+            
+            logger.info(f"Subscription created/synced for user {user_id}: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to handle subscription created: {e}")
             raise TransientError(f"Failed to process subscription creation: {e}")
