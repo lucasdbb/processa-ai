@@ -8,6 +8,7 @@ export interface User {
   phone?: string;
   newsletter_opt_in?: boolean;
   role: UserRole;
+  status: 'active' | 'suspended' | 'deleted';
   created_at: string;
   updated_at?: string;
 }

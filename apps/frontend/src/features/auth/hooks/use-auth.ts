@@ -35,11 +35,19 @@ export function useAuth() {
               .single();
 
             if (profile) {
+              // Check status
+              if (profile.status === 'suspended' || profile.status === 'deleted') {
+                await supabase.auth.signOut();
+                setUser(null);
+                return;
+              }
+
               setUser({
                 id: session.user.id,
                 email: session.user.email!,
                 name: profile.name,
                 role: profile.role,
+                status: profile.status,
                 avatar_url: profile.avatar_url,
                 created_at: profile.created_at,
               });
@@ -72,6 +80,9 @@ export function useAuth() {
       });
 
       if (error) {
+        if (error.message.includes("banned") || error.message.includes("suspended")) {
+          throw new Error("Sua conta foi inativada ou suspensa. Entre em contato com o suporte.");
+        }
         throw new Error(error.message);
       }
 
@@ -90,11 +101,17 @@ export function useAuth() {
         throw new Error("Falha ao carregar perfil do usuário");
       }
 
+      if (profile.status === 'suspended' || profile.status === 'deleted') {
+        await supabase.auth.signOut();
+        throw new Error("Sua conta foi inativada ou suspensa. Entre em contato com o suporte.");
+      }
+
       const currentUser = {
         id: data.user.id,
         email: data.user.email!,
         name: profile.name,
         role: profile.role,
+        status: profile.status,
         avatar_url: profile.avatar_url,
         created_at: profile.created_at,
       };
@@ -144,6 +161,7 @@ export function useAuth() {
             email: authData.user.email!,
             name: profile.name,
             role: profile.role,
+            status: profile.status,
             avatar_url: profile.avatar_url,
             created_at: profile.created_at,
           };

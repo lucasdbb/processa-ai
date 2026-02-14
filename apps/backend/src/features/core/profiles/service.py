@@ -224,6 +224,61 @@ class ProfilesService:
                 detail="Erro ao atualizar role",
             )
 
+    async def update_status(self, target_user_id: str, new_status: str) -> dict:
+        """Update user status (admin only)."""
+        valid_statuses = {"active", "suspended", "deleted"}
+        if new_status not in valid_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Status inválido",
+            )
+
+        try:
+            # 1. Update profiles table
+            res = (
+                self.supabase.table("profiles")
+                .update({"status": new_status})
+                .eq("id", target_user_id)
+                .execute()
+            )
+            if not res.data:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuário não encontrado",
+                )
+            user = res.data[0]
+
+            # 2. Sync with Supabase Auth
+            if new_status in ("suspended", "deleted"):
+                # Ban user (100 years = 876000 hours)
+                self.supabase.auth.admin.update_user_by_id(
+                    target_user_id, {"ban_duration": "876000h"}
+                )
+            elif new_status == "active":
+                # Unban user
+                self.supabase.auth.admin.update_user_by_id(
+                    target_user_id, {"ban_duration": "none"}
+                )
+
+            return {
+                "message": "Status atualizado",
+                "user": {
+                    "id": user["id"],
+                    "email": user["email"],
+                    "status": user.get("status", new_status),
+                },
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            from src.core.logging import logger
+
+            logger.error(f"Error updating status: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao atualizar status: {str(e)}",
+            )
+
     async def _get_newsletter_status(self, email: str) -> bool:
         """Check if user is subscribed to newsletter."""
         try:

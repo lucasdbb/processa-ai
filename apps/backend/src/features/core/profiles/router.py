@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 
 from src.core.auth import get_user_id, get_user_role, verify_internal_token
-from src.features.core.profiles.schemas import UpdateProfile, UpdateRoleRequest, UserProfile
+from src.features.core.profiles.schemas import UpdateProfile, UpdateRoleRequest, UpdateStatusRequest, UserProfile
 from src.features.core.profiles.service import profiles_service
 
 router = APIRouter(dependencies=[Depends(verify_internal_token)])
@@ -53,3 +53,16 @@ async def update_role(
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return await profiles_service.update_role(data.user_id, data.role)
+
+
+@router.patch("/update-status")
+async def update_status(
+    data: UpdateStatusRequest,
+    user_role: str = Depends(get_user_role),
+):
+    """Update user status (admin only)."""
+    if user_role != "admin":
+        from fastapi import HTTPException, status
+
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return await profiles_service.update_status(data.user_id, data.status)

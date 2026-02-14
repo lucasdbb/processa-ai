@@ -25,6 +25,7 @@ import {
   Filter,
   ArrowUpDown,
   Newspaper,
+  Ban,
 } from 'lucide-react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Cross2Icon } from '@radix-ui/react-icons'
@@ -77,6 +78,7 @@ interface UserListItem {
   email: string
   name: string
   role: 'client' | 'author' | 'admin'
+  status: 'active' | 'suspended' | 'deleted'
   avatar_url?: string | null
   created_at: string
   confirmed_at?: string | null
@@ -450,6 +452,38 @@ export default function AdminPage() {
       toast.error(err instanceof Error ? err.message : 'Erro ao atualizar role')
     } finally {
       setIsUpdatingRole(false)
+    }
+  }
+
+  const [userToUpdateStatus, setUserToUpdateStatus] = useState<UserListItem | null>(null)
+  const [statusToUpdate, setStatusToUpdate] = useState<'active' | 'suspended'>('suspended')
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
+  const openStatusDialog = (u: UserListItem) => {
+    setUserToUpdateStatus(u)
+    setStatusToUpdate(u.status === 'suspended' ? 'active' : 'suspended')
+    setIsStatusDialogOpen(true)
+  }
+
+  const handleUpdateUserStatus = async () => {
+    if (!userToUpdateStatus) return
+    setIsUpdatingStatus(true)
+    try {
+      const res = await fetchWithCredentials(`${API_URL}/users/update-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userToUpdateStatus.id, status: statusToUpdate }),
+      })
+      if (!res.ok) throw new Error(await extractErrorMessage(res, 'Erro ao atualizar status'))
+      toast.success('Status atualizado!')
+      setUsers((prev) => prev.map((u) => (u.id === userToUpdateStatus.id ? { ...u, status: statusToUpdate } : u)))
+      setIsStatusDialogOpen(false)
+      setUserToUpdateStatus(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar status')
+    } finally {
+      setIsUpdatingStatus(false)
     }
   }
 
@@ -977,9 +1011,21 @@ export default function AdminPage() {
                               </td>
                               <td className="px-6 py-4 text-muted-foreground">{formatDate(u.created_at)}</td>
                               <td className="px-6 py-4 text-right">
-                                <Button variant="outline" size="sm" onClick={() => openRoleDialog(u)} disabled={u.id === user?.id}>
-                                  Editar Role
-                                </Button>
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button variant="ghost" size="sm" onClick={() => openRoleDialog(u)} disabled={u.id === user?.id}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openStatusDialog(u)}
+                                    disabled={u.id === user?.id}
+                                    className={u.status === 'suspended' ? 'text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/30' : 'text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-900/30'}
+                                    title={u.status === 'suspended' ? 'Ativar usuário' : 'Inativar usuário'}
+                                  >
+                                    {u.status === 'suspended' ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -1029,6 +1075,21 @@ export default function AdminPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+
+              <ConfirmDialog
+                isOpen={isStatusDialogOpen}
+                onClose={() => setIsStatusDialogOpen(false)}
+                onConfirm={() => void handleUpdateUserStatus()}
+                title={statusToUpdate === 'suspended' ? 'Inativar usuário?' : 'Ativar usuário?'}
+                description={
+                  statusToUpdate === 'suspended'
+                    ? `Deseja inativar o usuário ${userToUpdateStatus?.email}? Ele perderá o acesso à plataforma.`
+                    : `Deseja ativar o usuário ${userToUpdateStatus?.email}? Ele terá o acesso restaurado.`
+                }
+                confirmText={statusToUpdate === 'suspended' ? 'Inativar' : 'Ativar'}
+                variant={statusToUpdate === 'suspended' ? 'danger' : 'success'}
+                isLoading={isUpdatingStatus}
+              />
             </div>
           ) : null}
 
@@ -1523,7 +1584,7 @@ export default function AdminPage() {
                               <td className="px-6 py-4 text-muted-foreground">
                                 {new Date(f.created_at).toLocaleDateString('pt-BR')}
                               </td>
-                              <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-6 py-4 text-right">
                                 <button
                                   type="button"
                                   className="p-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
