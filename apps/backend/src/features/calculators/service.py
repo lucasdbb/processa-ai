@@ -40,7 +40,13 @@ class CalculatorsService:
     def calculate_rescisao_trabalhista(
         self,
         *,
-        salario_mensal: float,
+        salario_base: float,
+        adicional_periculosidade: bool,
+        adicional_insalubridade_grau: int,
+        base_insalubridade: float,
+        adicional_noturno_percent: float,
+        media_horas_noturnas: float,
+        outras_verbas: float,
         data_admissao: date,
         data_rescisao: date,
         tipo_rescisao: str,
@@ -55,22 +61,100 @@ class CalculatorsService:
                 detail="data_rescisao deve ser maior ou igual a data_admissao",
             )
 
+        # 1. Calcular Remuneração Bruta (Base de Cálculo)
+        remuneracao = float(salario_base)
+        
+        # Periculosidade (30% sobre Salário Base)
+        val_periculosidade = 0.0
+        if adicional_periculosidade:
+            val_periculosidade = salario_base * 0.30
+            remuneracao += val_periculosidade
+
+        # Insalubridade (% sobre Salário Mínimo/Base Específica)
+        val_insalubridade = 0.0
+        if adicional_insalubridade_grau > 0:
+            val_insalubridade = float(base_insalubridade) * (float(adicional_insalubridade_grau) / 100.0)
+            remuneracao += val_insalubridade
+
+        # Adicional Noturno
+        val_noturno = 0.0
+        if media_horas_noturnas > 0:
+            # Divisor padrão 220h
+            valor_hora = salario_base / 220.0
+            # Adicional noturno incide sobre a hora normal
+            val_noturno = valor_hora * media_horas_noturnas * (float(adicional_noturno_percent) / 100.0)
+            # Nota: A hora noturna reduzida (52m30s) geralmente é tratada na quantidade de horas
+            # Vamos assumir que "media_horas_noturnas" já considera a hora reduzida ou é hora relógio convertida
+            remuneracao += val_noturno
+
+        # Outras Verbas (Comissões, Gratificações, Médias de HE)
+        remuneracao += float(outras_verbas)
+
+        # 2. Cálculos de Tempo e Verbas
         dias_trabalhados = max(0.0, float((data_rescisao - data_admissao).days))
-        meses_trabalhados = dias_trabalhados / 30.0
+        meses_trabalhados_total = dias_trabalhados / 30.0
 
-        salario = float(salario_mensal)
-
-        saldo_salario = salario * 0.5
-        valor_aviso_previo = salario if aviso_previo else 0.0
+        saldo_salario = (remuneracao / 30.0) * min(30, data_rescisao.day) # Proporcional aos dias do mês da rescisão
+        # Se rescisão dia 31, paga 30 dias (salário cheio)
+        
+        # Aviso Prévio (Lei 12.506/2011)
+        # 30 dias + 3 dias por ano completo, até max 90 dias
+        anos_completos = int(dias_trabalhados / 365.0)
+        dias_aviso = 30
+        if anos_completos > 0:
+            dias_aviso += min(60, anos_completos * 3)
+            
+        valor_aviso_previo = (remuneracao / 30.0) * dias_aviso if aviso_previo else 0.0
 
         dias_ferias_vencidas = max(0, int(ferias_vencidas or 0))
-        valor_ferias_vencidas = (salario / 30.0) * float(dias_ferias_vencidas) * (4.0 / 3.0)
+        valor_ferias_vencidas = (remuneracao / 30.0) * float(dias_ferias_vencidas) * (4.0 / 3.0) # + 1/3
+        
+        # Férias Proporcionais (Avos)
+        # Contar meses do período aquisitivo atual
+        # Simplificação: meses trabalhados desde o aniversário da admissão no ano corrente
+        # Lógica aproximada:
+        meses_ferias_prop = 0
+        if ferias_proporcionais:
+            # Data do último aniversário de admissão antes da rescisão
+            ano_aniversario = data_rescisao.year
+            aniversario = date(ano_aniversario, data_admissao.month, data_admissao.day)
+            if aniversario > data_rescisao:
+                aniversario = date(ano_aniversario - 1, data_admissao.month, data_admissao.day)
+            
+            delta_ferias = data_rescisao - aniversario
+            meses_ferias_prop = delta_ferias.days // 30
+            if (delta_ferias.days % 30) >= 15:
+                meses_ferias_prop += 1
+            meses_ferias_prop = min(12, meses_ferias_prop)
+            
+            # Projeção do Aviso Prévio Indenizado nas Férias?
+            # Se aviso_previo=True (indenizado), projeta mais 1 avo (ou mais dias)
+            # Vamos manter simples por enquanto ou adicionar projeção?
+            # O código anterior não projetava. Vamos manter simples.
+
         valor_ferias_prop = (
-            (salario / 12.0) * (meses_trabalhados % 12.0) if ferias_proporcionais else 0.0
+            (remuneracao / 12.0) * meses_ferias_prop * (4.0 / 3.0) if ferias_proporcionais else 0.0
         )
-        valor_13 = (salario / 12.0) * (meses_trabalhados % 12.0) if decimo_terceiro else 0.0
-        fgts = salario * 0.08 * meses_trabalhados
-        multa_fgts = fgts * 0.4 if str(tipo_rescisao).strip() == "sem_justa_causa" else 0.0
+
+        # 13º Proporcional
+        meses_13 = 0
+        if decimo_terceiro:
+            inicio_ano = date(data_rescisao.year, 1, 1)
+            # Se admissão foi este ano, conta da admissão
+            inicio_contagem = max(inicio_ano, data_admissao)
+            delta_13 = data_rescisao - inicio_contagem
+            meses_13 = delta_13.days // 30
+            if (delta_13.days % 30) >= 15:
+                meses_13 += 1
+            meses_13 = min(12, meses_13)
+        
+        valor_13 = (remuneracao / 12.0) * meses_13 if decimo_terceiro else 0.0
+        
+        # FGTS
+        # 8% sobre a remuneração de todo o período
+        fgts_base = remuneracao * 0.08 * meses_trabalhados_total
+        # Multa 40%
+        multa_fgts = fgts_base * 0.4 if str(tipo_rescisao).strip() == "sem_justa_causa" else 0.0
 
         total = (
             saldo_salario
@@ -78,24 +162,39 @@ class CalculatorsService:
             + valor_ferias_vencidas
             + valor_ferias_prop
             + valor_13
-            + fgts
+            + fgts_base # FGTS depositado não entra no TRCT para saque em dinheiro, mas entra na multa?
+            # Na verdade, FGTS mensal é depositado na conta. O que se paga na rescisão é a Multa.
+            # E o saldo de salários/aviso/13 gera FGTS rescisório.
+            # O código anterior somava TUDO no total. Vamos manter a lógica de "Custo Total da Rescisão" ou "Valor a Receber"?
+            # Se for "Valor a Receber", o FGTS acumulado (fgts_base) fica na conta vinculada e é sacado via chave.
+            # A Multa é paga via GRRF.
+            # Geralmente calculadoras mostram o TOTAL GERAL envolvido.
+            + fgts_base
             + multa_fgts
         )
 
         return {
             "detalhes": {
+                "remuneracao_bruta": remuneracao,
                 "saldo_salario": saldo_salario,
                 "aviso_previo": valor_aviso_previo,
                 "ferias_vencidas": valor_ferias_vencidas,
                 "ferias_proporcionais": valor_ferias_prop,
                 "decimo_terceiro": valor_13,
-                "fgts": fgts,
+                "fgts": fgts_base,
                 "multa_fgts": multa_fgts,
                 "total": total,
             },
             "meta": {
-                "meses_trabalhados": meses_trabalhados,
+                "meses_trabalhados": meses_trabalhados_total,
                 "dias_trabalhados": dias_trabalhados,
+                "remuneracao_composta": {
+                    "base": salario_base,
+                    "periculosidade": val_periculosidade,
+                    "insalubridade": val_insalubridade,
+                    "noturno": val_noturno,
+                    "outras": outras_verbas
+                }
             },
         }
 
@@ -103,6 +202,11 @@ class CalculatorsService:
         detalhes = (
             output_payload.get("detalhes") if isinstance(output_payload, dict) else None
         ) or {}
+        
+        meta = (
+            output_payload.get("meta") if isinstance(output_payload, dict) else None
+        ) or {}
+        comps = meta.get("remuneracao_composta") or {}
 
         def money(v: object) -> str:
             try:
@@ -113,27 +217,43 @@ class CalculatorsService:
         lines: list[str] = []
         lines.append("# Rescisão Trabalhista")
         lines.append("")
-        lines.append("## Parâmetros")
+        
+        lines.append("## Dados do Contrato")
+        lines.append(f"- Admissão: {input_payload.get('data_admissao')}")
+        lines.append(f"- Rescisão: {input_payload.get('data_rescisao')}")
+        lines.append(f"- Tipo: {input_payload.get('tipo_rescisao')}")
+        lines.append(f"- Aviso Prévio: {'Sim' if input_payload.get('aviso_previo') else 'Não'}")
         lines.append("")
-        lines.append(f"- Salário mensal: {money(input_payload.get('salario_mensal'))}")
-        lines.append(f"- Data de admissão: {input_payload.get('data_admissao')}")
-        lines.append(f"- Data de rescisão: {input_payload.get('data_rescisao')}")
-        lines.append(f"- Tipo de rescisão: {input_payload.get('tipo_rescisao')}")
-        lines.append(f"- Aviso prévio: {'Sim' if input_payload.get('aviso_previo') else 'Não'}")
+
+        lines.append("## Composição da Remuneração")
+        lines.append(f"- Salário Base: {money(input_payload.get('salario_base'))}")
+        if input_payload.get('adicional_periculosidade'):
+            lines.append(f"- Periculosidade (30%): {money(comps.get('periculosidade'))}")
+        if input_payload.get('adicional_insalubridade_grau'):
+            grau = input_payload.get('adicional_insalubridade_grau')
+            lines.append(f"- Insalubridade ({grau}%): {money(comps.get('insalubridade'))}")
+        if input_payload.get('media_horas_noturnas'):
+            lines.append(f"- Adicional Noturno: {money(comps.get('noturno'))}")
+        if input_payload.get('outras_verbas'):
+            lines.append(f"- Outras Verbas: {money(input_payload.get('outras_verbas'))}")
+        
+        lines.append(f"**Remuneração para Fins Rescisórios: {money(detalhes.get('remuneracao_bruta'))}**")
         lines.append("")
-        lines.append("## Resultado")
+        
+        lines.append("## Detalhamento das Verbas")
         lines.append("")
         lines.append("| Item | Valor |")
         lines.append("|---|---:|")
-        lines.append(f"| Saldo de salário | {money(detalhes.get('saldo_salario'))} |")
-        lines.append(f"| Aviso prévio | {money(detalhes.get('aviso_previo'))} |")
-        lines.append(f"| Férias vencidas | {money(detalhes.get('ferias_vencidas'))} |")
-        lines.append(f"| Férias proporcionais | {money(detalhes.get('ferias_proporcionais'))} |")
-        lines.append(f"| 13º proporcional | {money(detalhes.get('decimo_terceiro'))} |")
-        lines.append(f"| FGTS | {money(detalhes.get('fgts'))} |")
-        lines.append(f"| Multa FGTS | {money(detalhes.get('multa_fgts'))} |")
-        lines.append(f"| **Total** | **{money(detalhes.get('total'))}** |")
+        lines.append(f"| Saldo de Salário | {money(detalhes.get('saldo_salario'))} |")
+        lines.append(f"| Aviso Prévio Indenizado | {money(detalhes.get('aviso_previo'))} |")
+        lines.append(f"| Férias Vencidas + 1/3 | {money(detalhes.get('ferias_vencidas'))} |")
+        lines.append(f"| Férias Proporcionais + 1/3 | {money(detalhes.get('ferias_proporcionais'))} |")
+        lines.append(f"| 13º Salário Proporcional | {money(detalhes.get('decimo_terceiro'))} |")
+        lines.append(f"| FGTS (Depósitos) | {money(detalhes.get('fgts'))} |")
+        lines.append(f"| Multa FGTS (40%) | {money(detalhes.get('multa_fgts'))} |")
+        lines.append(f"| **Total Estimado** | **{money(detalhes.get('total'))}** |")
         lines.append("")
+        lines.append("> Nota: O cálculo do FGTS é uma estimativa baseada na remuneração atual aplicada a todo o período. O valor real depende dos depósitos efetuados.")
         return "\n".join(lines)
 
     def _markdown_to_pdf_bytes(self, markdown: str, *, title: str | None = None) -> bytes:

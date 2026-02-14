@@ -11,6 +11,7 @@ import { ClientSelector } from '@/components/forms/client-selector'
 import type { LucideIcon } from 'lucide-react'
 
 type RescisaoDetalhes = {
+  remuneracaoBruta: number
   saldoSalario: number
   avisoPrevio: number
   feriasVencidas: number
@@ -122,8 +123,18 @@ export default function CalculadorasHubPage() {
   const [resultado, setResultado] = useState<Resultado | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
+  
   const [formData, setFormData] = useState({
-    salario: '',
+    // Rescisão - Composição Salarial
+    salarioBase: '',
+    adicionalPericulosidade: false,
+    adicionalInsalubridadeGrau: '0', // 0, 10, 20, 40
+    baseInsalubridade: '1621.00',
+    adicionalNoturnoPercent: '20',
+    mediaHorasNoturnas: '',
+    outrasVerbas: '',
+
+    // Rescisão - Dados do Contrato
     dataAdmissao: '',
     dataRescisao: '',
     tipoRescisao: 'sem_justa_causa',
@@ -132,6 +143,7 @@ export default function CalculadorasHubPage() {
     feriasProporcionais: true,
     decimoTerceiro: true,
 
+    // Aposentadoria
     sexo: 'masculino',
     tipoAposentadoria: 'tempo_contribuicao',
     idade: '',
@@ -170,7 +182,16 @@ export default function CalculadorasHubPage() {
         body: JSON.stringify({
           user_id: user.id,
           ...(selectedClientId && { client_id: selectedClientId }),
-          salario_mensal: parseFloat(formData.salario) || 0,
+          
+          // Novos campos de composição
+          salario_base: parseFloat(formData.salarioBase) || 0,
+          adicional_periculosidade: formData.adicionalPericulosidade,
+          adicional_insalubridade_grau: parseInt(formData.adicionalInsalubridadeGrau) || 0,
+          base_insalubridade: parseFloat(formData.baseInsalubridade) || 1621.00,
+          adicional_noturno_percent: parseFloat(formData.adicionalNoturnoPercent) || 20,
+          media_horas_noturnas: parseFloat(formData.mediaHorasNoturnas) || 0,
+          outras_verbas: parseFloat(formData.outrasVerbas) || 0,
+
           data_admissao: formData.dataAdmissao,
           data_rescisao: formData.dataRescisao,
           tipo_rescisao: formData.tipoRescisao,
@@ -188,6 +209,7 @@ export default function CalculadorasHubPage() {
 
       const data = await res.json() as {
         detalhes: {
+          remuneracao_bruta: number
           saldo_salario: number
           aviso_previo: number
           ferias_vencidas: number
@@ -202,6 +224,7 @@ export default function CalculadorasHubPage() {
       setResultado({
         tipo: 'rescisao',
         detalhes: {
+          remuneracaoBruta: data.detalhes.remuneracao_bruta,
           saldoSalario: data.detalhes.saldo_salario,
           avisoPrevio: data.detalhes.aviso_previo,
           feriasVencidas: data.detalhes.ferias_vencidas,
@@ -345,106 +368,201 @@ export default function CalculadorasHubPage() {
           <div className="lg:col-span-3">
             <div className="bg-card border border-border rounded-xl p-5">
               {selectedCalculator === 'rescisao' ? (
-                <div className="space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">Salário Mensal (R$) *</label>
-                      <input
-                        type="number"
-                        value={formData.salario}
-                        onChange={(e) => handleInputChange('salario', e.target.value)}
-                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground text-sm"
-                        placeholder="Ex: 3000,00"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">Data de Admissão *</label>
-                      <input
-                        type="date"
-                        value={formData.dataAdmissao}
-                        onChange={(e) => handleInputChange('dataAdmissao', e.target.value)}
-                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground text-sm"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">Data de Rescisão *</label>
-                      <input
-                        type="date"
-                        value={formData.dataRescisao}
-                        onChange={(e) => handleInputChange('dataRescisao', e.target.value)}
-                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground text-sm"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">Motivo da Rescisão *</label>
-                      <div className="relative">
-                        <select
-                          value={formData.tipoRescisao}
-                          onChange={(e) => handleInputChange('tipoRescisao', e.target.value)}
-                          className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none text-foreground text-sm"
-                        >
-                          <option value="sem_justa_causa">Dispensa sem Justa Causa</option>
-                          <option value="por_pedido">Pedido de Demissão</option>
-                          <option value="com_justa_causa">Dispensa com Justa Causa</option>
-                          <option value="acordo">Acordo (Reforma Trabalhista)</option>
-                          <option value="termino_contrato">Término de Contrato</option>
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-muted-foreground">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
+                <div className="space-y-6">
+                  {/* Seção 1: Composição Salarial */}
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 border-b border-border pb-2">
+                      Composição Salarial
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Salário Base na Carteira (R$) *</label>
+                        <input
+                          type="number"
+                          value={formData.salarioBase}
+                          onChange={(e) => handleInputChange('salarioBase', e.target.value)}
+                          className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground text-sm"
+                          placeholder="Ex: 3000,00"
+                          required
+                        />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-1.5">Férias Vencidas (dias)</label>
-                      <input
-                        type="number"
-                        value={formData.feriasVencidas}
-                        onChange={(e) => handleInputChange('feriasVencidas', e.target.value)}
-                        className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground text-sm"
-                        placeholder="Ex: 0"
-                      />
+
+                      {/* Adicionais */}
+                      <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                            <label className="flex items-center cursor-pointer mb-2">
+                              <input
+                                type="checkbox"
+                                checked={formData.adicionalPericulosidade}
+                                onChange={(e) => handleInputChange('adicionalPericulosidade', e.target.checked)}
+                                className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
+                              />
+                              <span className="ml-2 text-sm font-medium text-foreground">
+                                Periculosidade (30%)
+                              </span>
+                            </label>
+                            <p className="text-xs text-muted-foreground ml-6">Incide 30% sobre o salário base.</p>
+                         </div>
+
+                         <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                            <label className="block text-sm font-medium text-foreground mb-1.5">Insalubridade</label>
+                            <select
+                              value={formData.adicionalInsalubridadeGrau}
+                              onChange={(e) => handleInputChange('adicionalInsalubridadeGrau', e.target.value)}
+                              className="w-full px-2 py-1.5 bg-background border border-input rounded-md text-sm mb-2"
+                            >
+                              <option value="0">Não se aplica</option>
+                              <option value="10">Grau Mínimo (10%)</option>
+                              <option value="20">Grau Médio (20%)</option>
+                              <option value="40">Grau Máximo (40%)</option>
+                            </select>
+                            {formData.adicionalInsalubridadeGrau !== '0' && (
+                              <div>
+                                <label className="text-xs text-muted-foreground">Base de Cálculo (R$)</label>
+                                <input
+                                  type="number"
+                                  value={formData.baseInsalubridade}
+                                  onChange={(e) => handleInputChange('baseInsalubridade', e.target.value)}
+                                  className="w-full px-2 py-1 bg-background border border-input rounded-md text-xs"
+                                />
+                              </div>
+                            )}
+                         </div>
+                      </div>
+
+                      {/* Adicional Noturno */}
+                      <div className="bg-muted/30 p-3 rounded-lg border border-border/50 md:col-span-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">Adicional Noturno</label>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Percentual (%)</label>
+                              <input
+                                type="number"
+                                value={formData.adicionalNoturnoPercent}
+                                onChange={(e) => handleInputChange('adicionalNoturnoPercent', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-background border border-input rounded-md text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground block mb-1">Média Horas/Mês</label>
+                              <input
+                                type="number"
+                                value={formData.mediaHorasNoturnas}
+                                onChange={(e) => handleInputChange('mediaHorasNoturnas', e.target.value)}
+                                className="w-full px-2 py-1.5 bg-background border border-input rounded-md text-sm"
+                                placeholder="Ex: 0"
+                              />
+                            </div>
+                          </div>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Outras Verbas (Comissões/Médias) R$</label>
+                        <input
+                          type="number"
+                          value={formData.outrasVerbas}
+                          onChange={(e) => handleInputChange('outrasVerbas', e.target.value)}
+                          className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground text-sm"
+                          placeholder="Ex: 500,00"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border">
-                    <label className="flex items-center cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={formData.avisoPrevio}
-                        onChange={(e) => handleInputChange('avisoPrevio', e.target.checked)}
-                        className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
-                      />
-                      <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
-                        Aviso Prévio
-                      </span>
-                    </label>
-                    <label className="flex items-center cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={formData.feriasProporcionais}
-                        onChange={(e) => handleInputChange('feriasProporcionais', e.target.checked)}
-                        className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
-                      />
-                      <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
-                        Férias Proporcionais
-                      </span>
-                    </label>
-                    <label className="flex items-center cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={formData.decimoTerceiro}
-                        onChange={(e) => handleInputChange('decimoTerceiro', e.target.checked)}
-                        className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
-                      />
-                      <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
-                        13º Proporcional
-                      </span>
-                    </label>
+                  {/* Seção 2: Dados do Contrato */}
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 border-b border-border pb-2">
+                      Dados do Contrato
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Data de Admissão *</label>
+                        <input
+                          type="date"
+                          value={formData.dataAdmissao}
+                          onChange={(e) => handleInputChange('dataAdmissao', e.target.value)}
+                          className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground text-sm"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Data de Rescisão *</label>
+                        <input
+                          type="date"
+                          value={formData.dataRescisao}
+                          onChange={(e) => handleInputChange('dataRescisao', e.target.value)}
+                          className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-foreground text-sm"
+                          required
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Motivo da Rescisão *</label>
+                        <div className="relative">
+                          <select
+                            value={formData.tipoRescisao}
+                            onChange={(e) => handleInputChange('tipoRescisao', e.target.value)}
+                            className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none text-foreground text-sm"
+                          >
+                            <option value="sem_justa_causa">Dispensa sem Justa Causa</option>
+                            <option value="por_pedido">Pedido de Demissão</option>
+                            <option value="com_justa_causa">Dispensa com Justa Causa</option>
+                            <option value="acordo">Acordo (Reforma Trabalhista)</option>
+                            <option value="termino_contrato">Término de Contrato</option>
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-muted-foreground">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Férias Vencidas (dias)</label>
+                        <input
+                          type="number"
+                          value={formData.feriasVencidas}
+                          onChange={(e) => handleInputChange('feriasVencidas', e.target.value)}
+                          className="w-full px-3 py-2 bg-muted/50 border border-input rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-muted-foreground text-sm"
+                          placeholder="Ex: 0"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 mt-4 border-t border-border">
+                      <label className="flex items-center cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={formData.avisoPrevio}
+                          onChange={(e) => handleInputChange('avisoPrevio', e.target.checked)}
+                          className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
+                        />
+                        <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
+                          Aviso Prévio
+                        </span>
+                      </label>
+                      <label className="flex items-center cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={formData.feriasProporcionais}
+                          onChange={(e) => handleInputChange('feriasProporcionais', e.target.checked)}
+                          className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
+                        />
+                        <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
+                          Férias Proporcionais
+                        </span>
+                      </label>
+                      <label className="flex items-center cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={formData.decimoTerceiro}
+                          onChange={(e) => handleInputChange('decimoTerceiro', e.target.checked)}
+                          className="rounded border-input text-primary focus:ring-primary w-4 h-4 transition-all"
+                        />
+                        <span className="ml-2 text-sm text-muted-foreground group-hover:text-foreground font-medium transition-colors">
+                          13º Proporcional
+                        </span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -563,6 +681,14 @@ export default function CalculadorasHubPage() {
                 {resultado.tipo === 'rescisao' ? (
                   <div className="space-y-4">
                     <h2 className="text-lg font-bold text-foreground">Resultado</h2>
+                    
+                    <div className="pb-3 border-b border-border">
+                       <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Remuneração Base</span>
+                          <span className="font-semibold text-foreground">R$ {resultado.detalhes.remuneracaoBruta.toFixed(2)}</span>
+                       </div>
+                    </div>
+
                     <div className="flex justify-between items-center text-muted-foreground">
                       <span>Saldo de Salário</span>
                       <span className="font-medium text-foreground">R$ {resultado.detalhes.saldoSalario.toFixed(2)}</span>

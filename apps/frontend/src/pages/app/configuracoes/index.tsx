@@ -9,6 +9,9 @@ import {
   phoneMask,
   removePhoneMask,
   isValidPhone,
+  cpfMask,
+  isValidCpf,
+  removeDocumentMask,
 } from '@/lib/masks'
 import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '@/features/auth/services/auth-service'
@@ -25,6 +28,15 @@ export default function ConfiguracoesPage() {
   const { logout } = useAuthStore()
   const { resolvedTheme, setTheme } = useTheme()
   const { credits, fetchCredits, isLoading: loadingCredits } = useCreditsStore()
+
+  // Refresh user data on mount
+  useEffect(() => {
+    authService.getCurrentUser().then((userData) => {
+      if (userData) {
+        setUser(userData)
+      }
+    })
+  }, [setUser])
 
   // Profile dropdown state
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -69,10 +81,22 @@ export default function ConfiguracoesPage() {
     name: user?.name || '',
     phone: user?.phone ? phoneMask(user.phone) : '',
     cpf: user?.cpf ? user.cpf : '',
+    newsletter: user?.newsletter_opt_in || false,
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const newsletterCheckboxRef = useRef<HTMLInputElement>(null)
+
+  // Update form data when user loads
+  useEffect(() => {
+    if (user && !isEditing) {
+      setFormData({
+        name: user.name || '',
+        phone: user.phone ? phoneMask(user.phone) : '',
+        cpf: user.cpf ? cpfMask(user.cpf) : '',
+        newsletter: user.newsletter_opt_in || false,
+      })
+    }
+  }, [user, isEditing])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -121,11 +145,15 @@ export default function ConfiguracoesPage() {
   ]
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { name, value, type, checked } = e.target
 
-    let processedValue = value
-    if (name === 'phone') {
+    let processedValue: string | boolean = value
+    if (type === 'checkbox') {
+      processedValue = checked
+    } else if (name === 'phone') {
       processedValue = phoneMask(value)
+    } else if (name === 'cpf') {
+      processedValue = cpfMask(value)
     }
 
     setFormData((prev) => ({ ...prev, [name]: processedValue }))
@@ -166,7 +194,7 @@ export default function ConfiguracoesPage() {
           name: formData.name,
           phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
           cpf: formData.cpf,
-          newsletter_opt_in: newsletterCheckboxRef.current?.checked || false,
+          newsletter_opt_in: formData.newsletter,
           avatar_url: avatarPreview || undefined,
         }
 
@@ -191,12 +219,10 @@ export default function ConfiguracoesPage() {
     setFormData({
       name: user?.name || '',
       phone: user?.phone ? phoneMask(user.phone) : '',
-      cpf: user?.cpf ? user.cpf : '',
+      cpf: user?.cpf ? cpfMask(user.cpf) : '',
+      newsletter: user?.newsletter_opt_in || false,
     })
     setAvatarPreview(null)
-    if (newsletterCheckboxRef.current) {
-      newsletterCheckboxRef.current.checked = user?.newsletter_opt_in || false
-    }
   }, [user])
 
   // Load subscription and credits data
@@ -506,7 +532,11 @@ export default function ConfiguracoesPage() {
                       'w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all',
                       !isEditing
                         ? 'bg-muted text-muted-foreground border-input cursor-not-allowed'
-                        : 'border-input focus:ring-primary bg-background'
+                        : formData.cpf && !isValidCpf(formData.cpf)
+                          ? 'border-destructive focus:ring-destructive bg-background'
+                          : formData.cpf && isValidCpf(formData.cpf)
+                            ? 'border-green-500 focus:ring-green-500 bg-background'
+                            : 'border-input focus:ring-primary bg-background'
                     )}
                   />
                 </div>
@@ -531,8 +561,8 @@ export default function ConfiguracoesPage() {
                   type="checkbox"
                   id="newsletter"
                   name="newsletter"
-                  ref={newsletterCheckboxRef}
-                  defaultChecked={user?.newsletter_opt_in || false}
+                  checked={formData.newsletter}
+                  onChange={handleInputChange}
                   disabled={!isEditing}
                   className="h-4 w-4 text-primary focus:ring-primary border-input rounded cursor-pointer disabled:opacity-50 bg-background"
                 />

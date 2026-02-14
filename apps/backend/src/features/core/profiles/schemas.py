@@ -13,6 +13,7 @@ class UserProfile(BaseModel):
     role: str = "user"
     avatar_url: str | None = None
     phone: str | None = None
+    cpf: str | None = None
     newsletter_opt_in: bool = False
     confirmed_at: str | None = None
     created_at: datetime
@@ -29,6 +30,7 @@ class UpdateProfile(BaseModel):
     name: str | None = None
     avatar_url: str | None = None
     phone: str | None = None
+    cpf: str | None = None
     newsletter_opt_in: bool | None = None
 
 

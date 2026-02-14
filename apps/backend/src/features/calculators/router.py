@@ -99,7 +99,13 @@ async def rescisao_trabalhista(
 
     try:
         output_payload = service.calculate_rescisao_trabalhista(
-            salario_mensal=data.salario_mensal,
+            salario_base=data.salario_base,
+            adicional_periculosidade=data.adicional_periculosidade,
+            adicional_insalubridade_grau=data.adicional_insalubridade_grau,
+            base_insalubridade=data.base_insalubridade,
+            adicional_noturno_percent=data.adicional_noturno_percent,
+            media_horas_noturnas=data.media_horas_noturnas,
+            outras_verbas=data.outras_verbas,
             data_admissao=data.data_admissao,
             data_rescisao=data.data_rescisao,
             tipo_rescisao=data.tipo_rescisao,

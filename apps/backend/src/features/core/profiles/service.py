@@ -68,7 +68,8 @@ class ProfilesService:
                 "name": profile.get("name") or profile["email"].split("@")[0],
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
-                "phone": None,
+                "phone": profile.get("phone"),
+                "cpf": profile.get("cpf"),
                 "newsletter_opt_in": newsletter_opt_in,
                 "confirmed_at": confirmed_at,
                 "created_at": profile["created_at"],
@@ -101,6 +102,8 @@ class ProfilesService:
                 db_update["avatar_url"] = update_data["avatar_url"]
             if "phone" in update_data:
                 db_update["phone"] = update_data["phone"]
+            if "cpf" in update_data:
+                db_update["cpf"] = update_data["cpf"]
 
             if db_update:
                 response = (
@@ -132,6 +135,7 @@ class ProfilesService:
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
                 "phone": profile.get("phone"),
+                "cpf": profile.get("cpf"),
                 "newsletter_opt_in": current_newsletter_opt_in,
                 "created_at": profile["created_at"],
             }

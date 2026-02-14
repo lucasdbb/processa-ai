@@ -58,7 +58,7 @@ export const authService = {
 
   async getCurrentUser(accessToken?: string): Promise<User | null> {
     try {
-      const response = await fetchWithCredentials(`${API_URL}/auth/me`, {
+      const response = await fetchWithCredentials(`${API_URL}/users/me`, {
         headers: accessToken
           ? { Authorization: `Bearer ${accessToken}` }
           : undefined,
