@@ -569,7 +569,7 @@ export default function ConfiguracoesPage() {
                   htmlFor="newsletter"
                   className={cn('text-sm font-medium cursor-pointer', !isEditing ? 'text-muted-foreground' : 'text-foreground')}
                 >
-                  Receber novidades e atualizacoes por e-mail
+                  Receber novidades e atualizações por e-mail
                 </label>
               </div>
             </form>

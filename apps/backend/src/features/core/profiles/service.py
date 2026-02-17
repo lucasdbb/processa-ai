@@ -25,7 +25,7 @@ class ProfilesService:
         try:
             profile_response = (
                 self.supabase.table("profiles")
-                .select("id, email, name, role, avatar_url, created_at")
+                .select("id, email, name, role, avatar_url, phone, cpf, created_at")
                 .eq("id", user_id)
                 .execute()
             )
@@ -54,8 +54,8 @@ class ProfilesService:
                 newsletter_res = (
                     self.supabase.table("newsletter_subscriptions")
                     .select("status")
-                    .eq("user_id", user_id)
-                    .eq("status", "subscribed")
+                    .eq("email", profile["email"])
+                    .eq("status", "active")
                     .execute()
                 )
                 newsletter_opt_in = bool(newsletter_res.data)
@@ -260,9 +260,7 @@ class ProfilesService:
                 )
             elif new_status == "active":
                 # Unban user
-                self.supabase.auth.admin.update_user_by_id(
-                    target_user_id, {"ban_duration": "none"}
-                )
+                self.supabase.auth.admin.update_user_by_id(target_user_id, {"ban_duration": "none"})
 
             return {
                 "message": "Status atualizado",

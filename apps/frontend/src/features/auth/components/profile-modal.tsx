@@ -6,6 +6,9 @@ import {
   phoneMask,
   removePhoneMask,
   isValidPhone,
+  cpfMask,
+  removeDocumentMask,
+  isValidCpf,
 } from '@/lib/masks'
 import { fileToBase64 } from '@/lib/imageUtils'
 import { authService } from '../services/auth-service'
@@ -24,6 +27,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
     name: user.name || '',
     email: user.email,
     phone: user.phone ? phoneMask(user.phone) : '',
+    cpf: user.cpf ? cpfMask(user.cpf) : '',
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -57,6 +61,8 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
       let processedValue = value
       if (name === 'phone') {
         processedValue = phoneMask(value)
+      } else if (name === 'cpf') {
+        processedValue = cpfMask(value)
       }
 
       setFormData((prev) => ({ ...prev, [name]: processedValue }))
@@ -94,10 +100,12 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
 
       try {
         const cleanPhone = removePhoneMask(formData.phone)
+        const cleanCpf = removeDocumentMask(formData.cpf)
 
         const updateData = {
           name: formData.name,
           phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
+          cpf: cleanCpf.trim() === '' ? undefined : cleanCpf,
           newsletter_opt_in: newsletterCheckboxRef.current?.checked || false,
           avatar_url: avatarPreview || undefined,
         }
@@ -123,6 +131,7 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
       name: user.name || '',
       email: user.email,
       phone: user.phone ? phoneMask(user.phone) : '',
+      cpf: user.cpf ? cpfMask(user.cpf) : '',
     })
     setAvatarPreview(null)
     if (newsletterCheckboxRef.current) {
@@ -235,6 +244,30 @@ export function ProfileModal({ isOpen, onClose, user, onUpdateProfile }: Profile
                       : formData.phone && !isValidPhone(formData.phone)
                         ? 'border-destructive focus:ring-destructive'
                         : formData.phone && isValidPhone(formData.phone)
+                          ? 'border-green-500 focus:ring-green-500'
+                          : 'border-input focus:ring-primary'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="cpf" className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  CPF
+                </label>
+                <input
+                  type="text"
+                  id="cpf"
+                  name="cpf"
+                  value={formData.cpf}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                  placeholder="000.000.000-00"
+                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                    !isEditing
+                      ? 'bg-muted text-muted-foreground border-input'
+                      : formData.cpf && !isValidCpf(formData.cpf)
+                        ? 'border-destructive focus:ring-destructive'
+                        : formData.cpf && isValidCpf(formData.cpf)
                           ? 'border-green-500 focus:ring-green-500'
                           : 'border-input focus:ring-primary'
                   }`}
