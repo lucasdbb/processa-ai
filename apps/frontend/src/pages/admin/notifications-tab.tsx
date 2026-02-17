@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Plus, RefreshCw, Bell, CheckCircle, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,49 +18,71 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from 'sonner'
+import { notificationService, type NotificationCreate } from '@/services/notification-service'
 
-interface NotificationsTabProps {
-  isNotificationModalOpen: boolean
-  notificationType: string
-  notificationRecipient: string
-  notificationTitle: string
-  notificationDescription: string
-  isSendingNotification: boolean
-  onSetIsNotificationModalOpen: (open: boolean) => void
-  onNotificationTypeChange: (value: string) => void
-  onNotificationRecipientChange: (value: string) => void
-  onNotificationTitleChange: (value: string) => void
-  onNotificationDescriptionChange: (value: string) => void
-  onCheckDeadlines: () => Promise<void>
-  onSendNotification: () => Promise<void>
-}
+export default function NotificationsTab() {
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
+  const [notificationType, setNotificationType] = useState<NotificationCreate['type']>('system')
+  const [notificationRecipient, setNotificationRecipient] = useState<string>('all')
+  const [notificationTitle, setNotificationTitle] = useState('')
+  const [notificationDescription, setNotificationDescription] = useState('')
+  const [isSendingNotification, setIsSendingNotification] = useState(false)
 
-export default function NotificationsTab({
-  isNotificationModalOpen,
-  notificationType,
-  notificationRecipient,
-  notificationTitle,
-  notificationDescription,
-  isSendingNotification,
-  onSetIsNotificationModalOpen,
-  onNotificationTypeChange,
-  onNotificationRecipientChange,
-  onNotificationTitleChange,
-  onNotificationDescriptionChange,
-  onCheckDeadlines,
-  onSendNotification,
-}: NotificationsTabProps) {
+  const handleSendNotification = async () => {
+    if (!notificationTitle.trim()) {
+      toast.error('O título é obrigatório')
+      return
+    }
+
+    setIsSendingNotification(true)
+    try {
+      const result = await notificationService.create({
+        type: notificationType,
+        title: notificationTitle,
+        description: notificationDescription || undefined,
+        user_id: notificationRecipient === 'all' ? undefined : undefined,
+      })
+
+      toast.success(
+        `Notificação enviada com sucesso para ${result.recipients.length} ${
+          result.recipients.length === 1 ? 'usuário' : 'usuários'
+        }`
+      )
+
+      setNotificationTitle('')
+      setNotificationDescription('')
+      setNotificationType('system')
+      setNotificationRecipient('all')
+      setIsNotificationModalOpen(false)
+    } catch (error) {
+      console.error('Failed to send notification:', error)
+      toast.error('Erro ao enviar notificação')
+    } finally {
+      setIsSendingNotification(false)
+    }
+  }
+
+  const handleCheckDeadlines = async () => {
+    try {
+      const result = await notificationService.checkDeadlines()
+      toast.success(result.message || 'Prazos verificados com sucesso')
+    } catch (error) {
+      console.error('Failed to check deadlines:', error)
+      toast.error('Erro ao verificar prazos')
+    }
+  }
   return (
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-foreground">Gerenciar Notificações</h2>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onCheckDeadlines}>
+            <Button variant="outline" onClick={handleCheckDeadlines}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Verificar Prazos
             </Button>
-            <Button onClick={() => onSetIsNotificationModalOpen(true)}>
+            <Button onClick={() => setIsNotificationModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Criar Notificação
             </Button>
@@ -121,7 +144,7 @@ export default function NotificationsTab({
       </div>
 
       {/* Create Notification Dialog */}
-      <Dialog open={isNotificationModalOpen} onOpenChange={onSetIsNotificationModalOpen}>
+      <Dialog open={isNotificationModalOpen} onOpenChange={setIsNotificationModalOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Criar Nova Notificação</DialogTitle>
@@ -135,7 +158,7 @@ export default function NotificationsTab({
               <label className="text-sm font-medium text-foreground">
                 Tipo de Notificação
               </label>
-              <Select value={notificationType} onValueChange={onNotificationTypeChange}>
+              <Select value={notificationType} onValueChange={(value) => setNotificationType(value as NotificationCreate['type'])}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
@@ -154,7 +177,7 @@ export default function NotificationsTab({
               <label className="text-sm font-medium text-foreground">
                 Destinatários
               </label>
-              <Select value={notificationRecipient} onValueChange={onNotificationRecipientChange}>
+              <Select value={notificationRecipient} onValueChange={setNotificationRecipient}>
                 <SelectTrigger>
                   <SelectValue placeholder="Quem receberá" />
                 </SelectTrigger>
@@ -171,7 +194,7 @@ export default function NotificationsTab({
               <Input
                 placeholder="Ex: Nova funcionalidade disponível"
                 value={notificationTitle}
-                onChange={(e) => onNotificationTitleChange(e.target.value)}
+                onChange={(e) => setNotificationTitle(e.target.value)}
               />
             </div>
 
@@ -184,14 +207,14 @@ export default function NotificationsTab({
                 rows={3}
                 placeholder="Detalhes da notificação..."
                 value={notificationDescription}
-                onChange={(e) => onNotificationDescriptionChange(e.target.value)}
+                onChange={(e) => setNotificationDescription(e.target.value)}
               />
             </div>
           </div>
 
           <DialogFooter>
             <Button
-              onClick={onSendNotification}
+              onClick={handleSendNotification}
               disabled={isSendingNotification || !notificationTitle.trim()}
               className="w-full"
             >

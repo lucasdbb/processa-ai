@@ -1,4 +1,5 @@
-import { Edit, RefreshCw, Filter, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Edit, RefreshCw, Filter, ArrowUpDown, ChevronLeft, ChevronRight, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -18,57 +19,79 @@ import {
 } from '@/components/ui/select'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { cn } from '@/lib/utils'
-import type { FeedbackResponse } from '@/services/feedback-service'
+import { toast } from 'sonner'
+import { feedbackService, type FeedbackResponse } from '@/services/feedback-service'
 
-interface FeedbacksTabProps {
-  feedbacks: FeedbackResponse[]
-  isFeedbacksLoading: boolean
-  feedbacksPage: number
-  feedbacksPageSize: number
-  feedbacksTotal: number
-  feedbackStatusFilter: string
-  feedbackSortOrder: 'asc' | 'desc'
-  selectedFeedback: FeedbackResponse | null
-  isEditStatusDialogOpen: boolean
-  isViewFeedbackDialogOpen: boolean
-  isUpdatingFeedback: boolean
-  feedbackStatus: FeedbackResponse['status']
-  onLoadFeedbacks: (page?: number, pageSize?: number) => void
-  onFeedbackStatusFilterChange: (value: string) => void
-  onFeedbackSortOrderChange: (value: 'asc' | 'desc') => void
-  onOpenEditStatusDialog: (feedback: FeedbackResponse, e: React.MouseEvent) => void
-  onOpenViewFeedbackDialog: (feedback: FeedbackResponse) => void
-  onSetIsEditStatusDialogOpen: (open: boolean) => void
-  onSetIsViewFeedbackDialogOpen: (open: boolean) => void
-  onSetSelectedFeedback: (feedback: FeedbackResponse | null) => void
-  onFeedbackStatusChange: (value: FeedbackResponse['status']) => void
-  onUpdateFeedbackStatus: () => void
-}
+export default function FeedbacksTab() {
+  const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([])
+  const [isFeedbacksLoading, setIsFeedbacksLoading] = useState(false)
+  const [feedbacksPage, setFeedbacksPage] = useState(1)
+  const [feedbacksPageSize, setFeedbacksPageSize] = useState(10)
+  const [feedbacksTotal, setFeedbacksTotal] = useState(0)
+  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState<string>('all')
+  const [feedbackSortOrder, setFeedbackSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackResponse | null>(null)
+  const [isEditStatusDialogOpen, setIsEditStatusDialogOpen] = useState(false)
+  const [isViewFeedbackDialogOpen, setIsViewFeedbackDialogOpen] = useState(false)
+  const [isUpdatingFeedback, setIsUpdatingFeedback] = useState(false)
+  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackResponse['status']>('new')
+  const [error, setError] = useState<string | null>(null)
 
-export default function FeedbacksTab({
-  feedbacks,
-  isFeedbacksLoading,
-  feedbacksPage,
-  feedbacksPageSize,
-  feedbacksTotal,
-  feedbackStatusFilter,
-  feedbackSortOrder,
-  selectedFeedback,
-  isEditStatusDialogOpen,
-  isViewFeedbackDialogOpen,
-  isUpdatingFeedback,
-  feedbackStatus,
-  onLoadFeedbacks,
-  onFeedbackStatusFilterChange,
-  onFeedbackSortOrderChange,
-  onOpenEditStatusDialog,
-  onOpenViewFeedbackDialog,
-  onSetIsEditStatusDialogOpen,
-  onSetIsViewFeedbackDialogOpen,
-  onSetSelectedFeedback,
-  onFeedbackStatusChange,
-  onUpdateFeedbackStatus,
-}: FeedbacksTabProps) {
+  const loadFeedbacks = useCallback(async (page = 1, pageSize = feedbacksPageSize) => {
+    setIsFeedbacksLoading(true)
+    setError(null)
+    try {
+      const offset = (page - 1) * pageSize
+      const data = await feedbackService.getAll(pageSize, offset, feedbackStatusFilter, feedbackSortOrder)
+      const items = data.items || (Array.isArray(data) ? data : [])
+      const total = typeof data.total === 'number' ? data.total : items.length
+      setFeedbacks(items)
+      setFeedbacksTotal(total)
+      setFeedbacksPage(page)
+      setFeedbacksPageSize(pageSize)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao carregar feedbacks'
+      setFeedbacks([])
+      setFeedbacksTotal(0)
+      setError(message)
+      toast.error(message)
+    } finally {
+      setIsFeedbacksLoading(false)
+    }
+  }, [feedbackStatusFilter, feedbackSortOrder, feedbacksPageSize])
+
+  useEffect(() => {
+    void loadFeedbacks(1, feedbacksPageSize)
+  }, [loadFeedbacks, feedbacksPageSize])
+
+  const handleUpdateFeedbackStatus = async () => {
+    if (!selectedFeedback) return
+    setIsUpdatingFeedback(true)
+    try {
+      await feedbackService.update(selectedFeedback.id, { status: feedbackStatus })
+      toast.success('Status do feedback atualizado!')
+      setFeedbacks((prev) => prev.map((f) => (f.id === selectedFeedback.id ? { ...f, status: feedbackStatus } : f)))
+      setIsEditStatusDialogOpen(false)
+      setSelectedFeedback(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar status')
+    } finally {
+      setIsUpdatingFeedback(false)
+    }
+  }
+
+  const openEditStatusDialog = (feedback: FeedbackResponse, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setFeedbackStatus(feedback.status)
+    setSelectedFeedback(feedback)
+    setIsEditStatusDialogOpen(true)
+  }
+
+  const openViewFeedbackDialog = (feedback: FeedbackResponse) => {
+    setSelectedFeedback(feedback)
+    setIsViewFeedbackDialogOpen(true)
+  }
   return (
     <>
       <div className="space-y-6">
@@ -77,7 +100,7 @@ export default function FeedbacksTab({
           <div className="flex items-center gap-2">
             <Select
               value={feedbackStatusFilter}
-              onValueChange={onFeedbackStatusFilterChange}
+              onValueChange={setFeedbackStatusFilter}
             >
               <SelectTrigger className="w-[180px]">
                 <Filter className="w-4 h-4 mr-2" />
@@ -91,12 +114,21 @@ export default function FeedbacksTab({
                 <SelectItem value="archived">Arquivado</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={() => onLoadFeedbacks()} disabled={isFeedbacksLoading}>
+            <Button variant="outline" onClick={() => loadFeedbacks()} disabled={isFeedbacksLoading}>
               <RefreshCw className="h-4 w-4" />
               Atualizar
             </Button>
           </div>
         </div>
+        {error ? (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-red-900">Erro ao carregar dados</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        ) : null}
 
         <Card className="overflow-hidden shadow-sm">
           <CardContent className="p-0">
@@ -114,7 +146,7 @@ export default function FeedbacksTab({
                       <th className="px-6 py-3 font-medium text-muted-foreground">Conteúdo</th>
                       <th className="px-6 py-3 font-medium text-muted-foreground">Origem</th>
                       <th className="px-6 py-3 font-medium text-muted-foreground">Status</th>
-                      <th className="px-6 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => onFeedbackSortOrderChange(feedbackSortOrder === 'desc' ? 'asc' : 'desc')}>
+                      <th className="px-6 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onClick={() => setFeedbackSortOrder(feedbackSortOrder === 'desc' ? 'asc' : 'desc')}>
                         <div className="flex items-center gap-1">
                           Data
                           <ArrowUpDown className="h-3 w-3" />
@@ -128,7 +160,7 @@ export default function FeedbacksTab({
                       <tr
                         key={f.id}
                         className="hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => onOpenViewFeedbackDialog(f)}
+                        onClick={() => openViewFeedbackDialog(f)}
                       >
                         <td className="px-6 py-4">
                           <div>
@@ -170,7 +202,7 @@ export default function FeedbacksTab({
                           <button
                             type="button"
                             className="p-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                            onClick={(e) => onOpenEditStatusDialog(f, e)}
+                            onClick={(e) => openEditStatusDialog(f, e)}
                           >
                             <Edit className="h-4 w-4" />
                           </button>
@@ -194,7 +226,7 @@ export default function FeedbacksTab({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onLoadFeedbacks(feedbacksPage - 1, feedbacksPageSize)}
+                  onClick={() => loadFeedbacks(feedbacksPage - 1, feedbacksPageSize)}
                   disabled={feedbacksPage === 1 || isFeedbacksLoading}
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
@@ -206,7 +238,7 @@ export default function FeedbacksTab({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onLoadFeedbacks(feedbacksPage + 1, feedbacksPageSize)}
+                  onClick={() => loadFeedbacks(feedbacksPage + 1, feedbacksPageSize)}
                   disabled={feedbacksPage >= Math.ceil(feedbacksTotal / feedbacksPageSize) || isFeedbacksLoading}
                 >
                   Próximo
@@ -222,8 +254,8 @@ export default function FeedbacksTab({
       <Dialog
         open={isEditStatusDialogOpen}
         onOpenChange={(open) => {
-          onSetIsEditStatusDialogOpen(open)
-          if (!open) onSetSelectedFeedback(null)
+          setIsEditStatusDialogOpen(open)
+          if (!open) setSelectedFeedback(null)
         }}
       >
         <DialogContent>
@@ -238,7 +270,7 @@ export default function FeedbacksTab({
               <label className="text-sm font-medium">Status</label>
               <Select
                 value={feedbackStatus}
-                onValueChange={(v) => onFeedbackStatusChange(v as FeedbackResponse['status'])}
+                onValueChange={(v) => setFeedbackStatus(v as FeedbackResponse['status'])}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o status" />
@@ -259,10 +291,10 @@ export default function FeedbacksTab({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onSetIsEditStatusDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditStatusDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button type="button" onClick={onUpdateFeedbackStatus} disabled={isUpdatingFeedback}>
+            <Button type="button" onClick={handleUpdateFeedbackStatus} disabled={isUpdatingFeedback}>
               {isUpdatingFeedback ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
@@ -274,10 +306,10 @@ export default function FeedbacksTab({
         open={isViewFeedbackDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
-            onSetIsViewFeedbackDialogOpen(false)
-            onSetSelectedFeedback(null)
+            setIsViewFeedbackDialogOpen(false)
+            setSelectedFeedback(null)
           } else {
-            onSetIsViewFeedbackDialogOpen(true)
+            setIsViewFeedbackDialogOpen(true)
           }
         }}
       >
@@ -349,7 +381,7 @@ export default function FeedbacksTab({
           )}
 
           <DialogFooter>
-            <Button onClick={() => onSetIsViewFeedbackDialogOpen(false)}>
+            <Button onClick={() => setIsViewFeedbackDialogOpen(false)}>
               Fechar
             </Button>
           </DialogFooter>

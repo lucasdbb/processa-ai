@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Users,
   FileText,
   LayoutDashboard,
   Shield,
-  RefreshCw,
   ArrowLeft,
-  XCircle,
   MessageSquare,
   Newspaper,
   Bell,
-  Send,
 } from 'lucide-react'
 import OverviewTab from './admin/overview-tab'
 import UsersTab from './admin/users-tab'
@@ -21,27 +18,8 @@ import FeedbacksTab from './admin/feedbacks-tab'
 import NotificationsTab from './admin/notifications-tab'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { toast } from 'sonner'
-import { feedbackService, type FeedbackResponse } from '@/services/feedback-service'
-import type { NotificationCreate } from '@/services/notification-service'
 
 type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks' | 'notifications'
 
@@ -57,35 +35,10 @@ export default function AdminPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const allowedTabs = isAdmin ? TABS_ADMIN : TABS_AUTHOR
-  const initialTabFromUrl = searchParams.get('tab')
-  const initialTab: Tab = isTab(initialTabFromUrl) && allowedTabs.includes(initialTabFromUrl)
-    ? initialTabFromUrl
+  const tabFromUrl = searchParams.get('tab')
+  const activeTab: Tab = isTab(tabFromUrl) && allowedTabs.includes(tabFromUrl)
+    ? tabFromUrl
     : allowedTabs[0]
-
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
-  const [error, setError] = useState<string | null>(null)
-
-  const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([])
-  const [isFeedbacksLoading, setIsFeedbacksLoading] = useState(false)
-  const [feedbacksPage, setFeedbacksPage] = useState(1)
-  const [feedbacksPageSize, setFeedbacksPageSize] = useState(10)
-  const [feedbacksTotal, setFeedbacksTotal] = useState(0)
-  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState<string>('all')
-  const [feedbackSortOrder, setFeedbackSortOrder] = useState<'asc' | 'desc'>('desc')
-
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackResponse | null>(null)
-  const [isEditStatusDialogOpen, setIsEditStatusDialogOpen] = useState(false)
-  const [isViewFeedbackDialogOpen, setIsViewFeedbackDialogOpen] = useState(false)
-  const [isUpdatingFeedback, setIsUpdatingFeedback] = useState(false)
-  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackResponse['status']>('new')
-
-  // Notifications state
-  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
-  const [notificationType, setNotificationType] = useState<NotificationCreate['type']>('system')
-  const [notificationRecipient, setNotificationRecipient] = useState<string>('all')
-  const [notificationTitle, setNotificationTitle] = useState('')
-  const [notificationDescription, setNotificationDescription] = useState('')
-  const [isSendingNotification, setIsSendingNotification] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !isAdmin && !isAuthor) {
@@ -93,86 +46,13 @@ export default function AdminPage() {
     }
   }, [authLoading, isAdmin, isAuthor, navigate])
 
-  useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (isTab(tab) && allowedTabs.includes(tab)) {
-      setActiveTab(tab)
-      return
-    }
-    setActiveTab((current) => (allowedTabs.includes(current) ? current : allowedTabs[0]))
-  }, [allowedTabs, searchParams])
-
   const setTab = (next: Tab) => {
     if (!allowedTabs.includes(next)) return
-    setActiveTab(next)
     setSearchParams((prev) => {
       const nextParams = new URLSearchParams(prev)
       nextParams.set('tab', next)
       return nextParams
     })
-  }
-
-  const loadFeedbacks = useCallback(async (page = 1, pageSize = 10) => {
-    setIsFeedbacksLoading(true)
-    setError(null)
-    try {
-      const offset = (page - 1) * pageSize
-      const data = await feedbackService.getAll(pageSize, offset, feedbackStatusFilter, feedbackSortOrder)
-      // Handle potential backend mismatch or legacy format
-      const items = data.items || (Array.isArray(data) ? data : [])
-      const total = typeof data.total === 'number' ? data.total : items.length
-      
-      setFeedbacks(items)
-      setFeedbacksTotal(total)
-      setFeedbacksPage(page)
-      setFeedbacksPageSize(pageSize)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao carregar feedbacks'
-      setFeedbacks([])
-      setFeedbacksTotal(0)
-      setError(message)
-      toast.error(message)
-    } finally {
-      setIsFeedbacksLoading(false)
-    }
-  }, [feedbackStatusFilter, feedbackSortOrder])
-
-  useEffect(() => {
-    if (authLoading) return
-    if (!isAdmin && !isAuthor) return
-    if (isAdmin) {
-      void loadFeedbacks()
-    }
-  }, [authLoading, isAdmin, isAuthor, loadFeedbacks])
-
-  const handleUpdateFeedbackStatus = async () => {
-    if (!selectedFeedback) return
-    setIsUpdatingFeedback(true)
-    try {
-      await feedbackService.update(selectedFeedback.id, { status: feedbackStatus })
-      toast.success('Status do feedback atualizado!')
-      setFeedbacks((prev) => prev.map((f) => (f.id === selectedFeedback.id ? { ...f, status: feedbackStatus } : f)))
-      setIsEditStatusDialogOpen(false)
-      setSelectedFeedback(null)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar status')
-    } finally {
-      setIsUpdatingFeedback(false)
-    }
-  }
-
-  const openEditStatusDialog = (f: FeedbackResponse, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Update state synchronously to ensure dialog gets correct data
-    setFeedbackStatus(f.status)
-    setSelectedFeedback(f)
-    setIsEditStatusDialogOpen(true)
-  }
-
-  const openViewFeedbackDialog = (f: FeedbackResponse) => {
-    setSelectedFeedback(f)
-    setIsViewFeedbackDialogOpen(true)
   }
 
   if (authLoading) {
@@ -183,45 +63,6 @@ export default function AdminPage() {
     return null
   }
 
-  const handleSendNotification = async () => {
-    if (!notificationTitle.trim()) {
-      toast.error('O título é obrigatório')
-      return
-    }
-
-    setIsSendingNotification(true)
-    try {
-      const { notificationService } = await import('@/services/notification-service')
-      const result = await notificationService.create({
-        type: notificationType,
-        title: notificationTitle,
-        description: notificationDescription || undefined,
-        user_id: notificationRecipient === 'all' ? undefined : undefined, // TODO: implementar seleção de usuário específico
-      })
-
-      toast.success(
-        `Notificação enviada com sucesso para ${result.recipients.length} ${
-          result.recipients.length === 1 ? 'usuário' : 'usuários'
-        }`
-      )
-
-      // Reset form
-      setNotificationTitle('')
-      setNotificationDescription('')
-      setNotificationType('system')
-      setNotificationRecipient('all')
-      setIsNotificationModalOpen(false)
-    } catch (error) {
-      console.error('Failed to send notification:', error)
-      toast.error('Erro ao enviar notificação')
-    } finally {
-      setIsSendingNotification(false)
-    }
-  }
-
-  const handleNotificationTypeChange = (value: string) => {
-    setNotificationType(value as NotificationCreate['type'])
-  }
 
   return (
     <div className="min-h-screen bg-muted/40 flex font-sans text-foreground">
@@ -358,16 +199,6 @@ export default function AdminPage() {
 
       <div className="flex-1 lg:ml-64">
         <div className="p-8 max-w-7xl mx-auto">
-          {error ? (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-red-900">Erro ao carregar dados</h3>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
-              </div>
-            </div>
-          ) : null}
-
           <div className="lg:hidden mb-6 flex flex-wrap gap-2">
             <Button variant={activeTab === 'overview' ? 'default' : 'outline'} onClick={() => setTab('overview')}>
               <LayoutDashboard className="h-4 w-4" />
@@ -412,142 +243,15 @@ export default function AdminPage() {
             <MaterialsTab isAdmin={isAdmin} />
           ) : null}
           {isAdmin && activeTab === 'feedbacks' ? (
-            <FeedbacksTab
-              feedbacks={feedbacks}
-              isFeedbacksLoading={isFeedbacksLoading}
-              feedbacksPage={feedbacksPage}
-              feedbacksPageSize={feedbacksPageSize}
-              feedbacksTotal={feedbacksTotal}
-              feedbackStatusFilter={feedbackStatusFilter}
-              feedbackSortOrder={feedbackSortOrder}
-              selectedFeedback={selectedFeedback}
-              isEditStatusDialogOpen={isEditStatusDialogOpen}
-              isViewFeedbackDialogOpen={isViewFeedbackDialogOpen}
-              isUpdatingFeedback={isUpdatingFeedback}
-              feedbackStatus={feedbackStatus}
-              onLoadFeedbacks={loadFeedbacks}
-              onFeedbackStatusFilterChange={setFeedbackStatusFilter}
-              onFeedbackSortOrderChange={setFeedbackSortOrder}
-              onOpenEditStatusDialog={openEditStatusDialog}
-              onOpenViewFeedbackDialog={openViewFeedbackDialog}
-              onSetIsEditStatusDialogOpen={setIsEditStatusDialogOpen}
-              onSetIsViewFeedbackDialogOpen={setIsViewFeedbackDialogOpen}
-              onSetSelectedFeedback={setSelectedFeedback}
-              onFeedbackStatusChange={setFeedbackStatus}
-              onUpdateFeedbackStatus={() => void handleUpdateFeedbackStatus()}
-            />
+            <FeedbacksTab />
           ) : null}
           {isAdmin && activeTab === 'notifications' ? (
-            <NotificationsTab
-              isNotificationModalOpen={isNotificationModalOpen}
-              notificationType={notificationType}
-              notificationRecipient={notificationRecipient}
-              notificationTitle={notificationTitle}
-              notificationDescription={notificationDescription}
-              isSendingNotification={isSendingNotification}
-              onSetIsNotificationModalOpen={setIsNotificationModalOpen}
-              onNotificationTypeChange={handleNotificationTypeChange}
-              onNotificationRecipientChange={setNotificationRecipient}
-              onNotificationTitleChange={setNotificationTitle}
-              onNotificationDescriptionChange={setNotificationDescription}
-              onCheckDeadlines={() => Promise.resolve()}
-              onSendNotification={handleSendNotification}
-            />
+            <NotificationsTab />
           ) : null}
 
         </div>
       </div>
 
-      {/* Create Notification Dialog */}
-      <Dialog open={isNotificationModalOpen} onOpenChange={setIsNotificationModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Criar Nova Notificação</DialogTitle>
-            <DialogDescription>
-              Envie notificações para os usuários da plataforma
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Tipo de Notificação
-              </label>
-              <Select value={notificationType} onValueChange={handleNotificationTypeChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="system">Sistema</SelectItem>
-                  <SelectItem value="blog">Blog</SelectItem>
-                  <SelectItem value="feature">Nova Funcionalidade</SelectItem>
-                  <SelectItem value="deadline">Prazo</SelectItem>
-                  <SelectItem value="process">Processo</SelectItem>
-                  <SelectItem value="calculation">Cálculo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Destinatários
-              </label>
-              <Select value={notificationRecipient} onValueChange={setNotificationRecipient}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Quem receberá" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os usuários</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Título <span className="text-destructive">*</span>
-              </label>
-              <Input
-                placeholder="Ex: Nova funcionalidade disponível"
-                value={notificationTitle}
-                onChange={(e) => setNotificationTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Descrição
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground resize-none"
-                rows={3}
-                placeholder="Detalhes da notificação..."
-                value={notificationDescription}
-                onChange={(e) => setNotificationDescription(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              onClick={handleSendNotification}
-              disabled={isSendingNotification || !notificationTitle.trim()}
-              className="w-full"
-            >
-              {isSendingNotification ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Enviar Notificação
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
