@@ -13,9 +13,9 @@ const categories = [
 ]
 
 const getCategoryForTool = (slug: string) => {
-  if (slug === 'cnis_analysis' || slug === 'process_summary') return 'analysis'
+  if (slug === 'cnis_analysis' || slug === 'process_summary' || slug === 'brief_scanner') return 'analysis'
   if (slug === 'chat') return 'consultation'
-  if (slug === 'initial_petition' || slug === 'defense') return 'generation'
+  if (slug === 'labor_claim' || slug === 'defense') return 'generation'
   return 'all'
 }
 

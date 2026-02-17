@@ -1,6 +1,6 @@
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import type { AiTool } from './types'
-import { FileSearch, FileText, MessageSquare } from 'lucide-react'
+import { FileSearch, FileText, MessageSquare, Scale, ScanSearch } from 'lucide-react'
 import { CnisAnalysisTool } from './components/cnis-analysis-tool'
 import { ChatJuridicoTool } from './components/chat-juridico-tool'
 import { PromptTool } from './components/prompt-tool'
@@ -17,6 +17,8 @@ const ICON_MAP = {
   FileSearch,
   FileText,
   MessageSquare,
+  Scale,
+  ScanSearch,
 } as const
 
 interface AiToolResponse {
