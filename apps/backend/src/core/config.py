@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
-    SUPABASE_AI_BUCKET: str = "supabase-outputs"
+    SUPABASE_AI_BUCKET: str = "ai-outputs"
     SUPABASE_OFFICE_BUCKET: str = "office-documents"
+    SUPABASE_BLOG_BUCKET: str = "blog-images"
 
     # Stripe
     STRIPE_SECRET_KEY: str = ""

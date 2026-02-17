@@ -1,8 +1,11 @@
 import re
+import base64
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 
+from src.core.config import settings
 from src.core.email import send_new_blog_post_notification_bulk
 from src.core.logging import logger
 from src.core.supabase import get_supabase
@@ -17,6 +20,82 @@ class BlogService:
         s = re.sub(r"[^a-z0-9]+", "-", s)
         s = re.sub(r"-+", "-", s).strip("-")
         return s or "post"
+
+    def _upload_base64_image(self, base64_data: str, post_slug: str) -> str:
+        """
+        Upload a base64 image to Supabase Storage and return the public URL.
+
+        Args:
+            base64_data: Base64 encoded image (with or without data:image prefix)
+            post_slug: Slug of the blog post (used for organizing files)
+
+        Returns:
+            Public URL of the uploaded image
+
+        Raises:
+            HTTPException: If upload fails
+        """
+        try:
+            # Extract image data and mime type from base64 string
+            if base64_data.startswith("data:image"):
+                # Format: data:image/jpeg;base64,/9j/4AAQ...
+                header, encoded = base64_data.split(",", 1)
+                mime_type = header.split(":")[1].split(";")[0]  # Extract "image/jpeg"
+                extension = mime_type.split("/")[1]  # Extract "jpeg"
+            else:
+                # Assume it's raw base64 without header
+                encoded = base64_data
+                extension = "png"
+                mime_type = "image/png"
+
+            # Decode base64 to bytes
+            image_bytes = base64.b64decode(encoded)
+
+            # Generate unique filename
+            filename = f"{post_slug}/{uuid.uuid4().hex}.{extension}"
+
+            # Upload to Supabase Storage
+            bucket = settings.SUPABASE_BLOG_BUCKET
+            self.supabase.storage.from_(bucket).upload(
+                filename,
+                image_bytes,
+                {"content-type": mime_type, "upsert": "true"},
+            )
+
+            # Get public URL
+            public_url = self.supabase.storage.from_(bucket).get_public_url(filename)
+
+            logger.info(f"Uploaded blog image: {filename} -> {public_url}")
+            return public_url
+
+        except Exception as e:
+            logger.error(f"Failed to upload blog image: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao fazer upload da imagem: {str(e)}",
+            )
+
+    def _process_cover_image(self, cover_image_url: str | None, post_slug: str) -> str | None:
+        """
+        Process cover image URL. If it's base64, upload to Storage and return public URL.
+        Otherwise, return the URL as-is.
+
+        Args:
+            cover_image_url: Image URL (may be base64 or HTTP URL)
+            post_slug: Slug of the blog post
+
+        Returns:
+            Public URL or None
+        """
+        if not cover_image_url:
+            return None
+
+        # Check if it's a base64 image
+        if cover_image_url.startswith("data:image"):
+            return self._upload_base64_image(cover_image_url, post_slug)
+
+        # If it's already a URL, return as-is
+        return cover_image_url
 
     async def list_published(
         self,
@@ -350,12 +429,16 @@ class BlogService:
             )
             if cats.data:
                 category_id = cats.data[0]["id"]
+
+        # Process cover image (convert base64 to Supabase Storage URL)
+        cover_image_url = self._process_cover_image(data.cover_image_url, slug)
+
         payload = {
             "title": data.title,
             "slug": slug,
             "excerpt": data.excerpt,
             "content": data.content,
-            "cover_image_url": data.cover_image_url,
+            "cover_image_url": cover_image_url,
             "category_id": category_id,
             "author_id": user_id,
             "status": "draft",
@@ -420,7 +503,7 @@ class BlogService:
     async def update_draft(self, user_id: str, post_id: str, data):
         res = (
             self.supabase.table("blog_posts")
-            .select("id,author_id,status")
+            .select("id,author_id,status,slug")
             .eq("id", post_id)
             .limit(1)
             .execute()
@@ -446,6 +529,10 @@ class BlogService:
                 pass
         if not is_author:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+
+        # Get post slug for image upload
+        post_slug = post.get("slug", post_id)
+
         updates = {}
         if data.title is not None:
             updates["title"] = data.title
@@ -454,7 +541,8 @@ class BlogService:
         if data.content is not None:
             updates["content"] = data.content
         if data.cover_image_url is not None:
-            updates["cover_image_url"] = data.cover_image_url
+            # Process cover image (convert base64 to Supabase Storage URL)
+            updates["cover_image_url"] = self._process_cover_image(data.cover_image_url, post_slug)
         if data.category_id is not None:
             updates["category_id"] = data.category_id
         if getattr(data, "category", None):
