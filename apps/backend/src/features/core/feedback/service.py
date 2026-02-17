@@ -1,8 +1,11 @@
 from typing import List, Optional
 from uuid import UUID
+import logging
 from fastapi import HTTPException, status
 from src.core.supabase import get_supabase
 from src.features.core.feedback.schemas import FeedbackCreate, FeedbackUpdate
+
+logger = logging.getLogger(__name__)
 
 class FeedbackService:
     def __init__(self):
@@ -34,7 +37,7 @@ class FeedbackService:
             return res.data, res.count
         except Exception as e:
             # Fallback if join fails (e.g. FK issue)
-            print(f"Error fetching feedback with profiles: {e}")
+            logger.warning(f"Error fetching feedback with profiles: {e}")
             query = self.supabase.table("feedback").select("*", count="exact")
             
             if status_filter:

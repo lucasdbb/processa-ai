@@ -5,9 +5,12 @@ Funções para validação de CPF, rate limiting, reCAPTCHA e detecção de emai
 """
 
 import re
+import logging
 from datetime import datetime, date
 from typing import Optional
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 def validate_cpf(cpf: str) -> bool:
@@ -76,7 +79,7 @@ async def check_ip_rate_limit(supabase, ip: str, max_per_day: int = 3) -> bool:
     except Exception as e:
         # Em caso de erro, permitir o registro (fail open)
         # mas logar o erro para investigação
-        print(f"Error checking IP rate limit: {e}")
+        logger.error(f"Error checking IP rate limit: {e}")
         return True
 
 
@@ -97,7 +100,7 @@ async def log_registration_ip(supabase, ip: str, user_id: str) -> None:
         }).execute()
     except Exception as e:
         # Não falhar se log falhar, apenas logar erro
-        print(f"Error logging registration IP: {e}")
+        logger.error(f"Error logging registration IP: {e}")
 
 
 def is_disposable_email(email: str) -> bool:
@@ -160,7 +163,7 @@ async def verify_recaptcha(token: str, secret_key: str, min_score: float = 0.5) 
 
     except Exception as e:
         # Em caso de erro na API do Google, permitir (fail open)
-        print(f"Error verifying reCAPTCHA: {e}")
+        logger.error(f"Error verifying reCAPTCHA: {e}")
         return (True, None)
 
 
@@ -187,7 +190,7 @@ async def check_blocked_entity(supabase, entity_type: str, entity_value: str) ->
         return len(result.data) > 0
 
     except Exception as e:
-        print(f"Error checking blocked entity: {e}")
+        logger.error(f"Error checking blocked entity: {e}")
         return False
 
 
@@ -222,7 +225,7 @@ async def block_entity(
         return True
 
     except Exception as e:
-        print(f"Error blocking entity: {e}")
+        logger.error(f"Error blocking entity: {e}")
         return False
 
 

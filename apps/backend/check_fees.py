@@ -1,6 +1,13 @@
 """Script to check fees data."""
 import asyncio
+import logging
 from src.core.db import init_db, get_pool
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 async def check_fees():
     await init_db()
@@ -21,15 +28,14 @@ async def check_fees():
                 LIMIT 10
             ''')
             rows = await cur.fetchall()
-            print('Fees with status=paid but paid_amount < amount:')
-            print(f'Found {len(rows)} rows')
+            logger.info('Fees with status=paid but paid_amount < amount:')
+            logger.info(f'Found {len(rows)} rows')
             for row in rows:
-                print(f'  ID: {row[0]}')
-                print(f'  Desc: {row[1]}')
-                print(f'  Amount: {row[2]}')
-                print(f'  PaidAmount: {row[3]}')
-                print(f'  Status: {row[4]}')
-                print()
+                logger.info(f'  ID: {row[0]}')
+                logger.info(f'  Desc: {row[1]}')
+                logger.info(f'  Amount: {row[2]}')
+                logger.info(f'  PaidAmount: {row[3]}')
+                logger.info(f'  Status: {row[4]}')
 
             # Check total_paid calculation
             await cur.execute('''
@@ -40,10 +46,10 @@ async def check_fees():
                 FROM office_api.fees
             ''')
             result = await cur.fetchone()
-            print(f'\nTotal calculations:')
-            print(f'  Total by amount (status=paid): {result[0]}')
-            print(f'  Total by paid_amount (all): {result[1]}')
-            print(f'  Count of paid fees: {result[2]}')
+            logger.info('\nTotal calculations:')
+            logger.info(f'  Total by amount (status=paid): {result[0]}')
+            logger.info(f'  Total by paid_amount (all): {result[1]}')
+            logger.info(f'  Count of paid fees: {result[2]}')
 
             # Update paid_amount to match amount for all paid fees
             await cur.execute('''
@@ -52,7 +58,7 @@ async def check_fees():
                 WHERE status = 'paid' AND paid_amount != amount
             ''')
             updated = cur.rowcount
-            print(f'\nUpdated {updated} fees to set paid_amount = amount')
+            logger.info(f'\nUpdated {updated} fees to set paid_amount = amount')
 
             await conn.commit()
 
