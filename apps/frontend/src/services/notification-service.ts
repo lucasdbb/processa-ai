@@ -114,4 +114,15 @@ export const notificationService = {
     if (!res.ok) throw new Error('Failed to fetch all notifications')
     return res.json()
   },
+
+  async checkDeadlines(): Promise<{ success: boolean; message: string; checked_at: string }> {
+    const res = await fetchWithCredentials(
+      `${API_URL}/notifications/admin/notifications/check-deadlines`,
+      {
+        method: 'POST',
+      }
+    )
+    if (!res.ok) throw new Error('Failed to check deadlines')
+    return res.json()
+  },
 }

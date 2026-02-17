@@ -20,6 +20,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
 
     db_ready = False
+    scheduler = None
+
     if settings.ENVIRONMENT != "test":
         try:
             await init_db()
@@ -28,7 +30,26 @@ async def lifespan(app: FastAPI):
         except Exception:
             logger.exception("Failed to initialize database")
 
+        # Start scheduler for background jobs
+        try:
+            from src.core.scheduler import create_scheduler, setup_jobs
+
+            scheduler = create_scheduler()
+            setup_jobs(scheduler)
+            scheduler.start()
+            logger.info("Scheduler started successfully")
+        except Exception:
+            logger.exception("Failed to start scheduler")
+
     yield
+
+    # Shutdown
+    if scheduler:
+        try:
+            scheduler.shutdown()
+            logger.info("Scheduler stopped")
+        except Exception:
+            logger.exception("Failed to stop scheduler")
 
     if settings.ENVIRONMENT != "test" and db_ready:
         try:

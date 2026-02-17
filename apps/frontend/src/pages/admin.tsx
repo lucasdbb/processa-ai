@@ -1853,9 +1853,21 @@ export default function AdminPage() {
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-foreground">Gerenciar Notificações</h2>
                 <div className="flex gap-2">
-                  <Button variant="outline" disabled>
-                    <RefreshCw className="h-4 w-4" />
-                    Atualizar
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const { notificationService } = await import('@/services/notification-service')
+                        await notificationService.checkDeadlines()
+                        toast.success('Verificação de prazos concluída com sucesso')
+                      } catch (error) {
+                        console.error('Failed to check deadlines:', error)
+                        toast.error('Erro ao verificar prazos')
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Verificar Prazos
                   </Button>
                   <Button onClick={() => setIsNotificationModalOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />

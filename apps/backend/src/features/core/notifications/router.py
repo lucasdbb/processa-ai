@@ -116,3 +116,46 @@ async def list_all_notifications(
         )
 
     return await service.list_all_notifications(page, page_size)
+
+
+@router.post(
+    "/admin/notifications/check-deadlines",
+    dependencies=[Depends(get_user_role)],
+)
+async def manually_check_deadlines(
+    user_role: str = Depends(get_user_role),
+):
+    """
+    Manually trigger deadline notifications check (admin only)
+
+    Useful for:
+    - Testing the notification system
+    - Running manually if scheduled job was missed
+    - Force checking outside the 8AM schedule
+    """
+    if user_role not in ["admin", "author"]:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins and authors can trigger deadline checks",
+        )
+
+    from src.features.office.deadlines.notifications import DeadlineNotificationService
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    deadline_service = DeadlineNotificationService()
+
+    # Run the check
+    await deadline_service.check_upcoming_deadlines()
+
+    # Get current time for response
+    brazil_tz = ZoneInfo('America/Sao_Paulo')
+    checked_at = datetime.now(brazil_tz).isoformat()
+
+    return {
+        "success": True,
+        "message": "Deadline notifications check completed",
+        "checked_at": checked_at,
+    }

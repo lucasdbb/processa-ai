@@ -26,6 +26,8 @@ dependencies = [
     "tenacity>=8.2.0",
     # Redis (for job queue)
     "redis>=5.0.8",
+    # Scheduler
+    "apscheduler>=3.10.4",
     # Google Integration
     "google-auth>=2.38.0",
     "google-auth-oauthlib>=1.2.1",
