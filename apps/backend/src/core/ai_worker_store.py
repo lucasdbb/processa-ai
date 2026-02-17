@@ -59,7 +59,7 @@ async def ensure_endpoint(
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "insert into ai_worker.endpoints (key, version, method, path, description, "
+                    "insert into public.ai_endpoints (key, version, method, path, description, "
                     "n8n_workflow_id, is_active) "
                     "values (%s, %s, %s, %s, %s, %s, %s) "
                     "on conflict (key) do update set "
@@ -88,7 +88,7 @@ async def create_job(
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "insert into ai_worker.jobs (id, endpoint_key, status, progress, user_id, "
+                    "insert into public.ai_jobs (id, endpoint_key, status, progress, user_id, "
                     "client_id, request_payload) "
                     "values (%s, %s, 'queued', 0, %s, %s, %s) "
                     "on conflict (id) do nothing"
@@ -108,7 +108,7 @@ async def add_job_event(
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "insert into ai_worker.job_events (job_id, event_type, message, payload) "
+                "insert into public.ai_job_events (job_id, event_type, message, payload) "
                 "values (%s, %s, %s, %s)",
                 (
                     job_uuid,
@@ -125,7 +125,7 @@ async def mark_job_processing(*, job_uuid: uuid.UUID, progress: int) -> None:
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update ai_worker.jobs "
+                    "update public.ai_jobs "
                     "set status = 'processing', progress = %s, "
                     "started_at = coalesce(started_at, now()) "
                     "where id = %s"
@@ -140,7 +140,7 @@ async def update_job_progress(*, job_uuid: uuid.UUID, progress: int) -> None:
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "update ai_worker.jobs set progress = %s where id = %s",
+                "update public.ai_jobs set progress = %s where id = %s",
                 (int(progress), job_uuid),
             )
 
@@ -151,7 +151,7 @@ async def mark_job_completed(*, job_uuid: uuid.UUID, result_payload: dict) -> No
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update ai_worker.jobs "
+                    "update public.ai_jobs "
                     "set status = 'completed', progress = 100, result_payload = %s, "
                     "finished_at = now() "
                     "where id = %s"
@@ -166,7 +166,7 @@ async def mark_job_failed(*, job_uuid: uuid.UUID, error: str) -> None:
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update ai_worker.jobs "
+                    "update public.ai_jobs "
                     "set status = 'failed', progress = 100, error = %s, finished_at = now() "
                     "where id = %s"
                 ),
@@ -258,7 +258,7 @@ async def get_job_status_from_db(*, job_uuid: uuid.UUID) -> dict | None:
             await cur.execute(
                 (
                     "select status, progress, error, result_payload, started_at, finished_at "
-                    "from ai_worker.jobs where id = %s"
+                    "from public.ai_jobs where id = %s"
                 ),
                 (job_uuid,),
             )
@@ -319,7 +319,7 @@ async def get_user_analysis_history(
                     d_output.storage_path as output_storage_path,
                     d_output.bucket as output_bucket,
                     d_output.created_at as output_created_at
-                from ai_worker.jobs j
+                from public.ai_jobs j
                 left join public.generated_documents d_input
                     on d_input.job_id = j.id and d_input.document_type = 'input'
                 left join public.generated_documents d_output

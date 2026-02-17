@@ -46,7 +46,7 @@ async def get_ai_tools(_internal=Depends(require_internal_auth)):
             await cur.execute("""
                 SELECT key, display_name, description, icon, variant,
                        display_order, is_locked
-                FROM ai_worker.endpoints
+                FROM public.ai_endpoints
                 WHERE variant IN ('cnis', 'chat', 'prompt')
                 ORDER BY display_order, display_name
             """)

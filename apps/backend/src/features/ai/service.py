@@ -27,7 +27,7 @@ class AiService:
                     await cur.execute(
                         """
                         SELECT result_payload, created_at
-                        FROM ai_worker.jobs
+                        FROM public.ai_jobs
                         WHERE endpoint_key = %s
                           AND status = 'completed'
                           AND result_payload->>'input_hash' = %s

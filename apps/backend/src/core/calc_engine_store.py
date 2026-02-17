@@ -36,7 +36,7 @@ async def create_calculation(
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "insert into calc_engine.calculations "
+                    "insert into public.calculations "
                     "(id, calculator_key, status, user_id, client_id, input_payload) "
                     "values (%s, %s, 'processing', %s, %s, %s) "
                     "on conflict (id) do nothing"
@@ -55,7 +55,7 @@ async def mark_calculation_completed(
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update calc_engine.calculations "
+                    "update public.calculations "
                     "set status = 'completed', output_payload = %s, error = null, "
                     "finished_at = now() "
                     "where id = %s"
@@ -74,7 +74,7 @@ async def mark_calculation_failed(
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update calc_engine.calculations "
+                    "update public.calculations "
                     "set status = 'failed', error = %s, finished_at = now() "
                     "where id = %s"
                 ),

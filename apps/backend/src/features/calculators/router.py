@@ -37,7 +37,7 @@ async def get_calculators(_internal=Depends(require_internal_auth)):
                 """
                 SELECT key, display_name, description, icon, path,
                        display_order, is_locked
-                FROM calc_engine.calculators
+                FROM public.calculators
                 ORDER BY display_order, display_name
             """
             )
