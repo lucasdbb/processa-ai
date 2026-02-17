@@ -166,6 +166,27 @@ class ProfilesService:
             )
             data = response.data or []
 
+            # Get credits and subscriptions for all users
+            user_ids = [p["id"] for p in data]
+
+            # Get credits
+            credits_response = (
+                self.supabase.table("credits")
+                .select("user_id, balance")
+                .in_("user_id", user_ids)
+                .execute()
+            )
+            credits_map = {c["user_id"]: c["balance"] for c in (credits_response.data or [])}
+
+            # Get subscriptions
+            subs_response = (
+                self.supabase.table("subscriptions")
+                .select("user_id, plan_id, status")
+                .in_("user_id", user_ids)
+                .execute()
+            )
+            subs_map = {s["user_id"]: {"plan_id": s["plan_id"], "status": s["status"]} for s in (subs_response.data or [])}
+
             return [
                 {
                     "id": p["id"],
@@ -181,6 +202,9 @@ class ProfilesService:
                     "confirmed_at": None,
                     "created_at": p["created_at"],
                     "updated_at": p.get("updated_at"),
+                    "credits": credits_map.get(p["id"], 0),
+                    "plan_id": subs_map.get(p["id"], {}).get("plan_id", "free"),
+                    "subscription_status": subs_map.get(p["id"], {}).get("status", "active"),
                 }
                 for p in data
             ]
@@ -190,8 +214,8 @@ class ProfilesService:
                 detail="Erro ao listar usuários",
             )
 
-    async def update_role(self, target_user_id: str, role: str) -> dict:
-        """Update user role (admin only)."""
+    async def update_role(self, target_user_id: str, role: str, credits: int | None = None, plan_id: str | None = None) -> dict:
+        """Update user role, credits, and plan (admin only)."""
         valid_roles = {"client", "author", "admin"}
         if role not in valid_roles:
             raise HTTPException(
@@ -199,7 +223,14 @@ class ProfilesService:
                 detail="Role inválida",
             )
 
+        if plan_id and plan_id not in {"free", "student", "autonomo"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Plano inválido. Planos válidos: free, student, autonomo",
+            )
+
         try:
+            # Update role
             res = (
                 self.supabase.table("profiles")
                 .update({"role": role})
@@ -212,8 +243,68 @@ class ProfilesService:
                     detail="Usuário não encontrado",
                 )
             user = res.data[0]
+
+            # Update credits if provided
+            if credits is not None:
+                # Check if credits record exists
+                credits_res = (
+                    self.supabase.table("credits")
+                    .select("id")
+                    .eq("user_id", target_user_id)
+                    .execute()
+                )
+
+                if credits_res.data:
+                    # Update existing credits
+                    self.supabase.table("credits").update(
+                        {"balance": credits, "updated_at": datetime.now(timezone.utc).isoformat()}
+                    ).eq("user_id", target_user_id).execute()
+                else:
+                    # Create new credits record
+                    now = datetime.now(timezone.utc).isoformat()
+                    self.supabase.table("credits").insert(
+                        {
+                            "user_id": target_user_id,
+                            "balance": credits,
+                            "created_at": now,
+                            "updated_at": now,
+                        }
+                    ).execute()
+
+            # Update plan if provided
+            if plan_id:
+                sub_res = (
+                    self.supabase.table("subscriptions")
+                    .select("id")
+                    .eq("user_id", target_user_id)
+                    .execute()
+                )
+
+                now = datetime.now(timezone.utc).isoformat()
+
+                if sub_res.data:
+                    # Update existing subscription
+                    self.supabase.table("subscriptions").update(
+                        {
+                            "plan_id": plan_id,
+                            "status": "active",
+                            "updated_at": now,
+                        }
+                    ).eq("user_id", target_user_id).execute()
+                else:
+                    # Create new subscription
+                    self.supabase.table("subscriptions").insert(
+                        {
+                            "user_id": target_user_id,
+                            "plan_id": plan_id,
+                            "status": "active",
+                            "created_at": now,
+                            "updated_at": now,
+                        }
+                    ).execute()
+
             return {
-                "message": "Role atualizada",
+                "message": "Usuário atualizado com sucesso",
                 "user": {
                     "id": user["id"],
                     "email": user["email"],
@@ -222,10 +313,13 @@ class ProfilesService:
             }
         except HTTPException:
             raise
-        except Exception:
+        except Exception as e:
+            from src.core.logging import logger
+
+            logger.error(f"Error updating user: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Erro ao atualizar role",
+                detail=f"Erro ao atualizar usuário: {str(e)}",
             )
 
     async def update_status(self, target_user_id: str, new_status: str) -> dict:
@@ -333,6 +427,121 @@ class ProfilesService:
 
             logger.error(f"Error updating newsletter status: {str(e)}")
             raise
+
+    async def add_credits(self, user_id: str, amount: int) -> dict:
+        """Add credits to user (admin only)."""
+        try:
+            # Check if user exists
+            profile_res = (
+                self.supabase.table("profiles")
+                .select("id, email, name")
+                .eq("id", user_id)
+                .execute()
+            )
+            if not profile_res.data:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuário não encontrado",
+                )
+            profile = profile_res.data[0]
+
+            # Add credits via RPC function
+            result = self.supabase.rpc("add_user_credits", {"p_user_id": user_id, "p_amount": amount}).execute()
+
+            return {
+                "message": f"{amount} créditos adicionados com sucesso",
+                "user": {
+                    "id": profile["id"],
+                    "email": profile["email"],
+                    "name": profile.get("name", ""),
+                },
+                "credits_added": amount,
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            from src.core.logging import logger
+
+            logger.error(f"Error adding credits: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao adicionar créditos: {str(e)}",
+            )
+
+    async def update_plan(self, user_id: str, plan_id: str) -> dict:
+        """Update user's plan (admin only)."""
+        valid_plans = {"free", "student", "autonomo"}
+        if plan_id not in valid_plans:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Plano inválido. Planos válidos: free, student, autonomo",
+            )
+
+        try:
+            # Check if user exists
+            profile_res = (
+                self.supabase.table("profiles")
+                .select("id, email, name")
+                .eq("id", user_id)
+                .execute()
+            )
+            if not profile_res.data:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuário não encontrado",
+                )
+            profile = profile_res.data[0]
+
+            # Check if subscription exists
+            sub_res = (
+                self.supabase.table("subscriptions")
+                .select("id")
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+            now = datetime.now(timezone.utc).isoformat()
+
+            if sub_res.data:
+                # Update existing subscription
+                self.supabase.table("subscriptions").update(
+                    {
+                        "plan_id": plan_id,
+                        "status": "active",
+                        "updated_at": now,
+                    }
+                ).eq("user_id", user_id).execute()
+            else:
+                # Create new subscription
+                self.supabase.table("subscriptions").insert(
+                    {
+                        "user_id": user_id,
+                        "plan_id": plan_id,
+                        "status": "active",
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                ).execute()
+
+            return {
+                "message": f"Plano alterado para {plan_id} com sucesso",
+                "user": {
+                    "id": profile["id"],
+                    "email": profile["email"],
+                    "name": profile.get("name", ""),
+                },
+                "plan_id": plan_id,
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            from src.core.logging import logger
+
+            logger.error(f"Error updating plan: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao alterar plano: {str(e)}",
+            )
 
     async def delete_account(self, user_id: str) -> dict:
         """Delete user account and all related data."""

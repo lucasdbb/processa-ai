@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { AlertCircle, FolderKanban, Calculator, Check, Filter, Trash2, Bell, FileText, Sparkles, Info } from 'lucide-react'
-import { cn, formatDate } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/tooltip'

@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends, Query
 
 from src.core.auth import get_user_id, get_user_role, verify_internal_token
-from src.features.core.profiles.schemas import UpdateProfile, UpdateRoleRequest, UpdateStatusRequest, UserProfile
+from src.features.core.profiles.schemas import (
+    AddCreditsRequest,
+    UpdatePlanRequest,
+    UpdateProfile,
+    UpdateRoleRequest,
+    UpdateStatusRequest,
+    UserProfile,
+)
 from src.features.core.profiles.service import profiles_service
 
 router = APIRouter(dependencies=[Depends(verify_internal_token)])
@@ -47,12 +54,12 @@ async def update_role(
     data: UpdateRoleRequest,
     user_role: str = Depends(get_user_role),
 ):
-    """Update user role (admin only)."""
+    """Update user role, credits, and plan (admin only)."""
     if user_role != "admin":
         from fastapi import HTTPException, status
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-    return await profiles_service.update_role(data.user_id, data.role)
+    return await profiles_service.update_role(data.user_id, data.role, data.credits, data.plan_id)
 
 
 @router.patch("/update-status")
@@ -66,3 +73,31 @@ async def update_status(
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return await profiles_service.update_status(data.user_id, data.status)
+
+
+@router.post("/admin/users/{user_id}/credits")
+async def add_user_credits(
+    user_id: str,
+    data: AddCreditsRequest,
+    user_role: str = Depends(get_user_role),
+):
+    """Add credits to a user (admin only)."""
+    if user_role != "admin":
+        from fastapi import HTTPException, status
+
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return await profiles_service.add_credits(user_id, data.amount)
+
+
+@router.patch("/admin/users/{user_id}/plan")
+async def update_user_plan(
+    user_id: str,
+    data: UpdatePlanRequest,
+    user_role: str = Depends(get_user_role),
+):
+    """Update user's plan (admin only)."""
+    if user_role != "admin":
+        from fastapi import HTTPException, status
+
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return await profiles_service.update_plan(user_id, data.plan_id)

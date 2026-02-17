@@ -113,6 +113,8 @@ class UpdateRoleRequest(BaseModel):
 
     user_id: str = Field(alias="userId")
     role: str
+    credits: int | None = Field(None, ge=0, description="User credits balance")
+    plan_id: str | None = Field(None, description="Plan ID (free, student, autonomo)")
 
 
 class UpdateStatusRequest(BaseModel):
@@ -120,3 +122,17 @@ class UpdateStatusRequest(BaseModel):
 
     user_id: str = Field(alias="userId")
     status: str
+
+
+class AddCreditsRequest(BaseModel):
+    """Request to add credits to a user"""
+
+    amount: int = Field(..., gt=0, description="Amount of credits to add (must be positive)")
+
+
+class UpdatePlanRequest(BaseModel):
+    """Request to update user's plan"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    plan_id: str = Field(..., description="Plan ID (free, student, autonomo)")

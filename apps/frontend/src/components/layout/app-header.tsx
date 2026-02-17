@@ -58,34 +58,11 @@ export function AppHeader() {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [credits, setCredits] = useState<UserCredits | null>(null)
-  const [, setLoadingCredits] = useState(false)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
   const isDark = resolvedTheme === 'dark'
-
-  // Load credits
-  useEffect(() => {
-    if (user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoadingCredits(true)
-      creditsService
-        .getCredits()
-        .then(setCredits)
-        .catch((error) => {
-          console.error('Failed to load credits:', error)
-        })
-        .finally(() => setLoadingCredits(false))
-    }
-  }, [user])
-
-  // Load notifications
-  useEffect(() => {
-    if (user) {
-      loadNotifications()
-    }
-  }, [user])
 
   const loadNotifications = async () => {
     try {
@@ -97,6 +74,26 @@ export function AppHeader() {
       console.error('Failed to load notifications:', error)
     }
   }
+
+  // Load credits
+  useEffect(() => {
+    if (!user) return
+    creditsService
+      .getCredits()
+      .then(setCredits)
+      .catch((error) => {
+        console.error('Failed to load credits:', error)
+      })
+  }, [user])
+
+  // Load notifications
+  useEffect(() => {
+    if (!user) return
+    const timeout = setTimeout(() => {
+      void loadNotifications()
+    }, 0)
+    return () => clearTimeout(timeout)
+  }, [user])
 
   const handleLogout = async () => {
     await logout()
