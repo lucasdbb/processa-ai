@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { Bell, Shield, CreditCard, Palette, Camera, Check, Loader2, ChevronDown, Calendar, ExternalLink } from 'lucide-react'
@@ -10,6 +10,7 @@ import {
   removePhoneMask,
   isValidPhone,
   cpfMask,
+  removeDocumentMask,
   isValidCpf,
 } from '@/lib/masks'
 import { fileToBase64 } from '@/lib/imageUtils'
@@ -85,7 +86,30 @@ export default function ConfiguracoesPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Update form data when user loads
+  // Validation for enabling/disabling Save button
+  const isFormValid = useMemo(() => {
+    // CPF is required and must be valid
+    if (!formData.cpf || formData.cpf.trim() === '') {
+      return false
+    }
+    if (!isValidCpf(formData.cpf)) {
+      return false
+    }
+
+    // Phone is optional, but if filled must be valid
+    if (formData.phone && formData.phone.trim() !== '' && !isValidPhone(formData.phone)) {
+      return false
+    }
+
+    // Name is required
+    if (!formData.name || formData.name.trim() === '') {
+      return false
+    }
+
+    return true
+  }, [formData.cpf, formData.phone, formData.name])
+
+  // Update form data when user loads or when editing state changes
   useEffect(() => {
     if (user && !isEditing) {
       setFormData({
@@ -181,37 +205,42 @@ export default function ConfiguracoesPage() {
     }
   }, [])
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
-      setIsLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-      try {
-        const cleanPhone = removePhoneMask(formData.phone)
+    if (!isFormValid) {
+      toast.error('Preencha todos os campos obrigatórios corretamente.')
+      return
+    }
 
-        const updateData = {
-          name: formData.name,
-          phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
-          cpf: formData.cpf,
-          newsletter_opt_in: formData.newsletter,
-          avatar_url: avatarPreview || undefined,
-        }
+    setIsLoading(true)
 
-        const updatedUser = await authService.updateProfile(updateData)
-        setUser(updatedUser)
-        setIsEditing(false)
-        setIsProfileOpen(false)
-        setAvatarPreview(null)
-        toast.success('Perfil atualizado com sucesso!')
-      } catch (error) {
-        console.error('Erro ao atualizar perfil:', error)
-        toast.error('Erro ao atualizar perfil. Tente novamente.')
-      } finally {
-        setIsLoading(false)
+    try {
+      const cleanPhone = removePhoneMask(formData.phone)
+      const cleanCpf = removeDocumentMask(formData.cpf)
+
+      const updateData = {
+        name: formData.name,
+        phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
+        cpf: cleanCpf,
+        newsletter_opt_in: formData.newsletter,
+        avatar_url: avatarPreview || undefined,
       }
-    },
-    [formData, avatarPreview, setUser]
-  )
+
+      const updatedUser = await authService.updateProfile(updateData)
+      setUser(updatedUser)
+      setIsEditing(false)
+      setIsProfileOpen(false)
+      setAvatarPreview(null)
+      toast.success('Perfil atualizado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error)
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar perfil. Tente novamente.'
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleCancel = useCallback(() => {
     setIsEditing(false)
@@ -425,8 +454,8 @@ export default function ConfiguracoesPage() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isLoading}
-                    className="px-4 py-1.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                    disabled={isLoading || !isFormValid}
+                    className="px-4 py-1.5 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Salvar
@@ -505,19 +534,22 @@ export default function ConfiguracoesPage() {
                       'w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all',
                       !isEditing
                         ? 'bg-muted text-muted-foreground border-input cursor-not-allowed'
-                        : formData.phone && !isValidPhone(formData.phone)
+                        : formData.phone && formData.phone.trim() !== '' && !isValidPhone(formData.phone)
                           ? 'border-destructive focus:ring-destructive bg-background'
-                          : formData.phone && isValidPhone(formData.phone)
+                          : formData.phone && formData.phone.trim() !== '' && isValidPhone(formData.phone)
                             ? 'border-green-500 focus:ring-green-500 bg-background'
                             : 'border-input focus:ring-primary bg-background'
                     )}
                   />
+                  {isEditing && formData.phone && formData.phone.trim() !== '' && !isValidPhone(formData.phone) && (
+                    <p className="text-xs text-destructive mt-1">Telefone inválido (deve ter 10 ou 11 dígitos)</p>
+                  )}
                 </div>
 
                 {/* CPF */}
                 <div>
                   <label htmlFor="cpf" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    CPF
+                    CPF <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
@@ -527,17 +559,24 @@ export default function ConfiguracoesPage() {
                     onChange={handleInputChange}
                     disabled={!isEditing}
                     placeholder="000.000.000-00"
+                    required
                     className={cn(
                       'w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all',
                       !isEditing
                         ? 'bg-muted text-muted-foreground border-input cursor-not-allowed'
-                        : formData.cpf && !isValidCpf(formData.cpf)
+                        : !formData.cpf || formData.cpf.trim() === ''
                           ? 'border-destructive focus:ring-destructive bg-background'
-                          : formData.cpf && isValidCpf(formData.cpf)
-                            ? 'border-green-500 focus:ring-green-500 bg-background'
-                            : 'border-input focus:ring-primary bg-background'
+                          : !isValidCpf(formData.cpf)
+                            ? 'border-destructive focus:ring-destructive bg-background'
+                            : 'border-green-500 focus:ring-green-500 bg-background'
                     )}
                   />
+                  {isEditing && (!formData.cpf || formData.cpf.trim() === '') && (
+                    <p className="text-xs text-destructive mt-1">Campo obrigatório</p>
+                  )}
+                  {isEditing && formData.cpf && formData.cpf.trim() !== '' && !isValidCpf(formData.cpf) && (
+                    <p className="text-xs text-destructive mt-1">CPF inválido</p>
+                  )}
                 </div>
 
                 {/* Membro desde */}

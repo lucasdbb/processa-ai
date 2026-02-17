@@ -81,6 +81,11 @@ export const authService = {
 
     if (!response.ok) {
       const error = await response.json();
+      // Pydantic validation errors (422) return detail as array
+      if (Array.isArray(error.detail)) {
+        const messages = error.detail.map((e: { msg?: string }) => e.msg || '').filter(Boolean);
+        throw new Error(messages.join('. ') || "Erro de validação");
+      }
       throw new Error(error.detail || "Erro ao atualizar perfil");
     }
 
