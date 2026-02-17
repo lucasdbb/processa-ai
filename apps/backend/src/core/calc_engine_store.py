@@ -109,11 +109,11 @@ async def create_document(
         async with cur_cm as cur:
             await cur.execute(
                 (
-                    "insert into calc_engine.documents "
-                    "(calculation_id, user_id, client_id, document_type, bucket, storage_path, "
-                    "filename, "
+                    "insert into public.generated_documents "
+                    "(source, calculation_id, user_id, client_id, document_type, "
+                    "bucket, storage_path, filename, "
                     "checksum_sha256, size_bytes, mime_type, metadata) "
-                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "values ('calculator', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                     "on conflict (bucket, storage_path) do update set "
                     "calculation_id = excluded.calculation_id, "
                     "user_id = excluded.user_id, "

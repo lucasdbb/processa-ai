@@ -200,10 +200,11 @@ async def create_document(
         async with cur_cm as cur:
             await cur.execute(
                 (
-                    "insert into ai_worker.documents "
-                    "(job_id, user_id, client_id, document_type, bucket, storage_path, filename, "
-                    "checksum_sha256, size_bytes, mime_type, metadata, linked_document_id) "
-                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "insert into public.generated_documents "
+                    "(source, job_id, user_id, client_id, document_type, bucket, storage_path, "
+                    "filename, checksum_sha256, size_bytes, mime_type, metadata, "
+                    "linked_document_id) "
+                    "values ('ai', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                     "on conflict (bucket, storage_path) do update set "
                     "job_id = excluded.job_id, "
                     "user_id = excluded.user_id, "
@@ -319,9 +320,9 @@ async def get_user_analysis_history(
                     d_output.bucket as output_bucket,
                     d_output.created_at as output_created_at
                 from ai_worker.jobs j
-                left join ai_worker.documents d_input
+                left join public.generated_documents d_input
                     on d_input.job_id = j.id and d_input.document_type = 'input'
-                left join ai_worker.documents d_output
+                left join public.generated_documents d_output
                     on d_output.job_id = j.id and d_output.document_type = 'output'
                 where j.user_id = %s and j.endpoint_key = %s
                 order by j.created_at desc
@@ -348,7 +349,7 @@ async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
                 """
                 select id, user_id, document_type, bucket, storage_path,
                        filename, size_bytes, created_at
-                from ai_worker.documents
+                from public.generated_documents
                 where id = %s
                 """,
                 (document_id,),
