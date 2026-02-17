@@ -30,6 +30,8 @@ import {
   BarChart,
   PieChart,
   ArrowUpRight,
+  Bell,
+  Send,
 } from 'lucide-react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Cross2Icon } from '@radix-ui/react-icons'
@@ -61,7 +63,7 @@ import { toast } from 'sonner'
 import { feedbackService, type FeedbackResponse } from '@/services/feedback-service'
 import { creditsService, type AdminCreditsMetrics } from '@/services/credits-service'
 
-type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks'
+type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks' | 'notifications'
 
 type PostStatus = 'draft' | 'published' | 'archived'
 
@@ -106,7 +108,7 @@ interface AdminMaterialListItem {
 
 type MaterialModalMode = 'create' | 'edit'
 
-const TABS_ADMIN: Tab[] = ['overview', 'users', 'posts', 'materials', 'feedbacks']
+const TABS_ADMIN: Tab[] = ['overview', 'users', 'posts', 'materials', 'feedbacks', 'notifications']
 const TABS_AUTHOR: Tab[] = ['overview', 'posts']
 
 const postStatusLabel: Record<PostStatus, string> = {
@@ -150,7 +152,7 @@ const getRoleBadgeClass = (role: UserListItem['role']) => {
 }
 
 const isTab = (value: string | null | undefined): value is Tab =>
-  value === 'overview' || value === 'users' || value === 'posts' || value === 'materials' || value === 'feedbacks'
+  value === 'overview' || value === 'users' || value === 'posts' || value === 'materials' || value === 'feedbacks' || value === 'notifications'
 
 type MaterialModalSubmitData = {
   title: string
@@ -217,6 +219,14 @@ export default function AdminPage() {
 
   const [creditStats, setCreditStats] = useState<AdminCreditsMetrics | null>(null)
   const [isCreditStatsLoading, setIsCreditStatsLoading] = useState(false)
+
+  // Notifications state
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
+  const [notificationType, setNotificationType] = useState<string>('system')
+  const [notificationRecipient, setNotificationRecipient] = useState<string>('all')
+  const [notificationTitle, setNotificationTitle] = useState('')
+  const [notificationDescription, setNotificationDescription] = useState('')
+  const [isSendingNotification, setIsSendingNotification] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !isAdmin && !isAuthor) {
@@ -685,6 +695,42 @@ export default function AdminPage() {
     }
   }
 
+  const handleSendNotification = async () => {
+    if (!notificationTitle.trim()) {
+      toast.error('O título é obrigatório')
+      return
+    }
+
+    setIsSendingNotification(true)
+    try {
+      const { notificationService } = await import('@/services/notification-service')
+      const result = await notificationService.create({
+        type: notificationType as any,
+        title: notificationTitle,
+        description: notificationDescription || undefined,
+        user_id: notificationRecipient === 'all' ? undefined : undefined, // TODO: implementar seleção de usuário específico
+      })
+
+      toast.success(
+        `Notificação enviada com sucesso para ${result.recipients.length} ${
+          result.recipients.length === 1 ? 'usuário' : 'usuários'
+        }`
+      )
+
+      // Reset form
+      setNotificationTitle('')
+      setNotificationDescription('')
+      setNotificationType('system')
+      setNotificationRecipient('all')
+      setIsNotificationModalOpen(false)
+    } catch (error) {
+      console.error('Failed to send notification:', error)
+      toast.error('Erro ao enviar notificação')
+    } finally {
+      setIsSendingNotification(false)
+    }
+  }
+
   const isReloading = isPostsLoading || (isAdmin && (isUsersLoading || isMaterialsLoading || isCreditStatsLoading))
 
   return (
@@ -776,6 +822,21 @@ export default function AdminPage() {
               Feedbacks
             </button>
           ) : null}
+
+          {isAdmin ? (
+            <button
+              onClick={() => setTab('notifications')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'notifications'
+                  ? 'bg-slate-900 text-white'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+              type="button"
+            >
+              <Bell className="w-5 h-5" />
+              Notificações
+            </button>
+          ) : null}
         </nav>
 
         <div className="p-4 border-t border-border">
@@ -842,6 +903,12 @@ export default function AdminPage() {
               <Button variant={activeTab === 'feedbacks' ? 'default' : 'outline'} onClick={() => setTab('feedbacks')}>
                 <MessageSquare className="h-4 w-4" />
                 Feedbacks
+              </Button>
+            ) : null}
+            {isAdmin ? (
+              <Button variant={activeTab === 'notifications' ? 'default' : 'outline'} onClick={() => setTab('notifications')}>
+                <Bell className="h-4 w-4" />
+                Notificações
               </Button>
             ) : null}
           </div>
@@ -1781,6 +1848,77 @@ export default function AdminPage() {
             </div>
           ) : null}
 
+          {isAdmin && activeTab === 'notifications' ? (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-foreground">Gerenciar Notificações</h2>
+                <div className="flex gap-2">
+                  <Button variant="outline" disabled>
+                    <RefreshCw className="h-4 w-4" />
+                    Atualizar
+                  </Button>
+                  <Button onClick={() => setIsNotificationModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Notificação
+                  </Button>
+                </div>
+              </div>
+
+              {/* Estatísticas */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">0</p>
+                      <p className="text-sm text-muted-foreground">Total enviadas</p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">0</p>
+                      <p className="text-sm text-muted-foreground">Lidas</p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                      <Bell className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">0</p>
+                      <p className="text-sm text-muted-foreground">Não lidas</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Histórico */}
+              <Card className="overflow-hidden shadow-sm">
+                <CardHeader className="border-b border-border">
+                  <CardTitle>Histórico de Notificações Enviadas</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="p-8 text-center text-muted-foreground">
+                    <Bell className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Nenhuma notificação enviada ainda.</p>
+                    <p className="text-sm mt-1">As notificações enviadas aparecerão aqui.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+
         </div>
       </div>
 
@@ -1851,6 +1989,97 @@ export default function AdminPage() {
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
+
+      {/* Create Notification Dialog */}
+      <Dialog open={isNotificationModalOpen} onOpenChange={setIsNotificationModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Criar Nova Notificação</DialogTitle>
+            <DialogDescription>
+              Envie notificações para os usuários da plataforma
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Tipo de Notificação
+              </label>
+              <Select value={notificationType} onValueChange={setNotificationType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="system">Sistema</SelectItem>
+                  <SelectItem value="blog">Blog</SelectItem>
+                  <SelectItem value="feature">Nova Funcionalidade</SelectItem>
+                  <SelectItem value="deadline">Prazo</SelectItem>
+                  <SelectItem value="process">Processo</SelectItem>
+                  <SelectItem value="calculation">Cálculo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Destinatários
+              </label>
+              <Select value={notificationRecipient} onValueChange={setNotificationRecipient}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Quem receberá" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os usuários</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Título <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="Ex: Nova funcionalidade disponível"
+                value={notificationTitle}
+                onChange={(e) => setNotificationTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Descrição
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground resize-none"
+                rows={3}
+                placeholder="Detalhes da notificação..."
+                value={notificationDescription}
+                onChange={(e) => setNotificationDescription(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleSendNotification}
+              disabled={isSendingNotification || !notificationTitle.trim()}
+              className="w-full"
+            >
+              {isSendingNotification ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Enviar Notificação
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

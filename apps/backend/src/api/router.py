@@ -22,6 +22,7 @@ from src.features.core.plans.router import router as plans_router
 from src.features.core.profiles.router import router as profiles_router
 from src.features.core.support.router import router as support_router
 from src.features.core.feedback.router import router as feedback_router
+from src.features.core.notifications.router import router as notifications_router
 
 # Office features
 from src.features.office.calendar.router import router as calendar_router
@@ -47,6 +48,7 @@ api_router.include_router(support_router, prefix="/support", tags=["Support"])
 api_router.include_router(feedback_router, prefix="/feedback", tags=["Feedback"])
 api_router.include_router(materials_router, prefix="/materials", tags=["Materials"])
 api_router.include_router(plans_router, prefix="/plans", tags=["Plans"])
+api_router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
 
 # Billing features
 api_router.include_router(subscriptions_router, prefix="/billing/subscriptions", tags=["Billing"])

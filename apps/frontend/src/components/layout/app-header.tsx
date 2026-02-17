@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut, FileText, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -6,7 +6,11 @@ import { useTheme } from 'next-themes'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useState, useEffect } from 'react'
 import { creditsService, type UserCredits } from '@/services/credits-service'
+import { notificationService, type NotificationItem } from '@/services/notification-service'
 import { FeedbackFormDialog } from '@/components/forms/feedback-form-dialog'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,39 +23,32 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 
-// Mock notifications data
-const mockNotifications = [
-  {
-    id: '1',
-    type: 'deadline',
-    title: 'Prazo vencendo hoje',
-    description: 'Contestação - Processo 0001234-12.2025.5.02.0001',
-    time: 'há 2 horas',
-    read: false,
-    icon: AlertCircle,
-    iconColor: 'text-destructive',
-  },
-  {
-    id: '2',
-    type: 'process',
-    title: 'Movimentação processual',
-    description: 'Processo 0005678-34.2025.5.02.0002 - Nova sentença',
-    time: 'há 5 horas',
-    read: false,
-    icon: FolderKanban,
-    iconColor: 'text-blue-500',
-  },
-  {
-    id: '3',
-    type: 'calculation',
-    title: 'Cálculo concluído',
-    description: 'Rescisão Trabalhista - João Silva',
-    time: 'ontem',
-    read: true,
-    icon: Calculator,
-    iconColor: 'text-green-500',
-  },
-]
+// Helper functions
+const getNotificationIcon = (type: string) => {
+  switch (type) {
+    case 'deadline':
+      return { icon: AlertCircle, color: 'text-destructive' }
+    case 'process':
+      return { icon: FolderKanban, color: 'text-blue-500' }
+    case 'calculation':
+      return { icon: Calculator, color: 'text-green-500' }
+    case 'blog':
+      return { icon: FileText, color: 'text-purple-500' }
+    case 'feature':
+      return { icon: Sparkles, color: 'text-yellow-500' }
+    case 'system':
+    default:
+      return { icon: Info, color: 'text-gray-500' }
+  }
+}
+
+const formatTimeAgo = (date: string) => {
+  try {
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR })
+  } catch {
+    return 'há algum tempo'
+  }
+}
 
 export function AppHeader() {
   const { isExpanded, setMobileOpen } = useSidebarStore()
@@ -63,6 +60,8 @@ export function AppHeader() {
   const [credits, setCredits] = useState<UserCredits | null>(null)
   const [, setLoadingCredits] = useState(false)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const isDark = resolvedTheme === 'dark'
 
@@ -81,12 +80,55 @@ export function AppHeader() {
     }
   }, [user])
 
+  // Load notifications
+  useEffect(() => {
+    if (user) {
+      loadNotifications()
+    }
+  }, [user])
+
+  const loadNotifications = async () => {
+    try {
+      const response = await notificationService.list(false)
+      // Show only first 5 in dropdown
+      setNotifications(response.items.slice(0, 5))
+      setUnreadCount(response.unread_count)
+    } catch (error) {
+      console.error('Failed to load notifications:', error)
+    }
+  }
+
   const handleLogout = async () => {
     await logout()
     navigate('/')
   }
 
-  const unreadCount = mockNotifications.filter((n) => !n.read).length
+  const handleMarkAsRead = async (id: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    try {
+      await notificationService.markAsRead(id)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      )
+      setUnreadCount((prev) => Math.max(0, prev - 1))
+    } catch (error) {
+      console.error('Failed to mark as read:', error)
+      toast.error('Erro ao marcar notificação como lida')
+    }
+  }
+
+  const handleMarkAllAsRead = async (event: React.MouseEvent) => {
+    event.preventDefault()
+    try {
+      await notificationService.markAllAsRead()
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+      setUnreadCount(0)
+      toast.success('Todas as notificações foram marcadas como lidas')
+    } catch (error) {
+      console.error('Failed to mark all as read:', error)
+      toast.error('Erro ao marcar todas como lidas')
+    }
+  }
 
   const getInitials = (name?: string | null, email?: string | null) => {
     if (name) {
@@ -257,12 +299,12 @@ export function AppHeader() {
             {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
 
-          {/* Notificacoes */}
+          {/* Notificações */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
                 className="relative h-10 w-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                aria-label="Notificacoes"
+                aria-label="Notificações"
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -280,25 +322,31 @@ export function AppHeader() {
                     </p>
                   )}
                 </div>
-                {mockNotifications.length > 0 && (
-                  <button className="text-xs text-primary hover:underline">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs text-primary hover:underline"
+                  >
                     Marcar todas como lidas
                   </button>
                 )}
               </div>
               <DropdownMenuSeparator />
 
-              {mockNotifications.length === 0 ? (
+              {notifications.length === 0 ? (
                 <div className="py-8 text-center text-sm text-muted-foreground">
                   Nenhuma notificação no momento
                 </div>
               ) : (
                 <div className="max-h-96 overflow-y-auto">
-                  {mockNotifications.map((notification) => {
-                    const Icon = notification.icon
+                  {notifications.map((notification) => {
+                    const { icon: Icon, color: iconColor } = getNotificationIcon(notification.type)
+                    const timeAgo = formatTimeAgo(notification.created_at)
+
                     return (
-                      <div
+                      <Link
                         key={notification.id}
+                        to="/app/notificacoes"
                         className={cn(
                           'flex gap-3 px-4 py-3 hover:bg-accent transition-colors cursor-pointer border-l-2',
                           notification.read
@@ -306,7 +354,7 @@ export function AppHeader() {
                             : 'border-primary bg-accent/50'
                         )}
                       >
-                        <div className={cn('shrink-0 mt-0.5', notification.iconColor)}>
+                        <div className={cn('shrink-0 mt-0.5', iconColor)}>
                           <Icon className="h-5 w-5" />
                         </div>
                         <div className="flex-1 min-w-0 space-y-1">
@@ -316,6 +364,7 @@ export function AppHeader() {
                             </p>
                             {!notification.read && (
                               <button
+                                onClick={(e) => handleMarkAsRead(notification.id, e)}
                                 className="shrink-0 h-5 w-5 flex items-center justify-center rounded hover:bg-background transition-colors"
                                 aria-label="Marcar como lida"
                               >
@@ -323,20 +372,22 @@ export function AppHeader() {
                               </button>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {notification.description}
-                          </p>
+                          {notification.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {notification.description}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
-                            {notification.time}
+                            {timeAgo}
                           </p>
                         </div>
-                      </div>
+                      </Link>
                     )
                   })}
                 </div>
               )}
 
-              {mockNotifications.length > 0 && (
+              {notifications.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
                   <div className="p-2">
