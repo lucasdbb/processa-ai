@@ -56,6 +56,14 @@ def validate_phone(phone: str) -> bool:
     return len(phone_digits) in (10, 11)
 
 
+class UserCredits(BaseModel):
+    """User credits breakdown by type"""
+
+    subscription: int = 0  # Available subscription credits
+    purchased: int = 0  # Available purchased credits
+    total: int = 0  # Total available credits
+
+
 class UserProfile(BaseModel):
     """User profile schema"""
 
@@ -69,6 +77,7 @@ class UserProfile(BaseModel):
     newsletter_opt_in: bool = False
     confirmed_at: str | None = None
     created_at: datetime
+    credits: UserCredits | None = None
 
     class Config:
         from_attributes = True
@@ -113,8 +122,16 @@ class UpdateRoleRequest(BaseModel):
 
     user_id: str = Field(alias="userId")
     role: str
-    credits: int | None = Field(None, ge=0, description="User credits balance")
-    plan_id: str | None = Field(None, description="Plan ID (free, student, autonomo)")
+    subscription_credits: int | None = Field(
+        None, ge=0, description="Subscription credits", alias="subscriptionCredits"
+    )
+    purchased_credits: int | None = Field(
+        None, ge=0, description="Purchased credits", alias="purchasedCredits"
+    )
+    plan_id: str | None = Field(None, description="Plan ID (free, student, autonomo)", alias="planId")
+
+    # Legacy field for backward compatibility
+    credits: int | None = Field(None, ge=0, description="[DEPRECATED] Use subscription_credits")
 
 
 class UpdateStatusRequest(BaseModel):

@@ -1,16 +1,15 @@
-"""Reusable document analysis pipeline: OCR -> Analyze -> Audit.
+"""Reusable document analysis pipeline: OCR -> Analyze.
 
 This replaces the n8n workflow calls with direct SDK calls.
 Both CNIS and Process Summary flows use this same pipeline,
-differing only in the prompt configuration passed in.
+differing only in the stored prompt ID passed in.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
-from src.core.llm import chat_completion, chat_completion_json
+from src.core.llm import response_create
 from src.core.logging import logger
 from src.core.ocr import extract_text_from_url
 from src.core.progress import ProgressReporter
@@ -22,9 +21,6 @@ class PipelineResult:
     """Result of the document analysis pipeline."""
 
     markdown: str
-    audit_score: float
-    approved: bool
-    audit_metadata: dict[str, Any]
 
 
 async def run_document_analysis(
@@ -33,24 +29,26 @@ async def run_document_analysis(
     prompt: AnalysisPromptConfig,
     progress: ProgressReporter | None = None,
 ) -> PipelineResult:
-    """Execute the full document analysis pipeline.
+    """Execute the document analysis pipeline.
 
     Steps:
         1. OCR - Extract text from PDF (Mistral)
-        2. Analyze - Generate report/summary (OpenAI)
-        3. Audit - Score quality and approve/reject (OpenAI)
+        2. Analyze - Generate report via stored OpenAI prompt
 
     Args:
         pdf_url: Signed URL to the PDF document.
-        prompt: Prompt configuration for the specific analysis type.
+        prompt: Prompt configuration with stored prompt ID.
         progress: Optional progress reporter for real-time updates.
 
     Returns:
-        PipelineResult with markdown, audit score, and metadata.
+        PipelineResult with markdown.
 
     Raises:
         RuntimeError: If any pipeline step fails after retries.
     """
+    if not prompt.prompt_id:
+        raise RuntimeError("prompt_id is required")
+
     # --- Step 1: OCR ---
     if progress:
         await progress.report(10, prompt.progress_ocr_start)
@@ -58,49 +56,18 @@ async def run_document_analysis(
     extracted_text = await extract_text_from_url(pdf_url)
     logger.info("OCR complete: %d characters extracted", len(extracted_text))
 
-    # --- Step 2: Analyze ---
+    # --- Step 2: Analyze via stored prompt ---
     if progress:
         await progress.report(40, prompt.progress_ocr_done)
 
-    markdown = await chat_completion(
-        system=prompt.analysis_system,
-        user=prompt.analysis_user_template.format(extracted_text=extracted_text),
-        temperature=prompt.analysis_temperature,
+    markdown = await response_create(
+        prompt_id=prompt.prompt_id,
+        prompt_version=prompt.prompt_version,
+        variables={"extracted_text": extracted_text},
     )
     logger.info("Analysis complete: %d characters generated", len(markdown))
 
-    # --- Step 3: Audit ---
     if progress:
-        await progress.report(70, prompt.progress_analysis_done)
+        await progress.report(95, prompt.progress_analysis_done)
 
-    audit = await chat_completion_json(
-        system=prompt.audit_system,
-        user=prompt.audit_user_template.format(
-            extracted_text=extracted_text,
-            generated_report=markdown,
-        ),
-        temperature=prompt.audit_temperature,
-    )
-
-    approved = audit.get("aprovado") is True
-    score = _parse_score(audit.get("media"))
-
-    if approved and progress:
-        await progress.report(95, prompt.progress_audit_approved)
-
-    logger.info("Audit complete: score=%.1f, approved=%s", score, approved)
-
-    return PipelineResult(
-        markdown=markdown,
-        audit_score=score,
-        approved=approved,
-        audit_metadata=audit,
-    )
-
-
-def _parse_score(value: Any) -> float:
-    """Safely parse audit score to float."""
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return 0.0
+    return PipelineResult(markdown=markdown)

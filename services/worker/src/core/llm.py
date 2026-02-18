@@ -1,4 +1,4 @@
-"""OpenAI LLM client with retry logic."""
+"""OpenAI LLM client using Responses API with stored prompts."""
 
 import asyncio
 import json
@@ -22,15 +22,17 @@ def get_openai_client() -> AsyncOpenAI:
     return _client
 
 
-async def chat_completion(
+async def response_create(
     *,
-    system: str,
-    user: str,
-    temperature: float = 0.2,
-    json_mode: bool = False,
+    prompt_id: str,
+    prompt_version: str | None = None,
+    variables: dict[str, str] | None = None,
     max_retries: int = 2,
 ) -> str:
-    """Call OpenAI chat completion with automatic retry.
+    """Call OpenAI Responses API using a stored prompt.
+
+    The stored prompt already contains model, temperature, and system instructions.
+    Only the user input (via variables) needs to be provided.
 
     Returns the assistant's text response.
     Raises RuntimeError on failure after all retries.
@@ -38,22 +40,17 @@ async def chat_completion(
     client = get_openai_client()
     retries = min(max(max_retries, MIN_RETRIES), MAX_RETRIES)
 
-    kwargs: dict = {
-        "model": settings.LLM_MODEL,
-        "temperature": temperature,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-    }
-    if json_mode:
-        kwargs["response_format"] = {"type": "json_object"}
+    prompt: dict = {"id": prompt_id}
+    if prompt_version:
+        prompt["version"] = prompt_version
+    if variables:
+        prompt["variables"] = variables
 
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):
         try:
-            response = await client.chat.completions.create(**kwargs)
-            text = (response.choices[0].message.content or "").strip()
+            response = await client.responses.create(prompt=prompt)
+            text = (response.output_text or "").strip()
             if not text:
                 raise ValueError("Resposta vazia do LLM")
             return text
@@ -68,22 +65,21 @@ async def chat_completion(
     raise RuntimeError(f"LLM call failed after {retries} attempts: {last_error}")
 
 
-async def chat_completion_json(
+async def response_create_json(
     *,
-    system: str,
-    user: str,
-    temperature: float = 0.1,
+    prompt_id: str,
+    prompt_version: str | None = None,
+    variables: dict[str, str] | None = None,
     max_retries: int = 2,
 ) -> dict:
-    """Call OpenAI and parse the JSON response.
+    """Call OpenAI Responses API with stored prompt and parse JSON response.
 
     Returns a dict. Raises RuntimeError on failure.
     """
-    text = await chat_completion(
-        system=system,
-        user=user,
-        temperature=temperature,
-        json_mode=True,
+    text = await response_create(
+        prompt_id=prompt_id,
+        prompt_version=prompt_version,
+        variables=variables,
         max_retries=max_retries,
     )
     try:

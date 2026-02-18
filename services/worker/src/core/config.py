@@ -17,10 +17,9 @@ class Settings(BaseSettings):
     JOBS_QUEUE_KEY: str = "jobs"
     JOB_STATUS_TTL_S: int = 86400
 
-    # AI Providers (replaces n8n integration)
+    # AI Providers
     OPENAI_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
-    LLM_MODEL: str = "gpt-4.1-mini"
 
     # Google Integration (for office jobs)
     GOOGLE_CLIENT_ID: str = ""

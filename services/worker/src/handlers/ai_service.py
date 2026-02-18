@@ -42,7 +42,7 @@ class AiService:
                     await cur.execute(
                         """
                         SELECT result_payload, created_at
-                        FROM ai_worker.jobs
+                        FROM public.ai_jobs
                         WHERE endpoint_key = %s
                           AND status = 'completed'
                           AND result_payload->>'input_hash' = %s
@@ -444,7 +444,7 @@ class AiService:
                 cached.update(stored)
             return cached
 
-        # Run pipeline (OCR -> Analyze -> Audit)
+        # Run pipeline (OCR -> Analyze)
         pipeline_result = await run_document_analysis(
             pdf_url=file_url,
             prompt=prompt_config,
@@ -456,15 +456,9 @@ class AiService:
             raise WorkerException(status_code=502, detail="Pipeline retornou resposta vazia")
 
         response: dict = {
-            "audit_score": pipeline_result.audit_score,
             "markdown": markdown,
             "input_hash": input_hash,
         }
-
-        # Include structured_summary for process_summary
-        structured_summary = pipeline_result.audit_metadata.get("structured_summary")
-        if isinstance(structured_summary, dict):
-            response["structured_summary"] = structured_summary
 
         if input_storage:
             response["input_storage"] = input_storage

@@ -152,11 +152,14 @@ class ProfilesService:
 
     async def list_profiles(self, limit: int = 50, offset: int = 0) -> list[dict]:
         """List all user profiles (admin only)."""
+        from src.core.logging import logger
+
         try:
             fields = (
                 "id, email, name, role, avatar_url, phone, "
                 "status, bio, company, created_at, updated_at"
             )
+            logger.info(f"Fetching profiles with limit={limit}, offset={offset}")
             response = (
                 self.supabase.table("profiles")
                 .select(fields)
@@ -165,28 +168,48 @@ class ProfilesService:
                 .execute()
             )
             data = response.data or []
+            logger.info(f"Found {len(data)} profiles")
 
-            # Get credits and subscriptions for all users
+            # Get user_credits and subscriptions for all users
             user_ids = [p["id"] for p in data]
+            logger.info(f"User IDs: {user_ids}")
 
-            # Get credits
-            credits_response = (
-                self.supabase.table("credits")
-                .select("user_id, balance")
-                .in_("user_id", user_ids)
-                .execute()
-            )
-            credits_map = {c["user_id"]: c["balance"] for c in (credits_response.data or [])}
+            # Get user_credits (only if there are users)
+            user_credits_map = {}
+            if user_ids:
+                logger.info("Fetching user_credits...")
+                user_credits_response = (
+                    self.supabase.table("user_credits")
+                    .select(
+                        "user_id, subscription_available, purchased_available, total_available"
+                    )
+                    .in_("user_id", user_ids)
+                    .execute()
+                )
+                logger.info(f"user_credits response: {user_credits_response.data}")
+                user_credits_map = {
+                    c["user_id"]: {
+                        "subscription": c["subscription_available"],
+                        "purchased": c["purchased_available"],
+                        "total": c["total_available"],
+                    }
+                    for c in (user_credits_response.data or [])
+                }
 
-            # Get subscriptions
-            subs_response = (
-                self.supabase.table("subscriptions")
-                .select("user_id, plan_id, status")
-                .in_("user_id", user_ids)
-                .execute()
-            )
-            subs_map = {s["user_id"]: {"plan_id": s["plan_id"], "status": s["status"]} for s in (subs_response.data or [])}
+            # Get subscriptions (only if there are users)
+            subs_map = {}
+            if user_ids:
+                logger.info("Fetching subscriptions...")
+                subs_response = (
+                    self.supabase.table("subscriptions")
+                    .select("user_id, plan_id, status")
+                    .in_("user_id", user_ids)
+                    .execute()
+                )
+                logger.info(f"subscriptions response: {subs_response.data}")
+                subs_map = {s["user_id"]: {"plan_id": s["plan_id"], "status": s["status"]} for s in (subs_response.data or [])}
 
+            logger.info("Building final response...")
             return [
                 {
                     "id": p["id"],
@@ -202,20 +225,30 @@ class ProfilesService:
                     "confirmed_at": None,
                     "created_at": p["created_at"],
                     "updated_at": p.get("updated_at"),
-                    "credits": credits_map.get(p["id"], 0),
+                    "credits": user_credits_map.get(
+                        p["id"], {"subscription": 0, "purchased": 0, "total": 0}
+                    ),
                     "plan_id": subs_map.get(p["id"], {}).get("plan_id", "free"),
                     "subscription_status": subs_map.get(p["id"], {}).get("status", "active"),
                 }
                 for p in data
             ]
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error listing profiles: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Erro ao listar usuários",
+                detail=f"Erro ao listar usuários: {str(e)}",
             )
 
-    async def update_role(self, target_user_id: str, role: str, credits: int | None = None, plan_id: str | None = None) -> dict:
-        """Update user role, credits, and plan (admin only)."""
+    async def update_role(
+        self,
+        target_user_id: str,
+        role: str,
+        subscription_credits: int | None = None,
+        purchased_credits: int | None = None,
+        plan_id: str | None = None,
+    ) -> dict:
+        """Update user role, credits (subscription and purchased), and plan (admin only)."""
         valid_roles = {"client", "author", "admin"}
         if role not in valid_roles:
             raise HTTPException(
@@ -244,38 +277,35 @@ class ProfilesService:
                 )
             user = res.data[0]
 
-            # Update credits if provided
-            if credits is not None:
-                # Check if credits record exists
-                credits_res = (
-                    self.supabase.table("credits")
-                    .select("id")
-                    .eq("user_id", target_user_id)
-                    .execute()
-                )
+            # Update subscription credits if provided
+            if subscription_credits is not None:
+                self.supabase.rpc(
+                    "grant_credits_to_user",
+                    {
+                        "p_user_id": target_user_id,
+                        "p_amount": subscription_credits,
+                        "p_reason": "admin_update",
+                        "p_credit_type": "subscription",
+                    },
+                ).execute()
 
-                if credits_res.data:
-                    # Update existing credits
-                    self.supabase.table("credits").update(
-                        {"balance": credits, "updated_at": datetime.now(timezone.utc).isoformat()}
-                    ).eq("user_id", target_user_id).execute()
-                else:
-                    # Create new credits record
-                    now = datetime.now(timezone.utc).isoformat()
-                    self.supabase.table("credits").insert(
-                        {
-                            "user_id": target_user_id,
-                            "balance": credits,
-                            "created_at": now,
-                            "updated_at": now,
-                        }
-                    ).execute()
+            # Update purchased credits if provided
+            if purchased_credits is not None:
+                self.supabase.rpc(
+                    "grant_credits_to_user",
+                    {
+                        "p_user_id": target_user_id,
+                        "p_amount": purchased_credits,
+                        "p_reason": "admin_update",
+                        "p_credit_type": "purchased",
+                    },
+                ).execute()
 
             # Update plan if provided
             if plan_id:
                 sub_res = (
                     self.supabase.table("subscriptions")
-                    .select("id")
+                    .select("user_id")
                     .eq("user_id", target_user_id)
                     .execute()
                 )
@@ -428,8 +458,8 @@ class ProfilesService:
             logger.error(f"Error updating newsletter status: {str(e)}")
             raise
 
-    async def add_credits(self, user_id: str, amount: int) -> dict:
-        """Add credits to user (admin only)."""
+    async def add_user_credits(self, user_id: str, amount: int) -> dict:
+        """Add user_credits to user (admin only)."""
         try:
             # Check if user exists
             profile_res = (
@@ -445,8 +475,11 @@ class ProfilesService:
                 )
             profile = profile_res.data[0]
 
-            # Add credits via RPC function
-            result = self.supabase.rpc("add_user_credits", {"p_user_id": user_id, "p_amount": amount}).execute()
+            # Add user_credits via RPC function
+            result = self.supabase.rpc(
+                "grant_credits_to_user",
+                {"p_user_id": user_id, "p_amount": amount, "p_reason": "admin_grant"},
+            ).execute()
 
             return {
                 "message": f"{amount} créditos adicionados com sucesso",
@@ -455,14 +488,14 @@ class ProfilesService:
                     "email": profile["email"],
                     "name": profile.get("name", ""),
                 },
-                "credits_added": amount,
+                "user_credits_added": amount,
             }
         except HTTPException:
             raise
         except Exception as e:
             from src.core.logging import logger
 
-            logger.error(f"Error adding credits: {str(e)}")
+            logger.error(f"Error adding user_credits: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Erro ao adicionar créditos: {str(e)}",

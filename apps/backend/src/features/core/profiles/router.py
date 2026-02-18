@@ -49,8 +49,8 @@ async def list_profiles(
     return await profiles_service.list_profiles(limit=limit, offset=offset)
 
 
-@router.patch("/update-role")
-async def update_role(
+@router.patch("/update-user")
+async def update_user(
     data: UpdateRoleRequest,
     user_role: str = Depends(get_user_role),
 ):
@@ -59,7 +59,30 @@ async def update_role(
         from fastapi import HTTPException, status
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-    return await profiles_service.update_role(data.user_id, data.role, data.credits, data.plan_id)
+    return await profiles_service.update_role(
+        data.user_id,
+        data.role,
+        data.subscription_credits,
+        data.purchased_credits,
+        data.plan_id,
+    )
+
+
+@router.patch("/update-role")
+async def update_role_deprecated(
+    data: UpdateRoleRequest,
+    user_role: str = Depends(get_user_role),
+):
+    """[DEPRECATED] Use /update-user instead. Update user role, credits, and plan (admin only)."""
+    if user_role != "admin":
+        from fastapi import HTTPException, status
+
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    # Use legacy credits field if new fields not provided
+    sub_credits = data.subscription_credits if data.subscription_credits is not None else data.credits
+    return await profiles_service.update_role(
+        data.user_id, data.role, sub_credits, data.purchased_credits, data.plan_id
+    )
 
 
 @router.patch("/update-status")

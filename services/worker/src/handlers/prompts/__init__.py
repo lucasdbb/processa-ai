@@ -3,21 +3,17 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class AnalysisPromptConfig:
-    """Configuration for a document analysis + audit pipeline step."""
+    """Configuration for a document analysis pipeline step.
 
-    # Analysis LLM call
-    analysis_system: str
-    analysis_user_template: str
-    audit_system: str
-    audit_user_template: str
+    Uses stored prompts managed in the OpenAI dashboard.
+    Model, temperature, and system prompt are configured there.
+    """
 
-    analysis_temperature: float = 0.2
-
-    # Audit LLM call
-    audit_temperature: float = 0.1
+    # Stored prompt reference
+    prompt_id: str
+    prompt_version: str | None = None
 
     # Progress messages
     progress_ocr_start: str = "Iniciando extração de texto"
     progress_ocr_done: str = "Texto extraído, iniciando análise"
-    progress_analysis_done: str = "Análise concluída, auditando resultado"
-    progress_audit_approved: str = "Auditoria aprovada, finalizando"
+    progress_analysis_done: str = "Análise concluída, finalizando"

@@ -25,6 +25,12 @@ import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { toast } from 'sonner'
 import { useUser } from '@/features/auth/hooks/use-user'
 
+interface UserCredits {
+  subscription: number  // Available subscription credits
+  purchased: number     // Available purchased credits
+  total: number         // Total available credits
+}
+
 interface UserListItem {
   id: string
   email: string
@@ -34,7 +40,7 @@ interface UserListItem {
   avatar_url?: string | null
   created_at: string
   confirmed_at?: string | null
-  credits?: number
+  credits?: UserCredits
   plan_id?: string
   subscription_status?: string
 }
@@ -75,7 +81,8 @@ export default function UsersTab() {
   const [roleFilter, setRoleFilter] = useState<'all' | UserListItem['role']>('all')
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null)
   const [selectedUserRole, setSelectedUserRole] = useState<UserListItem['role']>('client')
-  const [selectedUserCredits, setSelectedUserCredits] = useState(0)
+  const [selectedUserSubscriptionCredits, setSelectedUserSubscriptionCredits] = useState(0)
+  const [selectedUserPurchasedCredits, setSelectedUserPurchasedCredits] = useState(0)
   const [selectedUserPlan, setSelectedUserPlan] = useState('free')
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false)
   const [isUpdatingRole, setIsUpdatingRole] = useState(false)
@@ -141,7 +148,8 @@ export default function UsersTab() {
   const openRoleDialog = (userItem: UserListItem) => {
     setSelectedUser(userItem)
     setSelectedUserRole(userItem.role)
-    setSelectedUserCredits(userItem.credits ?? 0)
+    setSelectedUserSubscriptionCredits(userItem.credits?.subscription ?? 0)
+    setSelectedUserPurchasedCredits(userItem.credits?.purchased ?? 0)
     setSelectedUserPlan(userItem.plan_id ?? 'free')
     setIsRoleDialogOpen(true)
   }
@@ -155,17 +163,23 @@ export default function UsersTab() {
     if (!selectedUser) return
     setIsUpdatingRole(true)
     try {
-      const res = await fetchWithCredentials(`${API_URL}/users/update-role`, {
+      const res = await fetchWithCredentials(`${API_URL}/users/update-user`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: selectedUser.id, role: selectedUserRole }),
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          role: selectedUserRole,
+          subscriptionCredits: selectedUserSubscriptionCredits,
+          purchasedCredits: selectedUserPurchasedCredits,
+          planId: selectedUserPlan,
+        }),
       })
-      if (!res.ok) throw new Error(await extractErrorMessage(res, 'Erro ao atualizar role'))
+      if (!res.ok) throw new Error(await extractErrorMessage(res, 'Erro ao atualizar usuário'))
       toast.success('Usuário atualizado!')
       closeRoleDialog()
       void loadUsers()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar role')
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar usuário')
     } finally {
       setIsUpdatingRole(false)
     }
@@ -307,7 +321,14 @@ export default function UsersTab() {
                           {roleLabel[u.role] || u.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-foreground font-medium">{u.credits || 0}</td>
+                      <td className="px-6 py-4 text-foreground font-medium">
+                        <div className="flex flex-col text-sm">
+                          <span className="font-medium">{u.credits?.total ?? 0} disponíveis</span>
+                          <span className="text-xs text-muted-foreground">
+                            {u.credits?.subscription ?? 0} assinatura | {u.credits?.purchased ?? 0} comprados
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <span
                           className={cn(
@@ -382,14 +403,31 @@ export default function UsersTab() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Créditos</label>
+              <label className="text-sm font-medium text-foreground">Créditos de Assinatura</label>
               <Input
                 type="number"
                 min="0"
-                value={selectedUserCredits}
-                onChange={(e) => setSelectedUserCredits(parseInt(e.target.value) || 0)}
+                value={selectedUserSubscriptionCredits}
+                onChange={(e) => setSelectedUserSubscriptionCredits(parseInt(e.target.value) || 0)}
                 placeholder="0"
               />
+              <p className="text-xs text-muted-foreground">
+                Créditos mensais do plano (resetam a cada ciclo)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Créditos Comprados</label>
+              <Input
+                type="number"
+                min="0"
+                value={selectedUserPurchasedCredits}
+                onChange={(e) => setSelectedUserPurchasedCredits(parseInt(e.target.value) || 0)}
+                placeholder="0"
+              />
+              <p className="text-xs text-muted-foreground">
+                Créditos comprados separadamente (não expiram)
+              </p>
             </div>
 
             <div className="space-y-2">
