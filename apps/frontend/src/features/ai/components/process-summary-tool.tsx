@@ -1,17 +1,18 @@
 import { useState } from 'react'
-import { Download, FileSearch, Trash2, Upload, FileText } from 'lucide-react'
+import { Download, FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ToolComponentProps } from '../types'
 import { Progress } from '@/components/ui/progress'
 
+const MAX_FILES = 5
+
 export function ProcessSummaryTool({
-  cnisFile,
-  cnisFileInputKey,
-  onCnisFileChange,
-  onClearCnisFile,
   isGenerating,
   progress,
   onGenerate,
+  files,
+  onFilesChange,
+  onRemoveFile,
   generatedPdfUrl,
   onDownload,
 }: ToolComponentProps) {
@@ -30,48 +31,71 @@ export function ProcessSummaryTool({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    
-    const files = e.dataTransfer.files
-    if (files.length > 0 && files[0].type === 'application/pdf') {
-      const mockEvent = {
-        target: { files }
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-      onCnisFileChange(mockEvent)
+
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(
+      (f) => f.type === 'application/pdf'
+    )
+    if (droppedFiles.length === 0) return
+
+    const allowed = droppedFiles.slice(0, MAX_FILES - files.length)
+    if (allowed.length > 0) {
+      onFilesChange([...files, ...allowed])
     }
   }
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || [])
+    const allowed = selected.slice(0, MAX_FILES - files.length)
+    if (allowed.length > 0) {
+      onFilesChange([...files, ...allowed])
+    }
+    e.target.value = ''
+  }
+
+  const canGenerate = files.length > 0 && !isGenerating
 
   return (
     <>
       <div className="mb-6">
-        <label htmlFor="process-file" className="block text-sm font-medium text-foreground mb-2">
-          Envie o PDF do Processo <span className="text-destructive">*</span>
+        <label className="block text-sm font-bold text-foreground mb-3">
+          Envie o(s) PDF(s) do Processo <span className="text-destructive">*</span>
         </label>
+        <p className="text-sm text-muted-foreground mb-3">
+          Anexe as peças do processo que deseja resumir. A IA irá gerar um resumo estruturado com os principais fatos, pedidos e decisões.
+        </p>
 
-        {cnisFile ? (
-          <div className="border-2 border-border rounded-xl bg-card p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-foreground truncate">{cnisFile.name}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {(cnisFile.size / (1024 * 1024)).toFixed(2)} MB • PDF
+        {/* Lista de arquivos */}
+        {files.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {files.map((file, index) => (
+              <div key={`${file.name}-${file.size}`} className="border border-border rounded-xl bg-card p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-foreground truncate">{file.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB
+                      </div>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveFile(index)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={onClearCnisFile}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm font-medium"
-              >
-                <Trash2 className="h-4 w-4" />
-                Remover
-              </button>
-            </div>
+            ))}
           </div>
-        ) : (
+        )}
+
+        {/* Dropzone */}
+        {files.length < MAX_FILES && (
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -84,26 +108,30 @@ export function ProcessSummaryTool({
             )}
           >
             <input
-              key={cnisFileInputKey}
-              id="process-file"
+              id="process-summary-files"
               type="file"
               accept="application/pdf"
-              onChange={onCnisFileChange}
+              multiple
+              onChange={handleFileInput}
               className="hidden"
             />
             <label
-              htmlFor="process-file"
+              htmlFor="process-summary-files"
               className="flex flex-col items-center justify-center py-8 px-6 cursor-pointer"
             >
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <Upload className="h-7 w-7 text-primary" />
+                {files.length > 0 ? (
+                  <Plus className="h-7 w-7 text-primary" />
+                ) : (
+                  <Upload className="h-7 w-7 text-primary" />
+                )}
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground mb-1">
-                  <span className="text-primary font-semibold">Clique para escolher</span> ou arraste o arquivo aqui
+                  <span className="text-primary font-semibold">Clique para escolher</span> ou arraste os arquivos aqui
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Aceita apenas PDF (até 10MB)
+                  PDF (até 10MB cada) &bull; Máximo {MAX_FILES - files.length} arquivo{MAX_FILES - files.length !== 1 ? 's' : ''}
                 </p>
               </div>
             </label>
@@ -114,7 +142,7 @@ export function ProcessSummaryTool({
       <div className="flex space-x-4 mb-6">
         <button
           onClick={onGenerate}
-          disabled={!cnisFile || isGenerating}
+          disabled={!canGenerate}
           className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
         >
           {isGenerating ? (
@@ -135,7 +163,13 @@ export function ProcessSummaryTool({
         <div className="mb-6 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-foreground">
-              {progress === 0 ? 'Iniciando análise...' : 'Processando resumo...'}
+              {progress === 0
+                ? 'Iniciando análise...'
+                : progress < 40
+                  ? 'Extraindo texto do processo...'
+                  : progress < 95
+                    ? 'Gerando resumo estruturado...'
+                    : 'Finalizando...'}
             </span>
             <span className="text-muted-foreground font-mono">{progress}%</span>
           </div>
@@ -149,16 +183,14 @@ export function ProcessSummaryTool({
             <h3 id="result-heading" className="text-base font-semibold text-foreground">
               Resumo do Processo
             </h3>
-            <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
-              <button
-                onClick={onDownload}
-                aria-label="Baixar como PDF"
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                title="Baixar PDF"
-              >
-                <Download className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
+            <button
+              onClick={onDownload}
+              aria-label="Baixar como PDF"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+              title="Baixar PDF"
+            >
+              <Download className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
           <div
             className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner"

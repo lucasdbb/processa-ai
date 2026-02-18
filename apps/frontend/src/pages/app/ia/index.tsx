@@ -63,29 +63,37 @@ export default function IAHubPage() {
   const isCnisAnalysis = currentTool?.variant === 'cnis'
   const isLaborClaim = currentTool?.variant === 'labor_claim'
   const isScanner = currentTool?.variant === 'scanner'
-  const isAsyncJob = isCnisAnalysis || isLaborClaim || isScanner
+  const isProcessSummary = currentTool?.variant === 'process_summary'
+  const isAsyncJob = isCnisAnalysis || isLaborClaim || isScanner || isProcessSummary
   
   const costDisplay = useMemo(() => {
     if (!currentTool) return null
-    
-    // Map tool variant/slug to feature key
-    // TODO: Improve mapping or add feature_key to tool definition
-    let featureKey = ''
-    if (currentTool.variant === 'chat') featureKey = 'ai_chat'
-    else if (currentTool.variant === 'cnis') featureKey = 'cnis_analysis'
-    else if (activeSlug === 'process_summary') featureKey = 'process_summary'
-    else featureKey = 'ai_chat' // Default fallback
+
+    // Map variant to feature_key used in FEATURE_COSTS
+    const variantToFeatureKey: Record<string, string> = {
+      chat: 'ai_chat',
+      cnis: 'cnis_analysis',
+      process_summary: 'process_summary',
+      labor_claim: 'labor_claim',
+      scanner: 'brief_scanner',
+      prompt: 'ai_chat',
+    }
+
+    const featureKey = variantToFeatureKey[currentTool.variant] || 'ai_chat'
 
     const costItem = costs.find(c => c.feature_key === featureKey)
-    if (costItem) return `${costItem.cost} créditos`
+    if (costItem) return costItem.cost === 1 ? '1 crédito' : `${costItem.cost} créditos`
 
     // Fallbacks
-    if (featureKey === 'ai_chat') return '1 crédito'
-    if (featureKey === 'cnis_analysis') return '5 créditos'
-    if (featureKey === 'process_summary') return '5 créditos'
-    
-    return null
-  }, [currentTool, costs, activeSlug])
+    const fallbacks: Record<string, string> = {
+      ai_chat: '1 crédito',
+      cnis_analysis: '5 créditos',
+      process_summary: '5 créditos',
+      labor_claim: '5 créditos',
+      brief_scanner: '3 créditos',
+    }
+    return fallbacks[featureKey] || null
+  }, [currentTool, costs])
 
   const markdownToRender = normalizeMarkdown(generatedText)
 
@@ -197,6 +205,11 @@ export default function IAHubPage() {
         toast.error('Por favor, envie o CNIS em PDF')
         return
       }
+    } else if (isProcessSummary) {
+      if (files.length === 0) {
+        toast.error('Por favor, envie ao menos um PDF do processo')
+        return
+      }
     } else if (isLaborClaim) {
       if (!prompt.trim() || prompt.trim().length < 50) {
         toast.error('Por favor, descreva os fatos do caso (mínimo 50 caracteres)')
@@ -225,10 +238,102 @@ export default function IAHubPage() {
     setIsGenerating(true)
 
     try {
+      if (isProcessSummary) {
+        await fetchCredits()
+        if (credits && credits.total_available < 5) {
+          toast.error('Créditos insuficientes. Recarregue para continuar.')
+          setIsGenerating(false)
+          return
+        }
+
+        const supabase = (await import('@/lib/supabase/client')).createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Usuário não autenticado')
+
+        const formData = new FormData()
+        for (const f of files) formData.append('files', f)
+        formData.append('user_id', user.id)
+        formData.append('store_pdf', 'true')
+        if (selectedClientId) formData.append('client_id', selectedClientId)
+
+        const submitResponse = await fetchWithCredentials(
+          `${API_URL}/ai/analyses/process-summary-upload`,
+          { method: 'POST', body: formData }
+        )
+
+        if (!submitResponse.ok) {
+          let message = 'Erro ao enviar processo. Tente novamente.'
+          try {
+            const data = (await submitResponse.json()) as { detail?: string }
+            if (data?.detail) message = data.detail
+          } catch { void 0 }
+          throw new Error(message)
+        }
+
+        const submitData = (await submitResponse.json()) as { job_id: string }
+        if (!submitData.job_id) throw new Error('Resposta inválida do servidor')
+
+        const jobId = submitData.job_id
+        const maxAttempts = 120
+        const pollInterval = 2000
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, pollInterval))
+
+          const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+          if (!statusResponse.ok) continue
+
+          const statusData = (await statusResponse.json()) as {
+            status: string
+            progress: number
+            result?: { document_id?: string; content?: string }
+            error?: string
+          }
+
+          setProgress(statusData.progress || 0)
+
+          if (statusData.status === 'failed') {
+            throw new Error(statusData.error || 'Erro ao processar processo')
+          }
+
+          if (statusData.status === 'completed') {
+            fetchCredits()
+
+            if (statusData.result?.document_id) {
+              const downloadResponse = await fetchWithCredentials(
+                `${API_URL}/ai/documents/${encodeURIComponent(statusData.result.document_id)}/download?expires_in=3600`
+              )
+              if (!downloadResponse.ok) throw new Error('Erro ao gerar URL de download')
+              const downloadData = (await downloadResponse.json()) as { download_url: string }
+              if (!downloadData.download_url) throw new Error('URL de download não encontrada')
+
+              const pdfResponse = await fetch(downloadData.download_url)
+              if (!pdfResponse.ok) throw new Error('Erro ao baixar PDF')
+              const blob = await pdfResponse.blob()
+              setCnisPdfUrl(URL.createObjectURL(blob))
+            } else if (statusData.result?.content) {
+              const binary = atob(statusData.result.content)
+              const bytes = new Uint8Array(binary.length)
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+              const blob = new Blob([bytes], { type: 'application/pdf' })
+              setCnisPdfUrl(URL.createObjectURL(blob))
+            } else {
+              throw new Error('Resultado inválido do servidor')
+            }
+
+            setGeneratedText('')
+            toast.success('Resumo gerado com sucesso!')
+            return
+          }
+        }
+
+        throw new Error('Tempo esgotado. Tente novamente.')
+      }
+
       if (isCnisAnalysis) {
         // Check credits
         await fetchCredits()
-        if (credits && credits.total_available < 10) { // Assuming 10 credits for CNIS
+        if (credits && credits.total_available < 5) {
            toast.error('Créditos insuficientes. Recarregue para continuar.')
            setIsGenerating(false)
            return
@@ -241,7 +346,6 @@ export default function IAHubPage() {
           throw new Error('Usuário não autenticado')
         }
 
-        // 1. Submit job to backend
         const formData = new FormData()
         formData.append('file', cnisFile as File)
         formData.append('user_id', user.id)
@@ -250,12 +354,7 @@ export default function IAHubPage() {
           formData.append('client_id', selectedClientId)
         }
 
-        // Determine which endpoint to use based on tool slug
-        const endpoint = activeSlug === 'process_summary'
-          ? `${API_URL}/ai/analyses/process-summary-upload`
-          : `${API_URL}/ai/analyses/cnis-upload`
-
-        const submitResponse = await fetchWithCredentials(endpoint, {
+        const submitResponse = await fetchWithCredentials(`${API_URL}/ai/analyses/cnis-upload`, {
           method: 'POST',
           body: formData,
         })
@@ -443,17 +542,6 @@ export default function IAHubPage() {
         throw new Error('Tempo esgotado. Tente novamente.')
       }
 
-      // Process Summary or other tools
-      // Check credits for process summary
-      if (activeSlug === 'process_summary') {
-        await fetchCredits()
-        if (credits && credits.total_available < 10) {
-           toast.error('Créditos insuficientes. Recarregue para continuar.')
-           setIsGenerating(false)
-           return
-        }
-      }
-
       const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
         method: 'POST',
         headers: {
@@ -487,7 +575,7 @@ export default function IAHubPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [activeSlug, cnisFile, currentTool, files, isCnisAnalysis, isLaborClaim, isScanner, prompt, selectedClientId, setCnisPdfUrl, credits, fetchCredits])
+  }, [cnisFile, currentTool, files, isCnisAnalysis, isLaborClaim, isProcessSummary, isScanner, prompt, selectedClientId, setCnisPdfUrl, credits, fetchCredits])
 
   const handleDownload = useCallback(() => {
     if (isAsyncJob) {

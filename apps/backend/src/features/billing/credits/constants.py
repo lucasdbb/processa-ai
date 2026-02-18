@@ -38,10 +38,16 @@ FEATURE_COSTS: dict[str, FeatureCost] = {
             "process_summary", "Resumo de Processo", 5, "Resumo inteligente de processo judicial"
         ),
         FeatureCost(
-            "calculator_rescisao", "Calculadora Rescisão", 2, "Cálculo de rescisão trabalhista"
+            "labor_claim", "Reclamação Trabalhista", 5, "Geração de reclamação trabalhista com IA"
         ),
         FeatureCost(
-            "calculator_aposentadoria", "Calculadora Aposentadoria", 2, "Simulação de aposentadoria"
+            "brief_scanner", "Scanner de Peças", 3, "Análise de peças processuais com IA"
+        ),
+        FeatureCost(
+            "calculator_rescisao", "Calculadora Rescisão", 1, "Cálculo de rescisão trabalhista"
+        ),
+        FeatureCost(
+            "calculator_aposentadoria", "Calculadora Aposentadoria", 1, "Simulação de aposentadoria"
         ),
     ]
 }

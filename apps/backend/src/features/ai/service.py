@@ -882,7 +882,7 @@ class AiService:
         """Processa mensagem de chat jurídico."""
         
         # Consumir créditos (1 crédito por mensagem)
-        credit_result = await credits_service.consume_credits(user_id, 'chat_message')
+        credit_result = await credits_service.consume_credits(user_id, 'ai_chat')
         if not credit_result.success:
              raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,

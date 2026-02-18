@@ -30,6 +30,7 @@ from src.features.ai.schemas import (
     ChatResponse,
 )
 from src.features.ai.service import AiService
+from src.features.billing.credits.service import CreditsService
 from src.core.auth import get_user_id
 
 router = APIRouter()
@@ -190,6 +191,15 @@ async def cnis_analysis_upload(
             detail="Arquivo vazio",
         )
 
+    # Consume credits before processing
+    credits_service = CreditsService()
+    credit_result = await credits_service.consume_credits(user_id, "cnis_analysis")
+    if not credit_result.success:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes para análise de CNIS.",
+        )
+
     # Gera job_id primeiro para usar na estrutura de pastas
     job_uuid = uuid4()
     job_id = f"ai:{job_uuid}"
@@ -343,7 +353,7 @@ async def process_summary_analysis(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def process_summary_analysis_upload(
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     user_id: str = Form(...),
     client_id: str | None = Form(None),
     store_pdf: bool = Form(False),
@@ -351,21 +361,33 @@ async def process_summary_analysis_upload(
     _internal=Depends(require_internal_auth),
 ):
     """
-    Upload de PDF de processo via multipart/form-data.
+    Upload de PDFs de processo via multipart/form-data.
 
     Parâmetros:
-    - file: Arquivo PDF do processo
+    - files: Arquivos PDF do processo (1 a 5)
     - user_id: ID do usuário
     - client_id: ID do cliente (opcional)
     - store_pdf: Se deve salvar o PDF processado
     - signed_url_expires_in: Tempo de expiração da URL assinada em segundos
     """
-    # Validações
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
+    if not files or len(files) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Apenas arquivos PDF são permitidos",
+            detail="Envie ao menos um arquivo PDF",
         )
+
+    if len(files) > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Máximo de 5 arquivos permitidos",
+        )
+
+    for f in files:
+        if not f.filename or not f.filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Apenas arquivos PDF são permitidos (arquivo inválido: {f.filename})",
+            )
 
     user_id = user_id.strip()
     if not user_id:
@@ -374,50 +396,67 @@ async def process_summary_analysis_upload(
             detail="user_id obrigatório",
         )
 
-    # Lê o arquivo em memória
-    try:
-        pdf_content = await file.read()
-    except Exception as e:
-        logger.exception("Erro ao ler arquivo")
+    # Consume credits before processing
+    credits_service = CreditsService()
+    credit_result = await credits_service.consume_credits(user_id, "process_summary")
+    if not credit_result.success:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erro ao ler arquivo: {str(e)}",
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes para resumo de processo.",
         )
 
-    if not pdf_content or len(pdf_content) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Arquivo vazio",
-        )
-
-    # Gera job_id primeiro para usar na estrutura de pastas
+    # Gera job_id para usar na estrutura de pastas
     job_uuid = uuid4()
     job_id = f"ai:{job_uuid}"
 
-    # Upload direto para Supabase Storage usando job_uuid na estrutura de pastas
     service = AiService()
-    try:
-        upload_result = await service.upload_input_pdf(
-            pdf_bytes=pdf_content,
-            filename=file.filename,
-            user_id=user_id,
-            client_id=client_id.strip() if client_id else None,
-            job_uuid=str(job_uuid),
-            expires_in=signed_url_expires_in,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Erro ao fazer upload do PDF")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao fazer upload: {str(e)}",
-        )
+    upload_results = []
+
+    for idx, f in enumerate(files):
+        try:
+            pdf_content = await f.read()
+        except Exception as e:
+            logger.exception("Erro ao ler arquivo %s", f.filename)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Erro ao ler arquivo '{f.filename}': {str(e)}",
+            )
+
+        if not pdf_content or len(pdf_content) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Arquivo vazio: {f.filename}",
+            )
+
+        # Usa sufixo numérico no filename para diferenciar no storage
+        storage_filename = f.filename if len(files) == 1 else f"{idx + 1}_{f.filename}"
+
+        try:
+            result = await service.upload_input_pdf(
+                pdf_bytes=pdf_content,
+                filename=storage_filename,
+                user_id=user_id,
+                client_id=client_id.strip() if client_id else None,
+                job_uuid=str(job_uuid),
+                expires_in=signed_url_expires_in,
+            )
+            upload_results.append(result)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Erro ao fazer upload do PDF %s", f.filename)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao fazer upload de '{f.filename}': {str(e)}",
+            )
 
     try:
         await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
     except Exception:
         logger.exception("Failed to persist queued status in Redis")
+
+    # Usa o primeiro upload como referência para storage_path no registro do job
+    primary = upload_results[0]
 
     try:
         await create_job(
@@ -427,13 +466,13 @@ async def process_summary_analysis_upload(
             client_id=client_id.strip() if client_id else None,
             request_payload={
                 "job_id": job_id,
-                "bucket": upload_result["bucket"],
-                "storage_path": upload_result["storage_path"],
+                "bucket": primary["bucket"],
+                "storage_path": primary["storage_path"],
                 "user_id": user_id,
                 "client_id": client_id.strip() if client_id else None,
                 "store_pdf": bool(store_pdf),
                 "signed_url_expires_in": int(signed_url_expires_in),
-                "input_storage_path": upload_result.get("storage_path"),
+                "input_storage_path": primary.get("storage_path"),
             },
         )
         await add_job_event(
@@ -441,7 +480,7 @@ async def process_summary_analysis_upload(
             event_type="queued",
             payload={"progress": 0},
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to persist job in database")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -454,13 +493,16 @@ async def process_summary_analysis_upload(
             "job_uuid": str(job_uuid),
             "type": "process_summary",
             "payload": {
-                "file_url": upload_result["signed_url"],
+                # Lista de URLs para o worker processar todos os arquivos
+                "file_urls": [r["signed_url"] for r in upload_results],
+                # Mantém file_url (primeiro) para compatibilidade com workers existentes
+                "file_url": upload_results[0]["signed_url"],
                 "user_id": user_id,
                 "client_id": client_id,
                 "store_pdf": bool(store_pdf),
                 "signed_url_expires_in": int(signed_url_expires_in),
-                "input_document_id": upload_result.get("document_id"),
-                "input_storage_path": upload_result.get("storage_path"),
+                "input_document_id": primary.get("document_id"),
+                "input_storage_path": primary.get("storage_path"),
             },
         }
     )
@@ -554,6 +596,15 @@ async def labor_claim_upload(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Erro ao fazer upload: {str(e)}",
             )
+
+    # Consume credits before enqueuing
+    credits_service = CreditsService()
+    credit_result = await credits_service.consume_credits(user_id, "labor_claim")
+    if not credit_result.success:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes para gerar reclamação trabalhista.",
+        )
 
     try:
         await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
@@ -688,6 +739,15 @@ async def brief_scanner_upload(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Erro ao fazer upload: {str(e)}",
             )
+
+    # Consume credits before enqueuing
+    credits_service = CreditsService()
+    credit_result = await credits_service.consume_credits(user_id, "brief_scanner")
+    if not credit_result.success:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes para analisar peças processuais.",
+        )
 
     try:
         await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})

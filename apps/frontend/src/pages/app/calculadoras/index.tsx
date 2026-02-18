@@ -101,17 +101,14 @@ export default function CalculadorasHubPage() {
 
   const costDisplay = useMemo(() => {
     if (!selectedCalculator) return null
-    
-    let featureKey = ''
-    if (selectedCalculator === 'rescisao') featureKey = 'calculator_rescisao'
-    else if (selectedCalculator === 'aposentadoria') featureKey = 'calculator_aposentadoria'
-    
+
+    const featureKey = `calculator_${selectedCalculator}`
+
     const costItem = costs.find(c => c.feature_key === featureKey)
-    if (costItem) return `${costItem.cost} créditos`
-    
-    // Fallback defaults
-    if (selectedCalculator === 'rescisao') return '2 créditos'
-    return 'Grátis (Beta)'
+    if (costItem) return costItem.cost === 1 ? '1 crédito' : `${costItem.cost} créditos`
+
+    // Fallback
+    return '1 crédito'
   }, [selectedCalculator, costs])
 
   const current = useMemo(() => {
@@ -170,7 +167,7 @@ export default function CalculadorasHubPage() {
 
     // Check credits
     await fetchCredits()
-    if (credits && credits.total_available < 10) { // Assuming 10 for calculator
+    if (credits && credits.total_available < 1) {
        toast.error('Créditos insuficientes. Recarregue para continuar.')
        return
     }
@@ -254,7 +251,7 @@ export default function CalculadorasHubPage() {
 
     // Check credits
     await fetchCredits()
-    if (credits && credits.total_available < 2) { // Assuming 2 for aposentadoria
+    if (credits && credits.total_available < 1) {
        toast.error('Créditos insuficientes. Recarregue para continuar.')
        return
     }

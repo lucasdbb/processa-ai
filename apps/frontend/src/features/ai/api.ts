@@ -6,6 +6,7 @@ import { ChatJuridicoTool } from './components/chat-juridico-tool'
 import { PromptTool } from './components/prompt-tool'
 import { LaborClaimTool } from './components/labor-claim-tool'
 import { BriefScannerTool } from './components/brief-scanner-tool'
+import { ProcessSummaryTool } from './components/process-summary-tool'
 
 // Map variant to component
 const COMPONENT_MAP = {
@@ -14,6 +15,7 @@ const COMPONENT_MAP = {
   prompt: PromptTool,
   labor_claim: LaborClaimTool,
   scanner: BriefScannerTool,
+  process_summary: ProcessSummaryTool,
 } as const
 
 // Map icon name to lucide-react component
