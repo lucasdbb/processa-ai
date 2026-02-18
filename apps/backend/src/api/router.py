@@ -24,6 +24,9 @@ from src.features.core.support.router import router as support_router
 from src.features.core.feedback.router import router as feedback_router
 from src.features.core.notifications.router import router as notifications_router
 
+# Portal (client-facing read-only views)
+from src.features.portal.router import router as portal_router
+
 # Office features
 from src.features.office.calendar.router import router as calendar_router
 from src.features.office.clients.router import router as clients_router
@@ -60,6 +63,9 @@ api_router.include_router(calculators_router, prefix="/calculators", tags=["Calc
 
 # AI features
 api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
+
+# Portal
+api_router.include_router(portal_router, prefix="/portal", tags=["Portal"])
 
 # Office features
 api_router.include_router(calendar_router, prefix="/office/calendar", tags=["Calendar"])

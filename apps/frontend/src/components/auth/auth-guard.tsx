@@ -10,11 +10,16 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   useAuth()
 
-  const { isAuthenticated, isLoading } = useUser()
+  const { user, isAuthenticated, isLoading } = useUser()
   const location = useLocation()
 
   if (isLoading) {
     return <LoadingSpinner fullScreen size="lg" />
+  }
+
+  // Portal clients should never access the lawyer app
+  if (user?.role === 'office_client') {
+    return <Navigate to="/portal" replace />
   }
 
   if (!isAuthenticated) {

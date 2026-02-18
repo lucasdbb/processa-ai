@@ -7,14 +7,24 @@ export default function CallbackPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Handle OAuth callback
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        // User authenticated successfully
-        navigate('/app')
-      } else {
-        // No session, redirect to home
+    // Handle OAuth / magic-link callback
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
         navigate('/')
+        return
+      }
+
+      // Check the user's role to decide where to redirect
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      if (profile?.role === 'office_client') {
+        navigate('/portal', { replace: true })
+      } else {
+        navigate('/app', { replace: true })
       }
     })
   }, [navigate, supabase])

@@ -5,6 +5,10 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { AuthGuard } from '@/components/auth/auth-guard'
 import { AdminGuard } from '@/components/auth/admin-guard'
 import { RequirePlan } from '@/components/auth/require-plan'
+import { PortalGuard } from '@/components/auth/portal-guard'
+import { PortalLayout } from '@/components/layout/portal-layout'
+import PortalPage from '@/pages/portal'
+import PortalAtivarPage from '@/pages/portal/ativar'
 
 // Public pages
 import HomePage from '@/pages/home'
@@ -210,6 +214,28 @@ export const router = createBrowserRouter([
       {
         path: 'ajuda',
         element: <AjudaPage />,
+      },
+    ],
+  },
+
+  // Portal activation (public — user arrives from invite email with token in URL hash)
+  {
+    path: '/portal/ativar',
+    element: <PortalAtivarPage />,
+  },
+
+  // Portal routes (office_client users only)
+  {
+    path: '/portal',
+    element: (
+      <PortalGuard>
+        <PortalLayout />
+      </PortalGuard>
+    ),
+    children: [
+      {
+        index: true,
+        element: <PortalPage />,
       },
     ],
   },

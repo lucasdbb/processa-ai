@@ -20,6 +20,9 @@ import {
   ChevronDown,
   ChevronRight,
   Check,
+  Send,
+  ShieldOff,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -41,6 +44,7 @@ import {
 import { notesService, type Note } from '../../../services/notes-service'
 import { feesService, type Fee } from '@/services/fees-service'
 import { servicesService, type Service } from '@/services/services-service'
+import { inviteClient, revokeClientPortalAccess } from '@/services/portal-service'
 
 type Tab = 'resumo' | 'atividades' | 'financeiro' | 'notas'
 
@@ -64,6 +68,8 @@ export default function ClienteDetalhePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isInviting, setIsInviting] = useState(false)
+  const [portalStatus, setPortalStatus] = useState<string | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const actionsMenuRef = useRef<HTMLDivElement>(null)
 
@@ -76,6 +82,7 @@ export default function ClienteDetalhePage() {
     try {
       const data = await clientsService.getDetail(id)
       setClient(data)
+      setPortalStatus((data as unknown as { portal_status?: string }).portal_status ?? null)
     } catch (error) {
       console.error('Error fetching client:', error)
       toast.error('Erro ao carregar cliente')
@@ -393,6 +400,35 @@ export default function ClienteDetalhePage() {
     }
   }
 
+  const handleInvitePortal = async () => {
+    if (!id) return
+    setIsInviting(true)
+    try {
+      const result = await inviteClient(id)
+      setPortalStatus(result.portal_status)
+      toast.success(result.message)
+      setShowActionsMenu(false)
+    } catch (error: unknown) {
+      const msg = (error as { message?: string })?.message ?? 'Erro ao enviar convite'
+      toast.error(msg)
+    } finally {
+      setIsInviting(false)
+    }
+  }
+
+  const handleRevokePortal = async () => {
+    if (!id) return
+    if (!confirm('Tem certeza que deseja revogar o acesso ao portal deste cliente?')) return
+    try {
+      const result = await revokeClientPortalAccess(id)
+      setPortalStatus(result.portal_status)
+      toast.success('Acesso ao portal revogado')
+      setShowActionsMenu(false)
+    } catch {
+      toast.error('Erro ao revogar acesso')
+    }
+  }
+
   const getFeeStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
@@ -572,6 +608,21 @@ export default function ClienteDetalhePage() {
               >
                 {client.status === 'active' ? 'Ativo' : 'Inativo'}
               </span>
+              {portalStatus && portalStatus !== 'not_invited' && (
+                <span
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs font-semibold uppercase flex items-center gap-1',
+                    portalStatus === 'active'  && 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+                    portalStatus === 'invited' && 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+                    portalStatus === 'revoked' && 'bg-red-500/10 text-red-600 dark:text-red-400',
+                  )}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  {portalStatus === 'active'  ? 'Portal Ativo'   :
+                   portalStatus === 'invited' ? 'Convite Enviado' :
+                   'Portal Revogado'}
+                </span>
+              )}
             </div>
             <div className="space-y-2 text-sm text-muted-foreground">
               {/* Linha 1: CPF, Telefone, Email */}
@@ -646,6 +697,36 @@ export default function ClienteDetalhePage() {
                 <Trash2 className="h-4 w-4" />
                 Excluir Cliente
               </button>
+              <div className="border-t border-border my-1" />
+              {client.email && (!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
+                <button
+                  onClick={handleInvitePortal}
+                  disabled={isInviting}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
+                >
+                  <Send className="h-4 w-4" />
+                  {isInviting ? 'Enviando...' : 'Convidar para o Portal'}
+                </button>
+              )}
+              {portalStatus === 'invited' && (
+                <button
+                  onClick={handleInvitePortal}
+                  disabled={isInviting}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
+                >
+                  <Send className="h-4 w-4" />
+                  {isInviting ? 'Enviando...' : 'Reenviar Convite'}
+                </button>
+              )}
+              {(portalStatus === 'invited' || portalStatus === 'active') && (
+                <button
+                  onClick={handleRevokePortal}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
+                >
+                  <ShieldOff className="h-4 w-4" />
+                  Revogar Acesso ao Portal
+                </button>
+              )}
             </div>
           )}
         </div>

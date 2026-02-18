@@ -13,6 +13,8 @@ from src.features.office.clients.schemas import (
     ClientUpdate,
 )
 from src.features.office.clients.service import clients_service
+from src.features.portal.service import portal_service
+from src.features.portal.schemas import InviteClientResponse, RevokePortalResponse
 
 router = APIRouter(
     dependencies=[Depends(verify_internal_token)],
@@ -113,3 +115,20 @@ async def delete_client(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found",
         )
+
+@router.post("/{client_id}/invite", response_model=InviteClientResponse)
+async def invite_client_to_portal(
+    client_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+):
+    """Send a portal invite email to the client."""
+    return await portal_service.invite_client(str(user_id), str(client_id))
+
+
+@router.post("/{client_id}/revoke-access", response_model=RevokePortalResponse)
+async def revoke_client_portal_access(
+    client_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+):
+    """Revoke portal access for a client."""
+    return await portal_service.revoke_portal_access(str(user_id), str(client_id))

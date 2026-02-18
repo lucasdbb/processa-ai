@@ -87,3 +87,50 @@ class SupportService:
             pass
 
         return {"id": str(record.get("id")), "status": "open"}
+
+    async def report_error(self, data) -> dict:
+        """Send a frontend crash report to the admin via email."""
+        from src.core.logging import logger
+
+        admin_email = "admin@processai.app.br"
+
+        body = (
+            "Erro critico capturado no frontend\n"
+            "\n"
+            f"Mensagem:      {data.error_message}\n"
+            f"Rota:          {data.route or '-'}\n"
+            f"User-Agent:    {data.user_agent or '-'}\n"
+            f"Usuario ID:    {data.user_id or 'nao autenticado'}\n"
+            f"Usuario email: {data.user_email or '-'}\n"
+        )
+
+        if data.component_stack:
+            body += f"\nComponent stack:\n{data.component_stack}\n"
+
+        try:
+            if settings.SENDGRID_API_KEY and settings.SENDGRID_FROM:
+                subject = f"[Processa AI] Erro critico — {data.error_message[:80]}"
+                email_payload = {
+                    "personalizations": [
+                        {
+                            "to": [{"email": admin_email}],
+                            "subject": subject,
+                        }
+                    ],
+                    "from": {"email": settings.SENDGRID_FROM},
+                    "content": [{"type": "text/plain", "value": body}],
+                }
+                email_headers = {
+                    "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
+                    "Content-Type": "application/json",
+                }
+                async with httpx.AsyncClient(timeout=10) as client:
+                    await client.post(
+                        "https://api.sendgrid.com/v3/mail/send",
+                        json=email_payload,
+                        headers=email_headers,
+                    )
+        except Exception as e:
+            logger.warning(f"Error report email failed: {e}")
+
+        return {"received": True}

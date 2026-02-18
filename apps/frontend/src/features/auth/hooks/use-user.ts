@@ -10,5 +10,6 @@ export function useUser() {
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isAuthor: user?.role === 'author' || user?.role === 'admin',
+    isPortalClient: user?.role === 'office_client',
   }
 }
