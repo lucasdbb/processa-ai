@@ -1,7 +1,7 @@
 import type { ChangeEvent, ComponentType, RefObject } from "react";
 import type { LucideIcon } from "lucide-react";
 
-export type ToolVariant = "chat" | "prompt" | "cnis" | "labor_claim" | "scanner";
+export type ToolVariant = "chat" | "prompt" | "cnis" | "labor_claim" | "scanner" | "process_summary";
 
 export type ToolTemplate = {
   label: string;
