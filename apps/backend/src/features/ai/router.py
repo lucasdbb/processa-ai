@@ -47,7 +47,6 @@ async def get_ai_tools(_internal=Depends(require_internal_auth)):
                 SELECT key, display_name, description, icon, variant,
                        display_order, is_locked
                 FROM public.ai_endpoints
-                WHERE variant IN ('cnis', 'chat', 'prompt')
                 ORDER BY display_order, display_name
             """)
             rows = await cur.fetchall()
@@ -463,6 +462,276 @@ async def process_summary_analysis_upload(
                 "input_document_id": upload_result.get("document_id"),
                 "input_storage_path": upload_result.get("storage_path"),
             },
+        }
+    )
+    return EnqueueJobResponse(job_id=job_id)
+
+
+@router.post(
+    "/analyses/labor-claim-upload",
+    response_model=EnqueueJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def labor_claim_upload(
+    files: list[UploadFile] = File(default=[]),
+    prompt: str = Form(...),
+    user_id: str = Form(...),
+    client_id: str | None = Form(None),
+    store_pdf: bool = Form(True),
+    signed_url_expires_in: int = Form(600),
+    _internal=Depends(require_internal_auth),
+):
+    """
+    Gera uma reclamação trabalhista a partir de texto + documentos opcionais.
+
+    Parâmetros:
+    - prompt: Descrição dos fatos do caso (obrigatório, min 50 chars)
+    - files: Documentos de apoio em PDF (opcional, máx 5 arquivos)
+    - user_id: ID do usuário
+    - store_pdf: Se deve salvar o PDF gerado
+    """
+    prompt_text = (prompt or "").strip()
+    if not prompt_text or len(prompt_text) < 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Descreva os fatos do caso (mínimo 50 caracteres)",
+        )
+
+    user_id = user_id.strip()
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
+
+    if len(files) > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Máximo de 5 arquivos permitidos",
+        )
+
+    # Validate and read PDF files
+    pdf_contents: list[tuple[str, bytes]] = []
+    for f in files:
+        if not f.filename or not f.filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Apenas arquivos PDF são permitidos: {f.filename}",
+            )
+        try:
+            content = await f.read()
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Erro ao ler arquivo {f.filename}: {str(e)}",
+            )
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Arquivo vazio: {f.filename}",
+            )
+        pdf_contents.append((f.filename, content))
+
+    job_uuid = uuid4()
+    job_id = f"ai:{job_uuid}"
+
+    # Upload PDFs to Supabase Storage
+    service = AiService()
+    uploaded_files: list[dict] = []
+    for filename, content in pdf_contents:
+        try:
+            upload_result = await service.upload_input_pdf(
+                pdf_bytes=content,
+                filename=filename,
+                user_id=user_id,
+                client_id=client_id.strip() if client_id else None,
+                job_uuid=str(job_uuid),
+                expires_in=signed_url_expires_in,
+            )
+            uploaded_files.append(upload_result)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Erro ao fazer upload do PDF: %s", filename)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao fazer upload: {str(e)}",
+            )
+
+    try:
+        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
+    except Exception:
+        logger.exception("Failed to persist queued status in Redis")
+
+    payload = {
+        "prompt": prompt_text,
+        "user_id": user_id,
+        "client_id": client_id.strip() if client_id else None,
+        "store_pdf": bool(store_pdf),
+        "signed_url_expires_in": int(signed_url_expires_in),
+        "files": [
+            {
+                "file_url": uf["signed_url"],
+                "bucket": uf["bucket"],
+                "storage_path": uf["storage_path"],
+                "document_id": uf.get("document_id"),
+            }
+            for uf in uploaded_files
+        ],
+    }
+
+    try:
+        await create_job(
+            job_uuid=job_uuid,
+            endpoint_key="labor_claim",
+            user_id=user_id,
+            client_id=client_id.strip() if client_id else None,
+            request_payload={"job_id": job_id, **payload},
+        )
+        await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
+    except Exception:
+        logger.exception("Failed to persist job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job no banco de dados",
+        )
+
+    await enqueue_job(
+        {
+            "job_id": job_id,
+            "job_uuid": str(job_uuid),
+            "type": "labor_claim",
+            "payload": payload,
+        }
+    )
+    return EnqueueJobResponse(job_id=job_id)
+
+
+@router.post(
+    "/analyses/brief-scanner-upload",
+    response_model=EnqueueJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def brief_scanner_upload(
+    files: list[UploadFile] = File(...),
+    user_id: str = Form(...),
+    client_id: str | None = Form(None),
+    store_pdf: bool = Form(True),
+    signed_url_expires_in: int = Form(600),
+    _internal=Depends(require_internal_auth),
+):
+    """
+    Analisa peça(s) processual(is) para identificar fragilidades.
+
+    Parâmetros:
+    - files: PDFs das peças processuais (obrigatório, 1-5 arquivos)
+    - user_id: ID do usuário
+    - store_pdf: Se deve salvar o PDF do relatório
+    """
+    if not files or len(files) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Envie ao menos uma peça processual em PDF",
+        )
+
+    if len(files) > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Máximo de 5 arquivos permitidos",
+        )
+
+    user_id = user_id.strip()
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
+
+    # Validate and read PDF files
+    pdf_contents: list[tuple[str, bytes]] = []
+    for f in files:
+        if not f.filename or not f.filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Apenas arquivos PDF são permitidos: {f.filename}",
+            )
+        try:
+            content = await f.read()
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Erro ao ler arquivo {f.filename}: {str(e)}",
+            )
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Arquivo vazio: {f.filename}",
+            )
+        pdf_contents.append((f.filename, content))
+
+    job_uuid = uuid4()
+    job_id = f"ai:{job_uuid}"
+
+    # Upload PDFs to Supabase Storage
+    service = AiService()
+    uploaded_files: list[dict] = []
+    for filename, content in pdf_contents:
+        try:
+            upload_result = await service.upload_input_pdf(
+                pdf_bytes=content,
+                filename=filename,
+                user_id=user_id,
+                client_id=client_id.strip() if client_id else None,
+                job_uuid=str(job_uuid),
+                expires_in=signed_url_expires_in,
+            )
+            uploaded_files.append(upload_result)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Erro ao fazer upload do PDF: %s", filename)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erro ao fazer upload: {str(e)}",
+            )
+
+    try:
+        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
+    except Exception:
+        logger.exception("Failed to persist queued status in Redis")
+
+    payload = {
+        "user_id": user_id,
+        "client_id": client_id.strip() if client_id else None,
+        "store_pdf": bool(store_pdf),
+        "signed_url_expires_in": int(signed_url_expires_in),
+        "files": [
+            {
+                "file_url": uf["signed_url"],
+                "bucket": uf["bucket"],
+                "storage_path": uf["storage_path"],
+                "document_id": uf.get("document_id"),
+            }
+            for uf in uploaded_files
+        ],
+    }
+
+    try:
+        await create_job(
+            job_uuid=job_uuid,
+            endpoint_key="brief_scanner",
+            user_id=user_id,
+            client_id=client_id.strip() if client_id else None,
+            request_payload={"job_id": job_id, **payload},
+        )
+        await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
+    except Exception:
+        logger.exception("Failed to persist job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job no banco de dados",
+        )
+
+    await enqueue_job(
+        {
+            "job_id": job_id,
+            "job_uuid": str(job_uuid),
+            "type": "brief_scanner",
+            "payload": payload,
         }
     )
     return EnqueueJobResponse(job_id=job_id)

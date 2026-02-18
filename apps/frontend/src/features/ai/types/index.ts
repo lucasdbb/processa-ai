@@ -1,7 +1,7 @@
 import type { ChangeEvent, ComponentType, RefObject } from "react";
 import type { LucideIcon } from "lucide-react";
 
-export type ToolVariant = "chat" | "prompt" | "cnis";
+export type ToolVariant = "chat" | "prompt" | "cnis" | "labor_claim" | "scanner";
 
 export type ToolTemplate = {
   label: string;
@@ -27,6 +27,10 @@ export type ToolComponentProps = {
   cnisFileInputKey: number;
   onCnisFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onClearCnisFile: () => void;
+
+  files: File[];
+  onFilesChange: (files: File[]) => void;
+  onRemoveFile: (index: number) => void;
 
   generatedText: string;
   previewHtml: string;

@@ -4,6 +4,7 @@ import type { CalculatorItem } from './api'
 interface CalculatorsContextValue {
   calculators: CalculatorItem[]
   isLoading: boolean
+  error: boolean
   getCalculatorBySlug: (slug: string) => CalculatorItem | undefined
 }
 

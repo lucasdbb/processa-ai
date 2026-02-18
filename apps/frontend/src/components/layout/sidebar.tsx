@@ -71,7 +71,7 @@ const getNavigationGroups = (
       ],
     },
     {
-      label: 'Gestao',
+      label: 'Gestão',
       items: [
         { name: 'Clientes', href: '/app/clientes', icon: Users },
         { name: 'Processos', href: '/app/processos', icon: FolderKanban },

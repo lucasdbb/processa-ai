@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Brain, Lock, ArrowRight } from 'lucide-react'
+import { Brain, Lock, ArrowRight, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAiTools } from '@/features/ai/context'
 
@@ -21,7 +21,7 @@ const getCategoryForTool = (slug: string) => {
 
 export default function IAJuridicaHubPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const { tools: aiTools } = useAiTools()
+  const { tools: aiTools, isLoading, error } = useAiTools()
 
   const tools = useMemo(() => {
     return aiTools.map((tool) => ({
@@ -69,7 +69,18 @@ export default function IAJuridicaHubPage() {
       </div>
 
       {/* Grid de ferramentas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">Erro ao carregar ferramentas</h3>
+          <p className="text-muted-foreground">Não foi possível carregar as ferramentas. Tente novamente mais tarde.</p>
+        </div>
+      ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredTools.map((tool) => {
           const Icon = tool.icon
           return (
@@ -77,9 +88,9 @@ export default function IAJuridicaHubPage() {
               key={tool.id}
               to={tool.available ? tool.href : '#'}
               className={cn(
-                'group relative bg-card border border-border rounded-2xl p-6 transition-all duration-200',
+                'group relative bg-card border border-border rounded-xl p-4 transition-all duration-200',
                 tool.available
-                  ? 'hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-1'
+                  ? 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5'
                   : 'opacity-60 cursor-not-allowed'
               )}
               onClick={(e) => {
@@ -88,56 +99,61 @@ export default function IAJuridicaHubPage() {
             >
               {/* Badge de bloqueio */}
               {tool.locked && (
-                <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 text-xs font-semibold rounded-full border border-amber-500/20">
-                  <Lock className="h-3 w-3" />
+                <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[11px] font-semibold rounded-full border border-amber-500/20">
+                  <Lock className="h-2.5 w-2.5" />
                   Em breve
                 </div>
               )}
 
-              {/* Ícone */}
-              <div
-                className={cn(
-                  'w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors',
-                  tool.available
-                    ? 'bg-slate-900 text-white group-hover:bg-slate-800'
-                    : 'bg-muted text-muted-foreground'
-                )}
-              >
-                <Icon className="h-6 w-6" />
-              </div>
+              <div className="flex items-start gap-3">
+                {/* Ícone */}
+                <div
+                  className={cn(
+                    'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                    tool.available
+                      ? 'bg-slate-900 text-white group-hover:bg-slate-800'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  <Icon className="h-4.5 w-4.5" />
+                </div>
 
-              {/* Conteúdo */}
-              <h3 className="text-lg font-bold text-foreground mb-2">{tool.name}</h3>
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{tool.description}</p>
+                {/* Conteúdo */}
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-foreground mb-0.5">{tool.name}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{tool.description}</p>
+                </div>
+              </div>
 
               {/* Call to action */}
               {tool.available && (
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100 group-hover:gap-3 transition-all">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-900 dark:text-slate-100 mt-3 pt-3 border-t border-border group-hover:gap-2.5 transition-all">
                   Usar ferramenta
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </div>
               )}
             </Link>
           )
         })}
-      </div>
 
-      {/* Mensagem quando não há ferramentas */}
-      {filteredTools.length === 0 && (
-        <div className="text-center py-12">
-          <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma ferramenta encontrada</h3>
-          <p className="text-muted-foreground">Tente selecionar outra categoria.</p>
-        </div>
+        {/* Mensagem quando não há ferramentas na categoria */}
+        {filteredTools.length === 0 && (
+          <div className="col-span-full text-center py-10">
+            <Brain className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-foreground mb-1">Nenhuma ferramenta encontrada</h3>
+            <p className="text-sm text-muted-foreground">Tente selecionar outra categoria.</p>
+          </div>
+        )}
+      </div>
       )}
 
       {/* Informação adicional */}
-      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
-        <div className="flex gap-4">
-          <Brain className="h-6 w-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3">
+        <div className="flex gap-3">
+          <Brain className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-bold text-blue-900 dark:text-blue-100 mb-2">Sobre as Ferramentas de IA</h3>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
+            <h3 className="font-bold text-blue-900 dark:text-blue-100 text-sm mb-1">Sobre as Ferramentas de IA</h3>
+            <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
               Nossas ferramentas utilizam modelos de linguagem avançados para auxiliar em tarefas jurídicas. Os
               resultados devem sempre ser revisados por um profissional qualificado antes de serem utilizados.
             </p>

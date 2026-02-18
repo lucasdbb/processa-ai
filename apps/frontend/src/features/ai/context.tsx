@@ -4,6 +4,7 @@ import type { AiTool } from './types'
 interface AiToolsContextValue {
   tools: AiTool[]
   isLoading: boolean
+  error: boolean
   getToolBySlug: (slug: string) => AiTool | undefined
 }
 

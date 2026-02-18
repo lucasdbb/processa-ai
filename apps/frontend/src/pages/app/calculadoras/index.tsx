@@ -72,7 +72,7 @@ interface CalculatorConfig {
 
 export default function CalculadorasHubPage() {
   const { calculatorId } = useParams<{ calculatorId?: string }>()
-  const { calculators: calculatorsFromContext } = useCalculators()
+  const { calculators: calculatorsFromContext, isLoading: isLoadingCalcs, error: calcsError } = useCalculators()
   const { credits, fetchCredits, costs, fetchCosts } = useCreditsStore()
 
   useEffect(() => {
@@ -818,7 +818,18 @@ export default function CalculadorasHubPage() {
       </div>
 
       {/* Calculator Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {isLoadingCalcs ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : calcsError ? (
+        <div className="text-center py-12">
+          <Calculator className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">Erro ao carregar calculadoras</h3>
+          <p className="text-muted-foreground">Não foi possível carregar as calculadoras. Tente novamente mais tarde.</p>
+        </div>
+      ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {calculators.filter((calc) => selectedCategory === 'all' || calc.category === selectedCategory).map((calc) => {
           const Icon = calc.icon
 
@@ -826,34 +837,32 @@ export default function CalculadorasHubPage() {
             <div
               key={calc.id}
               className={cn(
-                'group relative bg-card border border-border rounded-xl p-6 transition-all',
+                'group relative bg-card border border-border rounded-xl p-4 transition-all duration-200',
                 calc.available
-                  ? 'hover:border-muted-foreground/50 hover:shadow-md cursor-pointer'
+                  ? 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 cursor-pointer'
                   : 'opacity-60'
               )}
             >
               {!calc.available && (
-                <div className="absolute top-4 right-4">
-                  <span className="px-2 py-1 text-[10px] font-bold uppercase bg-muted text-muted-foreground rounded">
-                    Em breve
-                  </span>
+                <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[11px] font-semibold rounded-full border border-amber-500/20">
+                  Em breve
                 </div>
               )}
 
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3">
                 <div
                   className={cn(
-                    'p-3 rounded-xl transition-colors',
+                    'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
                     calc.available
                       ? 'bg-muted group-hover:bg-primary group-hover:text-primary-foreground'
-                      : 'bg-muted'
+                      : 'bg-muted text-muted-foreground'
                   )}
                 >
-                  <Icon className="h-6 w-6" />
+                  <Icon className="h-4.5 w-4.5" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground mb-1">{calc.name}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-foreground mb-0.5">{calc.name}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
                     {calc.description}
                   </p>
                 </div>
@@ -862,16 +871,17 @@ export default function CalculadorasHubPage() {
               {calc.available && (
                 <Link
                   to={calc.href}
-                  className="mt-4 flex items-center gap-1 text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground group-hover:text-foreground mt-3 pt-3 border-t border-border transition-colors"
                 >
                   Acessar
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               )}
             </div>
           )
         })}
       </div>
+      )}
 
       {/* Recent Calculations */}
       <div className="bg-card border border-border rounded-xl">

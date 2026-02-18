@@ -6,10 +6,12 @@ import { AiToolsContext } from './context'
 export function AiToolsProvider({ children }: { children: ReactNode }) {
   const [tools, setTools] = useState<AiTool[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     fetchAiTools()
       .then((tools) => setTools(tools))
+      .catch(() => setError(true))
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -18,7 +20,7 @@ export function AiToolsProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AiToolsContext.Provider value={{ tools, isLoading, getToolBySlug }}>
+    <AiToolsContext.Provider value={{ tools, isLoading, error, getToolBySlug }}>
       {children}
     </AiToolsContext.Provider>
   )

@@ -43,6 +43,7 @@ export default function IAHubPage() {
   const [cnisFileInputKey, setCnisFileInputKey] = useState(0)
   const cnisPdfUrlRef = useRef<string | null>(null)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
+  const [files, setFiles] = useState<File[]>([])
 
   const [generatedText, setGeneratedText] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -59,6 +60,9 @@ export default function IAHubPage() {
   }, [activeSlug, allTools])
 
   const isCnisAnalysis = currentTool?.variant === 'cnis'
+  const isLaborClaim = currentTool?.variant === 'labor_claim'
+  const isScanner = currentTool?.variant === 'scanner'
+  const isAsyncJob = isCnisAnalysis || isLaborClaim || isScanner
   
   const costDisplay = useMemo(() => {
     if (!currentTool) return null
@@ -101,6 +105,7 @@ export default function IAHubPage() {
     setPrompt('')
     setCnisFile(null)
     setCnisFileInputKey((k) => k + 1)
+    setFiles([])
     setGeneratedText('')
     setCnisPdfUrl('')
     setProgress(0)
@@ -130,9 +135,9 @@ export default function IAHubPage() {
 
   useLayoutEffect(() => {
     if (!toolId) return
-    if (isCnisAnalysis || currentTool?.variant === 'chat') return
+    if (isCnisAnalysis || isScanner || currentTool?.variant === 'chat') return
     resizePromptTextarea()
-  }, [currentTool?.variant, isCnisAnalysis, prompt, resizePromptTextarea, toolId])
+  }, [currentTool?.variant, isCnisAnalysis, isScanner, prompt, resizePromptTextarea, toolId])
 
   const handleCnisFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -161,12 +166,44 @@ export default function IAHubPage() {
     setCnisPdfUrl('')
   }, [setCnisPdfUrl])
 
+  const handleFilesChange = useCallback((newFiles: File[]) => {
+    const valid = newFiles.filter((f) => {
+      const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+      if (!isPdf) {
+        toast.error(`${f.name}: apenas arquivos PDF são permitidos`)
+        return false
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        toast.error(`${f.name}: o arquivo deve ter no máximo 10MB`)
+        return false
+      }
+      return true
+    })
+    setFiles(valid)
+    setGeneratedText('')
+    setCnisPdfUrl('')
+  }, [setCnisPdfUrl])
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
   const handleGenerate = useCallback(async () => {
     if (!currentTool) return
 
     if (isCnisAnalysis) {
       if (!cnisFile) {
         toast.error('Por favor, envie o CNIS em PDF')
+        return
+      }
+    } else if (isLaborClaim) {
+      if (!prompt.trim() || prompt.trim().length < 50) {
+        toast.error('Por favor, descreva os fatos do caso (mínimo 50 caracteres)')
+        return
+      }
+    } else if (isScanner) {
+      if (files.length === 0) {
+        toast.error('Por favor, envie ao menos uma peça processual em PDF')
         return
       }
     } else {
@@ -313,6 +350,98 @@ export default function IAHubPage() {
         throw new Error('Tempo esgotado. Tente novamente.')
       }
 
+      if (isLaborClaim || isScanner) {
+        const supabase = (await import('@/lib/supabase/client')).createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Usuário não autenticado')
+
+        const formData = new FormData()
+        formData.append('user_id', user.id)
+        formData.append('store_pdf', 'true')
+        if (selectedClientId) formData.append('client_id', selectedClientId)
+
+        if (isLaborClaim) {
+          formData.append('prompt', prompt.trim())
+          for (const file of files) formData.append('files', file)
+        } else {
+          for (const file of files) formData.append('files', file)
+        }
+
+        const endpoint = isLaborClaim
+          ? `${API_URL}/ai/analyses/labor-claim-upload`
+          : `${API_URL}/ai/analyses/brief-scanner-upload`
+
+        const submitResponse = await fetchWithCredentials(endpoint, {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!submitResponse.ok) {
+          let message = 'Erro ao enviar. Tente novamente.'
+          try {
+            const data = (await submitResponse.json()) as { detail?: string }
+            if (data?.detail) message = data.detail
+          } catch { void 0 }
+          throw new Error(message)
+        }
+
+        const submitData = (await submitResponse.json()) as { job_id: string }
+        if (!submitData.job_id) throw new Error('Resposta inválida do servidor')
+
+        const jobId = submitData.job_id
+        const maxAttempts = 120
+        const pollInterval = 2000
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, pollInterval))
+          const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+          if (!statusResponse.ok) continue
+
+          const statusData = (await statusResponse.json()) as {
+            status: string; progress: number
+            result?: { document_id?: string; download_url?: string; content?: string }
+            error?: string
+          }
+
+          setProgress(statusData.progress || 0)
+
+          if (statusData.status === 'failed') {
+            throw new Error(statusData.error || 'Erro ao processar. Tente novamente.')
+          }
+
+          if (statusData.status === 'completed') {
+            fetchCredits()
+
+            if (statusData.result?.document_id) {
+              const downloadResponse = await fetchWithCredentials(
+                `${API_URL}/ai/documents/${encodeURIComponent(statusData.result.document_id)}/download?expires_in=3600`
+              )
+              if (!downloadResponse.ok) throw new Error('Erro ao gerar URL de download')
+              const downloadData = (await downloadResponse.json()) as { download_url: string }
+              if (!downloadData.download_url) throw new Error('URL de download não encontrada')
+              const pdfResponse = await fetch(downloadData.download_url)
+              if (!pdfResponse.ok) throw new Error('Erro ao baixar PDF')
+              const blob = await pdfResponse.blob()
+              setCnisPdfUrl(URL.createObjectURL(blob))
+            } else if (statusData.result?.content) {
+              const binary = atob(statusData.result.content)
+              const bytes = new Uint8Array(binary.length)
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+              const blob = new Blob([bytes], { type: 'application/pdf' })
+              setCnisPdfUrl(URL.createObjectURL(blob))
+            } else {
+              throw new Error('Resultado inválido do servidor')
+            }
+
+            setGeneratedText('')
+            toast.success(isLaborClaim ? 'Reclamação trabalhista gerada com sucesso!' : 'Análise da peça concluída com sucesso!')
+            return
+          }
+        }
+
+        throw new Error('Tempo esgotado. Tente novamente.')
+      }
+
       // Process Summary or other tools
       // Check credits for process summary
       if (activeSlug === 'process_summary') {
@@ -357,14 +486,14 @@ export default function IAHubPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [activeSlug, cnisFile, currentTool, isCnisAnalysis, prompt, selectedClientId, setCnisPdfUrl, credits, fetchCredits])
+  }, [activeSlug, cnisFile, currentTool, files, isCnisAnalysis, isLaborClaim, isScanner, prompt, selectedClientId, setCnisPdfUrl, credits, fetchCredits])
 
   const handleDownload = useCallback(() => {
-    if (isCnisAnalysis) {
+    if (isAsyncJob) {
       if (!generatedPdfUrl) return
 
       const element = document.createElement('a')
-      const baseName = (currentTool?.name || 'cnis').toLowerCase().replaceAll(' ', '_')
+      const baseName = (currentTool?.name || 'documento').toLowerCase().replaceAll(' ', '_')
       element.href = generatedPdfUrl
       element.download = `${baseName}_${Date.now()}.pdf`
       document.body.appendChild(element)
@@ -389,7 +518,7 @@ export default function IAHubPage() {
     URL.revokeObjectURL(url)
 
     toast.success('Documento baixado com sucesso!')
-  }, [currentTool?.name, generatedPdfUrl, generatedText, isCnisAnalysis])
+  }, [currentTool?.name, generatedPdfUrl, generatedText, isAsyncJob])
 
   const sendChatMessage = useCallback(async () => {
     if (!chatInput.trim() || isChatLoading) return
@@ -550,6 +679,9 @@ export default function IAHubPage() {
             cnisFileInputKey={cnisFileInputKey}
             onCnisFileChange={handleCnisFileChange}
             onClearCnisFile={clearCnisFile}
+            files={files}
+            onFilesChange={handleFilesChange}
+            onRemoveFile={handleRemoveFile}
             generatedText={generatedText}
             previewHtml={previewHtml}
             generatedPdfUrl={generatedPdfUrl}

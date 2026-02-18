@@ -6,10 +6,12 @@ import { CalculatorsContext } from './context'
 export function CalculatorsProvider({ children }: { children: ReactNode }) {
   const [calculators, setCalculators] = useState<CalculatorItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     fetchCalculators()
       .then((calculators) => setCalculators(calculators))
+      .catch(() => setError(true))
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -18,7 +20,7 @@ export function CalculatorsProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <CalculatorsContext.Provider value={{ calculators, isLoading, getCalculatorBySlug }}>
+    <CalculatorsContext.Provider value={{ calculators, isLoading, error, getCalculatorBySlug }}>
       {children}
     </CalculatorsContext.Provider>
   )

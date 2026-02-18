@@ -9,9 +9,11 @@ from markdown_pdf import MarkdownPdf, Section
 from src.core.config import settings
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
-from src.handlers.pipeline import run_document_analysis
+from src.handlers.pipeline import run_document_analysis, run_multi_document_analysis
 from src.handlers.prompts.cnis import CNIS_PROMPT
 from src.handlers.prompts.process_summary import PROCESS_SUMMARY_PROMPT
+from src.handlers.prompts.labor_claim import LABOR_CLAIM_PROMPT
+from src.handlers.prompts.brief_scanner import BRIEF_SCANNER_PROMPT
 
 
 class WorkerException(Exception):
@@ -532,6 +534,103 @@ class AiService:
             client_id=client_id,
             store_pdf=store_pdf,
             store_input_pdf=store_input_pdf,
+            signed_url_expires_in=signed_url_expires_in,
+            job_id=job_id,
+            progress=progress,
+        )
+
+    async def _run_multi_file_pipeline(
+        self,
+        *,
+        file_urls: list[str],
+        endpoint_key: str,
+        prompt_config,
+        user_id: str,
+        client_id: str | None,
+        store_pdf: bool,
+        signed_url_expires_in: int,
+        job_id: str | None,
+        progress: ProgressReporter | None,
+        user_prompt: str | None = None,
+    ) -> dict:
+        """Shared analysis logic for multi-file pipelines (labor_claim, brief_scanner)."""
+        pipeline_result = await run_multi_document_analysis(
+            pdf_urls=file_urls,
+            prompt=prompt_config,
+            progress=progress,
+            user_prompt=user_prompt,
+        )
+
+        markdown = pipeline_result.markdown
+        if not markdown:
+            raise WorkerException(status_code=502, detail="Pipeline retornou resposta vazia")
+
+        response: dict = {"markdown": markdown}
+
+        if store_pdf and job_id:
+            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
+                raise WorkerException(
+                    status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
+                )
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            stored = await self._markdown_to_pdf_and_store(
+                markdown=markdown,
+                filename=f"{endpoint_key}_resultado.pdf",
+                user_id=user_id,
+                client_id=client_id,
+                job_uuid=job_uuid_str,
+                expires_in=signed_url_expires_in,
+            )
+            response.update(stored)
+            return response
+
+        content = self._markdown_to_pdf_bytes(markdown, title=endpoint_key)
+        response["content"] = content
+        return response
+
+    async def analyze_labor_claim(
+        self,
+        *,
+        file_urls: list[str],
+        user_prompt: str,
+        user_id: str,
+        client_id: str | None,
+        store_pdf: bool = True,
+        signed_url_expires_in: int = 600,
+        job_id: str | None = None,
+        progress: ProgressReporter | None = None,
+    ) -> dict:
+        return await self._run_multi_file_pipeline(
+            file_urls=file_urls,
+            endpoint_key="labor_claim",
+            prompt_config=LABOR_CLAIM_PROMPT,
+            user_id=user_id,
+            client_id=client_id,
+            store_pdf=store_pdf,
+            signed_url_expires_in=signed_url_expires_in,
+            job_id=job_id,
+            progress=progress,
+            user_prompt=user_prompt,
+        )
+
+    async def analyze_brief_scanner(
+        self,
+        *,
+        file_urls: list[str],
+        user_id: str,
+        client_id: str | None,
+        store_pdf: bool = True,
+        signed_url_expires_in: int = 600,
+        job_id: str | None = None,
+        progress: ProgressReporter | None = None,
+    ) -> dict:
+        return await self._run_multi_file_pipeline(
+            file_urls=file_urls,
+            endpoint_key="brief_scanner",
+            prompt_config=BRIEF_SCANNER_PROMPT,
+            user_id=user_id,
+            client_id=client_id,
+            store_pdf=store_pdf,
             signed_url_expires_in=signed_url_expires_in,
             job_id=job_id,
             progress=progress,

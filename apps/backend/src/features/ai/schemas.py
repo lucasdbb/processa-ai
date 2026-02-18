@@ -105,6 +105,29 @@ class AiToolsListResponse(BaseModel):
     tools: list[AiToolResponse]
 
 
+class LaborClaimUploadRequest(BaseModel):
+    """Metadata for labor claim upload (files sent via multipart)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str
+    user_id: str
+    client_id: str | None = None
+    store_pdf: bool = True
+    signed_url_expires_in: int = 600
+
+
+class BriefScannerUploadRequest(BaseModel):
+    """Metadata for brief scanner upload (files sent via multipart)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str
+    client_id: str | None = None
+    store_pdf: bool = True
+    signed_url_expires_in: int = 600
+
+
 class ChatRequest(BaseModel):
     message: str
     client_id: str | None = None

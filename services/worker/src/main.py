@@ -56,7 +56,7 @@ async def _handle_ai_job(job: dict) -> None:
         job_uuid = parse_job_uuid(job_id)
 
     job_type = str(job.get("type") or "").strip()
-    if job_type not in ("cnis_analysis", "process_summary"):
+    if job_type not in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner"):
         await _safe_set_job_status(
             job_id,
             {"job_id": job_id, "status": "failed", "error": "Tipo inválido"},
@@ -85,49 +85,77 @@ async def _handle_ai_job(job: dict) -> None:
                 logger.exception("Failed to persist job failure in database")
         return
 
-    file_url = str(payload.get("file_url") or "").strip()
-    bucket = str(payload.get("bucket") or "").strip()
-    storage_path = str(payload.get("storage_path") or "").strip()
     user_id = str(payload.get("user_id") or "").strip()
+    client_id = payload.get("client_id")
+    store_pdf = bool(payload.get("store_pdf"))
+    store_input_pdf = bool(payload.get("store_input_pdf", True))
+    expires_in = int(payload.get("signed_url_expires_in") or 600)
+    input_document_id = payload.get("input_document_id")
 
-    # If we have bucket + storage_path, generate a signed URL (replaces any file_url in payload)
-    if bucket and storage_path:
-        try:
-            import httpx
+    # Multi-file jobs (labor_claim, brief_scanner) use a "files" array
+    is_multi_file = job_type in ("labor_claim", "brief_scanner")
 
-            base_url = settings.SUPABASE_URL.rstrip("/")
-            api_key = settings.SUPABASE_SERVICE_ROLE_KEY
+    if is_multi_file:
+        files_list = payload.get("files") or []
+        file_urls = [str(f.get("file_url") or "") for f in files_list if f.get("file_url")]
+        # labor_claim may have no files (text-only), but brief_scanner requires at least one
+        if job_type == "brief_scanner" and not file_urls:
+            await _safe_set_job_status(
+                job_id,
+                {"job_id": job_id, "status": "failed", "error": "Nenhum arquivo enviado"},
+            )
+            if job_uuid:
+                try:
+                    await mark_job_failed(job_uuid=job_uuid, error="Nenhum arquivo enviado")
+                    await add_job_event(job_uuid=job_uuid, event_type="failed", message="Nenhum arquivo enviado")
+                except Exception:
+                    logger.exception("Failed to persist job failure in database")
+            return
+        file_url = ""  # not used for multi-file
+    else:
+        file_url = str(payload.get("file_url") or "").strip()
+        bucket = str(payload.get("bucket") or "").strip()
+        storage_path = str(payload.get("storage_path") or "").strip()
 
-            sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
-            logger.info("Generating signed URL from bucket=%s, path=%s...", bucket, storage_path[:50])
+        # If we have bucket + storage_path, generate a signed URL
+        if bucket and storage_path:
+            try:
+                import httpx
 
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    sign_url,
-                    headers={
-                        "apikey": api_key,
-                        "Authorization": f"Bearer {api_key}",
-                    },
-                    json={"expiresIn": 3600},
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    signed_path = data.get("signedURL") or ""
-                    if signed_path.startswith("/"):
-                        file_url = f"{base_url}{signed_path}"
-                    else:
-                        file_url = signed_path
-                    logger.info("Generated signed URL successfully")
-                else:
-                    logger.error(
-                        "Failed to generate signed URL: status %d, body: %s",
-                        resp.status_code,
-                        resp.text[:200],
+                base_url = settings.SUPABASE_URL.rstrip("/")
+                api_key = settings.SUPABASE_SERVICE_ROLE_KEY
+
+                sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
+                logger.info("Generating signed URL from bucket=%s, path=%s...", bucket, storage_path[:50])
+
+                async with httpx.AsyncClient(timeout=30) as client:
+                    resp = await client.post(
+                        sign_url,
+                        headers={
+                            "apikey": api_key,
+                            "Authorization": f"Bearer {api_key}",
+                        },
+                        json={"expiresIn": 3600},
                     )
-        except Exception as e:
-            logger.error("Failed to generate signed URL: %s", e, exc_info=True)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        signed_path = data.get("signedURL") or ""
+                        if signed_path.startswith("/"):
+                            file_url = f"{base_url}{signed_path}"
+                        else:
+                            file_url = signed_path
+                        logger.info("Generated signed URL successfully")
+                    else:
+                        logger.error(
+                            "Failed to generate signed URL: status %d, body: %s",
+                            resp.status_code,
+                            resp.text[:200],
+                        )
+            except Exception as e:
+                logger.error("Failed to generate signed URL: %s", e, exc_info=True)
+        file_urls = []  # not used for single-file
 
-    if not file_url or not user_id:
+    if not is_multi_file and (not file_url or not user_id):
         await _safe_set_job_status(
             job_id,
             {"job_id": job_id, "status": "failed", "error": "Dados inválidos"},
@@ -142,11 +170,18 @@ async def _handle_ai_job(job: dict) -> None:
                 logger.exception("Failed to persist job failure in database")
         return
 
-    client_id = payload.get("client_id")
-    store_pdf = bool(payload.get("store_pdf"))
-    store_input_pdf = bool(payload.get("store_input_pdf", True))
-    expires_in = int(payload.get("signed_url_expires_in") or 600)
-    input_document_id = payload.get("input_document_id")
+    if not user_id:
+        await _safe_set_job_status(
+            job_id,
+            {"job_id": job_id, "status": "failed", "error": "user_id obrigatório"},
+        )
+        if job_uuid:
+            try:
+                await mark_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
+                await add_job_event(job_uuid=job_uuid, event_type="failed", message="user_id obrigatório")
+            except Exception:
+                logger.exception("Failed to persist job failure in database")
+        return
 
     # Mark as processing
     await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 5})
@@ -163,7 +198,29 @@ async def _handle_ai_job(job: dict) -> None:
     progress = ProgressReporter(job_id=job_id, job_uuid=job_uuid)
 
     try:
-        if job_type == "process_summary":
+        if job_type == "labor_claim":
+            user_prompt = str(payload.get("prompt") or "").strip()
+            result = await ai_service.analyze_labor_claim(
+                file_urls=file_urls,
+                user_prompt=user_prompt,
+                user_id=user_id,
+                client_id=str(client_id) if client_id is not None else None,
+                store_pdf=store_pdf,
+                signed_url_expires_in=expires_in,
+                job_id=job_id,
+                progress=progress,
+            )
+        elif job_type == "brief_scanner":
+            result = await ai_service.analyze_brief_scanner(
+                file_urls=file_urls,
+                user_id=user_id,
+                client_id=str(client_id) if client_id is not None else None,
+                store_pdf=store_pdf,
+                signed_url_expires_in=expires_in,
+                job_id=job_id,
+                progress=progress,
+            )
+        elif job_type == "process_summary":
             result = await ai_service.analyze_process_summary(
                 file_url=file_url,
                 user_id=user_id,
@@ -349,7 +406,7 @@ async def _handle_job(job: dict) -> None:
     """Route job to appropriate handler based on job type."""
     job_type = str(job.get("type") or "").strip()
 
-    if job_type in ("cnis_analysis", "process_summary"):
+    if job_type in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner"):
         await _handle_ai_job(job)
         return
 
