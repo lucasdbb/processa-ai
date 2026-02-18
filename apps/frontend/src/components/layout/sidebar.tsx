@@ -152,6 +152,19 @@ export function Sidebar() {
     const Icon = item.icon
 
     if (hasChildren) {
+      const MAX_VISIBLE = 3
+      const children = item.children!
+      const activeChild = children.find((c) => isActive(c.href))
+      const topChildren = children.slice(0, MAX_VISIBLE)
+      const activeIsHidden = activeChild && !topChildren.includes(activeChild)
+
+      // If the active child is beyond the limit, replace the last slot with it
+      const visibleChildren = activeIsHidden
+        ? [...topChildren.slice(0, MAX_VISIBLE - 1), activeChild]
+        : topChildren
+
+      const hasMore = children.length > 0
+
       return (
         <div key={item.name} data-tour={item.dataTour}>
           <button
@@ -176,9 +189,9 @@ export function Sidebar() {
               </>
             )}
           </button>
-          {isExpanded && isItemExpanded && item.children && (
+          {isExpanded && isItemExpanded && (
             <div className="ml-4 mt-1 space-y-1 border-l border-border pl-4">
-              {item.children.map((child) => (
+              {visibleChildren.map((child) => (
                 <Link
                   key={child.href}
                   to={child.href}
@@ -193,6 +206,15 @@ export function Sidebar() {
                   {child.name}
                 </Link>
               ))}
+              {hasMore && (
+                <Link
+                  to={item.href}
+                  onClick={closeMobile}
+                  className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                >
+                  Ver todas →
+                </Link>
+              )}
             </div>
           )}
         </div>
