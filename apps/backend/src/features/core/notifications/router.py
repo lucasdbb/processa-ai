@@ -16,7 +16,7 @@ service = NotificationService()
 # User endpoints
 
 
-@router.get("/notifications", response_model=NotificationListResponse)
+@router.get("", response_model=NotificationListResponse)
 async def list_notifications(
     unread_only: bool = Query(False),
     user_id: str = Depends(get_user_id),
@@ -25,7 +25,7 @@ async def list_notifications(
     return await service.list_user_notifications(user_id, unread_only)
 
 
-@router.patch("/notifications/{notification_id}/read", response_model=NotificationItem)
+@router.patch("/{notification_id}/read", response_model=NotificationItem)
 async def mark_notification_as_read(
     notification_id: str,
     user_id: str = Depends(get_user_id),
@@ -34,7 +34,7 @@ async def mark_notification_as_read(
     return await service.mark_as_read(user_id, notification_id)
 
 
-@router.patch("/notifications/read-all")
+@router.patch("/read-all")
 async def mark_all_notifications_as_read(
     user_id: str = Depends(get_user_id),
 ):
@@ -42,7 +42,7 @@ async def mark_all_notifications_as_read(
     return await service.mark_all_as_read(user_id)
 
 
-@router.delete("/notifications/{notification_id}")
+@router.delete("/{notification_id}")
 async def delete_notification(
     notification_id: str,
     user_id: str = Depends(get_user_id),
