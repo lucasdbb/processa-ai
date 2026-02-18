@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -27,6 +28,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { login, register: registerUser } = useAuth()
   const { startTour } = useOnboardingStore()
+  const navigate = useNavigate()
   const supabase = createClient()
 
   const modalRef = useRef<HTMLDivElement>(null)
@@ -77,10 +79,13 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
     setSuccessMessage('')
 
     try {
-      await login(data)
+      const loggedUser = await login(data)
       toast.success('Login realizado com sucesso!')
       onClose()
       loginForm.reset()
+      if (loggedUser?.role === 'office_client') {
+        navigate('/portal', { replace: true })
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login'
       setApiError(message)

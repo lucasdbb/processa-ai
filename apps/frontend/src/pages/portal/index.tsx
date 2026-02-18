@@ -310,7 +310,7 @@ function DocumentItem({
   onDownload,
 }: {
   doc: PortalDocument
-  onDownload: (id: string) => void
+  onDownload: (id: string) => Promise<void>
 }) {
   const [isDownloading, setIsDownloading] = useState(false)
 
@@ -478,9 +478,14 @@ function FinancesTab({
   }
 
   return (
-    <div>
-      <FinanceSummaryCard summary={summary} />
-      <div className="border rounded-xl divide-y overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 gap-4">
+      {/* Summary cards — always visible, never scroll away */}
+      <div className="shrink-0">
+        <FinanceSummaryCard summary={summary} />
+      </div>
+
+      {/* Fee list — scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border divide-y">
         {fees.map((fee) => (
           <div key={fee.id} className="px-4">
             <FeeItem fee={fee} />
@@ -589,9 +594,9 @@ export default function PortalPage() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Greeting */}
-      <div>
+    <div className="flex flex-col flex-1 min-h-0 gap-5">
+      {/* Greeting — static, never scrolls */}
+      <div className="shrink-0">
         <h1 className="text-xl font-semibold">
           Olá, {me?.client_name?.split(' ')[0] ?? 'bem-vindo'} 👋
         </h1>
@@ -603,8 +608,8 @@ export default function PortalPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b">
+      {/* Tabs — static, never scrolls */}
+      <div className="shrink-0 border-b">
         <nav className="-mb-px flex gap-0" aria-label="Abas do portal">
           {TABS.map((tab) => (
             <button
@@ -625,12 +630,26 @@ export default function PortalPage() {
         </nav>
       </div>
 
-      {/* Tab content */}
-      <div>
-        {activeTab === 'processos' && <ProcessesTab processes={processes} />}
-        {activeTab === 'agenda' && <AgendaTab upcoming={upcoming} past={past} />}
-        {activeTab === 'documentos' && <DocumentsTab documents={documents} />}
-        {activeTab === 'financeiro' && <FinancesTab summary={summary} fees={fees} />}
+      {/* Tab content — each tab manages its own scroll */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {activeTab === 'processos' && (
+          <div className="flex-1 min-h-0 overflow-y-auto pb-4">
+            <ProcessesTab processes={processes} />
+          </div>
+        )}
+        {activeTab === 'agenda' && (
+          <div className="flex-1 min-h-0 overflow-y-auto pb-4">
+            <AgendaTab upcoming={upcoming} past={past} />
+          </div>
+        )}
+        {activeTab === 'documentos' && (
+          <div className="flex-1 min-h-0 overflow-y-auto pb-4">
+            <DocumentsTab documents={documents} />
+          </div>
+        )}
+        {activeTab === 'financeiro' && (
+          <FinancesTab summary={summary} fees={fees} />
+        )}
       </div>
     </div>
   )

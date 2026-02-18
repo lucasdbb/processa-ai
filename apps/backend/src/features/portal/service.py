@@ -523,9 +523,10 @@ class PortalService:
                 supabase.table("profiles").select("id").eq("id", invited_user_id).execute()
             )
             if existing.data:
-                supabase.table("profiles").update({"role": "office_client"}).eq(
-                    "id", invited_user_id
-                ).execute()
+                supabase.table("profiles").update({
+                    "role": "office_client",
+                    "name": client["name"],
+                }).eq("id", invited_user_id).execute()
             else:
                 supabase.table("profiles").insert(
                     {
