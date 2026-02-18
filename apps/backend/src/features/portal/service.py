@@ -151,7 +151,7 @@ class PortalService:
                         (
                             SELECT MIN(e.start_at)::text
                             FROM office_api.events e
-                            WHERE e.processo_id = p.id::text
+                            WHERE e.processo_id::uuid = p.id
                               AND e.event_type = 'prazo'
                               AND e.start_at >= CURRENT_DATE
                               AND (e.deadline_status IS NULL OR e.deadline_status != 'completed')
@@ -232,7 +232,7 @@ class PortalService:
                         p.process_number
                     FROM office_api.events e
                     LEFT JOIN office_api.processes p
-                        ON p.id::text = e.processo_id
+                        ON p.id = e.processo_id::uuid
                        AND p.user_id = %s
                     WHERE e.user_id = %s
                       AND e.cliente_id = %s
