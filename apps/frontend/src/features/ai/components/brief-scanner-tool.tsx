@@ -64,10 +64,10 @@ export function BriefScannerTool({
       {/* Upload de pecas processuais */}
       <div className="mb-6">
         <label className="block text-sm font-bold text-foreground mb-3">
-          Envie a(s) peca(s) processual(is) <span className="text-destructive">*</span>
+          Envie a(s) peça(s) processual(is) <span className="text-destructive">*</span>
         </label>
         <p className="text-sm text-muted-foreground mb-3">
-          Anexe peticoes, contestacoes, recursos ou outras pecas que deseja analisar. A IA identificara teses frageis,
+          Anexe petições, contestações, recursos ou outras peças que deseja analisar. A IA identificará teses frageis,
           pedidos faltantes, riscos e oportunidades de melhoria.
         </p>
 
@@ -156,12 +156,12 @@ export function BriefScannerTool({
           {isGenerating ? (
             <>
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
-              <span>Analisando Peca{files.length > 1 ? 's' : ''}...</span>
+              <span>Analisando Peça{files.length > 1 ? 's' : ''}...</span>
             </>
           ) : (
             <>
               <ScanSearch className="h-5 w-5 mr-2" />
-              <span>Analisar Peca{files.length > 1 ? 's' : ''}</span>
+              <span>Analisar Peça{files.length > 1 ? 's' : ''}</span>
             </>
           )}
         </button>

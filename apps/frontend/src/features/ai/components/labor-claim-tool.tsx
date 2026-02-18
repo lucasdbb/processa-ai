@@ -182,7 +182,7 @@ export function LaborClaimTool({
                   <span className="text-primary font-semibold">Clique para escolher</span> ou arraste arquivos
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  PDF (at\u00e9 10MB cada) \u2022 M\u00e1ximo {5 - files.length} arquivo{5 - files.length !== 1 ? 's' : ''}
+                  PDF (até 10MB cada) • Máximo {5 - files.length} arquivo{5 - files.length !== 1 ? 's' : ''}
                 </p>
               </div>
             </label>
@@ -200,12 +200,12 @@ export function LaborClaimTool({
           {isGenerating ? (
             <>
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-              <span>Gerando Reclama\u00e7\u00e3o...</span>
+              <span>Gerando Reclamação...</span>
             </>
           ) : (
             <>
               <Sparkles className="h-5 w-5 mr-2" />
-              <span>Gerar Reclama\u00e7\u00e3o Trabalhista</span>
+              <span>Gerar Reclamação Trabalhista</span>
             </>
           )}
         </button>

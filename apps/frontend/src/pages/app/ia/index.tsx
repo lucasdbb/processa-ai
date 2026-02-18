@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Brain, Info, Coins } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Brain, Info, Coins, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -16,6 +16,7 @@ import { ClientSelector } from '@/components/forms/client-selector'
 
 export default function IAHubPage() {
   const { toolId } = useParams<{ toolId?: string }>()
+  const navigate = useNavigate()
   const { isLoading: isAuthLoading } = useUser()
   const { tools: aiTools, isLoading: isLoadingTools } = useAiTools()
   const { credits, fetchCredits, costs, fetchCosts } = useCreditsStore()
@@ -641,13 +642,24 @@ export default function IAHubPage() {
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
         <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="bg-slate-900 p-4 rounded-2xl shadow-lg">
+          <div className="flex items-center space-x-4 min-w-0">
+            <div className="bg-slate-900 p-4 rounded-2xl shadow-lg shrink-0">
               <Brain className="h-7 w-7 text-white" strokeWidth={1.5} />
             </div>
-            <div>
-              <div className="flex items-center gap-3">
-                {currentTool?.name ? <h2 className="text-xl font-bold text-foreground tracking-tight">{currentTool.name}</h2> : null}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <select
+                    value={activeSlug}
+                    onChange={(e) => navigate(`/app/ia/${e.target.value}`)}
+                    className="appearance-none pl-3 pr-8 py-1.5 bg-muted border border-border rounded-lg text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                  >
+                    {allTools.filter((t) => !t.locked).map((t) => (
+                      <option key={t.slug} value={t.slug}>{t.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                </div>
                 {costDisplay && (
                   <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs font-medium text-yellow-600 dark:text-yellow-500">
                     <Coins className="w-3.5 h-3.5" />
@@ -655,7 +667,7 @@ export default function IAHubPage() {
                   </div>
                 )}
               </div>
-              {currentTool?.description ? <p className="text-muted-foreground mt-1">{currentTool.description}</p> : null}
+              {currentTool?.description ? <p className="text-muted-foreground mt-1 text-sm">{currentTool.description}</p> : null}
             </div>
           </div>
           <ClientSelector
