@@ -1,15 +1,18 @@
 from uuid import uuid4
+import uuid
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from src.core.ai_worker_store import (
     add_job_event,
+    create_document,
     create_job,
     get_document_by_id,
     get_job_status_from_db,
     get_user_analysis_history,
     parse_job_uuid,
-    update_job_progress,
+    update_job_payload,
+    mark_job_failed,
 )
 from src.core.auth import require_internal_auth
 from src.core.logging import logger
@@ -23,13 +26,12 @@ from src.features.ai.schemas import (
     DocumentDownloadResponse,
     DocumentResponse,
     EnqueueJobResponse,
-    JobProgressCallback,
     JobStatusResponse,
     ProcessSummaryRequest,
     ChatRequest,
     ChatResponse,
 )
-from src.features.ai.service import AiService
+from src.features.core.storage.service import StorageService
 from src.features.billing.credits.service import CreditsService
 from src.core.auth import get_user_id
 
@@ -78,15 +80,36 @@ async def cnis_analysis(
     data: CnisAnalysisRequest,
     _internal=Depends(require_internal_auth),
 ):
-    file_url = (data.file_url or "").strip()
-    if not file_url:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file_url obrigatório")
-
     user_id = (data.user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
-    job_uuid = uuid4()
+    # Handle multiple files or single file (CNIS usually processes single, but we standardize input)
+    files_list = data.files or []
+    file_url = (data.file_url or "").strip()
+    storage_path = (data.storage_path or "").strip()
+    
+    # If no files list provided, check for single file params
+    if not files_list:
+        if not file_url and not storage_path:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="É necessário fornecer arquivos para análise (file_url/storage_path ou files)")
+        
+        # Create a single file entry for compatibility
+        files_list = [{
+            "bucket": data.bucket,
+            "storage_path": storage_path,
+            "file_url": file_url
+        }]
+
+    # Se vier job_uuid do upload, usar. Senão gerar novo.
+    if data.job_uuid:
+        try:
+            job_uuid = uuid.UUID(data.job_uuid)
+        except ValueError:
+             raise HTTPException(status_code=400, detail="job_uuid inválido")
+    else:
+        job_uuid = uuid4()
+        
     job_id = f"ai:{job_uuid}"
 
     try:
@@ -94,186 +117,135 @@ async def cnis_analysis(
     except Exception:
         logger.exception("Failed to persist queued status in Redis")
 
+    # 1. Create Job FIRST to satisfy Foreign Key constraints
+    # We create it with a partial payload (missing input_document_id and processed files)
+    initial_payload = {
+        "job_id": job_id,
+        "file_url": file_url, # Legacy
+        "storage_path": storage_path, # Legacy
+        "bucket": data.bucket, # Legacy
+        "files": [], # Placeholder
+        "user_id": user_id,
+        "client_id": (data.client_id or "").strip() or None,
+        "functionality": data.functionality,
+        "store_pdf": bool(data.store_pdf),
+        "signed_url_expires_in": int(data.signed_url_expires_in),
+        "input_document_id": None, # Placeholder
+    }
+
     try:
         await create_job(
+            status="queued",
             job_uuid=job_uuid,
             endpoint_key="cnis_analysis",
             user_id=user_id,
             client_id=(data.client_id or "").strip() or None,
-            request_payload={
-                "job_id": job_id,
-                "file_url": file_url,
-                "user_id": user_id,
-                "client_id": (data.client_id or "").strip() or None,
-                "store_pdf": bool(data.store_pdf),
-                "signed_url_expires_in": int(data.signed_url_expires_in),
-            },
+            request_payload=initial_payload,
         )
         await add_job_event(
             job_uuid=job_uuid,
             event_type="queued",
             payload={"progress": 0},
         )
-    except Exception as e:
-        logger.exception("Failed to persist job in database")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao criar job no banco de dados",
-        )
-
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": "cnis_analysis",
-            "payload": {
-                "file_url": file_url,
-                "user_id": user_id,
-                "client_id": data.client_id,
-                "store_pdf": bool(data.store_pdf),
-                "signed_url_expires_in": int(data.signed_url_expires_in),
-            },
-        }
-    )
-    return EnqueueJobResponse(job_id=job_id)
-
-
-@router.post(
-    "/analyses/cnis-upload",
-    response_model=EnqueueJobResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-async def cnis_analysis_upload(
-    file: UploadFile = File(...),
-    user_id: str = Form(...),
-    client_id: str | None = Form(None),
-    store_pdf: bool = Form(False),
-    signed_url_expires_in: int = Form(600),
-    _internal=Depends(require_internal_auth),
-):
-    """
-    Upload de PDF do CNIS via multipart/form-data.
-
-    Parâmetros:
-    - file: Arquivo PDF do CNIS
-    - user_id: ID do usuário
-    - client_id: ID do cliente (opcional)
-    - store_pdf: Se deve salvar o PDF processado
-    - signed_url_expires_in: Tempo de expiração da URL assinada em segundos
-    """
-    # Validações
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Apenas arquivos PDF são permitidos",
-        )
-
-    user_id = user_id.strip()
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="user_id obrigatório",
-        )
-
-    # Lê o arquivo em memória
-    try:
-        pdf_content = await file.read()
-    except Exception as e:
-        logger.exception("Erro ao ler arquivo")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erro ao ler arquivo: {str(e)}",
-        )
-
-    if not pdf_content or len(pdf_content) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Arquivo vazio",
-        )
-
-    # Consume credits before processing
-    credits_service = CreditsService()
-    credit_result = await credits_service.consume_credits(user_id, "cnis_analysis")
-    if not credit_result.success:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Créditos insuficientes para análise de CNIS.",
-        )
-
-    # Gera job_id primeiro para usar na estrutura de pastas
-    job_uuid = uuid4()
-    job_id = f"ai:{job_uuid}"
-
-    # Upload direto para Supabase Storage usando job_uuid na estrutura de pastas
-    service = AiService()
-    try:
-        upload_result = await service.upload_input_pdf(
-            pdf_bytes=pdf_content,
-            filename=file.filename,
-            user_id=user_id,
-            client_id=client_id.strip() if client_id else None,
-            job_uuid=str(job_uuid),
-            expires_in=signed_url_expires_in,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Erro ao fazer upload do PDF")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao fazer upload: {str(e)}",
-        )
-
-    try:
-        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
     except Exception:
-        logger.exception("Failed to persist queued status in Redis")
-
-    try:
-        await create_job(
-            job_uuid=job_uuid,
-            endpoint_key="cnis_analysis",
-            user_id=user_id,
-            client_id=client_id.strip() if client_id else None,
-            request_payload={
-                "job_id": job_id,
-                "bucket": upload_result["bucket"],
-                "storage_path": upload_result["storage_path"],
-                "user_id": user_id,
-                "client_id": client_id.strip() if client_id else None,
-                "store_pdf": bool(store_pdf),
-                "signed_url_expires_in": int(signed_url_expires_in),
-                "input_storage_path": upload_result.get("storage_path"),
-            },
-        )
-        await add_job_event(
-            job_uuid=job_uuid,
-            event_type="queued",
-            payload={"progress": 0},
-        )
-    except Exception as e:
         logger.exception("Failed to persist job in database")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao criar job no banco de dados",
         )
 
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": "cnis_analysis",
-            "payload": {
-                "file_url": upload_result["signed_url"],
-                "user_id": user_id,
-                "client_id": client_id,
-                "store_pdf": bool(store_pdf),
-                "signed_url_expires_in": int(signed_url_expires_in),
-                "input_document_id": upload_result.get("document_id"),
-                "input_storage_path": upload_result.get("storage_path"),
-            },
+    # 2. Process Files and Create Documents (now linked to the existing job)
+    storage_service = StorageService()
+    processed_files = []
+    input_document_id = None
+
+    try:
+        for f in files_list:
+            bucket = f.get("bucket")
+            spath = f.get("storage_path")
+            furl = f.get("file_url")
+            fname = f.get("filename")
+            
+            # Infer filename if missing
+            if not fname and spath:
+                fname = spath.rsplit("/", 1)[-1]
+            if not fname:
+                fname = "documento.pdf"
+
+            # Create input document record
+            if bucket and spath:
+                try:
+                    doc_id = await create_document(
+                        job_uuid=job_uuid,
+                        user_id=user_id,
+                        client_id=(data.client_id or "").strip() or None,
+                        document_type="input",
+                        bucket=bucket,
+                        storage_path=spath,
+                        filename=fname,
+                        checksum_sha256=None,
+                        size_bytes=None,
+                        metadata={"endpoint": "cnis_analysis"},
+                    )
+                    if doc_id:
+                        # Use the first document as the main input for linking
+                        if input_document_id is None:
+                            input_document_id = str(doc_id)
+                except Exception:
+                    logger.exception("Failed to create input document record")
+
+            if bucket and spath and not furl:
+                try:
+                    # Gerar URL assinada de leitura para o worker
+                    signed_url = await storage_service.generate_signed_url(
+                        bucket=bucket, 
+                        storage_path=spath, 
+                        expires_in=data.signed_url_expires_in
+                    )
+                    processed_files.append({
+                        "file_url": signed_url,
+                        "bucket": bucket,
+                        "storage_path": spath,
+                        "filename": fname,
+                    })
+                except Exception:
+                    logger.exception("Failed to generate signed URL for worker")
+                    raise HTTPException(status_code=500, detail="Erro ao preparar arquivos para processamento")
+            elif furl:
+                 processed_files.append({
+                    "file_url": furl,
+                    "bucket": bucket,
+                    "storage_path": spath,
+                    "filename": fname,
+                })
+
+        # 3. Update Job Payload with complete information
+        final_payload = {
+            **initial_payload,
+            "files": processed_files,
+            "input_document_id": input_document_id,
         }
-    )
+        
+        await update_job_payload(job_uuid=job_uuid, request_payload=final_payload)
+
+        # 4. Enqueue Job
+        await enqueue_job(
+            {
+                "job_id": job_id,
+                "job_uuid": str(job_uuid),
+                "type": "cnis_analysis",
+                "payload": final_payload,
+            }
+        )
+
+    except Exception as e:
+        logger.exception("Error during job processing setup")
+        await mark_job_failed(job_uuid=job_uuid, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao processar arquivos e enfileirar job",
+        )
+
     return EnqueueJobResponse(job_id=job_id)
 
 
@@ -286,16 +258,37 @@ async def process_summary_analysis(
     data: ProcessSummaryRequest,
     _internal=Depends(require_internal_auth),
 ):
-    """Análise de resumo de processo via URL."""
-    file_url = (data.file_url or "").strip()
-    if not file_url:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file_url obrigatório")
-
+    """Análise de resumo de processo via URL ou storage_path."""
     user_id = (data.user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
-    job_uuid = uuid4()
+    # Handle multiple files or single file
+    files_list = data.files or []
+    file_url = (data.file_url or "").strip()
+    storage_path = (data.storage_path or "").strip()
+    
+    # If no files list provided, check for single file params
+    if not files_list:
+        if not file_url and not storage_path:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="É necessário fornecer arquivos para análise (file_url/storage_path ou files)")
+        
+        # Create a single file entry for compatibility
+        files_list = [{
+            "bucket": data.bucket,
+            "storage_path": storage_path,
+            "file_url": file_url
+        }]
+
+    # Se vier job_uuid do upload, usar. Senão gerar novo.
+    if data.job_uuid:
+        try:
+            job_uuid = uuid.UUID(data.job_uuid)
+        except ValueError:
+             raise HTTPException(status_code=400, detail="job_uuid inválido")
+    else:
+        job_uuid = uuid4()
+
     job_id = f"ai:{job_uuid}"
 
     try:
@@ -303,299 +296,180 @@ async def process_summary_analysis(
     except Exception:
         logger.exception("Failed to persist queued status in Redis")
 
+    # 1. Create Job FIRST
+    initial_payload = {
+        "job_id": job_id,
+        "file_url": file_url, # Legacy
+        "storage_path": storage_path, # Legacy
+        "bucket": data.bucket, # Legacy
+        "files": [], # Placeholder
+        "user_id": user_id,
+        "client_id": (data.client_id or "").strip() or None,
+        "functionality": data.functionality,
+        "store_pdf": bool(data.store_pdf),
+        "signed_url_expires_in": int(data.signed_url_expires_in),
+        "input_document_id": None, # Placeholder
+    }
+
     try:
         await create_job(
+            status="queued",
             job_uuid=job_uuid,
             endpoint_key="process_summary",
             user_id=user_id,
             client_id=(data.client_id or "").strip() or None,
-            request_payload={
-                "job_id": job_id,
-                "file_url": file_url,
-                "user_id": user_id,
-                "client_id": (data.client_id or "").strip() or None,
-                "store_pdf": bool(data.store_pdf),
-                "signed_url_expires_in": int(data.signed_url_expires_in),
-            },
+            request_payload=initial_payload,
         )
         await add_job_event(
             job_uuid=job_uuid,
             event_type="queued",
             payload={"progress": 0},
         )
+    except Exception:
+        logger.exception("Failed to persist job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job no banco de dados",
+        )
+
+    # 2. Process Files and Create Documents
+    storage_service = StorageService()
+    processed_files = []
+    input_document_id = None
+
+    try:
+        for f in files_list:
+            bucket = f.get("bucket")
+            spath = f.get("storage_path")
+            furl = f.get("file_url")
+            fname = f.get("filename")
+            
+            # Infer filename if missing
+            if not fname and spath:
+                fname = spath.rsplit("/", 1)[-1]
+            if not fname:
+                fname = "documento.pdf"
+
+            # Create input document record
+            if bucket and spath:
+                try:
+                    doc_id = await create_document(
+                        job_uuid=job_uuid,
+                        user_id=user_id,
+                        client_id=(data.client_id or "").strip() or None,
+                        document_type="input",
+                        bucket=bucket,
+                        storage_path=spath,
+                        filename=fname,
+                        checksum_sha256=None,
+                        size_bytes=None,
+                        metadata={"endpoint": "process_summary"},
+                    )
+                    if doc_id:
+                        # Use the first document as the main input for linking
+                        if input_document_id is None:
+                            input_document_id = str(doc_id)
+                except Exception:
+                    logger.exception("Failed to create input document record")
+
+            if bucket and spath and not furl:
+                try:
+                    # Gerar URL assinada de leitura para o worker
+                    signed_url = await storage_service.generate_signed_url(
+                        bucket=bucket, 
+                        storage_path=spath, 
+                        expires_in=data.signed_url_expires_in
+                    )
+                    processed_files.append({
+                        "file_url": signed_url,
+                        "bucket": bucket,
+                        "storage_path": spath,
+                        "filename": fname,
+                    })
+                except Exception:
+                    logger.exception("Failed to generate signed URL for worker")
+                    raise HTTPException(status_code=500, detail="Erro ao preparar arquivos para processamento")
+            elif furl:
+                 processed_files.append({
+                    "file_url": furl,
+                    "bucket": bucket,
+                    "storage_path": spath,
+                    "filename": fname,
+                })
+
+        # 3. Update Job Payload
+        final_payload = {
+            **initial_payload,
+            "files": processed_files,
+            "input_document_id": input_document_id,
+        }
+        
+        await update_job_payload(job_uuid=job_uuid, request_payload=final_payload)
+
+        # 4. Enqueue Job
+        await enqueue_job(
+            {
+                "job_id": job_id,
+                "job_uuid": str(job_uuid),
+                "type": "process_summary",
+                "payload": final_payload,
+            }
+        )
+
     except Exception as e:
-        logger.exception("Failed to persist job in database")
+        logger.exception("Error during job processing setup")
+        await mark_job_failed(job_uuid=job_uuid, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao criar job no banco de dados",
+            detail="Erro ao processar arquivos e enfileirar job",
         )
 
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": "process_summary",
-            "payload": {
-                "file_url": file_url,
-                "user_id": user_id,
-                "client_id": data.client_id,
-                "store_pdf": bool(data.store_pdf),
-                "signed_url_expires_in": int(data.signed_url_expires_in),
-            },
-        }
-    )
     return EnqueueJobResponse(job_id=job_id)
 
 
 @router.post(
-    "/analyses/process-summary-upload",
+    "/analyses/labor-claim",
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def process_summary_analysis_upload(
-    files: list[UploadFile] = File(...),
-    user_id: str = Form(...),
-    client_id: str | None = Form(None),
-    store_pdf: bool = Form(False),
-    signed_url_expires_in: int = Form(600),
+async def labor_claim_analysis(
+    data: dict = Body(...),
     _internal=Depends(require_internal_auth),
 ):
     """
-    Upload de PDFs de processo via multipart/form-data.
-
-    Parâmetros:
-    - files: Arquivos PDF do processo (1 a 5)
-    - user_id: ID do usuário
-    - client_id: ID do cliente (opcional)
-    - store_pdf: Se deve salvar o PDF processado
-    - signed_url_expires_in: Tempo de expiração da URL assinada em segundos
+    Gera uma reclamação trabalhista a partir de texto + documentos opcionais (upload direto).
     """
-    if not files or len(files) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Envie ao menos um arquivo PDF",
-        )
-
-    if len(files) > 5:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Máximo de 5 arquivos permitidos",
-        )
-
-    for f in files:
-        if not f.filename or not f.filename.lower().endswith(".pdf"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Apenas arquivos PDF são permitidos (arquivo inválido: {f.filename})",
-            )
-
-    user_id = user_id.strip()
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="user_id obrigatório",
-        )
-
-    # Consume credits before processing
-    credits_service = CreditsService()
-    credit_result = await credits_service.consume_credits(user_id, "process_summary")
-    if not credit_result.success:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Créditos insuficientes para resumo de processo.",
-        )
-
-    # Gera job_id para usar na estrutura de pastas
-    job_uuid = uuid4()
-    job_id = f"ai:{job_uuid}"
-
-    service = AiService()
-    upload_results = []
-
-    for idx, f in enumerate(files):
-        try:
-            pdf_content = await f.read()
-        except Exception as e:
-            logger.exception("Erro ao ler arquivo %s", f.filename)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Erro ao ler arquivo '{f.filename}': {str(e)}",
-            )
-
-        if not pdf_content or len(pdf_content) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Arquivo vazio: {f.filename}",
-            )
-
-        # Usa sufixo numérico no filename para diferenciar no storage
-        storage_filename = f.filename if len(files) == 1 else f"{idx + 1}_{f.filename}"
-
-        try:
-            result = await service.upload_input_pdf(
-                pdf_bytes=pdf_content,
-                filename=storage_filename,
-                user_id=user_id,
-                client_id=client_id.strip() if client_id else None,
-                job_uuid=str(job_uuid),
-                expires_in=signed_url_expires_in,
-            )
-            upload_results.append(result)
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception("Erro ao fazer upload do PDF %s", f.filename)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Erro ao fazer upload de '{f.filename}': {str(e)}",
-            )
-
-    try:
-        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
-    except Exception:
-        logger.exception("Failed to persist queued status in Redis")
-
-    # Usa o primeiro upload como referência para storage_path no registro do job
-    primary = upload_results[0]
-
-    try:
-        await create_job(
-            job_uuid=job_uuid,
-            endpoint_key="process_summary",
-            user_id=user_id,
-            client_id=client_id.strip() if client_id else None,
-            request_payload={
-                "job_id": job_id,
-                "bucket": primary["bucket"],
-                "storage_path": primary["storage_path"],
-                "user_id": user_id,
-                "client_id": client_id.strip() if client_id else None,
-                "store_pdf": bool(store_pdf),
-                "signed_url_expires_in": int(signed_url_expires_in),
-                "input_storage_path": primary.get("storage_path"),
-            },
-        )
-        await add_job_event(
-            job_uuid=job_uuid,
-            event_type="queued",
-            payload={"progress": 0},
-        )
-    except Exception:
-        logger.exception("Failed to persist job in database")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao criar job no banco de dados",
-        )
-
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": "process_summary",
-            "payload": {
-                # Lista de URLs para o worker processar todos os arquivos
-                "file_urls": [r["signed_url"] for r in upload_results],
-                # Mantém file_url (primeiro) para compatibilidade com workers existentes
-                "file_url": upload_results[0]["signed_url"],
-                "user_id": user_id,
-                "client_id": client_id,
-                "store_pdf": bool(store_pdf),
-                "signed_url_expires_in": int(signed_url_expires_in),
-                "input_document_id": primary.get("document_id"),
-                "input_storage_path": primary.get("storage_path"),
-            },
-        }
-    )
-    return EnqueueJobResponse(job_id=job_id)
-
-
-@router.post(
-    "/analyses/labor-claim-upload",
-    response_model=EnqueueJobResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-async def labor_claim_upload(
-    files: list[UploadFile] = File(default=[]),
-    prompt: str = Form(...),
-    user_id: str = Form(...),
-    client_id: str | None = Form(None),
-    store_pdf: bool = Form(True),
-    signed_url_expires_in: int = Form(600),
-    _internal=Depends(require_internal_auth),
-):
-    """
-    Gera uma reclamação trabalhista a partir de texto + documentos opcionais.
-
-    Parâmetros:
-    - prompt: Descrição dos fatos do caso (obrigatório, min 50 chars)
-    - files: Documentos de apoio em PDF (opcional, máx 5 arquivos)
-    - user_id: ID do usuário
-    - store_pdf: Se deve salvar o PDF gerado
-    """
-    prompt_text = (prompt or "").strip()
+    prompt_text = (data.get("prompt") or "").strip()
     if not prompt_text or len(prompt_text) < 50:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Descreva os fatos do caso (mínimo 50 caracteres)",
         )
 
-    user_id = user_id.strip()
+    user_id = (data.get("user_id") or "").strip()
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
+    client_id = data.get("client_id")
+    store_pdf = bool(data.get("store_pdf", True))
+    signed_url_expires_in = int(data.get("signed_url_expires_in", 600))
+    files = data.get("files", [])
+
     if len(files) > 5:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Máximo de 5 arquivos permitidos",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Máximo de 5 arquivos permitidos")
 
-    # Validate and read PDF files
-    pdf_contents: list[tuple[str, bytes]] = []
-    for f in files:
-        if not f.filename or not f.filename.lower().endswith(".pdf"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Apenas arquivos PDF são permitidos: {f.filename}",
-            )
+    functionality = data.get("functionality", "ai")
+
+    # Se vier job_uuid do upload, usar. Senão gerar novo.
+    if data.get("job_uuid"):
         try:
-            content = await f.read()
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Erro ao ler arquivo {f.filename}: {str(e)}",
-            )
-        if not content:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Arquivo vazio: {f.filename}",
-            )
-        pdf_contents.append((f.filename, content))
+            job_uuid = uuid.UUID(data.get("job_uuid"))
+        except ValueError:
+             raise HTTPException(status_code=400, detail="job_uuid inválido")
+    else:
+        job_uuid = uuid4()
 
-    job_uuid = uuid4()
     job_id = f"ai:{job_uuid}"
-
-    # Upload PDFs to Supabase Storage
-    service = AiService()
-    uploaded_files: list[dict] = []
-    for filename, content in pdf_contents:
-        try:
-            upload_result = await service.upload_input_pdf(
-                pdf_bytes=content,
-                filename=filename,
-                user_id=user_id,
-                client_id=client_id.strip() if client_id else None,
-                job_uuid=str(job_uuid),
-                expires_in=signed_url_expires_in,
-            )
-            uploaded_files.append(upload_result)
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception("Erro ao fazer upload do PDF: %s", filename)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Erro ao fazer upload: {str(e)}",
-            )
 
     # Consume credits before enqueuing
     credits_service = CreditsService()
@@ -611,30 +485,27 @@ async def labor_claim_upload(
     except Exception:
         logger.exception("Failed to persist queued status in Redis")
 
-    payload = {
+    # 1. Create Job FIRST
+    initial_payload = {
+        "job_id": job_id,
         "prompt": prompt_text,
         "user_id": user_id,
         "client_id": client_id.strip() if client_id else None,
+        "functionality": functionality,
         "store_pdf": bool(store_pdf),
         "signed_url_expires_in": int(signed_url_expires_in),
-        "files": [
-            {
-                "file_url": uf["signed_url"],
-                "bucket": uf["bucket"],
-                "storage_path": uf["storage_path"],
-                "document_id": uf.get("document_id"),
-            }
-            for uf in uploaded_files
-        ],
+        "files": [], # Placeholder
+        "input_document_id": None, # Placeholder
     }
 
     try:
         await create_job(
+            status="queued",
             job_uuid=job_uuid,
             endpoint_key="labor_claim",
             user_id=user_id,
             client_id=client_id.strip() if client_id else None,
-            request_payload={"job_id": job_id, **payload},
+            request_payload=initial_payload,
         )
         await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
     except Exception:
@@ -644,42 +515,111 @@ async def labor_claim_upload(
             detail="Erro ao criar job no banco de dados",
         )
 
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": "labor_claim",
-            "payload": payload,
+    # 2. Process Files and Create Documents
+    storage_service = StorageService()
+    processed_files = []
+    input_document_id = None
+    
+    try:
+        for f in files:
+            bucket = f.get("bucket")
+            storage_path = f.get("storage_path")
+            fname = f.get("filename")
+
+            # Infer filename if missing
+            if not fname and storage_path:
+                fname = storage_path.rsplit("/", 1)[-1]
+            if not fname:
+                fname = "documento.pdf"
+
+            # Create input document record
+            if bucket and storage_path:
+                try:
+                    doc_id = await create_document(
+                        job_uuid=job_uuid,
+                        user_id=user_id,
+                        client_id=client_id.strip() if client_id else None,
+                        document_type="input",
+                        bucket=bucket,
+                        storage_path=storage_path,
+                        filename=fname,
+                        checksum_sha256=None,
+                        size_bytes=None,
+                        metadata={"endpoint": "labor_claim"},
+                    )
+                    if doc_id:
+                        # Use the first document as the main input for linking
+                        if input_document_id is None:
+                            input_document_id = str(doc_id)
+                except Exception:
+                    logger.exception("Failed to create input document record")
+            
+            if bucket and storage_path:
+                try:
+                    # Gerar URL assinada de leitura para o worker
+                    signed_url = await storage_service.generate_signed_url(
+                        bucket=bucket, 
+                        storage_path=storage_path, 
+                        expires_in=signed_url_expires_in
+                    )
+                    processed_files.append({
+                        "file_url": signed_url,
+                        "bucket": bucket,
+                        "storage_path": storage_path,
+                        "filename": fname,
+                    })
+                except Exception:
+                    logger.exception("Failed to generate signed URL for worker")
+                    # Continue anyway? Or fail? Better fail to avoid partial processing errors.
+                    raise HTTPException(status_code=500, detail="Erro ao preparar arquivos para processamento")
+
+        # 3. Update Job Payload
+        final_payload = {
+            **initial_payload,
+            "files": processed_files,
+            "input_document_id": input_document_id,
         }
-    )
+        
+        await update_job_payload(job_uuid=job_uuid, request_payload=final_payload)
+
+        # 4. Enqueue Job
+        await enqueue_job(
+            {
+                "job_id": job_id,
+                "job_uuid": str(job_uuid),
+                "type": "labor_claim",
+                "payload": final_payload,
+            }
+        )
+
+    except Exception as e:
+        logger.exception("Error during job processing setup")
+        await mark_job_failed(job_uuid=job_uuid, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao processar arquivos e enfileirar job",
+        )
+
     return EnqueueJobResponse(job_id=job_id)
 
 
 @router.post(
-    "/analyses/brief-scanner-upload",
+    "/analyses/brief-scanner",
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def brief_scanner_upload(
-    files: list[UploadFile] = File(...),
-    user_id: str = Form(...),
-    client_id: str | None = Form(None),
-    store_pdf: bool = Form(True),
-    signed_url_expires_in: int = Form(600),
+async def brief_scanner_analysis(
+    data: dict = Body(...),
     _internal=Depends(require_internal_auth),
 ):
     """
-    Analisa peça(s) processual(is) para identificar fragilidades.
-
-    Parâmetros:
-    - files: PDFs das peças processuais (obrigatório, 1-5 arquivos)
-    - user_id: ID do usuário
-    - store_pdf: Se deve salvar o PDF do relatório
+    Analisa peça(s) processual(is) para identificar fragilidades (upload direto).
     """
+    files = data.get("files", [])
     if not files or len(files) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Envie ao menos uma peça processual em PDF",
+            detail="Envie ao menos uma peça processual",
         )
 
     if len(files) > 5:
@@ -688,57 +628,24 @@ async def brief_scanner_upload(
             detail="Máximo de 5 arquivos permitidos",
         )
 
-    user_id = user_id.strip()
+    user_id = (data.get("user_id") or "").strip()
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
-    # Validate and read PDF files
-    pdf_contents: list[tuple[str, bytes]] = []
-    for f in files:
-        if not f.filename or not f.filename.lower().endswith(".pdf"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Apenas arquivos PDF são permitidos: {f.filename}",
-            )
-        try:
-            content = await f.read()
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Erro ao ler arquivo {f.filename}: {str(e)}",
-            )
-        if not content:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Arquivo vazio: {f.filename}",
-            )
-        pdf_contents.append((f.filename, content))
+    client_id = data.get("client_id")
+    store_pdf = bool(data.get("store_pdf", True))
+    signed_url_expires_in = int(data.get("signed_url_expires_in", 600))
 
-    job_uuid = uuid4()
+    # Se vier job_uuid do upload, usar. Senão gerar novo.
+    if data.get("job_uuid"):
+        try:
+            job_uuid = uuid.UUID(data.get("job_uuid"))
+        except ValueError:
+             raise HTTPException(status_code=400, detail="job_uuid inválido")
+    else:
+        job_uuid = uuid4()
+
     job_id = f"ai:{job_uuid}"
-
-    # Upload PDFs to Supabase Storage
-    service = AiService()
-    uploaded_files: list[dict] = []
-    for filename, content in pdf_contents:
-        try:
-            upload_result = await service.upload_input_pdf(
-                pdf_bytes=content,
-                filename=filename,
-                user_id=user_id,
-                client_id=client_id.strip() if client_id else None,
-                job_uuid=str(job_uuid),
-                expires_in=signed_url_expires_in,
-            )
-            uploaded_files.append(upload_result)
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception("Erro ao fazer upload do PDF: %s", filename)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Erro ao fazer upload: {str(e)}",
-            )
 
     # Consume credits before enqueuing
     credits_service = CreditsService()
@@ -754,29 +661,25 @@ async def brief_scanner_upload(
     except Exception:
         logger.exception("Failed to persist queued status in Redis")
 
-    payload = {
+    # 1. Create Job FIRST
+    initial_payload = {
+        "job_id": job_id,
         "user_id": user_id,
         "client_id": client_id.strip() if client_id else None,
         "store_pdf": bool(store_pdf),
         "signed_url_expires_in": int(signed_url_expires_in),
-        "files": [
-            {
-                "file_url": uf["signed_url"],
-                "bucket": uf["bucket"],
-                "storage_path": uf["storage_path"],
-                "document_id": uf.get("document_id"),
-            }
-            for uf in uploaded_files
-        ],
+        "files": [], # Placeholder
+        "input_document_id": None, # Placeholder
     }
 
     try:
         await create_job(
+            status="queued",
             job_uuid=job_uuid,
             endpoint_key="brief_scanner",
             user_id=user_id,
             client_id=client_id.strip() if client_id else None,
-            request_payload={"job_id": job_id, **payload},
+            request_payload=initial_payload,
         )
         await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
     except Exception:
@@ -786,14 +689,90 @@ async def brief_scanner_upload(
             detail="Erro ao criar job no banco de dados",
         )
 
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": "brief_scanner",
-            "payload": payload,
+    # 2. Process Files and Create Documents
+    storage_service = StorageService()
+    processed_files = []
+    input_document_id = None
+    
+    try:
+        for f in files:
+            bucket = f.get("bucket")
+            storage_path = f.get("storage_path")
+            fname = f.get("filename")
+
+            # Infer filename if missing
+            if not fname and storage_path:
+                fname = storage_path.rsplit("/", 1)[-1]
+            if not fname:
+                fname = "documento.pdf"
+
+            # Create input document record
+            if bucket and storage_path:
+                try:
+                    doc_id = await create_document(
+                        job_uuid=job_uuid,
+                        user_id=user_id,
+                        client_id=client_id.strip() if client_id else None,
+                        document_type="input",
+                        bucket=bucket,
+                        storage_path=storage_path,
+                        filename=fname,
+                        checksum_sha256=None,
+                        size_bytes=None,
+                        metadata={"endpoint": "brief_scanner"},
+                    )
+                    if doc_id:
+                        # Use the first document as the main input for linking
+                        if input_document_id is None:
+                            input_document_id = str(doc_id)
+                except Exception:
+                    logger.exception("Failed to create input document record")
+            
+            if bucket and storage_path:
+                try:
+                    # Gerar URL assinada de leitura para o worker
+                    signed_url = await storage_service.generate_signed_url(
+                        bucket=bucket, 
+                        storage_path=storage_path, 
+                        expires_in=signed_url_expires_in
+                    )
+                    processed_files.append({
+                        "file_url": signed_url,
+                        "bucket": bucket,
+                        "storage_path": storage_path,
+                        "filename": fname,
+                    })
+                except Exception:
+                    logger.exception("Failed to generate signed URL for worker")
+                    raise HTTPException(status_code=500, detail="Erro ao preparar arquivos para processamento")
+
+        # 3. Update Job Payload
+        final_payload = {
+            **initial_payload,
+            "files": processed_files,
+            "input_document_id": input_document_id,
         }
-    )
+        
+        await update_job_payload(job_uuid=job_uuid, request_payload=final_payload)
+
+        # 4. Enqueue Job
+        await enqueue_job(
+            {
+                "job_id": job_id,
+                "job_uuid": str(job_uuid),
+                "type": "brief_scanner",
+                "payload": final_payload,
+            }
+        )
+    
+    except Exception as e:
+        logger.exception("Error during job processing setup")
+        await mark_job_failed(job_uuid=job_uuid, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao processar arquivos e enfileirar job",
+        )
+
     return EnqueueJobResponse(job_id=job_id)
 
 
@@ -858,17 +837,18 @@ async def chat_message(
     if not data.message.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mensagem obrigatória")
 
-    service = AiService()
+    # service = AiService()
     try:
-        result = await service.chat(
-            message=data.message,
-            user_id=user_id,
-            client_id=data.client_id,
-        )
-        return ChatResponse(
-            response=result["response"],
-            credits_consumed=result["credits_consumed"]
-        )
+        # result = await service.chat(
+        #     message=data.message,
+        #     user_id=user_id,
+        #     client_id=data.client_id,
+        # )
+        # return ChatResponse(
+        #     response=result["response"],
+        #     credits_consumed=result["credits_consumed"]
+        # )
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Chat migration in progress")
     except HTTPException:
         raise
     except Exception as e:
@@ -877,64 +857,6 @@ async def chat_message(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
-
-
-@router.post(
-    "/jobs/progress",
-    status_code=status.HTTP_200_OK,
-)
-async def update_job_progress_callback(
-    data: JobProgressCallback = Body(...),
-    _internal=Depends(require_internal_auth),
-):
-    """Endpoint de callback para n8n atualizar progresso de jobs.
-
-    N8n envia updates durante o processamento:
-    - Após OCR: progress=40
-    - Após análise: progress=70
-    - Após auditoria: progress=95
-    """
-    job_id = (data.job_id or "").strip()
-    if not job_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="job_id obrigatório")
-
-    progress = data.progress
-    if progress < 0 or progress > 100:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="progress deve estar entre 0 e 100"
-        )
-
-    message = (data.message or "").strip()
-
-    # Atualizar Redis
-    try:
-        status_payload = {
-            "job_id": job_id,
-            "status": "processing",
-            "progress": progress,
-        }
-        if message:
-            status_payload["message"] = message
-
-        await set_job_status(job_id, status_payload)
-    except Exception:
-        logger.exception(f"Erro ao atualizar progresso no Redis para job {job_id}")
-
-    # Atualizar PostgreSQL
-    job_uuid = parse_job_uuid(job_id)
-    if job_uuid:
-        try:
-            await update_job_progress(job_uuid=job_uuid, progress=progress)
-            await add_job_event(
-                job_uuid=job_uuid,
-                event_type="progress",
-                message=message or f"Progresso: {progress}%",
-                payload={"progress": progress},
-            )
-        except Exception:
-            logger.exception(f"Erro ao atualizar progresso no PostgreSQL para job {job_uuid}")
-
-    return {"status": "ok", "job_id": job_id, "progress": progress}
 
 
 @router.get(
@@ -1036,8 +958,8 @@ async def download_document(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado"
             )
 
-        service = AiService()
-        signed_url = await service._generate_signed_url(
+        storage_service = StorageService()
+        signed_url = await storage_service.generate_signed_url(
             bucket=doc["bucket"], storage_path=doc["storage_path"], expires_in=expires_in
         )
 

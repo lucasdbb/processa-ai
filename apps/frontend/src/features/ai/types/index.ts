@@ -1,5 +1,14 @@
-import type { ChangeEvent, ComponentType, RefObject } from "react";
+import type { ComponentType } from "react";
 import type { LucideIcon } from "lucide-react";
+
+export const FunctionalityType = {
+  AI: "ai",
+  CALCULATOR: "calculator",
+  OFFICE: "office",
+  BLOG: "blog"
+} as const;
+
+export type FunctionalityType = typeof FunctionalityType[keyof typeof FunctionalityType];
 
 export type ToolVariant = "chat" | "prompt" | "cnis" | "labor_claim" | "scanner" | "process_summary";
 
@@ -14,36 +23,6 @@ export type ChatMessage = {
   content: string;
 };
 
-export type ToolComponentProps = {
-  prompt: string;
-  setPrompt: (next: string) => void;
-  promptTextareaRef: RefObject<HTMLTextAreaElement | null>;
-  resizePromptTextarea: () => void;
-  isGenerating: boolean;
-  progress: number;
-  onGenerate: () => void;
-
-  cnisFile: File | null;
-  cnisFileInputKey: number;
-  onCnisFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  onClearCnisFile: () => void;
-
-  files: File[];
-  onFilesChange: (files: File[]) => void;
-  onRemoveFile: (index: number) => void;
-
-  generatedText: string;
-  previewHtml: string;
-  generatedPdfUrl: string;
-  onDownload: () => void;
-
-  chatMessages: ChatMessage[];
-  chatInput: string;
-  setChatInput: (next: string) => void;
-  isChatLoading: boolean;
-  onSendChatMessage: () => void;
-};
-
 export type AiTool = {
   slug: string;
   name: string;
@@ -53,5 +32,5 @@ export type AiTool = {
   locked: boolean;
   order: number;
   templates: ToolTemplate[];
-  Component: ComponentType<ToolComponentProps>;
+  Component: ComponentType<any>;
 };

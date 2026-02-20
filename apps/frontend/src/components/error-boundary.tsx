@@ -1,5 +1,14 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,12 +27,12 @@ interface State {
 // Error reporter — fire-and-forget, never throws
 // ---------------------------------------------------------------------------
 
-async function reportError(error: Error, errorInfo: ErrorInfo): Promise<void> {
+export async function reportError(error: Error, errorInfo?: ErrorInfo): Promise<void> {
   const errorId = `err_${Date.now()}`
 
   const payload = {
     error_message: `[${errorId}] ${error.name}: ${error.message}`,
-    component_stack: errorInfo.componentStack ?? undefined,
+    component_stack: errorInfo?.componentStack ?? undefined,
     route: window.location.pathname,
     user_agent: navigator.userAgent,
   }
@@ -90,8 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // ---------------------------------------------------------------------------
-// Fallback UI — kept in the same file intentionally so it can never fail to
-// load due to a broken import graph (the boundary must always render).
+// Fallback UI
 // ---------------------------------------------------------------------------
 
 interface ErrorFallbackProps {
@@ -100,52 +108,48 @@ interface ErrorFallbackProps {
   onReload: () => void
 }
 
-function ErrorFallback({ errorId, onReset, onReload }: ErrorFallbackProps) {
+export function ErrorFallback({ errorId, onReset, onReload }: ErrorFallbackProps) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md text-center space-y-6">
-        {/* Icon */}
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
-            <AlertTriangle className="w-8 h-8 text-destructive" />
+      <Card className="w-full max-w-md border-destructive/20 shadow-lg">
+        <CardHeader className="text-center pb-2">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
           </div>
-        </div>
-
-        {/* Copy */}
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold text-foreground">
-            Algo deu errado
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Já estamos resolvendo o problema. Nossa equipe foi notificada
-            automaticamente e trabalha para corrigir isso o mais rápido possível.
+          <CardTitle className="text-2xl font-bold">Algo deu errado</CardTitle>
+          <CardDescription className="text-base pt-2">
+            Pedimos desculpas pelo inconveniente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            Nossa equipe já foi notificada automaticamente e está trabalhando para corrigir este problema o mais rápido possível.
           </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
+          
+          {errorId && (
+            <div className="bg-muted/50 p-2 rounded text-xs font-mono text-muted-foreground/80 break-all select-all">
+              ID do erro: {errorId}
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+          <Button 
+            variant="outline" 
             onClick={onReload}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full sm:w-auto gap-2"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="h-4 w-4" />
             Tentar novamente
-          </button>
-          <button
+          </Button>
+          <Button 
             onClick={onReset}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full sm:w-auto gap-2 bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
           >
+            <Home className="h-4 w-4" />
             Voltar ao início
-          </button>
-        </div>
-
-        {/* Error ID — subtle, useful for support tickets */}
-        {errorId && (
-          <p className="text-xs text-muted-foreground/60 font-mono">
-            {errorId}
-          </p>
-        )}
-      </div>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   )
 }

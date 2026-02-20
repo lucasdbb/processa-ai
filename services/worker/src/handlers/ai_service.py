@@ -1,8 +1,7 @@
 import hashlib
 import io
-import re
-from urllib.parse import unquote, urlparse
 
+from src.core.storage import StorageService
 import httpx
 from markdown_pdf import MarkdownPdf, Section
 
@@ -26,6 +25,9 @@ class WorkerException(Exception):
 
 
 class AiService:
+    def __init__(self):
+        self.storage = StorageService()
+
     # ------------------------------------------------------------------ #
     #  Cache
     # ------------------------------------------------------------------ #
@@ -69,235 +71,9 @@ class AiService:
             return None
 
     # ------------------------------------------------------------------ #
-    #  Path / filename helpers
+    #  Supabase Storage helpers (DELEGATED TO StorageService)
     # ------------------------------------------------------------------ #
 
-    def _sanitize_path_segment(self, value: str | None, *, default: str) -> str:
-        v = (value or "").strip()
-        if not v:
-            return default
-        cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "-", v).strip("-._")
-        return cleaned or default
-
-    def _slugify_filename(self, filename: str) -> str:
-        name = (filename or "document").strip()
-        if name.lower().endswith(".pdf"):
-            name = name[:-4]
-        name = name.strip() or "document"
-        name = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip("-._")
-        return name or "document"
-
-    def _infer_pdf_filename_from_url(self, file_url: str) -> str:
-        parsed = urlparse((file_url or "").strip())
-        path = unquote(parsed.path or "")
-        name = (path.rsplit("/", 1)[-1] or "").strip() or "document.pdf"
-        if not name.lower().endswith(".pdf"):
-            name = f"{name}.pdf"
-        return name
-
-    # ------------------------------------------------------------------ #
-    #  Supabase Storage helpers
-    # ------------------------------------------------------------------ #
-
-    async def _generate_signed_url(self, *, bucket: str, storage_path: str, expires_in: int) -> str:
-        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
-        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-
-        if not base_url or not api_key:
-            raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
-
-        sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                signed = await client.post(
-                    sign_url,
-                    headers={
-                        "apikey": api_key,
-                        "Authorization": f"Bearer {api_key}",
-                    },
-                    json={"expiresIn": int(expires_in)},
-                )
-        except httpx.TimeoutException:
-            raise WorkerException(status_code=504, detail="Tempo limite ao gerar URL assinada")
-        except httpx.RequestError:
-            raise WorkerException(status_code=502, detail="Erro de conexão ao gerar URL assinada")
-
-        if signed.status_code >= 400:
-            body = (signed.text or "").strip()
-            raise WorkerException(
-                status_code=502,
-                detail=(
-                    "Falha ao gerar URL assinada"
-                    + (f" (status {signed.status_code})" if signed.status_code else "")
-                    + (f": {body[:200]}" if body else "")
-                ),
-            )
-
-        try:
-            data = signed.json()
-        except Exception:
-            data = None
-
-        signed_url = None
-        if isinstance(data, dict):
-            signed_url = data.get("signedURL") or data.get("signedUrl")
-        if not signed_url or not isinstance(signed_url, str):
-            raise WorkerException(status_code=502, detail="Resposta inválida ao gerar URL assinada")
-
-        return signed_url
-
-    async def upload_input_pdf(
-        self,
-        *,
-        pdf_bytes: bytes,
-        filename: str,
-        user_id: str,
-        client_id: str | None,
-        endpoint: str,
-        expires_in: int,
-    ) -> dict:
-        """Upload input PDF to Supabase Storage."""
-        from src.core.ai_worker_store import create_document
-
-        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
-        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        bucket = (settings.SUPABASE_AI_BUCKET or "").strip()
-        if not base_url or not api_key or not bucket:
-            raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
-
-        sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
-        slug = self._slugify_filename(filename)
-        storage_filename = f"{sha}_{slug}.pdf"
-        uid = self._sanitize_path_segment(user_id, default="unknown-user")
-        cid = self._sanitize_path_segment(client_id, default="no_client")
-        ep = self._sanitize_path_segment(endpoint, default="unknown")
-
-        storage_path = f"{uid}/{cid}/{ep}/input/{storage_filename}"
-        upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
-        headers = {
-            "apikey": api_key,
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/pdf",
-            "x-upsert": "true",
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(upload_url, headers=headers, content=pdf_bytes)
-        except httpx.TimeoutException:
-            raise WorkerException(status_code=504, detail="Tempo limite ao subir PDF para storage")
-        except httpx.RequestError:
-            raise WorkerException(
-                status_code=502, detail="Erro de conexão ao subir PDF para storage"
-            )
-
-        if resp.status_code >= 400:
-            body = (resp.text or "").strip()
-            raise WorkerException(
-                status_code=502,
-                detail=(
-                    "Falha ao subir PDF para storage"
-                    + (f" (status {resp.status_code})" if resp.status_code else "")
-                    + (f": {body[:200]}" if body else "")
-                ),
-            )
-
-        signed_url = await self._generate_signed_url(
-            bucket=bucket, storage_path=storage_path, expires_in=expires_in
-        )
-
-        document_id = None
-        try:
-            document_id = await create_document(
-                user_id=user_id,
-                client_id=client_id,
-                document_type="input",
-                filename=filename,
-                storage_path=storage_path,
-                bucket=bucket,
-                size_bytes=len(pdf_bytes),
-                linked_document_id=None,
-            )
-            logger.info("Input document saved: %s", document_id)
-        except Exception:
-            logger.exception("Failed to save input document in database")
-
-        return {
-            "bucket": bucket,
-            "storage_path": storage_path,
-            "signed_url": signed_url,
-            "document_id": str(document_id) if document_id else None,
-        }
-
-    async def _upload_pdf_to_supabase(
-        self,
-        *,
-        pdf_bytes: bytes,
-        user_id: str,
-        client_id: str | None,
-        job_uuid: str,
-        filename: str,
-        expires_in: int,
-        output: bool = False,
-    ) -> dict:
-        """Upload PDF to Supabase Storage. Structure: user_id/client_id/job_uuid/hash_[input|output].pdf"""
-        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
-        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        bucket = (settings.SUPABASE_AI_BUCKET or "").strip()
-        if not base_url or not api_key or not bucket:
-            raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
-
-        sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
-        suffix = "_output" if output else "_input"
-        storage_filename = f"{sha}{suffix}.pdf"
-        uid = self._sanitize_path_segment(user_id, default="unknown-user")
-        cid = self._sanitize_path_segment(client_id, default="no_client")
-        jid = self._sanitize_path_segment(job_uuid, default="unknown-job")
-        storage_path = f"{uid}/{cid}/{jid}/{storage_filename}"
-
-        upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
-        headers = {
-            "apikey": api_key,
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/pdf",
-            "x-upsert": "true",
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(upload_url, headers=headers, content=pdf_bytes)
-        except httpx.TimeoutException:
-            raise WorkerException(status_code=504, detail="Tempo limite ao subir PDF para storage")
-        except httpx.RequestError:
-            raise WorkerException(
-                status_code=502, detail="Erro de conexão ao subir PDF para storage"
-            )
-
-        if resp.status_code >= 400:
-            body = (resp.text or "").strip()
-            raise WorkerException(
-                status_code=502,
-                detail=(
-                    "Falha ao subir PDF para storage"
-                    + (f" (status {resp.status_code})" if resp.status_code else "")
-                    + (f": {body[:200]}" if body else "")
-                ),
-            )
-
-        signed_url = await self._generate_signed_url(
-            bucket=bucket, storage_path=storage_path, expires_in=expires_in
-        )
-
-        if signed_url.startswith("http"):
-            download_url = signed_url
-        else:
-            download_url = f"{base_url}/storage/v1{signed_url}"
-
-        return {
-            "bucket": bucket,
-            "storage_path": storage_path,
-            "download_url": download_url,
-        }
 
     # ------------------------------------------------------------------ #
     #  PDF generation
@@ -310,6 +86,7 @@ class AiService:
         filename: str,
         user_id: str,
         client_id: str | None,
+        functionality: str = "ai",
         job_uuid: str,
         expires_in: int,
     ) -> dict:
@@ -318,15 +95,19 @@ class AiService:
             title = title[:-4]
 
         pdf_bytes = self._markdown_to_pdf_bytes(markdown, title=title)
-        uploaded = await self._upload_pdf_to_supabase(
+        uploaded = await self.storage.upload_pdf_to_supabase(
             pdf_bytes=pdf_bytes,
             user_id=user_id,
             client_id=client_id,
+            functionality=functionality,
             job_uuid=job_uuid,
             filename=filename,
             expires_in=expires_in,
             output=True,
         )
+        
+        if "signed_url" in uploaded:
+            uploaded["download_url"] = uploaded["signed_url"]
 
         return {
             "content": pdf_bytes,
@@ -339,10 +120,10 @@ class AiService:
             raise WorkerException(status_code=502, detail="Resposta vazia da análise")
 
         try:
-            pdf = MarkdownPdf(toc_level=2, optimize=True)
+            pdf = MarkdownPdf(toc_level=0, optimize=True)
             if title:
                 pdf.meta["title"] = title
-            pdf.add_section(Section(text))
+            pdf.add_section(Section(text, toc=False))
 
             out = io.BytesIO()
             pdf.save_bytes(out)
@@ -399,6 +180,7 @@ class AiService:
         signed_url_expires_in: int,
         job_id: str | None,
         progress: ProgressReporter | None,
+        functionality: str = "ai",
     ) -> dict:
         """Shared analysis logic for both CNIS and Process Summary.
 
@@ -408,23 +190,27 @@ class AiService:
         4. Run pipeline (OCR -> Analyze -> Audit)
         5. Store output PDF if requested
         """
-        pdf_bytes = await self._download_pdf_bytes(file_url)
-        inferred_filename = self._infer_pdf_filename_from_url(file_url)
+        pdf_bytes = await self.storage.download_pdf_bytes(file_url)
+        inferred_filename = self.storage.infer_pdf_filename_from_url(file_url)
         input_hash = hashlib.sha256(pdf_bytes).hexdigest()
 
         # Store input PDF for history
         input_storage = None
         if store_input_pdf and job_id:
             job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            input_storage = await self._upload_pdf_to_supabase(
+            input_storage = await self.storage.upload_pdf_to_supabase(
                 pdf_bytes=pdf_bytes,
                 user_id=user_id,
                 client_id=client_id,
+                functionality=functionality,
                 job_uuid=job_uuid_str,
                 filename=inferred_filename,
                 expires_in=signed_url_expires_in,
                 output=False,
             )
+            # Adapt return to match expected format if needed (StorageService returns signed_url, we might need download_url)
+            if "signed_url" in input_storage:
+                input_storage["download_url"] = input_storage["signed_url"]
 
         # Check cache
         cached = await self._check_cache(input_hash=input_hash, endpoint_key=endpoint_key)
@@ -440,6 +226,7 @@ class AiService:
                     filename=inferred_filename,
                     user_id=user_id,
                     client_id=client_id,
+                    functionality=functionality,
                     job_uuid=job_uuid_str,
                     expires_in=signed_url_expires_in,
                 )
@@ -476,6 +263,7 @@ class AiService:
                 filename=inferred_filename,
                 user_id=user_id,
                 client_id=client_id,
+                functionality=functionality,
                 job_uuid=job_uuid_str,
                 expires_in=signed_url_expires_in,
             )
@@ -500,6 +288,7 @@ class AiService:
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
         progress: ProgressReporter | None = None,
+        functionality: str = "ai",
     ) -> dict:
         return await self._run_analysis_pipeline(
             file_url=file_url,
@@ -512,6 +301,7 @@ class AiService:
             signed_url_expires_in=signed_url_expires_in,
             job_id=job_id,
             progress=progress,
+            functionality=functionality,
         )
 
     async def analyze_process_summary(
@@ -525,6 +315,7 @@ class AiService:
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
         progress: ProgressReporter | None = None,
+        functionality: str = "ai",
     ) -> dict:
         return await self._run_analysis_pipeline(
             file_url=file_url,
@@ -537,6 +328,7 @@ class AiService:
             signed_url_expires_in=signed_url_expires_in,
             job_id=job_id,
             progress=progress,
+            functionality=functionality,
         )
 
     async def _run_multi_file_pipeline(
@@ -552,6 +344,7 @@ class AiService:
         job_id: str | None,
         progress: ProgressReporter | None,
         user_prompt: str | None = None,
+        functionality: str = "ai",
     ) -> dict:
         """Shared analysis logic for multi-file pipelines (labor_claim, brief_scanner)."""
         pipeline_result = await run_multi_document_analysis(
@@ -578,6 +371,7 @@ class AiService:
                 filename=f"{endpoint_key}_resultado.pdf",
                 user_id=user_id,
                 client_id=client_id,
+                functionality=functionality,
                 job_uuid=job_uuid_str,
                 expires_in=signed_url_expires_in,
             )
@@ -599,6 +393,7 @@ class AiService:
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
         progress: ProgressReporter | None = None,
+        functionality: str = "ai",
     ) -> dict:
         return await self._run_multi_file_pipeline(
             file_urls=file_urls,
@@ -611,6 +406,7 @@ class AiService:
             job_id=job_id,
             progress=progress,
             user_prompt=user_prompt,
+            functionality=functionality,
         )
 
     async def analyze_brief_scanner(
@@ -623,6 +419,7 @@ class AiService:
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
         progress: ProgressReporter | None = None,
+        functionality: str = "ai",
     ) -> dict:
         return await self._run_multi_file_pipeline(
             file_urls=file_urls,
@@ -634,4 +431,32 @@ class AiService:
             signed_url_expires_in=signed_url_expires_in,
             job_id=job_id,
             progress=progress,
+            functionality=functionality,
         )
+
+    async def refund_credits(self, user_id: str, amount: int, reason: str = "job_failed") -> bool:
+        """Calls backend to refund credits."""
+
+        # Internal secret or admin key for backend communication
+        # Assuming worker has permissions or uses a service role key if needed
+        # For now, let's assume we can call an internal endpoint or use DB directly if in same network
+        
+        # BETTER APPROACH: Since worker shares DB with backend, use DB directly to avoid auth overhead/circular deps
+        # But `CreditsService` logic is in backend. 
+        # Option A: Re-implement refund logic here (call RPC `grant_credits_to_user`)
+        # Option B: Call backend API endpoint (requires auth)
+        
+        # Let's go with Option A (DB Direct) for robustness in worker
+        try:
+            from src.core.db import get_pool
+            pool = await get_pool()
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        "SELECT grant_credits_to_user(%s, %s, %s, 'purchased')",
+                        (user_id, amount, reason),
+                    )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to refund credits to user {user_id}: {e}")
+            return False

@@ -9,6 +9,7 @@ import { PortalGuard } from '@/components/auth/portal-guard'
 import { PortalLayout } from '@/components/layout/portal-layout'
 import PortalPage from '@/pages/portal'
 import PortalAtivarPage from '@/pages/portal/ativar'
+import { RouterErrorBoundary } from '@/components/router-error-boundary'
 
 // Public pages
 import HomePage from '@/pages/home'
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <RouterErrorBoundary />,
     children: [
       {
         index: true,
@@ -115,6 +117,7 @@ export const router = createBrowserRouter([
         <AppLayout />
       </AuthGuard>
     ),
+    errorElement: <RouterErrorBoundary />,
     children: [
       {
         index: true,
@@ -222,6 +225,7 @@ export const router = createBrowserRouter([
   {
     path: '/portal/ativar',
     element: <PortalAtivarPage />,
+    errorElement: <RouterErrorBoundary />,
   },
 
   // Portal routes (office_client users only)
@@ -232,6 +236,7 @@ export const router = createBrowserRouter([
         <PortalLayout />
       </PortalGuard>
     ),
+    errorElement: <RouterErrorBoundary />,
     children: [
       {
         index: true,
@@ -248,6 +253,7 @@ export const router = createBrowserRouter([
         <RootLayout />
       </AdminGuard>
     ),
+    errorElement: <RouterErrorBoundary />,
     children: [
       {
         index: true,

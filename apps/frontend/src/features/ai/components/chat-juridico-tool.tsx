@@ -1,14 +1,71 @@
+import { useState, useCallback } from 'react'
 import { Bot, Loader2, Send, User } from 'lucide-react'
+import { fetchWithCredentials, API_URL } from '@/lib/fetch'
+import { useUser } from '@/features/auth/hooks/use-user'
+import { useOutletContext } from 'react-router-dom'
+import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
+import type { ChatMessage } from '../types'
 
-import type { ToolComponentProps } from '../types'
+export function ChatJuridicoTool() {
+  const { isAuthenticated } = useUser()
+  const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
 
-export function ChatJuridicoTool({
-  chatMessages,
-  chatInput,
-  setChatInput,
-  isChatLoading,
-  onSendChatMessage,
-}: ToolComponentProps) {
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [isChatLoading, setIsChatLoading] = useState(false)
+
+  const sendChatMessage = useCallback(async () => {
+    if (!chatInput.trim() || isChatLoading) return
+
+    if (!isAuthenticated) {
+      openRegisterModal()
+      return
+    }
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: chatInput.trim(),
+    }
+
+    setChatMessages((prev) => [...prev, userMessage])
+    setChatInput('')
+    setIsChatLoading(true)
+
+    try {
+      const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage.content }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          openRegisterModal()
+          return
+        }
+        throw new Error('Erro ao processar sua mensagem. Tente novamente.')
+      }
+
+      const data = (await response.json()) as { response?: string }
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response || 'Desculpe, não consegui processar sua mensagem.',
+      }
+      setChatMessages((prev) => [...prev, assistantMessage])
+    } catch {
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Desculpe, ocorreu um erro. Tente novamente mais tarde.',
+      }
+      setChatMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsChatLoading(false)
+    }
+  }, [chatInput, isChatLoading, isAuthenticated, openRegisterModal])
+
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col max-h-[calc(100vh-18rem)]">
       <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
@@ -61,7 +118,7 @@ export function ChatJuridicoTool({
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                void onSendChatMessage()
+                void sendChatMessage()
               }
             }}
             placeholder="Digite sua pergunta..."
@@ -70,7 +127,7 @@ export function ChatJuridicoTool({
           />
           <button
             type="button"
-            onClick={onSendChatMessage}
+            onClick={sendChatMessage}
             disabled={!chatInput.trim() || isChatLoading}
             className="inline-flex items-center justify-center rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-5"
             aria-label="Enviar mensagem"

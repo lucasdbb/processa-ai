@@ -1,21 +1,43 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Download, Sparkles, Trash2, Upload, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ToolComponentProps } from '../types'
 import { Progress } from '@/components/ui/progress'
+import { toast } from 'sonner'
+import { fetchWithCredentials, API_URL } from '@/lib/fetch'
+import { useUser } from '@/features/auth/hooks/use-user'
+import { useOutletContext } from 'react-router-dom'
+import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
+import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
+import { FunctionalityType } from '@/features/ai/types'
 
-export function CnisAnalysisTool({
-  cnisFile,
-  cnisFileInputKey,
-  onCnisFileChange,
-  onClearCnisFile,
-  isGenerating,
-  progress,
-  onGenerate,
-  generatedPdfUrl,
-  onDownload,
-}: ToolComponentProps) {
+interface CnisAnalysisToolProps {
+  onOpenRegisterModal?: () => void
+  selectedClientId?: string | null
+}
+
+export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: CnisAnalysisToolProps) {
+  const { isAuthenticated } = useUser()
+  const outletContext = useOutletContext<RootLayoutOutletContext | null>()
+  const openRegisterModal = onOpenRegisterModal || outletContext?.openRegisterModal || (() => {})
+  const { uploadFiles } = useFileUpload()
+
+  const [cnisFile, setCnisFile] = useState<File | null>(null)
+  const [cnisFileInputKey, setCnisFileInputKey] = useState(0)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  
+  // Ref para URL do PDF para revogar quando mudar
+  const cnisPdfUrlRef = useRef<string | null>(null)
+
+  const setCnisPdfUrl = useCallback((next: string) => {
+    if (cnisPdfUrlRef.current) {
+      URL.revokeObjectURL(cnisPdfUrlRef.current)
+    }
+    cnisPdfUrlRef.current = next || null
+    setGeneratedPdfUrl(next)
+  }, [])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -27,6 +49,25 @@ export function CnisAnalysisTool({
     setIsDragging(false)
   }
 
+  const handleCnisFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      toast.error('Envie um arquivo PDF')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 10MB')
+      return
+    }
+
+    setCnisFile(file)
+    setCnisPdfUrl('')
+  }, [setCnisPdfUrl])
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
@@ -36,9 +77,183 @@ export function CnisAnalysisTool({
       const mockEvent = {
         target: { files }
       } as unknown as React.ChangeEvent<HTMLInputElement>
-      onCnisFileChange(mockEvent)
+      handleCnisFileChange(mockEvent)
     }
   }
+
+  const clearCnisFile = useCallback(() => {
+    setCnisFile(null)
+    setCnisFileInputKey((k) => k + 1)
+    setCnisPdfUrl('')
+    setProgress(0)
+  }, [setCnisPdfUrl])
+
+  const handleGenerate = useCallback(async () => {
+    if (!isAuthenticated) {
+      openRegisterModal()
+      return
+    }
+
+    if (!cnisFile) {
+      toast.error('Por favor, envie o CNIS em PDF')
+      return
+    }
+
+    setIsGenerating(true)
+
+    try {
+      // Get user from Supabase session
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        openRegisterModal()
+        return
+      }
+
+      // 1. Upload files with progress
+      const UPLOAD_PROGRESS_MAX = 20 // 20% reserved for uploads
+      
+      const { uploadMetadata, jobUuid: commonJobUuid } = await uploadFiles(
+        [cnisFile], 
+        user.id, 
+        selectedClientId,
+        FunctionalityType.AI,
+        (uploadProgress) => {
+          const uiProgress = Math.round((uploadProgress / 100) * UPLOAD_PROGRESS_MAX)
+          setProgress(uiProgress)
+        }
+      )
+      
+      // Ensure we are at least at UPLOAD_PROGRESS_MAX
+      setProgress(UPLOAD_PROGRESS_MAX)
+      
+      const fileMetadata = uploadMetadata[0]
+
+      // 3. Start analysis job
+      const submitResponse = await fetchWithCredentials(`${API_URL}/ai/analyses/cnis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storage_path: fileMetadata.storage_path,
+          bucket: fileMetadata.bucket,
+          files: uploadMetadata,
+          job_uuid: commonJobUuid,
+          user_id: user.id,
+          client_id: selectedClientId || undefined,
+          store_pdf: true,
+        }),
+      })
+
+      if (!submitResponse.ok) {
+        if (submitResponse.status === 401 || submitResponse.status === 403) {
+          openRegisterModal()
+          return
+        }
+
+        let message = 'Erro ao iniciar análise. Tente novamente.'
+        try {
+          const data = (await submitResponse.json()) as { detail?: string }
+          if (data?.detail) message = data.detail
+        } catch {
+          void 0
+        }
+        throw new Error(message)
+      }
+
+      const submitData = (await submitResponse.json()) as { job_id: string }
+      if (!submitData.job_id) {
+        throw new Error('Resposta inválida do servidor')
+      }
+
+      // 4. Poll for job completion
+      const jobId = submitData.job_id
+      const maxAttempts = 120 // 2 minutes max
+      const pollInterval = 2000 // 2 seconds
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, pollInterval))
+
+        const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+
+        if (!statusResponse.ok) {
+          continue // Retry on error
+        }
+
+        const statusData = (await statusResponse.json()) as {
+          status: string
+          progress: number
+          result?: { download_url?: string; content?: string; document_id?: string }
+          error?: string
+        }
+
+        // Map backend progress (0-100) to UI progress
+        const backendProgress = statusData.progress || 0
+        const UPLOAD_PROGRESS_MAX = 20
+        const uiProgress = UPLOAD_PROGRESS_MAX + Math.round((backendProgress / 100) * (100 - UPLOAD_PROGRESS_MAX))
+        setProgress(uiProgress)
+
+        if (statusData.status === 'failed') {
+          throw new Error(statusData.error || 'Erro ao processar CNIS')
+        }
+
+        if (statusData.status === 'completed') {
+          // Job completed - get the result
+          if (statusData.result?.download_url) {
+            // Download from signed URL
+            const pdfResponse = await fetch(statusData.result.download_url)
+            if (!pdfResponse.ok) {
+              throw new Error('Erro ao baixar PDF')
+            }
+            const blob = await pdfResponse.blob()
+            setCnisPdfUrl(URL.createObjectURL(blob))
+          } else if (statusData.result?.content) {
+            // Base64 content
+            const binary = atob(statusData.result.content)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            const blob = new Blob([bytes], { type: 'application/pdf' })
+            setCnisPdfUrl(URL.createObjectURL(blob))
+          } else if (statusData.result?.document_id) {
+             // Se tiver document_id mas não url/content, pode ser que o worker não gerou a URL ou expirou.
+             // Idealmente o worker deve retornar download_url.
+             // Se cair aqui, vamos considerar sucesso mas avisar que o PDF está salvo em Documentos.
+             toast.success('Análise concluída! O documento foi salvo em "Meus Documentos".')
+             return
+          } else {
+            throw new Error('Resultado inválido do servidor')
+          }
+
+          toast.success('CNIS analisado com sucesso!')
+          return
+        }
+
+        // Still processing - continue polling
+      }
+
+      throw new Error('Tempo esgotado. Tente novamente.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao processar CNIS')
+      setProgress(0)
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [isAuthenticated, cnisFile, openRegisterModal, setCnisPdfUrl])
+
+  const handleDownload = useCallback(() => {
+    if (!isAuthenticated) {
+      openRegisterModal()
+      return
+    }
+
+    if (!generatedPdfUrl) return
+
+    const element = document.createElement('a')
+    element.href = generatedPdfUrl
+    element.download = `analise_cnis_${Date.now()}.pdf`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }, [generatedPdfUrl, isAuthenticated, openRegisterModal])
 
   return (
     <>
@@ -63,7 +278,7 @@ export function CnisAnalysisTool({
               </div>
               <button
                 type="button"
-                onClick={onClearCnisFile}
+                onClick={clearCnisFile}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm font-medium"
               >
                 <Trash2 className="h-4 w-4" />
@@ -88,7 +303,7 @@ export function CnisAnalysisTool({
               id="cnis-file"
               type="file"
               accept="application/pdf"
-              onChange={onCnisFileChange}
+              onChange={handleCnisFileChange}
               className="hidden"
             />
             <label
@@ -113,7 +328,7 @@ export function CnisAnalysisTool({
 
       <div className="flex space-x-4 mb-6">
         <button
-          onClick={onGenerate}
+          onClick={handleGenerate}
           disabled={!cnisFile || isGenerating}
           className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
         >
@@ -135,7 +350,7 @@ export function CnisAnalysisTool({
         <div className="mb-6 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-foreground">
-              {progress === 0 ? 'Iniciando análise...' : 'Processando análise...'}
+              {progress < 20 ? 'Salvando arquivo...' : 'Processando análise...'}
             </span>
             <span className="text-muted-foreground font-mono">{progress}%</span>
           </div>
@@ -151,7 +366,7 @@ export function CnisAnalysisTool({
             </h3>
             <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
               <button
-                onClick={onDownload}
+                onClick={handleDownload}
                 aria-label="Baixar como PDF"
                 className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
                 title="Baixar PDF"

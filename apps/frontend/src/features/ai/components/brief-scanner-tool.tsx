@@ -1,22 +1,41 @@
-import { useState } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Download, FileText, Plus, ScanSearch, Trash2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { ToolComponentProps } from '../types'
 import { Progress } from '@/components/ui/progress'
+import { toast } from 'sonner'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import { normalizeMarkdown } from '@/lib/utils'
+import { fetchWithCredentials, API_URL } from '@/lib/fetch'
+import { useUser } from '@/features/auth/hooks/use-user'
+import { useOutletContext } from 'react-router-dom'
+import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
+import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
+import { FunctionalityType } from '@/features/ai/types'
 
-export function BriefScannerTool({
-  isGenerating,
-  progress,
-  onGenerate,
-  files,
-  onFilesChange,
-  onRemoveFile,
-  generatedText,
-  previewHtml,
-  generatedPdfUrl,
-  onDownload,
-}: ToolComponentProps) {
+interface BriefScannerToolProps {
+  onOpenRegisterModal?: () => void
+  selectedClientId?: string | null
+}
+
+export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, selectedClientId }: BriefScannerToolProps) {
+  const { isAuthenticated } = useUser()
+  const outletContext = useOutletContext<RootLayoutOutletContext | null>()
+  const openRegisterModal = propOpenRegisterModal || outletContext?.openRegisterModal || (() => {})
+  const { uploadFiles } = useFileUpload()
+
+  const [files, setFiles] = useState<File[]>([])
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
+  const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+
+  const markdownToRender = normalizeMarkdown(generatedText)
+  const previewHtml = useMemo(() => {
+    if (!markdownToRender) return ''
+    return DOMPurify.sanitize(marked.parse(markdownToRender) as string)
+  }, [markdownToRender])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -27,6 +46,22 @@ export function BriefScannerTool({
     e.preventDefault()
     setIsDragging(false)
   }
+
+  const handleFilesChange = useCallback((newFiles: File[]) => {
+    const valid = newFiles.filter((f) => {
+      const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+      if (!isPdf) {
+        toast.error(`${f.name}: apenas arquivos PDF são permitidos`)
+        return false
+      }
+      if (f.size > 10 * 1024 * 1024) {
+        toast.error(`${f.name}: o arquivo deve ter no máximo 10MB`)
+        return false
+      }
+      return true
+    })
+    setFiles(valid)
+  }, [])
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -41,7 +76,7 @@ export function BriefScannerTool({
     const currentCount = files.length
     const allowed = droppedFiles.slice(0, maxFiles - currentCount)
     if (allowed.length > 0) {
-      onFilesChange([...files, ...allowed])
+      handleFilesChange([...files, ...allowed])
     }
   }
 
@@ -51,13 +86,171 @@ export function BriefScannerTool({
     const currentCount = files.length
     const allowed = selected.slice(0, maxFiles - currentCount)
     if (allowed.length > 0) {
-      onFilesChange([...files, ...allowed])
+      handleFilesChange([...files, ...allowed])
     }
     e.target.value = ''
   }
 
+  const handleRemoveFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleGenerate = useCallback(async () => {
+    if (!isAuthenticated) {
+      openRegisterModal()
+      return
+    }
+
+    if (files.length === 0) {
+      toast.error('Por favor, envie ao menos uma peça processual em PDF')
+      return
+    }
+
+    setIsGenerating(true)
+    setProgress(0)
+    setGeneratedText('')
+    setGeneratedPdfUrl('')
+
+    try {
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        openRegisterModal()
+        return
+      }
+
+      // 1. Upload files with progress
+      const UPLOAD_PROGRESS_MAX = 20 // 20% reserved for uploads
+      
+      const { uploadMetadata, jobUuid: commonJobUuid } = await uploadFiles(
+        files, 
+        user.id, 
+        selectedClientId,
+        FunctionalityType.AI,
+        (uploadProgress) => {
+          // Map 0-100 upload progress to 0-20 UI progress
+          const uiProgress = Math.round((uploadProgress / 100) * UPLOAD_PROGRESS_MAX)
+          setProgress(uiProgress)
+        }
+      )
+      
+      // Ensure we are at least at UPLOAD_PROGRESS_MAX
+      setProgress(UPLOAD_PROGRESS_MAX)
+
+      // 3. Start analysis job
+      const endpoint = `${API_URL}/ai/analyses/brief-scanner`
+
+      const payload: Record<string, unknown> = {
+        user_id: user.id,
+        client_id: selectedClientId || undefined,
+        store_pdf: true,
+        job_uuid: commonJobUuid || undefined,
+        files: uploadMetadata,
+      }
+
+      const submitResponse = await fetchWithCredentials(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!submitResponse.ok) {
+        if (submitResponse.status === 401 || submitResponse.status === 403) {
+          openRegisterModal()
+          return
+        }
+
+        let message = 'Erro ao enviar. Tente novamente.'
+        try {
+          const data = (await submitResponse.json()) as { detail?: string }
+          if (data?.detail) message = data.detail
+        } catch {
+          void 0
+        }
+        throw new Error(message)
+      }
+
+      const submitData = (await submitResponse.json()) as { job_id: string }
+      if (!submitData.job_id) {
+        throw new Error('Resposta inválida do servidor')
+      }
+
+      // Poll for job completion
+      const jobId = submitData.job_id
+      const maxAttempts = 120
+      const pollInterval = 2000
+
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, pollInterval))
+
+        const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+        if (!statusResponse.ok) continue
+
+        const statusData = (await statusResponse.json()) as {
+          status: string
+          progress: number
+          result?: { download_url?: string; content?: string }
+          error?: string
+        }
+
+        // Map backend progress (0-100) to UI progress (20-100)
+        // because 0-20 is reserved for upload
+        const backendProgress = statusData.progress || 0
+        const uiProgress = 20 + Math.round((backendProgress / 100) * 80)
+        setProgress(uiProgress)
+
+        if (statusData.status === 'failed') {
+          throw new Error(statusData.error || 'Erro ao processar. Tente novamente.')
+        }
+
+        if (statusData.status === 'completed') {
+          if (statusData.result?.download_url) {
+            const pdfResponse = await fetch(statusData.result.download_url)
+            if (!pdfResponse.ok) throw new Error('Erro ao baixar PDF')
+            const blob = await pdfResponse.blob()
+            setGeneratedPdfUrl(URL.createObjectURL(blob))
+          } else if (statusData.result?.content) {
+            const binary = atob(statusData.result.content)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            const blob = new Blob([bytes], { type: 'application/pdf' })
+            setGeneratedPdfUrl(URL.createObjectURL(blob))
+          } else {
+            throw new Error('Resultado inválido do servidor')
+          }
+
+          toast.success('Análise da peça concluída com sucesso!')
+          return
+        }
+      }
+
+      throw new Error('Tempo esgotado. Tente novamente.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao analisar peça')
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [files, isAuthenticated, openRegisterModal])
+
+  const handleDownload = useCallback(() => {
+    if (!isAuthenticated) {
+      openRegisterModal()
+      return
+    }
+
+    if (generatedPdfUrl) {
+      const element = document.createElement('a')
+      element.href = generatedPdfUrl
+      element.download = `analise_scanner_${Date.now()}.pdf`
+      document.body.appendChild(element)
+      element.click()
+      document.body.removeChild(element)
+      return
+    }
+  }, [generatedPdfUrl, isAuthenticated, openRegisterModal])
+
   const canGenerate = files.length > 0 && !isGenerating
-  const hasResult = generatedPdfUrl || generatedText
+  const hasResult = !!generatedPdfUrl || !!generatedText
 
   return (
     <>
@@ -90,7 +283,7 @@ export function BriefScannerTool({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onRemoveFile(index)}
+                    onClick={() => handleRemoveFile(index)}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -149,7 +342,7 @@ export function BriefScannerTool({
       {/* Botao analisar */}
       <div className="flex space-x-4 mb-6">
         <button
-          onClick={onGenerate}
+          onClick={handleGenerate}
           disabled={!canGenerate}
           className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
         >
@@ -172,8 +365,8 @@ export function BriefScannerTool({
         <div className="mb-6 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-foreground">
-              {progress < 10
-                ? 'Iniciando analise...'
+              {progress < 20
+                ? 'Salvando arquivo(s)...'
                 : progress < 40
                   ? 'Extraindo texto das pecas...'
                   : progress < 95
@@ -194,7 +387,7 @@ export function BriefScannerTool({
               Relatorio de Analise
             </h3>
             <button
-              onClick={onDownload}
+              onClick={handleDownload}
               aria-label="Baixar como PDF"
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
               title="Baixar PDF"
@@ -218,7 +411,7 @@ export function BriefScannerTool({
               Relatorio de Analise
             </h3>
             <button
-              onClick={onDownload}
+              onClick={handleDownload}
               aria-label="Baixar documento"
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
               title="Baixar"

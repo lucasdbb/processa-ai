@@ -1,12 +1,20 @@
 from pydantic import BaseModel, ConfigDict
 
 
+
+
 class CnisAnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_url: str
+    file_url: str | None = None
+    storage_path: str | None = None
+    bucket: str | None = None
+    job_uuid: str | None = None
+    files: list[dict] | None = None  # [{bucket, storage_path, filename}]
+
     user_id: str
     client_id: str | None = None
+    functionality: str = "ai"
     store_pdf: bool = False
     store_input_pdf: bool = True  # Sempre salvar input para histórico
     signed_url_expires_in: int = 600
@@ -23,14 +31,6 @@ class JobStatusResponse(BaseModel):
     progress: int = 0
     result: dict | None = None
     error: str | None = None
-
-
-class JobProgressCallback(BaseModel):
-    """Schema para callback de progresso do n8n."""
-
-    job_id: str
-    progress: int
-    message: str | None = None
 
 
 class CnisAnalysisResponse(BaseModel):
@@ -79,9 +79,15 @@ class ProcessSummaryRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    file_url: str
+    file_url: str | None = None
+    storage_path: str | None = None
+    bucket: str | None = None
+    job_uuid: str | None = None
+    files: list[dict] | None = None  # [{bucket, storage_path, filename}]
+
     user_id: str
     client_id: str | None = None
+    functionality: str = "ai"
     store_pdf: bool = False
     store_input_pdf: bool = True
     signed_url_expires_in: int = 600
@@ -113,6 +119,7 @@ class LaborClaimUploadRequest(BaseModel):
     prompt: str
     user_id: str
     client_id: str | None = None
+    functionality: str = "ai"
     store_pdf: bool = True
     signed_url_expires_in: int = 600
 
@@ -124,6 +131,7 @@ class BriefScannerUploadRequest(BaseModel):
 
     user_id: str
     client_id: str | None = None
+    functionality: str = "ai"
     store_pdf: bool = True
     signed_url_expires_in: int = 600
 

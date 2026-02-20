@@ -38,6 +38,7 @@ from src.features.office.notes.router import router as notes_router
 from src.features.office.processes.router import router as processes_router
 from src.features.office.services.router import router as services_router
 from src.features.office.timeline.router import router as timeline_router
+from src.features.core.storage.router import router as storage_router
 
 api_router = APIRouter()
 
@@ -52,6 +53,7 @@ api_router.include_router(feedback_router, prefix="/feedback", tags=["Feedback"]
 api_router.include_router(materials_router, prefix="/materials", tags=["Materials"])
 api_router.include_router(plans_router, prefix="/plans", tags=["Plans"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
+api_router.include_router(storage_router, prefix="/storage", tags=["Storage"])
 
 # Billing features
 api_router.include_router(subscriptions_router, prefix="/billing/subscriptions", tags=["Billing"])

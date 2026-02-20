@@ -82,6 +82,7 @@ async def create_job(
     user_id: str,
     client_id: str | None,
     request_payload: dict,
+    status: str = "queued",
 ) -> None:
     pool = await get_pool()
     async with pool.connection() as conn:
@@ -90,10 +91,25 @@ async def create_job(
                 (
                     "insert into public.ai_jobs (id, endpoint_key, status, progress, user_id, "
                     "client_id, request_payload) "
-                    "values (%s, %s, 'queued', 0, %s, %s, %s) "
+                    "values (%s, %s, %s, 0, %s, %s, %s) "
                     "on conflict (id) do nothing"
                 ),
-                (job_uuid, endpoint_key, user_id, client_id, _to_jsonb(request_payload)),
+                (job_uuid, endpoint_key, status, user_id, client_id, _to_jsonb(request_payload)),
+            )
+
+
+async def update_job_payload(
+    *,
+    job_uuid: uuid.UUID,
+    request_payload: dict,
+) -> None:
+    """Atualiza o payload de requisição de um job existente."""
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "update public.ai_jobs set request_payload = %s where id = %s",
+                (_to_jsonb(request_payload), job_uuid),
             )
 
 

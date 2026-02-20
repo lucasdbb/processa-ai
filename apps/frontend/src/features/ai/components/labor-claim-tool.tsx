@@ -1,26 +1,61 @@
-import { useState } from 'react'
-import { Download, FileText, Plus, Sparkles, Trash2, Upload } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { ToolComponentProps } from '../types'
+import { useState, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
+import { Download, FileText, Gavel, Trash2, Upload } from 'lucide-react'
+import { toast } from 'sonner'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import { cn, normalizeMarkdown } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
+import { fetchWithCredentials, API_URL } from '@/lib/fetch'
+import { useUser } from '@/features/auth/hooks/use-user'
+import { useOutletContext } from 'react-router-dom'
+import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
+import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
+import { FunctionalityType } from '@/features/ai/types'
 
-export function LaborClaimTool({
-  prompt,
-  setPrompt,
-  promptTextareaRef,
-  resizePromptTextarea,
-  isGenerating,
-  progress,
-  onGenerate,
-  files,
-  onFilesChange,
-  onRemoveFile,
-  generatedText,
-  previewHtml,
-  generatedPdfUrl,
-  onDownload,
-}: ToolComponentProps) {
+const MAX_FILES = 5
+
+interface LaborClaimToolProps {
+  selectedClientId?: string | null
+}
+
+export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
+  const { user, isAuthenticated } = useUser()
+  const outletContext = useOutletContext<RootLayoutOutletContext | null>()
+  const openRegisterModal = outletContext?.openRegisterModal || (() => {})
+  const { uploadFiles } = useFileUpload()
+
+  const [prompt, setPrompt] = useState('')
+  const [files, setFiles] = useState<File[]>([])
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
+  const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const resizePromptTextarea = useCallback(() => {
+    const el = promptTextareaRef.current
+    if (!el) return
+
+    const minHeight = 160
+    const maxHeight = 400
+
+    el.style.height = 'auto'
+    const next = Math.min(el.scrollHeight, maxHeight)
+    el.style.height = `${Math.max(next, minHeight)}px`
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+  }, [])
+
+  const markdownToRender = normalizeMarkdown(generatedText)
+  const previewHtml = useMemo(() => {
+    if (!markdownToRender) return ''
+    return DOMPurify.sanitize(marked.parse(markdownToRender) as string)
+  }, [markdownToRender])
+
+  useLayoutEffect(() => {
+    resizePromptTextarea()
+  }, [prompt, resizePromptTextarea])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -41,243 +76,289 @@ export function LaborClaimTool({
     )
     if (droppedFiles.length === 0) return
 
-    const maxFiles = 5
-    const currentCount = files.length
-    const allowed = droppedFiles.slice(0, maxFiles - currentCount)
+    const allowed = droppedFiles.slice(0, MAX_FILES - files.length)
     if (allowed.length > 0) {
-      onFilesChange([...files, ...allowed])
+      setFiles((prev) => [...prev, ...allowed])
     }
   }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || [])
-    const maxFiles = 5
-    const currentCount = files.length
-    const allowed = selected.slice(0, maxFiles - currentCount)
+    const allowed = selected.slice(0, MAX_FILES - files.length)
     if (allowed.length > 0) {
-      onFilesChange([...files, ...allowed])
+      setFiles((prev) => [...prev, ...allowed])
     }
     e.target.value = ''
   }
 
-  const canGenerate = prompt.trim().length >= 50 && !isGenerating
-  const hasResult = generatedPdfUrl || generatedText
+  const handleRemoveFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleGenerate = async () => {
+    if (!isAuthenticated || !user) {
+      openRegisterModal()
+      return
+    }
+
+    if (!prompt.trim() || prompt.length < 50) {
+      toast.error('Por favor, descreva os fatos com mais detalhes (mínimo 50 caracteres)')
+      return
+    }
+
+    setIsGenerating(true)
+    setProgress(0)
+    setGeneratedPdfUrl('')
+    setGeneratedText('')
+
+    try {
+      // 1. Upload files if any
+      let uploadedFiles: any[] = []
+      let jobUuid = ''
+
+      if (files.length > 0) {
+        setProgress(10)
+        const result = await uploadFiles(
+          files,
+          user.id,
+          selectedClientId,
+          FunctionalityType.AI,
+          (p) => {
+            setProgress(10 + Math.floor((p * 30) / 100))
+          }
+        )
+        uploadedFiles = result.uploadMetadata || []
+        jobUuid = result.jobUuid || ''
+      }
+
+      // 2. Call Analysis API
+      setProgress(40)
+      const response = await fetchWithCredentials(`${API_URL}/ai/analyses/labor-claim`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          files: uploadedFiles,
+          job_uuid: jobUuid,
+          user_id: user.id,
+          client_id: selectedClientId || undefined,
+          functionality: FunctionalityType.AI,
+          store_pdf: true,
+        }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 402) {
+          toast.error('Créditos insuficientes')
+          return
+        }
+        throw new Error('Erro ao gerar reclamação')
+      }
+
+      const { job_id } = await response.json()
+      
+      // 3. Poll for results
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${job_id}`)
+          if (!statusRes.ok) return
+
+          const statusData = await statusRes.json()
+          
+          const backendProgress = statusData.progress || 0
+          setProgress(40 + Math.floor((backendProgress * 60) / 100))
+
+          if (statusData.status === 'completed') {
+            clearInterval(pollInterval)
+            setProgress(100)
+            
+            if (statusData.result) {
+              setGeneratedText(statusData.result.text || '')
+              if (statusData.result.pdf_url) {
+                setGeneratedPdfUrl(statusData.result.pdf_url)
+              }
+            }
+            
+            toast.success('Reclamação trabalhista gerada com sucesso!')
+            setIsGenerating(false)
+          } else if (statusData.status === 'failed') {
+            clearInterval(pollInterval)
+            throw new Error(statusData.error || 'Falha na geração')
+          }
+        } catch (error) {
+          // Ignore polling errors
+        }
+      }, 2000)
+
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao processar')
+      setIsGenerating(false)
+    }
+  }
 
   return (
-    <>
-      {/* Textarea para fatos do caso */}
-      <div className="mb-6">
-        <label htmlFor="labor-claim-prompt" className="block text-sm font-bold text-foreground mb-3">
-          Descreva os fatos do caso <span className="text-destructive">*</span>
-        </label>
-        <div className="rounded-2xl border border-input bg-muted/50 focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all duration-200">
-          <textarea
-            id="labor-claim-prompt"
-            ref={promptTextareaRef}
-            value={prompt}
-            onChange={(e) => {
-              setPrompt(e.target.value)
-              resizePromptTextarea()
-            }}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter' || e.shiftKey) return
-              e.preventDefault()
-              if (!canGenerate) return
-              void onGenerate()
-            }}
-            placeholder={
-              'Descreva detalhadamente os fatos do caso, incluindo:\n' +
-              '- Nome do reclamante e da empresa reclamada\n' +
-              '- Data de admissão e rescisão\n' +
-              '- Função exercida e salário\n' +
-              '- Irregularidades (horas extras não pagas, rescisão indevida, etc.)\n' +
-              '- Qualquer informação relevante para a reclamação'
-            }
-            className="w-full px-6 py-4 text-base bg-transparent focus:outline-none resize-none placeholder-muted-foreground text-foreground min-h-[160px]"
-          />
-          <div className="px-6 pb-4 flex items-center justify-between gap-4 text-xs text-muted-foreground font-medium">
-            <span>
-              {prompt.trim().length < 50
-                ? `Mínimo 50 caracteres (faltam ${50 - prompt.trim().length})`
-                : 'Enter para gerar \u2022 Shift+Enter para quebra de linha'}
-            </span>
-            <span>{prompt.length} caracteres</span>
+    <div className="space-y-6">
+      <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">Relato dos Fatos</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Descreva detalhadamente o caso, incluindo datas, valores, horas extras não pagas e outras verbas pleiteadas.
+          </p>
+          <div className="relative">
+            <textarea
+              ref={promptTextareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Ex: O reclamante foi admitido em 10/01/2020 e demitido sem justa causa em 15/05/2023. Recebia salário de R$ 2.500,00. Trabalhava das 08h às 19h com 30min de intervalo..."
+              className="w-full min-h-[160px] p-4 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all shadow-sm text-foreground placeholder:text-muted-foreground"
+              disabled={isGenerating}
+            />
+            <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
+              {prompt.length} caracteres
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Upload de documentos de apoio */}
-      <div className="mb-6">
-        <label className="block text-sm font-bold text-foreground mb-3">
-          Documentos de apoio <span className="text-muted-foreground font-normal">(opcional)</span>
-        </label>
-        <p className="text-sm text-muted-foreground mb-3">
-          Anexe contratos de trabalho, holerites, TRCT ou outros documentos relevantes para enriquecer a petição.
-        </p>
+        <div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">Documentos Complementares (Opcional)</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Anexe documentos que comprovem o relato (TRCT, holerites, cartão de ponto).
+          </p>
 
-        {/* Lista de arquivos já adicionados */}
-        {files.length > 0 && (
-          <div className="space-y-2 mb-3">
-            {files.map((file, index) => (
-              <div key={`${file.name}-${file.size}`} className="border border-border rounded-xl bg-card p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground truncate">{file.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {(file.size / (1024 * 1024)).toFixed(2)} MB
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveFile(index)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Dropzone para novos arquivos */}
-        {files.length < 5 && (
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={cn(
-              'border-2 border-dashed rounded-xl transition-all cursor-pointer',
+              "border-2 border-dashed rounded-xl p-6 transition-colors text-center",
               isDragging
-                ? 'border-primary bg-primary/5 scale-[1.01]'
-                : 'border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/50'
+                ? "border-primary bg-primary/5"
+                : "border-border hover:bg-muted/50"
             )}
           >
-            <input
-              id="labor-claim-files"
-              type="file"
-              accept="application/pdf"
-              multiple
-              onChange={handleFileInput}
-              className="hidden"
-            />
-            <label
-              htmlFor="labor-claim-files"
-              className="flex flex-col items-center justify-center py-6 px-6 cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                {files.length > 0 ? (
-                  <Plus className="h-6 w-6 text-primary" />
-                ) : (
-                  <Upload className="h-6 w-6 text-primary" />
-                )}
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <Upload className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-foreground mb-1">
-                  <span className="text-primary font-semibold">Clique para escolher</span> ou arraste arquivos
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Arraste arquivos PDF aqui
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  PDF (até 10MB cada) • Máximo {5 - files.length} arquivo{5 - files.length !== 1 ? 's' : ''}
+                <p className="text-xs text-muted-foreground mt-1">
+                  ou clique para selecionar (máx. {MAX_FILES})
                 </p>
               </div>
-            </label>
+              <input
+                type="file"
+                accept="application/pdf"
+                multiple
+                onChange={handleFileInput}
+                className="hidden"
+                id="labor-file-upload"
+              />
+              <label
+                htmlFor="labor-file-upload"
+                className="mt-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+              >
+                Selecionar Arquivos
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {files.length > 0 && (
+          <div className="space-y-3">
+            {files.map((file, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRemoveFile(index)}
+                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
+
+        {isGenerating && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Elaborando petição...</span>
+              <span className="font-medium text-foreground">{progress}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        )}
+
+        <div className="pt-4 border-t border-border">
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !prompt.trim()}
+            className="w-full py-3 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
+          >
+            {isGenerating ? (
+              <>
+                <Gavel className="h-5 w-5 animate-pulse" />
+                Gerando Reclamação...
+              </>
+            ) : (
+              <>
+                <Gavel className="h-5 w-5" />
+                Gerar Reclamação Trabalhista
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Bot\u00e3o gerar */}
-      <div className="flex space-x-4 mb-6">
-        <button
-          onClick={onGenerate}
-          disabled={!canGenerate}
-          className="bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
-        >
-          {isGenerating ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-              <span>Gerando Reclamação...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-5 w-5 mr-2" />
-              <span>Gerar Reclamação Trabalhista</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Barra de progresso */}
-      {isGenerating && (
-        <div className="mb-6 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-foreground">
-              {progress < 10
-                ? 'Iniciando...'
-                : progress < 40
-                  ? 'Processando documentos...'
-                  : progress < 95
-                    ? 'Gerando reclama\u00e7\u00e3o trabalhista...'
-                    : 'Finalizando...'}
-            </span>
-            <span className="text-muted-foreground font-mono">{progress}%</span>
-          </div>
-          <Progress value={progress} className="h-3" />
-        </div>
-      )}
-
-      {/* Resultado - PDF iframe */}
-      {generatedPdfUrl ? (
-        <div role="region" aria-labelledby="result-heading">
-          <div className="flex items-center justify-between mb-3">
-            <h3 id="result-heading" className="text-base font-semibold text-foreground">
-              Reclama\u00e7\u00e3o Trabalhista Gerada
+      {(generatedText || generatedPdfUrl) && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Petição Gerada
             </h3>
-            <button
-              onClick={onDownload}
-              aria-label="Baixar como PDF"
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-              title="Baixar PDF"
-            >
-              <Download className="h-5 w-5" aria-hidden="true" />
-            </button>
+            {generatedPdfUrl && (
+              <a
+                href={generatedPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Baixar PDF
+              </a>
+            )}
           </div>
-          <div className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner">
-            <iframe
-              title="Reclama\u00e7\u00e3o Trabalhista"
-              src={generatedPdfUrl}
-              className="w-full h-[70vh] rounded-xl border border-border bg-background"
-            />
-          </div>
-        </div>
-      ) : hasResult && previewHtml ? (
-        /* Fallback: resultado em HTML */
-        <div role="region" aria-labelledby="result-heading">
-          <div className="flex items-center justify-between mb-4">
-            <h3 id="result-heading" className="text-lg font-bold text-foreground">
-              Reclama\u00e7\u00e3o Trabalhista Gerada
-            </h3>
-            <button
-              onClick={onDownload}
-              aria-label="Baixar documento"
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-              title="Baixar"
-            >
-              <Download className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner">
-            <div
-              className="prose prose-lg max-w-none dark:prose-invert"
+          
+          <div className="p-6">
+            <div 
+              className="prose prose-slate dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           </div>
         </div>
-      ) : null}
-    </>
+      )}
+    </div>
   )
 }
