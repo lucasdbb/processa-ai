@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Download, FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
+import { Download, FileSearch, FileText, Plus, Trash2, Upload, Columns, Rows } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { cn, normalizeMarkdown } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
@@ -13,14 +14,19 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 
+import { ClientSelector } from '@/components/forms/client-selector'
+
 const MAX_FILES = 5
 
 interface ProcessSummaryToolProps {
   selectedClientId?: string | null
+  onClientChange?: (id: string | null) => void
 }
 
-export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps) {
+export function ProcessSummaryTool({ selectedClientId, onClientChange }: ProcessSummaryToolProps) {
   const { user, isAuthenticated } = useUser()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
   const openRegisterModal = outletContext?.openRegisterModal || (() => {})
   const { fetchCredits } = useCreditsStore()
@@ -32,6 +38,7 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string>('')
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [layoutMode, setLayoutMode] = useState<'stack' | 'side-by-side'>('stack')
 
   const previewHtml = useMemo(() => {
     if (!generatedText) return ''
@@ -185,145 +192,229 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
   }, [isAuthenticated, files, openRegisterModal, uploadFiles, selectedClientId, fetchCredits])
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">Documentos do Processo</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Envie as peças processuais (PDF) para gerar um resumo cronológico e identificar pontos-chave.
-          </p>
-
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={cn(
-              "border-2 border-dashed rounded-xl p-8 transition-colors text-center",
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-border hover:bg-muted/50"
-            )}
-          >
-            <div className="flex flex-col items-center justify-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                <Upload className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Arraste e solte seus arquivos aqui
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  ou clique para selecionar (máx. {MAX_FILES} arquivos)
-                </p>
-              </div>
-              <input
-                type="file"
-                accept="application/pdf"
-                multiple
-                onChange={handleFileInput}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="mt-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
-              >
-                Selecionar Arquivos
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {files.length > 0 && (
-          <div className="space-y-3">
-            {files.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-4 w-4 text-red-600 dark:text-red-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
+    <div className="h-full flex flex-col gap-4">
+      <div className={cn(
+        "flex-1 min-h-0 grid gap-4 transition-all duration-300 ease-in-out",
+        layoutMode === 'side-by-side' ? "lg:grid-cols-2 lg:items-start" : "grid-cols-1"
+      )}>
+        {/* Left Column: Input */}
+        <div className="flex flex-col h-full min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl p-4 gap-4">
+            <div className="flex-shrink-0">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold text-foreground">Documentos do Processo</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Envie as peças processuais (PDF).
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {onClientChange && (
+                    <ClientSelector
+                      value={selectedClientId ?? null}
+                      onChange={onClientChange}
+                      className="w-48"
+                    />
+                  )}
+                  <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1">
+                    <button
+                      onClick={() => setLayoutMode('stack')}
+                      className={cn(
+                        "p-1.5 rounded-md transition-all",
+                        layoutMode === 'stack' 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : isDark 
+                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      title="Visualização empilhada"
+                    >
+                      <Rows className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setLayoutMode('side-by-side')}
+                      className={cn(
+                        "p-1.5 rounded-md transition-all",
+                        layoutMode === 'side-by-side' 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : isDark 
+                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      title="Visualização lado a lado"
+                    >
+                      <Columns className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleRemoveFile(index)}
-                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
               </div>
-            ))}
-          </div>
-        )}
-
-        {isGenerating && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Processando...</span>
-              <span className="font-medium text-foreground">{progress}%</span>
             </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-        )}
 
-        <div className="pt-4 border-t border-border">
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || files.length === 0}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full"
-          >
-            {isGenerating ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
-                <span>Analisando Processo...</span>
-              </>
-            ) : (
-              <>
-                <FileSearch className="h-5 w-5 mr-2" />
-                <span>Gerar Resumo do Processo</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+              {files.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {files.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                          <FileText className="h-4 w-4 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile(index)}
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-      {(generatedText || generatedPdfUrl) && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Resultado da Análise
-            </h3>
-            {generatedPdfUrl && (
-              <a
-                href={generatedPdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors"
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={cn(
+                  "border-2 border-dashed rounded-xl transition-colors text-center cursor-pointer group",
+                  isDragging
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-muted/30 hover:border-primary/50",
+                  files.length > 0 ? "p-4" : "p-8"
+                )}
               >
-                <Download className="h-4 w-4" />
-                Baixar PDF
-              </a>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  onChange={handleFileInput}
+                  className="hidden"
+                  id="file-upload"
+                />
+                
+                {files.length > 0 ? (
+                  <label
+                    htmlFor="file-upload"
+                    className="flex items-center justify-center gap-3 cursor-pointer w-full"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Plus className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-primary">Adicionar mais arquivos</p>
+                      <p className="text-xs text-muted-foreground">PDF até 10MB</p>
+                    </div>
+                  </label>
+                ) : (
+                  <label
+                    htmlFor="file-upload"
+                    className="flex flex-col items-center justify-center gap-3 cursor-pointer w-full"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                      <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Arraste e solte seus arquivos aqui
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ou clique para selecionar (máx. {MAX_FILES} arquivos)
+                      </p>
+                    </div>
+                    <div className="mt-2 px-4 py-2 bg-foreground text-background text-xs font-semibold rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      Selecionar Arquivos
+                    </div>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {isGenerating && (
+              <div className="space-y-2 flex-shrink-0">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Processando...</span>
+                  <span className="font-medium text-foreground">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
             )}
-          </div>
-          
-          <div className="p-6">
-            <div 
-              className="prose prose-slate dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
+
+            <div className="pt-4 border-t border-border flex-shrink-0">
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || files.length === 0}
+                className={cn(
+                  "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full disabled:opacity-50 disabled:cursor-not-allowed border border-border",
+                  "bg-white dark:bg-slate-100 text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-200"
+                )}
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
+                    <span>Analisando Processo...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileSearch className="h-5 w-5 mr-2" />
+                    <span>Gerar Resumo do Processo</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Right Column: Results */}
+        {(generatedText || generatedPdfUrl) ? (
+          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
+            <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between flex-shrink-0">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Resultado da Análise
+              </h3>
+              {generatedPdfUrl && (
+                <a
+                  href={generatedPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  Baixar PDF
+                </a>
+              )}
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div 
+                className="prose prose-slate dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
+            </div>
+          </div>
+        ) : (
+           layoutMode === 'side-by-side' && (
+            <div className="hidden lg:flex items-center justify-center h-full min-h-[400px] border-2 border-dashed border-border/50 rounded-2xl bg-muted/10 text-muted-foreground">
+              <div className="text-center max-w-xs p-6">
+                 <FileSearch className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+                 <p className="text-sm">O resumo do processo aparecerá aqui</p>
+              </div>
+            </div>
+           )
+        )}
+      </div>
     </div>
   )
 }

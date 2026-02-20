@@ -127,8 +127,8 @@ export default function IAHubPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="h-[calc(100vh-160px)] flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-4 flex-shrink-0">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">IA Juridica</h1>
@@ -138,11 +138,11 @@ export default function IAHubPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-        <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="bg-card rounded-2xl border border-border shadow-sm p-4 flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
           <div className="flex items-center space-x-4 min-w-0">
-            <div className="bg-slate-900 p-4 rounded-2xl shadow-lg shrink-0">
-              <Brain className="h-7 w-7 text-white" strokeWidth={1.5} />
+            <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl shadow-sm shrink-0 border border-slate-200 dark:border-slate-700">
+              <Brain className="h-6 w-6 text-slate-900 dark:text-slate-100" strokeWidth={1.5} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -168,20 +168,18 @@ export default function IAHubPage() {
               {currentTool?.description ? <p className="text-muted-foreground mt-1 text-sm">{currentTool.description}</p> : null}
             </div>
           </div>
-          <ClientSelector
-            value={selectedClientId}
-            onChange={(id) => setSelectedClientId(id)}
-            className="w-64 flex-shrink-0"
-            label="Cliente"
-          />
         </div>
 
-        {currentTool ? (
-          <currentTool.Component
-            selectedClientId={selectedClientId}
-            onOpenRegisterModal={openRegisterModal}
-          />
-        ) : null}
+        <div className="flex-1 min-h-0 relative">
+          {currentTool ? (
+            <currentTool.Component
+              key={activeSlug}
+              selectedClientId={selectedClientId}
+              onClientChange={setSelectedClientId}
+              onOpenRegisterModal={openRegisterModal}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   )

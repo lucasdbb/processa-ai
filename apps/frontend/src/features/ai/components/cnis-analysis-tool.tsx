@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
-import { Download, Sparkles, Trash2, Upload, FileText } from 'lucide-react'
+import { Download, Sparkles, Trash2, Upload, FileText, Columns, Rows } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
@@ -10,13 +11,18 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 
+import { ClientSelector } from '@/components/forms/client-selector'
+
 interface CnisAnalysisToolProps {
   onOpenRegisterModal?: () => void
   selectedClientId?: string | null
+  onClientChange?: (id: string | null) => void
 }
 
-export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: CnisAnalysisToolProps) {
+export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, onClientChange }: CnisAnalysisToolProps) {
   const { isAuthenticated } = useUser()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
   const openRegisterModal = onOpenRegisterModal || outletContext?.openRegisterModal || (() => {})
   const { uploadFiles } = useFileUpload()
@@ -27,6 +33,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [layoutMode, setLayoutMode] = useState<'stack' | 'side-by-side'>('stack')
   
   // Ref para URL do PDF para revogar quando mudar
   const cnisPdfUrlRef = useRef<string | null>(null)
@@ -256,135 +263,211 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
   }, [generatedPdfUrl, isAuthenticated, openRegisterModal])
 
   return (
-    <>
-      <div className="mb-6">
-        <label htmlFor="cnis-file" className="block text-sm font-medium text-foreground mb-2">
-          Envie o CNIS (PDF) <span className="text-destructive">*</span>
-        </label>
+    <div className="h-full flex flex-col gap-4">
+      <div className={cn(
+        "flex-1 min-h-0 grid gap-4 transition-all duration-300 ease-in-out",
+        layoutMode === 'side-by-side' ? "lg:grid-cols-2 lg:items-start" : "grid-cols-1"
+      )}>
+        {/* Left Column: Inputs */}
+        <div className="flex flex-col h-full min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl p-4 gap-4">
+            <div className="flex-shrink-0">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <label htmlFor="cnis-file" className="block text-sm font-medium text-foreground">
+                  Envie o CNIS (PDF) <span className="text-destructive">*</span>
+                </label>
 
-        {cnisFile ? (
-          <div className="border-2 border-border rounded-xl bg-card p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-foreground truncate">{cnisFile.name}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {(cnisFile.size / (1024 * 1024)).toFixed(2)} MB • PDF
+                <div className="flex items-center gap-2">
+                  {onClientChange && (
+                    <ClientSelector
+                      value={selectedClientId ?? null}
+                      onChange={onClientChange}
+                      className="w-48"
+                    />
+                  )}
+                  <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode('stack')}
+                      className={cn(
+                        "p-1.5 rounded-md transition-all",
+                        layoutMode === 'stack' 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : isDark 
+                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      title="Visualização empilhada"
+                    >
+                      <Rows className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode('side-by-side')}
+                      className={cn(
+                        "p-1.5 rounded-md transition-all",
+                        layoutMode === 'side-by-side' 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : isDark 
+                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      title="Visualização lado a lado"
+                    >
+                      <Columns className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {cnisFile ? (
+                <div className="border-2 border-border rounded-xl bg-card p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-foreground truncate">{cnisFile.name}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(cnisFile.size / (1024 * 1024)).toFixed(2)} MB • PDF
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearCnisFile}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm font-medium"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={cn(
+                    'border-2 border-dashed rounded-xl transition-all cursor-pointer group',
+                    isDragging
+                      ? 'border-primary bg-primary/5 scale-[1.01]'
+                      : 'border-border bg-muted/10 hover:bg-muted/30 hover:border-primary/50'
+                  )}
+                >
+                  <input
+                    key={cnisFileInputKey}
+                    id="cnis-file"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleCnisFileChange}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="cnis-file"
+                    className="flex flex-col items-center justify-center py-10 px-6 cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
+                      <Upload className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="text-center space-y-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        <span className="text-primary">Clique para escolher</span> ou arraste o arquivo
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        PDF até 10MB
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {isGenerating && (
+              <div className="flex-shrink-0 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-foreground">
+                    {progress < 20 ? 'Salvando arquivo...' : 'Processando análise...'}
+                  </span>
+                  <span className="text-muted-foreground font-mono">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-3" />
+              </div>
+            )}
+
+            <div className="flex-shrink-0 pt-4 border-t border-border">
               <button
-                type="button"
-                onClick={clearCnisFile}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm font-medium"
+                onClick={handleGenerate}
+                disabled={!cnisFile || isGenerating}
+                className={cn(
+                  "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed border border-border",
+                  "bg-white dark:bg-slate-100 text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-200"
+                )}
               >
-                <Trash2 className="h-4 w-4" />
-                Remover
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
+                    <span>Analisando CNIS...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    <span>Analisar CNIS</span>
+                  </>
+                )}
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Results */}
+        {generatedPdfUrl ? (
+          <div role="region" aria-labelledby="result-heading" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-3 flex-shrink-0">
+              <h3 id="result-heading" className="text-base font-semibold text-foreground">
+                Análise do CNIS
+              </h3>
+              <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
+                <button
+                  onClick={handleDownload}
+                  aria-label="Baixar como PDF"
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                  title="Baixar PDF"
+                >
+                  <Download className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div
+              className={cn(
+                "bg-muted/30 border border-border rounded-2xl p-8 shadow-inner flex-1 min-h-0",
+                layoutMode === 'side-by-side' ? "" : "h-[70vh]"
+              )}
+              role="article"
+              aria-label="Análise do CNIS"
+              tabIndex={0}
+            >
+              <iframe 
+                title="Análise do CNIS" 
+                src={generatedPdfUrl} 
+                className="w-full h-full rounded-xl border border-border bg-background"
+              />
             </div>
           </div>
         ) : (
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={cn(
-              'border-2 border-dashed rounded-xl transition-all cursor-pointer',
-              isDragging
-                ? 'border-primary bg-primary/5 scale-[1.01]'
-                : 'border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/50'
-            )}
-          >
-            <input
-              key={cnisFileInputKey}
-              id="cnis-file"
-              type="file"
-              accept="application/pdf"
-              onChange={handleCnisFileChange}
-              className="hidden"
-            />
-            <label
-              htmlFor="cnis-file"
-              className="flex flex-col items-center justify-center py-8 px-6 cursor-pointer"
-            >
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <Upload className="h-7 w-7 text-primary" />
+           layoutMode === 'side-by-side' && (
+            <div className="hidden lg:flex items-center justify-center h-full min-h-[400px] border-2 border-dashed border-border/50 rounded-2xl bg-muted/10 text-muted-foreground">
+              <div className="text-center max-w-xs p-6">
+                 <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+                 <p className="text-sm">O resultado da análise aparecerá aqui</p>
               </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-foreground mb-1">
-                  <span className="text-primary font-semibold">Clique para escolher</span> ou arraste o arquivo aqui
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Aceita apenas PDF (até 10MB)
-                </p>
-              </div>
-            </label>
-          </div>
+            </div>
+           )
         )}
       </div>
-
-      <div className="flex space-x-4 mb-6">
-        <button
-          onClick={handleGenerate}
-          disabled={!cnisFile || isGenerating}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
-        >
-          {isGenerating ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
-              <span>Analisando CNIS...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-5 w-5 mr-2" />
-              <span>Analisar CNIS</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {isGenerating && (
-        <div className="mb-6 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-foreground">
-              {progress < 20 ? 'Salvando arquivo...' : 'Processando análise...'}
-            </span>
-            <span className="text-muted-foreground font-mono">{progress}%</span>
-          </div>
-          <Progress value={progress} className="h-3" />
-        </div>
-      )}
-
-      {generatedPdfUrl ? (
-        <div role="region" aria-labelledby="result-heading">
-          <div className="flex items-center justify-between mb-3">
-            <h3 id="result-heading" className="text-base font-semibold text-foreground">
-              Análise do CNIS
-            </h3>
-            <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
-              <button
-                onClick={handleDownload}
-                aria-label="Baixar como PDF"
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                title="Baixar PDF"
-              >
-                <Download className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-          <div
-            className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner"
-            role="article"
-            aria-label="Análise do CNIS"
-            tabIndex={0}
-          >
-            <iframe title="Análise do CNIS" src={generatedPdfUrl} className="w-full h-[70vh] rounded-xl border border-border bg-background" />
-          </div>
-        </div>
-      ) : null}
-    </>
+    </div>
   )
 }

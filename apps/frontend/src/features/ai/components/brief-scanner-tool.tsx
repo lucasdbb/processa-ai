@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
-import { Download, FileText, Plus, ScanSearch, Trash2, Upload } from 'lucide-react'
+import { Download, FileText, Plus, ScanSearch, Trash2, Upload, Columns, Rows } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
@@ -13,13 +14,18 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 
+import { ClientSelector } from '@/components/forms/client-selector'
+
 interface BriefScannerToolProps {
   onOpenRegisterModal?: () => void
   selectedClientId?: string | null
+  onClientChange?: (id: string | null) => void
 }
 
-export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, selectedClientId }: BriefScannerToolProps) {
+export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, selectedClientId, onClientChange }: BriefScannerToolProps) {
   const { isAuthenticated } = useUser()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
   const openRegisterModal = propOpenRegisterModal || outletContext?.openRegisterModal || (() => {})
   const { uploadFiles } = useFileUpload()
@@ -30,6 +36,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [layoutMode, setLayoutMode] = useState<'stack' | 'side-by-side'>('stack')
 
   const markdownToRender = normalizeMarkdown(generatedText)
   const previewHtml = useMemo(() => {
@@ -253,180 +260,269 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const hasResult = !!generatedPdfUrl || !!generatedText
 
   return (
-    <>
-      {/* Upload de pecas processuais */}
-      <div className="mb-6">
-        <label className="block text-sm font-bold text-foreground mb-3">
-          Envie a(s) peça(s) processual(is) <span className="text-destructive">*</span>
-        </label>
-        <p className="text-sm text-muted-foreground mb-3">
-          Anexe petições, contestações, recursos ou outras peças que deseja analisar. A IA identificará teses frageis,
-          pedidos faltantes, riscos e oportunidades de melhoria.
-        </p>
+    <div className="h-full flex flex-col gap-4">
+      <div className={cn(
+        "flex-1 min-h-0 grid gap-4 transition-all duration-300 ease-in-out",
+        layoutMode === 'side-by-side' ? "lg:grid-cols-2 lg:items-start" : "grid-cols-1"
+      )}>
+        {/* Left Column: Input */}
+        <div className="flex flex-col h-full min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl p-4 gap-4">
+            <div className="flex-shrink-0">
+              <div className="flex items-start justify-between mb-4 flex-wrap gap-4">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm font-bold text-foreground mb-1">
+                    Envie a(s) peça(s) processual(is) <span className="text-destructive">*</span>
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    Anexe petições, contestações, recursos ou outras peças que deseja analisar. A IA identificará teses frágeis,
+                    pedidos faltantes, riscos e oportunidades de melhoria.
+                  </p>
+                </div>
 
-        {/* Lista de arquivos */}
-        {files.length > 0 && (
-          <div className="space-y-2 mb-3">
-            {files.map((file, index) => (
-              <div key={`${file.name}-${file.size}`} className="border border-border rounded-xl bg-card p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground truncate">{file.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {(file.size / (1024 * 1024)).toFixed(2)} MB
-                      </div>
-                    </div>
+                <div className="flex items-center gap-2">
+                  {onClientChange && (
+                    <ClientSelector
+                      value={selectedClientId ?? null}
+                      onChange={onClientChange}
+                      className="w-48"
+                    />
+                  )}
+                  <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode('stack')}
+                      className={cn(
+                        "p-1.5 rounded-md transition-all",
+                        layoutMode === 'stack' 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : isDark 
+                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      title="Visualização empilhada"
+                    >
+                      <Rows className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode('side-by-side')}
+                      className={cn(
+                        "p-1.5 rounded-md transition-all",
+                        layoutMode === 'side-by-side' 
+                          ? "bg-background shadow-sm text-foreground" 
+                          : isDark 
+                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      title="Visualização lado a lado"
+                    >
+                      <Columns className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFile(index)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
 
-        {/* Dropzone */}
-        {files.length < 5 && (
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={cn(
-              'border-2 border-dashed rounded-xl transition-all cursor-pointer',
-              isDragging
-                ? 'border-primary bg-primary/5 scale-[1.01]'
-                : 'border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/50'
+            {/* Lista de arquivos e Dropzone */}
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+              {files.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {files.map((file, index) => (
+                    <div key={`${file.name}-${file.size}`} className="border border-border rounded-xl bg-card p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-foreground truncate">{file.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {(file.size / (1024 * 1024)).toFixed(2)} MB
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(index)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {files.length < 5 && (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={cn(
+                    'border-2 border-dashed rounded-xl transition-all cursor-pointer group',
+                    isDragging
+                      ? 'border-primary bg-primary/5 scale-[1.01]'
+                      : 'border-border bg-muted/10 hover:bg-muted/30 hover:border-primary/50',
+                    files.length > 0 ? 'py-4' : ''
+                  )}
+                >
+                  <input
+                    id="scanner-files"
+                    type="file"
+                    accept="application/pdf"
+                    multiple
+                    onChange={handleFileInput}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="scanner-files"
+                    className={cn(
+                      "flex flex-col items-center justify-center cursor-pointer",
+                      files.length > 0 ? "py-4 px-4 flex-row gap-4" : "py-10 px-6"
+                    )}
+                  >
+                    <div className={cn(
+                      "rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-200",
+                      files.length > 0 ? "w-10 h-10" : "w-12 h-12 mb-4"
+                    )}>
+                      {files.length > 0 ? (
+                        <Plus className={cn("text-primary", files.length > 0 ? "h-5 w-5" : "h-6 w-6")} />
+                      ) : (
+                        <Upload className="h-6 w-6 text-primary" />
+                      )}
+                    </div>
+                    <div className={cn("text-center", files.length > 0 && "text-left")}>
+                      <p className="text-sm font-semibold text-foreground">
+                        {files.length > 0 ? (
+                          <span className="text-primary">Adicionar mais arquivos</span>
+                        ) : (
+                          <>
+                            <span className="text-primary">Clique para escolher</span> ou arraste
+                          </>
+                        )}
+                      </p>
+                      {!files.length && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PDF (até 10MB) • Máx {5 - files.length} arqs
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* Barra de progresso */}
+            {isGenerating && (
+              <div className="flex-shrink-0 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-foreground">
+                    {progress < 20
+                      ? 'Salvando arquivo(s)...'
+                      : progress < 40
+                        ? 'Extraindo texto das pecas...'
+                        : progress < 95
+                          ? 'Analisando argumentos e identificando fragilidades...'
+                          : 'Finalizando relatorio...'}
+                  </span>
+                  <span className="text-muted-foreground font-mono">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-3" />
+              </div>
             )}
-          >
-            <input
-              id="scanner-files"
-              type="file"
-              accept="application/pdf"
-              multiple
-              onChange={handleFileInput}
-              className="hidden"
-            />
-            <label
-              htmlFor="scanner-files"
-              className="flex flex-col items-center justify-center py-8 px-6 cursor-pointer"
-            >
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                {files.length > 0 ? (
-                  <Plus className="h-7 w-7 text-primary" />
-                ) : (
-                  <Upload className="h-7 w-7 text-primary" />
+
+            {/* Botao analisar */}
+            <div className="flex-shrink-0 pt-4 border-t border-border">
+              <button
+                onClick={handleGenerate}
+                disabled={!canGenerate}
+                className={cn(
+                  "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed border border-border",
+                  "bg-white dark:bg-slate-100 text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-200"
                 )}
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-foreground mb-1">
-                  <span className="text-primary font-semibold">Clique para escolher</span> ou arraste os arquivos aqui
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  PDF (ate 10MB cada) &bull; Maximo {5 - files.length} arquivo{5 - files.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </label>
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
+                    <span>Analisando Peça{files.length > 1 ? 's' : ''}...</span>
+                  </>
+                ) : (
+                  <>
+                    <ScanSearch className="h-5 w-5 mr-2" />
+                    <span>Analisar Peça{files.length > 1 ? 's' : ''}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Right Column: Results */}
+        {generatedPdfUrl ? (
+          <div role="region" aria-labelledby="result-heading" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-3 flex-shrink-0">
+              <h3 id="result-heading" className="text-base font-semibold text-foreground">
+                Relatorio de Analise
+              </h3>
+              <button
+                onClick={handleDownload}
+                aria-label="Baixar como PDF"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                title="Baixar PDF"
+              >
+                <Download className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className={cn(
+              "bg-muted/30 border border-border rounded-2xl p-8 shadow-inner flex-1 min-h-0",
+              layoutMode === 'side-by-side' ? "" : "h-[70vh]"
+            )}>
+              <iframe
+                title="Relatorio de Analise"
+                src={generatedPdfUrl}
+                className="w-full h-full rounded-xl border border-border bg-background"
+              />
+            </div>
+          </div>
+        ) : hasResult && previewHtml ? (
+          /* Resultado em HTML */
+          <div role="region" aria-labelledby="result-heading" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+              <h3 id="result-heading" className="text-lg font-bold text-foreground">
+                Relatorio de Analise
+              </h3>
+              <button
+                onClick={handleDownload}
+                aria-label="Baixar documento"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                title="Baixar"
+              >
+                <Download className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className={cn(
+               "bg-muted/30 border border-border rounded-2xl p-8 shadow-inner flex-1 min-h-0 overflow-y-auto",
+               layoutMode === 'side-by-side' ? "" : ""
+            )}>
+              <div
+                className="prose prose-lg max-w-none dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
+            </div>
+          </div>
+        ) : (
+           layoutMode === 'side-by-side' && (
+            <div className="hidden lg:flex items-center justify-center h-full min-h-[400px] border-2 border-dashed border-border/50 rounded-2xl bg-muted/10 text-muted-foreground">
+              <div className="text-center max-w-xs p-6">
+                 <ScanSearch className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+                 <p className="text-sm">O resultado da análise aparecerá aqui</p>
+              </div>
+            </div>
+           )
         )}
       </div>
-
-      {/* Botao analisar */}
-      <div className="flex space-x-4 mb-6">
-        <button
-          onClick={handleGenerate}
-          disabled={!canGenerate}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full sm:w-auto"
-        >
-          {isGenerating ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
-              <span>Analisando Peça{files.length > 1 ? 's' : ''}...</span>
-            </>
-          ) : (
-            <>
-              <ScanSearch className="h-5 w-5 mr-2" />
-              <span>Analisar Peça{files.length > 1 ? 's' : ''}</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Barra de progresso */}
-      {isGenerating && (
-        <div className="mb-6 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-foreground">
-              {progress < 20
-                ? 'Salvando arquivo(s)...'
-                : progress < 40
-                  ? 'Extraindo texto das pecas...'
-                  : progress < 95
-                    ? 'Analisando argumentos e identificando fragilidades...'
-                    : 'Finalizando relatorio...'}
-            </span>
-            <span className="text-muted-foreground font-mono">{progress}%</span>
-          </div>
-          <Progress value={progress} className="h-3" />
-        </div>
-      )}
-
-      {/* Resultado - PDF iframe */}
-      {generatedPdfUrl ? (
-        <div role="region" aria-labelledby="result-heading">
-          <div className="flex items-center justify-between mb-3">
-            <h3 id="result-heading" className="text-base font-semibold text-foreground">
-              Relatorio de Analise
-            </h3>
-            <button
-              onClick={handleDownload}
-              aria-label="Baixar como PDF"
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-              title="Baixar PDF"
-            >
-              <Download className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner">
-            <iframe
-              title="Relatorio de Analise"
-              src={generatedPdfUrl}
-              className="w-full h-[70vh] rounded-xl border border-border bg-background"
-            />
-          </div>
-        </div>
-      ) : hasResult && previewHtml ? (
-        /* Resultado em HTML */
-        <div role="region" aria-labelledby="result-heading">
-          <div className="flex items-center justify-between mb-4">
-            <h3 id="result-heading" className="text-lg font-bold text-foreground">
-              Relatorio de Analise
-            </h3>
-            <button
-              onClick={handleDownload}
-              aria-label="Baixar documento"
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-              title="Baixar"
-            >
-              <Download className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="bg-muted/30 border border-border rounded-2xl p-8 shadow-inner">
-            <div
-              className="prose prose-lg max-w-none dark:prose-invert"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
-          </div>
-        </div>
-      ) : null}
-    </>
+    </div>
   )
 }
