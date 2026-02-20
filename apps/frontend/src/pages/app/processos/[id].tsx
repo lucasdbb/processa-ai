@@ -16,6 +16,7 @@ import {
   MoreVertical,
   Archive,
   AlertTriangle,
+  Scale,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -97,8 +98,10 @@ export default function ProcessoDetalhePage() {
     ? {
         id: process.id,
         client_id: process.client_id,
+        client_name: process.client?.name,
         process_number: process.process_number,
         type: process.type,
+        area: process.area || '',
         court: process.court || '',
         defendant: process.defendant || '',
         value: process.value || 0,
@@ -289,6 +292,12 @@ export default function ProcessoDetalhePage() {
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary font-medium">
                 {process.type}
               </span>
+              {process.area && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-500/10 text-blue-600 dark:text-blue-500 font-medium">
+                  <Scale className="h-3 w-3" />
+                  {process.area}
+                </span>
+              )}
               {process.value && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-500/10 text-green-600 dark:text-green-500 font-medium">
                   <DollarSign className="h-3 w-3" />

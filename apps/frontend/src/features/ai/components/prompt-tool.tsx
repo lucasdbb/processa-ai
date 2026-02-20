@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useLayoutEffect, useEffect } from 'react'
-import { Download, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'

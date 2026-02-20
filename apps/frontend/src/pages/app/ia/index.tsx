@@ -6,7 +6,6 @@ import { useAiTools } from '@/features/ai/context'
 import { useCreditsStore } from '@/stores/credits-store'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { ClientSelector } from '@/components/forms/client-selector'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 

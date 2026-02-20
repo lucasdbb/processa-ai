@@ -59,6 +59,7 @@ type Process = {
   id: string
   number: string
   type: string
+  area: string | null
   court: string
   client_id: string
   client_name: string
@@ -277,6 +278,11 @@ export default function ProcessosPage() {
                         >
                           {process.status === 'active' ? 'Ativo' : 'Arquivado'}
                         </span>
+                        {process.area && (
+                          <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            {process.area}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground truncate mb-0.5">
                         {process.type} • {process.court}

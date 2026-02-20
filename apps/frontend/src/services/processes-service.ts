@@ -8,6 +8,7 @@ export interface Process {
   court: string | null;
   defendant: string | null;
   type: string;
+  area: string | null;
   subject: string | null;
   value: number | null;
   status:
@@ -30,6 +31,7 @@ export interface ProcessCreate {
   court?: string;
   defendant?: string;
   type: string;
+  area?: string;
   subject?: string;
   value?: number | null;
   notes?: string;

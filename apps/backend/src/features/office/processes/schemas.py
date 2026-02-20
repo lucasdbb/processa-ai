@@ -14,6 +14,7 @@ class ProcessCreate(BaseModel):
     court: str | None = None
     defendant: str | None = None
     type: str = Field(..., min_length=1, max_length=255)
+    area: str | None = None
     subject: str | None = None
     value: Decimal | None = None
     notes: str | None = None
@@ -25,6 +26,7 @@ class ProcessUpdate(BaseModel):
     court: str | None = None
     defendant: str | None = None
     type: str | None = None
+    area: str | None = None
     subject: str | None = None
     value: Decimal | None = None
     status: ProcessStatus | None = None
@@ -41,6 +43,7 @@ class ProcessResponse(BaseModel):
     court: str | None
     defendant: str | None
     type: str
+    area: str | None
     subject: str | None
     value: Decimal | None
     status: ProcessStatus
@@ -121,6 +124,7 @@ class ProcessDetailResponse(BaseModel):
     court: str | None
     defendant: str | None
     type: str
+    area: str | None
     subject: str | None
     value: Decimal | None
     status: ProcessStatus

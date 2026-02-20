@@ -113,10 +113,10 @@ class ProcessesService:
                 await cur.execute(
                     """
                     INSERT INTO office_api.processes (
-                        user_id, client_id, process_number, court, defendant, type,
+                        user_id, client_id, process_number, court, defendant, type, area,
                         subject, value, status, notes, start_date
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)
                     RETURNING *
                     """,
                     (
@@ -126,6 +126,7 @@ class ProcessesService:
                         data.court,
                         data.defendant,
                         data.type,
+                        data.area,
                         data.subject,
                         data.value,
                         data.notes,

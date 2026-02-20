@@ -11,6 +11,7 @@ export interface ProcessFormData {
   id: string
   process_number: string
   type: string
+  area: string
   court: string
   client_id: string
   client_name?: string
@@ -60,6 +61,7 @@ const numberToCurrencyDisplay = (value: number | string | null | undefined): str
 const getInitialFormData = (process?: ProcessFormData, preselectedClient?: Client) => ({
   process_number: process?.process_number ?? '',
   type: process?.type ?? '',
+  area: process?.area ?? '',
   court: process?.court ?? '',
   client_id: process?.client_id ?? preselectedClient?.id ?? '',
   defendant: process?.defendant ?? '',
@@ -98,6 +100,10 @@ function ProcessFormDialogBody({
       newErrors.type = 'Tipo de processo e obrigatorio'
     }
 
+    if (!formData.area.trim()) {
+      newErrors.area = 'Area do direito e obrigatoria'
+    }
+
     if (!formData.court.trim()) {
       newErrors.court = 'Vara/Tribunal e obrigatorio'
     }
@@ -129,6 +135,7 @@ function ProcessFormDialogBody({
         const payload: ProcessUpdate = {
           process_number: formData.process_number,
           type: formData.type,
+          area: formData.area,
           court: formData.court || undefined,
           defendant: formData.defendant || undefined,
           value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
@@ -142,6 +149,8 @@ function ProcessFormDialogBody({
         const updatedProcess: ProcessFormData = {
           ...process,
           ...updated,
+          client_name: selectedClient?.name ?? process.client_name,
+          area: updated.area || '',
           court: updated.court || '',
           defendant: updated.defendant || '',
           value: updated.value || 0,
@@ -158,6 +167,7 @@ function ProcessFormDialogBody({
           client_id: formData.client_id,
           process_number: formData.process_number,
           type: formData.type,
+          area: formData.area,
           court: formData.court || undefined,
           defendant: formData.defendant || undefined,
           value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
@@ -171,6 +181,7 @@ function ProcessFormDialogBody({
           id: created.id,
           process_number: created.process_number,
           type: created.type,
+          area: created.area || '',
           court: created.court || '',
           client_id: created.client_id,
           client_name: selectedClient?.name,
@@ -235,33 +246,37 @@ function ProcessFormDialogBody({
   }
 
   const processTypes = [
-    'Reclamacao Trabalhista',
-    'Acao Civil Publica',
-    'Acao de Cobranca',
-    'Acao de Indenizacao',
-    'Acao Previdenciaria',
-    'Execucao Fiscal',
-    'Mandado de Seguranca',
+    'Reclamação Trabalhista',
+    'Ação Civil Pública',
+    'Ação de Cobrança',
+    'Ação de Indenização',
+    'Ação Previdenciária',
+    'Execução Fiscal',
+    'Mandado de Segurança',
+    'Divórcio',
+    'Inventário',
+    'Alimentos',
+    'Usucapião',
+    'Despejo',
     'Outros',
   ]
 
-  // Montar initialClient para o ClientSelect
-  const initialClient = process && process.client_id ? {
-    id: process.client_id,
-    name: process.client_name || '',
-    user_id: '',
-    email: null,
-    phone: null,
-    cpf_cnpj: null,
-    address: null,
-    city: null,
-    state: null,
-    zip_code: null,
-    notes: null,
-    status: 'active' as const,
-    created_at: '',
-    updated_at: '',
-  } : preselectedClient
+  const processAreas = [
+    'Trabalhista',
+    'Cível',
+    'Família e Sucessões',
+    'Consumidor',
+    'Tributário',
+    'Criminal',
+    'Previdenciário',
+    'Empresarial',
+    'Imobiliário',
+    'Administrativo',
+    'Outros',
+  ]
+
+  // ClientSelect irá buscar os dados completos se initialClient não for passado
+  const initialClient = isEditing ? undefined : preselectedClient
 
   return (
     <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
@@ -271,25 +286,24 @@ function ProcessFormDialogBody({
 
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
         <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-6">
-          {/* Cliente - só mostra se não houver cliente pré-selecionado */}
-          {!preselectedClient && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Cliente</h3>
+          {/* Cliente - sempre visivel mas travado se edicao ou pre-selecionado */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Cliente</h3>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Selecione o Cliente <span className="text-destructive">*</span>
-                </label>
-                <ClientSelect
-                  value={formData.client_id}
-                  onChange={handleClientChange}
-                  initialClient={initialClient}
-                  error={errors.client_id}
-                  placeholder="Buscar cliente por nome, CPF ou email..."
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Selecione o Cliente <span className="text-destructive">*</span>
+              </label>
+              <ClientSelect
+                value={formData.client_id}
+                onChange={handleClientChange}
+                initialClient={initialClient}
+                error={errors.client_id}
+                placeholder="Buscar cliente por nome, CPF ou email..."
+                disabled={isEditing || !!preselectedClient}
+              />
             </div>
-          )}
+          </div>
 
           {/* Informacoes Basicas */}
           <div className="space-y-4">
@@ -315,27 +329,50 @@ function ProcessFormDialogBody({
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Tipo de Processo <span className="text-destructive">*</span>
+                  Área do Direito <span className="text-destructive">*</span>
                 </label>
                 <select
+                  value={formData.area}
+                  onChange={(e) => handleChange('area', e.target.value)}
+                  className={cn(
+                    'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                    errors.area ? 'border-destructive' : 'border-border'
+                  )}
+                >
+                  <option value="">Selecione...</option>
+                  {processAreas.map((area) => (
+                    <option key={area} value={area}>
+                      {area}
+                    </option>
+                  ))}
+                </select>
+                {errors.area && <p className="mt-1 text-xs text-destructive">{errors.area}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Tipo de Processo <span className="text-destructive">*</span>
+                </label>
+                <input
+                  list="process-types"
+                  type="text"
                   value={formData.type}
                   onChange={(e) => handleChange('type', e.target.value)}
                   className={cn(
                     'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                     errors.type ? 'border-destructive' : 'border-border'
                   )}
-                >
-                  <option value="">Selecione...</option>
+                  placeholder="Selecione ou digite..."
+                />
+                <datalist id="process-types">
                   {processTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
+                    <option key={type} value={type} />
                   ))}
-                </select>
+                </datalist>
                 {errors.type && <p className="mt-1 text-xs text-destructive">{errors.type}</p>}
               </div>
 
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                   Vara/Tribunal <span className="text-destructive">*</span>
                 </label>
@@ -347,7 +384,7 @@ function ProcessFormDialogBody({
                     'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                     errors.court ? 'border-destructive' : 'border-border'
                   )}
-                  placeholder="1a Vara do Trabalho de Sao Paulo"
+                  placeholder="Ex: 1ª Vara Cível de São Paulo"
                 />
                 {errors.court && <p className="mt-1 text-xs text-destructive">{errors.court}</p>}
               </div>
