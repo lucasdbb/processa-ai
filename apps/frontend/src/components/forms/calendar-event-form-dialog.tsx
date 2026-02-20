@@ -19,15 +19,15 @@ import {
 } from '@/services/calendar-service'
 
 const EVENT_TYPE_OPTIONS: { value: EventType; label: string; color: string }[] = [
-  { value: 'audiencia', label: 'Audiencia', color: '#ef4444' },
+  { value: 'audiencia', label: 'Audiência', color: '#ef4444' },
   { value: 'prazo', label: 'Prazo', color: '#f59e0b' },
-  { value: 'reuniao', label: 'Reuniao', color: '#3b82f6' },
-  { value: 'other', label: 'Outro', color: '#6b7280' },
+  { value: 'reuniao', label: 'Reunião', color: '#3b82f6' },
+  { value: 'other', label: 'Outros', color: '#6b7280' },
 ]
 
 const PRIORITY_OPTIONS: { value: DeadlinePriority; label: string; color: string }[] = [
   { value: 'low', label: 'Baixa', color: 'border-green-500 bg-green-500/10 text-green-700 dark:text-green-400' },
-  { value: 'medium', label: 'Media', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' },
+  { value: 'medium', label: 'Média', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' },
   { value: 'high', label: 'Alta', color: 'border-red-500 bg-red-500/10 text-red-700 dark:text-red-400' },
   { value: 'urgent', label: 'Urgente', color: 'border-red-700 bg-red-700/10 text-red-800 dark:text-red-300' },
 ]
@@ -38,6 +38,9 @@ interface CalendarEventFormDialogProps {
   onSave: () => void
   event?: CalendarEvent
   defaultDate?: string
+  defaultProcessId?: string
+  defaultClientId?: string
+  defaultEventType?: EventType
 }
 
 export function CalendarEventFormDialog({
@@ -46,6 +49,9 @@ export function CalendarEventFormDialog({
   onSave,
   event,
   defaultDate,
+  defaultProcessId,
+  defaultClientId,
+  defaultEventType,
 }: CalendarEventFormDialogProps) {
   const isEditing = !!event
 
@@ -71,9 +77,9 @@ export function CalendarEventFormDialog({
   const [startAt, setStartAt] = useState(getDefaultStart())
   const [endAt, setEndAt] = useState(getDefaultEnd())
   const [allDay, setAllDay] = useState(event?.all_day || false)
-  const [eventType, setEventType] = useState<EventType>(event?.event_type || 'other')
-  const [processoId, setProcessoId] = useState(event?.processo_id || '')
-  const [clienteId, setClienteId] = useState(event?.cliente_id || '')
+  const [eventType, setEventType] = useState<EventType>(event?.event_type || defaultEventType || 'other')
+  const [processoId, setProcessoId] = useState(event?.processo_id || defaultProcessId || '')
+  const [clienteId, setClienteId] = useState(event?.cliente_id || defaultClientId || '')
   const [priority, setPriority] = useState<DeadlinePriority>(event?.priority || 'medium')
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -88,15 +94,15 @@ export function CalendarEventFormDialog({
       setStartAt(getDefaultStart())
       setEndAt(getDefaultEnd())
       setAllDay(event?.all_day || false)
-      setEventType(event?.event_type || 'other')
-      setProcessoId(event?.processo_id || '')
-      setClienteId(event?.cliente_id || '')
+      setEventType(event?.event_type || defaultEventType || 'other')
+      setProcessoId(event?.processo_id || defaultProcessId || '')
+      setClienteId(event?.cliente_id || defaultClientId || '')
       setPriority(event?.priority || 'medium')
       setShowDeleteConfirm(false)
       setErrors({})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, event])
+  }, [isOpen, event, defaultProcessId, defaultClientId, defaultEventType])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -321,7 +327,7 @@ export function CalendarEventFormDialog({
                 value={clienteId}
                 onChange={(id: string | null) => setClienteId(id || '')}
                 placeholder="Vincular cliente..."
-                disabled={isEditing}
+                disabled={isEditing || !!defaultClientId}
               />
             </div>
             <div>
@@ -333,7 +339,7 @@ export function CalendarEventFormDialog({
                 onChange={(id: string | null) => setProcessoId(id || '')}
                 clientId={clienteId || undefined}
                 placeholder="Vincular processo..."
-                disabled={isEditing}
+                disabled={isEditing || !!defaultProcessId}
               />
             </div>
           </div>

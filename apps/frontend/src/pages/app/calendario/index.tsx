@@ -289,10 +289,10 @@ export default function CalendarioPage() {
 
   const getEventTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      audiencia: 'Audiencia',
+      audiencia: 'Audiência',
       prazo: 'Prazo',
-      reuniao: 'Reuniao',
-      other: 'Outro',
+      reuniao: 'Reunião',
+      other: 'Outros',
     }
     return labels[type] || type
   }

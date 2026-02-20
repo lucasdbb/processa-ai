@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
-import { DeadlineFormDialog } from '@/components/forms/deadline-form-dialog'
+import { CalendarEventFormDialog } from '@/components/forms/calendar-event-form-dialog'
 import { ProcessFormDialog, type ProcessFormData } from '@/components/forms/process-form-dialog'
 import { DocumentFormDialog } from '@/components/forms/document-form-dialog'
 import { TimelineFormDialog } from '@/components/forms/timeline-form-dialog'
@@ -32,7 +32,7 @@ import {
   type ProcessDetail,
   type ProcessTimelineEvent,
 } from '@/services/processes-service'
-import { deadlinesService, type Deadline } from '@/services/deadlines-service'
+import { calendarService, type CalendarEvent } from '@/services/calendar-service'
 import { documentsService, type Document } from '@/services/documents-service'
 import { timelineService, type TimelineEventType } from '@/services/timeline-service'
 
@@ -43,9 +43,9 @@ export default function ProcessoDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
-  const [showDeadlineDialog, setShowDeadlineDialog] = useState(false)
+  const [showEventDialog, setShowEventDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null)
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | undefined>(undefined)
   const [showDocumentDialog, setShowDocumentDialog] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
   const [showTimelineDialog, setShowTimelineDialog] = useState(false)
@@ -397,8 +397,8 @@ export default function ProcessoDetalhePage() {
           <div className="py-1">
             <button
               onClick={() => {
-                setEditingDeadline(null)
-                setShowDeadlineDialog(true)
+                setEditingEvent(undefined)
+                setShowEventDialog(true)
               }}
               className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
             >
@@ -485,8 +485,8 @@ export default function ProcessoDetalhePage() {
                   <p>Nenhum prazo cadastrado</p>
                   <button
                     onClick={() => {
-                      setEditingDeadline(null)
-                      setShowDeadlineDialog(true)
+                      setEditingEvent(undefined)
+                      setShowEventDialog(true)
                     }}
                     className="mt-2 text-primary hover:underline font-medium"
                   >
@@ -653,7 +653,7 @@ export default function ProcessoDetalhePage() {
                 <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p>Nenhum prazo cadastrado</p>
                 <button
-                  onClick={() => setShowDeadlineDialog(true)}
+                  onClick={() => setShowEventDialog(true)}
                   className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="h-4 w-4" />
@@ -709,9 +709,9 @@ export default function ProcessoDetalhePage() {
                         <button
                           onClick={async () => {
                             try {
-                              const fullDeadline = await deadlinesService.get(deadline.id)
-                              setEditingDeadline(fullDeadline)
-                              setShowDeadlineDialog(true)
+                              const fullEvent = await calendarService.getEvent(deadline.id)
+                              setEditingEvent(fullEvent)
+                              setShowEventDialog(true)
                             } catch {
                               toast.error('Erro ao carregar prazo')
                             }
@@ -725,7 +725,7 @@ export default function ProcessoDetalhePage() {
                           onClick={async () => {
                             if (confirm('Tem certeza que deseja excluir este prazo?')) {
                               try {
-                                await deadlinesService.delete(deadline.id)
+                                await calendarService.deleteEvent(deadline.id)
                                 toast.success('Prazo excluído com sucesso')
                                 await fetchProcess()
                               } catch {
@@ -866,30 +866,19 @@ export default function ProcessoDetalhePage() {
       {/* Dialogs */}
       {process && (
         <>
-          <DeadlineFormDialog
-            isOpen={showDeadlineDialog}
+          <CalendarEventFormDialog
+            isOpen={showEventDialog}
             onClose={() => {
-              setShowDeadlineDialog(false)
-              setEditingDeadline(null)
+              setShowEventDialog(false)
+              setEditingEvent(undefined)
             }}
-            preselectedProcess={process}
-            deadline={editingDeadline ? {
-              id: editingDeadline.id,
-              title: editingDeadline.title,
-              processNumber: process?.process_number || '',
-              processId: editingDeadline.process_id,
-              date: editingDeadline.due_date.split('T')[0],
-              time: editingDeadline.due_date.includes('T') 
-                ? editingDeadline.due_date.split('T')[1].split(':').slice(0, 2).join(':') 
-                : '',
-              type: 'outros',
-              priority: editingDeadline.priority === 'high' ? 'alta' : editingDeadline.priority === 'low' ? 'baixa' : 'media',
-              description: editingDeadline.description || undefined,
-              notifyBefore: editingDeadline.reminder_days_before,
-            } : undefined}
+            event={editingEvent}
+            defaultProcessId={process.id}
+            defaultClientId={process.client_id}
+            defaultEventType="prazo"
             onSave={() => {
-              setShowDeadlineDialog(false)
-              setEditingDeadline(null)
+              setShowEventDialog(false)
+              setEditingEvent(undefined)
               void fetchProcess()
             }}
           />
