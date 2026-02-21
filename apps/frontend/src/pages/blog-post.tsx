@@ -276,8 +276,9 @@ export default function BlogPostPage() {
         <div className="mb-12">
           <MarkdownPreview
             source={post.content}
-            className="prose prose-lg max-w-none dark:prose-invert"
+            className="prose prose-lg max-w-none dark:prose-invert !bg-transparent"
             wrapperElement={{ 'data-color-mode': dataColorMode }}
+            style={{ backgroundColor: 'transparent' }}
           />
         </div>
 

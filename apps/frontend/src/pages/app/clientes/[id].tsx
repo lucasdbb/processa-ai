@@ -402,6 +402,12 @@ export default function ClienteDetalhePage() {
 
   const handleInvitePortal = async () => {
     if (!id) return
+
+    if (!client?.email) {
+      toast.error('O cliente precisa ter um e-mail cadastrado para acessar o portal')
+      return
+    }
+
     setIsInviting(true)
     try {
       const result = await inviteClient(id)
@@ -698,7 +704,7 @@ export default function ClienteDetalhePage() {
                 Excluir Cliente
               </button>
               <div className="border-t border-border my-1" />
-              {client.email && (!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
+              {(!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
                 <button
                   onClick={handleInvitePortal}
                   disabled={isInviting}

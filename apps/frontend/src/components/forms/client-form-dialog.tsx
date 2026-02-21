@@ -120,14 +120,12 @@ function ClientFormDialogBody({
     const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Nome é obrigatório'
-    }
+            newErrors.name = 'Nome é obrigatório'
+          }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email é obrigatório'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email inválido'
-    }
+          if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = 'Email inválido'
+          }
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Telefone é obrigatório'
@@ -333,7 +331,7 @@ function ClientFormDialogBody({
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Email <span className="text-destructive">*</span>
+                Email
               </label>
               <input
                 type="email"
