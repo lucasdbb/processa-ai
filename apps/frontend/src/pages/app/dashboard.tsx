@@ -26,7 +26,7 @@ import {
   type ActivityItem,
 } from '@/services/dashboard-service'
 import { servicesService } from '@/services/services-service'
-import { creditsService, type UserCredits } from '@/services/credits-service'
+import { useCreditsStore } from '@/stores/credits-store'
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
 import { TourButton } from '@/features/onboarding/tour-button'
 import { RevenueChart } from '@/components/charts/revenue-chart'
@@ -64,14 +64,14 @@ export default function DashboardPage() {
   const [processesSummary, setProcessesSummary] = useState<ProcessesSummary | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [servicesCount, setServicesCount] = useState<number>(0)
-  const [credits, setCredits] = useState<UserCredits | null>(null)
+  const { credits } = useCreditsStore()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setLoading(true)
-        const [statsData, deadlinesData, financialData, processesData, activityData, servicesData, creditsData] =
+        const [statsData, deadlinesData, financialData, processesData, activityData, servicesData] =
           await Promise.all([
             dashboardService.getStats(),
             dashboardService.getUpcomingDeadlines(5),
@@ -79,7 +79,6 @@ export default function DashboardPage() {
             dashboardService.getProcessesSummary().catch(() => null),
             dashboardService.getRecentActivity(8).catch(() => []),
             servicesService.count().catch(() => ({ total: 0 })),
-            creditsService.getCredits().catch(() => null),
           ])
         setStats(statsData)
         setDeadlines(deadlinesData)
@@ -87,7 +86,6 @@ export default function DashboardPage() {
         setProcessesSummary(processesData)
         setActivity(activityData)
         setServicesCount(servicesData.total)
-        setCredits(creditsData)
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
       } finally {
@@ -160,9 +158,9 @@ export default function DashboardPage() {
           href: '/app/calculadoras',
         },
         {
-          name: 'Recursos IA Utilizados',
-          value: credits ? (credits.subscription.used + credits.purchased.used).toString() : '0',
-          change: credits ? `${credits.total_available} disponíveis` : undefined,
+          name: 'Créditos Disponíveis',
+          value: credits ? credits.total_available.toString() : '0',
+          change: credits ? `Assinatura: ${credits.subscription_credits} | Comprados: ${credits.purchased_credits}` : undefined,
           changeType: 'neutral',
           icon: Bot,
           href: '/app/ia',
