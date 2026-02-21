@@ -5,7 +5,7 @@ import { useCommandPaletteStore } from '@/stores/command-palette-store'
 import { useTheme } from 'next-themes'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useState, useEffect } from 'react'
-import { creditsService, type UserCredits } from '@/services/credits-service'
+import { useCreditsStore } from '@/stores/credits-store'
 import { notificationService, type NotificationItem } from '@/services/notification-service'
 import { FeedbackFormDialog } from '@/components/forms/feedback-form-dialog'
 import { formatDistanceToNow } from 'date-fns'
@@ -57,7 +57,7 @@ export function AppHeader() {
   const { user } = useUser()
   const { logout } = useAuth()
   const navigate = useNavigate()
-  const [credits, setCredits] = useState<UserCredits | null>(null)
+  const { credits } = useCreditsStore() // Use store instead of local state
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -74,17 +74,6 @@ export function AppHeader() {
       console.error('Failed to load notifications:', error)
     }
   }
-
-  // Load credits
-  useEffect(() => {
-    if (!user) return
-    creditsService
-      .getCredits()
-      .then(setCredits)
-      .catch((error) => {
-        console.error('Failed to load credits:', error)
-      })
-  }, [user])
 
   // Load notifications
   useEffect(() => {
@@ -219,19 +208,13 @@ export function AppHeader() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-foreground">Assinatura</span>
                       <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        Renovação mensal
+                        Mensal
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Disponível</span>
+                      <span className="text-xs text-muted-foreground">Saldo</span>
                       <span className="text-sm font-semibold text-foreground">
-                        {credits.subscription.available.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Usado este mês</span>
-                      <span className="text-sm text-muted-foreground">
-                        {credits.subscription.used.toLocaleString('pt-BR')} / {credits.subscription.total.toLocaleString('pt-BR')}
+                        {credits.subscription_credits.toLocaleString('pt-BR')}
                       </span>
                     </div>
                   </div>
@@ -245,15 +228,9 @@ export function AppHeader() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Disponível</span>
+                      <span className="text-xs text-muted-foreground">Saldo</span>
                       <span className="text-sm font-semibold text-foreground">
-                        {credits.purchased.available.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Usado</span>
-                      <span className="text-sm text-muted-foreground">
-                        {credits.purchased.used.toLocaleString('pt-BR')}
+                        {credits.purchased_credits.toLocaleString('pt-BR')}
                       </span>
                     </div>
                   </div>

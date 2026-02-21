@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { creditsService, type UserCredits, type FeatureCostItem, type CreditPackage } from '@/services/credits-service'
+import { createClient } from '@/lib/supabase/client'
+import { type RealtimeChannel } from '@supabase/supabase-js'
 
 interface CreditsState {
   credits: UserCredits | null
@@ -12,9 +14,13 @@ interface CreditsState {
   fetchCosts: () => Promise<void>
   fetchPackages: () => Promise<void>
   reset: () => void
+  subscribeToCredits: (userId: string) => void
+  unsubscribeFromCredits: () => void
 }
 
-export const useCreditsStore = create<CreditsState>((set) => ({
+let creditsChannel: RealtimeChannel | null = null
+
+export const useCreditsStore = create<CreditsState>((set, get) => ({
   credits: null,
   costs: [],
   packages: [],
@@ -22,11 +28,45 @@ export const useCreditsStore = create<CreditsState>((set) => ({
   error: null,
 
   fetchCredits: async () => {
-    set({ isLoading: true, error: null })
+    const currentCredits = get().credits
+    // Only set loading if we don't have credits yet (initial load)
+    if (!currentCredits) {
+      set({ isLoading: true, error: null })
+    }
     try {
-      const credits = await creditsService.getCredits()
-      set({ credits, isLoading: false })
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user?.id) {
+        throw new Error('User not authenticated')
+      }
+
+      const { data, error } = await supabase
+        .from('user_credits')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (error) throw error
+
+      if (data) {
+        const subscription_credits = data.subscription_credits || 0
+        const purchased_credits = data.purchased_credits || 0
+
+        const credits: UserCredits = {
+          user_id: data.user_id,
+          subscription_credits,
+          purchased_credits,
+          total_available: subscription_credits + purchased_credits,
+          last_reset_at: data.last_reset_at,
+        }
+        set({ credits, isLoading: false })
+      } else {
+        // Handle case where user has no credits record yet (should be created by backend on registration, but just in case)
+        set({ credits: null, isLoading: false })
+      }
     } catch (error) {
+      console.error('Failed to fetch credits:', error)
       set({ error: (error as Error).message, isLoading: false })
     }
   },
@@ -49,5 +89,70 @@ export const useCreditsStore = create<CreditsState>((set) => ({
     }
   },
 
-  reset: () => set({ credits: null, costs: [], packages: [], isLoading: false, error: null })
+  reset: () => {
+    get().unsubscribeFromCredits()
+    set({ credits: null, costs: [], packages: [], isLoading: false, error: null })
+  },
+
+  subscribeToCredits: (userId: string) => {
+    // If there's already a channel, unsubscribe first to avoid duplicates or stale listeners
+    if (creditsChannel) {
+      const supabase = createClient()
+      supabase.removeChannel(creditsChannel)
+      creditsChannel = null
+    }
+
+    const supabase = createClient()
+    console.log('Subscribing to credits for user:', userId)
+    
+    creditsChannel = supabase
+      .channel(`credits-realtime-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_credits',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('Realtime credit update received:', payload)
+          // Update local state directly from payload to avoid extra API call
+          const newRecord = payload.new as any
+          
+          if (newRecord) {
+            const subscription_credits = newRecord.subscription_credits || 0
+            const purchased_credits = newRecord.purchased_credits || 0
+            
+            const updatedCredits: UserCredits = {
+              user_id: newRecord.user_id,
+              subscription_credits,
+              purchased_credits,
+              total_available: subscription_credits + purchased_credits,
+              last_reset_at: newRecord.last_reset_at,
+            }
+            
+            set({ credits: updatedCredits })
+          } else {
+            // Fallback to fetch if payload is missing data
+            get().fetchCredits()
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to credits updates')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Failed to subscribe to credits updates')
+        }
+      })
+  },
+
+  unsubscribeFromCredits: () => {
+    if (creditsChannel) {
+      const supabase = createClient()
+      supabase.removeChannel(creditsChannel)
+      creditsChannel = null
+    }
+  }
 }))

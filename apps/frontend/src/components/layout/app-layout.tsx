@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { AiToolsProvider } from '@/features/ai/provider'
 import { CalculatorsProvider } from '@/features/calculators/provider'
 import { useBillingStore } from '@/stores/billing-store'
+import { useCreditsStore } from '@/stores/credits-store'
 
 function RouteLoadingBar() {
   const navigation = useNavigation()
@@ -47,14 +48,28 @@ export function AppLayout() {
   const { isExpanded } = useSidebarStore()
   const { toggle: toggleCommandPalette } = useCommandPaletteStore()
   const { fetchSubscription } = useBillingStore()
+  const { subscribeToCredits, unsubscribeFromCredits, fetchCredits } = useCreditsStore()
 
   // Initialize auth
-  useAuth()
+  const { user } = useAuth()
 
   // Initialize billing
   useEffect(() => {
     fetchSubscription()
   }, [fetchSubscription])
+
+  // Initialize credits realtime subscription
+  useEffect(() => {
+    if (user?.id) {
+      // Fetch initial credits
+      fetchCredits()
+      // Subscribe to realtime updates
+      subscribeToCredits(user.id)
+    }
+    return () => {
+      unsubscribeFromCredits()
+    }
+  }, [user?.id, subscribeToCredits, unsubscribeFromCredits, fetchCredits])
 
   // Keyboard shortcut for command palette
   useEffect(() => {

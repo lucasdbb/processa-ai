@@ -52,9 +52,7 @@ class CreditsService:
                         {
                             "user_id": user_id,
                             "subscription_credits": 0,
-                            "subscription_used": 0,
                             "purchased_credits": 0,
-                            "purchased_used": 0,
                         }
                     )
                     .execute()
@@ -74,33 +72,20 @@ class CreditsService:
         if not data:
             return {
                 "user_id": user_id,
-                "subscription": {
-                    "total": 0,
-                    "used": 0,
-                    "available": 0,
-                },
-                "purchased": {
-                    "total": 0,
-                    "used": 0,
-                    "available": 0,
-                },
+                "subscription_credits": 0,
+                "purchased_credits": 0,
                 "total_available": 0,
                 "last_reset_at": None,
             }
 
+        subscription_credits = data.get("subscription_credits", 0)
+        purchased_credits = data.get("purchased_credits", 0)
+
         return {
             "user_id": data.get("user_id", user_id),
-            "subscription": {
-                "total": data.get("subscription_credits", 0),
-                "used": data.get("subscription_used", 0),
-                "available": data.get("subscription_available", 0),
-            },
-            "purchased": {
-                "total": data.get("purchased_credits", 0),
-                "used": data.get("purchased_used", 0),
-                "available": data.get("purchased_available", 0),
-            },
-            "total_available": data.get("total_available", 0),
+            "subscription_credits": subscription_credits,
+            "purchased_credits": purchased_credits,
+            "total_available": subscription_credits + purchased_credits,
             "last_reset_at": data.get("last_reset_at"),
         }
 

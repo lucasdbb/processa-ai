@@ -1,15 +1,9 @@
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 
-export interface CreditBreakdown {
-  total: number
-  used: number
-  available: number
-}
-
 export interface UserCredits {
   user_id: string
-  subscription: CreditBreakdown
-  purchased: CreditBreakdown
+  subscription_credits: number
+  purchased_credits: number
   total_available: number
   last_reset_at: string | null
 }
@@ -83,12 +77,6 @@ export interface AdminCreditsMetrics {
 }
 
 export const creditsService = {
-  async getCredits(): Promise<UserCredits> {
-    const res = await fetchWithCredentials(`${API_URL}/credits/balance`)
-    if (!res.ok) throw new Error('Failed to get credits')
-    return res.json()
-  },
-
   async checkCredits(featureKey: string): Promise<CreditCheckResponse> {
     const res = await fetchWithCredentials(`${API_URL}/credits/check/${featureKey}`)
     if (!res.ok) throw new Error('Failed to check credits')
