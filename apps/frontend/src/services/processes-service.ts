@@ -6,6 +6,7 @@ export interface Process {
   client_id: string;
   process_number: string;
   court: string | null;
+  tribunal: string | null;
   defendant: string | null;
   type: string;
   area: string | null;
@@ -29,6 +30,7 @@ export interface ProcessCreate {
   client_id: string;
   process_number: string;
   court?: string;
+  tribunal?: string;
   defendant?: string;
   type: string;
   area?: string;
@@ -61,6 +63,7 @@ export interface ProcessListParams {
     | "concluded"
     | "cancelled";
   client_id?: string;
+  tribunal?: string;
   limit?: number;
   offset?: number;
 }
@@ -127,6 +130,7 @@ export const processesService = {
     if (params?.search) searchParams.set("search", params.search);
     if (params?.status) searchParams.set("status", params.status);
     if (params?.client_id) searchParams.set("client_id", params.client_id);
+    if (params?.tribunal) searchParams.set("tribunal", params.tribunal);
     if (params?.limit) searchParams.set("limit", params.limit.toString());
     if (params?.offset) searchParams.set("offset", params.offset.toString());
 

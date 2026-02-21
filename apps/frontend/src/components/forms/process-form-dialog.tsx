@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils'
 import { ClientSelect } from '@/components/ui/client-select'
 import { processesService, type ProcessCreate, type ProcessUpdate } from '@/services/processes-service'
+import { PROCESS_AREAS, PROCESS_TYPES, TRIBUNALS } from '@/lib/constants'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import type { Client } from '@/services/clients-service'
@@ -13,6 +14,7 @@ export interface ProcessFormData {
   type: string
   area: string
   court: string
+  tribunal: string
   client_id: string
   client_name?: string
   defendant: string
@@ -63,6 +65,7 @@ const getInitialFormData = (process?: ProcessFormData, preselectedClient?: Clien
   type: process?.type ?? '',
   area: process?.area ?? '',
   court: process?.court ?? '',
+  tribunal: process?.tribunal ?? '',
   client_id: process?.client_id ?? preselectedClient?.id ?? '',
   defendant: process?.defendant ?? '',
   value: numberToCurrencyDisplay(process?.value),
@@ -105,7 +108,11 @@ function ProcessFormDialogBody({
     }
 
     if (!formData.court.trim()) {
-      newErrors.court = 'Vara/Tribunal é obrigatório'
+      newErrors.court = 'Vara é obrigatória'
+    }
+
+    if (!formData.tribunal.trim()) {
+      newErrors.tribunal = 'Tribunal é obrigatório'
     }
 
     if (!formData.client_id) {
@@ -137,6 +144,7 @@ function ProcessFormDialogBody({
           type: formData.type,
           area: formData.area,
           court: formData.court || undefined,
+          tribunal: formData.tribunal || undefined,
           defendant: formData.defendant || undefined,
           value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
           notes: formData.notes || undefined,
@@ -152,6 +160,7 @@ function ProcessFormDialogBody({
           client_name: selectedClient?.name ?? process.client_name,
           area: updated.area || '',
           court: updated.court || '',
+          tribunal: updated.tribunal || '',
           defendant: updated.defendant || '',
           value: updated.value || 0,
           start_date: updated.start_date || undefined,
@@ -169,6 +178,7 @@ function ProcessFormDialogBody({
           type: formData.type,
           area: formData.area,
           court: formData.court || undefined,
+          tribunal: formData.tribunal || undefined,
           defendant: formData.defendant || undefined,
           value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
           notes: formData.notes || undefined,
@@ -183,6 +193,7 @@ function ProcessFormDialogBody({
           type: created.type,
           area: created.area || '',
           court: created.court || '',
+          tribunal: created.tribunal || '',
           client_id: created.client_id,
           client_name: selectedClient?.name,
           defendant: created.defendant || '',
@@ -244,36 +255,6 @@ function ProcessFormDialogBody({
       setErrors((prev) => ({ ...prev, client_id: '' }))
     }
   }
-
-  const processTypes = [
-    'Reclamação Trabalhista',
-    'Ação Civil Pública',
-    'Ação de Cobrança',
-    'Ação de Indenização',
-    'Ação Previdenciária',
-    'Execução Fiscal',
-    'Mandado de Segurança',
-    'Divórcio',
-    'Inventário',
-    'Alimentos',
-    'Usucapião',
-    'Despejo',
-    'Outros',
-  ]
-
-  const processAreas = [
-    'Trabalhista',
-    'Cível',
-    'Família e Sucessões',
-    'Consumidor',
-    'Tributário',
-    'Criminal',
-    'Previdenciário',
-    'Empresarial',
-    'Imobiliário',
-    'Administrativo',
-    'Outros',
-  ]
 
   // ClientSelect irá buscar os dados completos se initialClient não for passado
   const initialClient = isEditing ? undefined : preselectedClient
@@ -340,7 +321,7 @@ function ProcessFormDialogBody({
                   )}
                 >
                   <option value="">Selecione...</option>
-                  {processAreas.map((area) => (
+                  {PROCESS_AREAS.map((area) => (
                     <option key={area} value={area}>
                       {area}
                     </option>
@@ -365,16 +346,38 @@ function ProcessFormDialogBody({
                   placeholder="Selecione ou digite..."
                 />
                 <datalist id="process-types">
-                  {processTypes.map((type) => (
+                  {PROCESS_TYPES.map((type) => (
                     <option key={type} value={type} />
                   ))}
                 </datalist>
                 {errors.type && <p className="mt-1 text-xs text-destructive">{errors.type}</p>}
               </div>
 
-              <div className="sm:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Vara/Tribunal <span className="text-destructive">*</span>
+                  Tribunal <span className="text-destructive">*</span>
+                </label>
+                <select
+                  value={formData.tribunal}
+                  onChange={(e) => handleChange('tribunal', e.target.value)}
+                  className={cn(
+                    'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                    errors.tribunal ? 'border-destructive' : 'border-border'
+                  )}
+                >
+                  <option value="">Selecione...</option>
+                  {TRIBUNALS.map((tribunal) => (
+                    <option key={tribunal} value={tribunal}>
+                      {tribunal}
+                    </option>
+                  ))}
+                </select>
+                {errors.tribunal && <p className="mt-1 text-xs text-destructive">{errors.tribunal}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Vara <span className="text-destructive">*</span>
                 </label>
                 <input
                   type="text"
@@ -384,7 +387,7 @@ function ProcessFormDialogBody({
                     'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                     errors.court ? 'border-destructive' : 'border-border'
                   )}
-                  placeholder="Ex: 1ª Vara Cível de São Paulo"
+                  placeholder="Ex: 1ª Vara Cível"
                 />
                 {errors.court && <p className="mt-1 text-xs text-destructive">{errors.court}</p>}
               </div>

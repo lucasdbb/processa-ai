@@ -12,6 +12,7 @@ class ProcessCreate(BaseModel):
     client_id: UUID
     process_number: str = Field(..., min_length=1, max_length=255)
     court: str | None = None
+    tribunal: str | None = None
     defendant: str | None = None
     type: str = Field(..., min_length=1, max_length=255)
     area: str | None = None
@@ -24,6 +25,7 @@ class ProcessCreate(BaseModel):
 class ProcessUpdate(BaseModel):
     process_number: str | None = Field(None, min_length=1, max_length=255)
     court: str | None = None
+    tribunal: str | None = None
     defendant: str | None = None
     type: str | None = None
     area: str | None = None
@@ -41,6 +43,7 @@ class ProcessResponse(BaseModel):
     client_id: UUID
     process_number: str
     court: str | None
+    tribunal: str | None
     defendant: str | None
     type: str
     area: str | None
@@ -66,6 +69,7 @@ class ProcessListParams(BaseModel):
     status: ProcessStatus | None = None
     client_id: UUID | None = None
     court: str | None = None
+    tribunal: str | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
 
@@ -122,6 +126,7 @@ class ProcessDetailResponse(BaseModel):
     client_id: UUID
     process_number: str
     court: str | None
+    tribunal: str | None
     defendant: str | None
     type: str
     area: str | None

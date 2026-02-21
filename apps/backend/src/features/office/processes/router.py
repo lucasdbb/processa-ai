@@ -25,6 +25,7 @@ async def list_processes(
     status: ProcessStatus | None = Query(None, description="Filter by status"),
     client_id: UUID | None = Query(None, description="Filter by client ID"),
     court: str | None = Query(None, description="Filter by court"),
+    tribunal: str | None = Query(None, description="Filter by tribunal"),
     limit: int = Query(50, ge=1, le=100, description="Max results"),
     offset: int = Query(0, ge=0, description="Skip results"),
     user_id: UUID = Depends(get_user_id),
@@ -35,6 +36,7 @@ async def list_processes(
         status=status,
         client_id=client_id,
         court=court,
+        tribunal=tribunal,
         limit=limit,
         offset=offset,
     )

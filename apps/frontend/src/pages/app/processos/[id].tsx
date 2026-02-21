@@ -103,6 +103,7 @@ export default function ProcessoDetalhePage() {
         type: process.type,
         area: process.area || '',
         court: process.court || '',
+        tribunal: process.tribunal || '',
         defendant: process.defendant || '',
         value: process.value || 0,
         status: process.status,
@@ -304,8 +305,10 @@ export default function ProcessoDetalhePage() {
                   {formatCurrency(process.value)}
                 </span>
               )}
-              {process.court && (
-                <span className="text-muted-foreground">{process.court}</span>
+              {(process.court || process.tribunal) && (
+                <span className="text-muted-foreground">
+                  {[process.tribunal, process.court].filter(Boolean).join(' • ')}
+                </span>
               )}
             </div>
 

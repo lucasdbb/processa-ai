@@ -15,45 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-
-const COURT_OPTIONS = [
-  'TJAC',
-  'TJAL',
-  'TJAM',
-  'TJAP',
-  'TJBA',
-  'TJCE',
-  'TJDF',
-  'TJES',
-  'TJGO',
-  'TJMA',
-  'TJMG',
-  'TJMS',
-  'TJMT',
-  'TJPA',
-  'TJPB',
-  'TJPE',
-  'TJPI',
-  'TJPR',
-  'TJRJ',
-  'TJRN',
-  'TJRO',
-  'TJRR',
-  'TJRS',
-  'TJSC',
-  'TJSE',
-  'TJSP',
-  'TJTO',
-  'TRF1',
-  'TRF2',
-  'TRF3',
-  'TRF4',
-  'TRF5',
-  'TRF6',
-  'TST',
-  'STJ',
-  'STF',
-]
+import { TRIBUNALS } from '@/lib/constants'
 
 type Process = {
   id: string
@@ -61,6 +23,7 @@ type Process = {
   type: string
   area: string | null
   court: string
+  tribunal: string | null
   client_id: string
   client_name: string
   defendant: string
@@ -77,7 +40,7 @@ type ProcessListResponse = {
 export default function ProcessosPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
-  const [courtFilter, setCourtFilter] = useState<string>('all')
+  const [tribunalFilter, setTribunalFilter] = useState<string>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   type EditingProcess =
@@ -91,31 +54,13 @@ export default function ProcessosPage() {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, court: string) => {
+  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string) => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams()
       if (searchQuery.trim()) params.set('search', searchQuery.trim())
       if (statusFilter !== 'all') params.set('status', statusFilter)
-      // Note: Backend might need update to support court filtering if not already supported via search
-      // Assuming search handles general text search, we can try passing court as part of search or separate param if supported
-      // Looking at backend code (processes/router.py), it seems filtering is limited.
-      // However, we can use search param to filter by court since search usually covers multiple fields.
-      // But precise filtering is better. Let's assume for now we pass it as a search term if precise param is missing,
-      // or implement it properly.
-      // Actually, let's check backend router again.
-      // Backend list_processes accepts: search, status, client_id.
-      // Search covers: process_number, type, defendant, subject. It does NOT seem to cover court explicitly in the description?
-      // Wait, let's check the service implementation in previous turn.
-      // Service implementation: "(process_number ILIKE %s OR type ILIKE %s OR defendant ILIKE %s OR subject ILIKE %s)"
-      // It seems court is NOT in the search fields!
-      // We should probably add 'court' to the search fields in backend or add a specific filter.
-      // For now, let's append it to search query if user selects a court, hoping it might work or we update backend.
-      // Better: Update backend to support court filter.
-      
-      // Let's assume we will update backend to support 'court' param or include it in search.
-      // For this step, I'll send it as 'court' param and will update backend in next step if needed.
-      if (court !== 'all') params.set('court', court)
+      if (tribunal !== 'all') params.set('tribunal', tribunal)
       
       params.set('limit', '50')
       params.set('offset', '0')
@@ -137,18 +82,18 @@ export default function ProcessosPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      void fetchProcesses(search, filter, courtFilter)
+      void fetchProcesses(search, filter, tribunalFilter)
     }, search ? 300 : 0)
 
     return () => clearTimeout(timeout)
-  }, [search, filter, courtFilter, fetchProcesses])
+  }, [search, filter, tribunalFilter, fetchProcesses])
 
   const handleSaveProcess = async (processData: SaveProcessPayload) => {
     console.log('Salvando processo:', processData)
     setIsFormOpen(false)
     setEditingProcess(undefined)
     // Reload processes list
-    await fetchProcesses(search, filter, courtFilter)
+    await fetchProcesses(search, filter, tribunalFilter)
   }
 
   const handleNewProcess = () => {
@@ -199,20 +144,20 @@ export default function ProcessosPage() {
               <Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
                 <Filter className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">
-                  {courtFilter === 'all'
+                  {tribunalFilter === 'all'
                     ? 'Todos tribunais'
-                    : courtFilter}
+                    : tribunalFilter}
                 </span>
                 <ChevronDown className="h-3.5 w-3.5 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px] max-h-[300px] overflow-y-auto">
-              <DropdownMenuItem onClick={() => setCourtFilter('all')}>
+              <DropdownMenuItem onClick={() => setTribunalFilter('all')}>
                 Todos tribunais
               </DropdownMenuItem>
-              {COURT_OPTIONS.map((court) => (
-                <DropdownMenuItem key={court} onClick={() => setCourtFilter(court)}>
-                  {court}
+              {TRIBUNALS.map((tribunal) => (
+                <DropdownMenuItem key={tribunal} onClick={() => setTribunalFilter(tribunal)}>
+                  {tribunal}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

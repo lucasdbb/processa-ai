@@ -51,6 +51,10 @@ class ProcessesService:
             where_conditions.append("court = %s")
             query_params.append(params.court)
 
+        if params.tribunal:
+            where_conditions.append("tribunal = %s")
+            query_params.append(params.tribunal)
+
         where_clause = " AND ".join(where_conditions)
 
         async with pool.connection() as conn:
@@ -113,10 +117,10 @@ class ProcessesService:
                 await cur.execute(
                     """
                     INSERT INTO office_api.processes (
-                        user_id, client_id, process_number, court, defendant, type, area,
+                        user_id, client_id, process_number, court, tribunal, defendant, type, area,
                         subject, value, status, notes, start_date
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)
                     RETURNING *
                     """,
                     (
@@ -124,6 +128,7 @@ class ProcessesService:
                         str(data.client_id),
                         data.process_number,
                         data.court,
+                        data.tribunal,
                         data.defendant,
                         data.type,
                         data.area,
