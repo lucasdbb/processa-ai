@@ -294,7 +294,7 @@ export default function DashboardPage() {
             <div className="px-5 py-4 border-b border-border">
               <h2 className="font-semibold text-foreground">Processos por Status</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Distribuicao dos seus processos
+                Distribuiç~o dos seus processos
               </p>
             </div>
             <div className="p-4">

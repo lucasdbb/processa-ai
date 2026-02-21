@@ -93,19 +93,19 @@ function ProcessFormDialogBody({
     const newErrors: Record<string, string> = {}
 
     if (!formData.process_number.trim()) {
-      newErrors.process_number = 'Numero do processo e obrigatorio'
+      newErrors.process_number = 'Número do processo é obrigatório'
     }
 
     if (!formData.type.trim()) {
-      newErrors.type = 'Tipo de processo e obrigatorio'
+      newErrors.type = 'Tipo de processo é obrigatório'
     }
 
     if (!formData.area.trim()) {
-      newErrors.area = 'Area do direito e obrigatoria'
+      newErrors.area = 'Área do direito é obrigatória'
     }
 
     if (!formData.court.trim()) {
-      newErrors.court = 'Vara/Tribunal e obrigatorio'
+      newErrors.court = 'Vara/Tribunal é obrigatório'
     }
 
     if (!formData.client_id) {
@@ -113,7 +113,7 @@ function ProcessFormDialogBody({
     }
 
     if (!formData.defendant.trim()) {
-      newErrors.defendant = 'Reu e obrigatorio'
+      newErrors.defendant = 'Réu é obrigatório'
     }
 
     setErrors(newErrors)
@@ -410,7 +410,7 @@ function ProcessFormDialogBody({
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Data de Distribuicao
+                  Data de Distribuição
                 </label>
                 <input
                   type="date"
@@ -442,7 +442,7 @@ function ProcessFormDialogBody({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Reu/Reclamado <span className="text-destructive">*</span>
+                Réu/Reclamado <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -452,7 +452,7 @@ function ProcessFormDialogBody({
                   'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                   errors.defendant ? 'border-destructive' : 'border-border'
                 )}
-                placeholder="Nome do reu"
+                placeholder="Nome do réu"
               />
               {errors.defendant && (
                 <p className="mt-1 text-xs text-destructive">{errors.defendant}</p>
@@ -463,14 +463,14 @@ function ProcessFormDialogBody({
           {/* Descricao */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Observacoes
+              Observações
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
               rows={2}
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-              placeholder="Observacoes sobre o processo..."
+              placeholder="Observações sobre o processo..."
             />
           </div>
         </div>

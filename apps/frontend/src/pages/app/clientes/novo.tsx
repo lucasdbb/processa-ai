@@ -242,11 +242,11 @@ export default function ClienteNovoPage() {
 
           {/* Notes */}
           <div>
-            <Label htmlFor="notes">Observacoes</Label>
+            <Label htmlFor="notes">Observações</Label>
             <Textarea
               id="notes"
               {...register('notes')}
-              placeholder="Observacoes sobre o cliente"
+              placeholder="Observações sobre o cliente"
               rows={4}
             />
           </div>
