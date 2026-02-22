@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { Download, FileText, Plus, ScanSearch, Trash2, Upload, Columns, Rows } from 'lucide-react'
+import { Download, FileText, Plus, ScanSearch, Trash2, Upload } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
@@ -14,15 +14,14 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 
-import { ClientSelector } from '@/components/forms/client-selector'
 
 interface BriefScannerToolProps {
   onOpenRegisterModal?: () => void
   selectedClientId?: string | null
-  onClientChange?: (id: string | null) => void
+  layoutMode?: 'stack' | 'side-by-side'
 }
 
-export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, selectedClientId, onClientChange }: BriefScannerToolProps) {
+export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, selectedClientId, layoutMode = 'side-by-side' }: BriefScannerToolProps) {
   const { isAuthenticated } = useUser()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -36,7 +35,6 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
-  const [layoutMode, setLayoutMode] = useState<'stack' | 'side-by-side'>('stack')
 
   const markdownToRender = normalizeMarkdown(generatedText)
   const previewHtml = useMemo(() => {
@@ -279,48 +277,6 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
                     pedidos faltantes, riscos e oportunidades de melhoria.
                   </p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  {onClientChange && (
-                    <ClientSelector
-                      value={selectedClientId ?? null}
-                      onChange={onClientChange}
-                      className="w-48"
-                    />
-                  )}
-                  <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode('stack')}
-                      className={cn(
-                        "p-1.5 rounded-md transition-all",
-                        layoutMode === 'stack' 
-                          ? "bg-background shadow-sm text-foreground" 
-                          : isDark 
-                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      title="Visualização empilhada"
-                    >
-                      <Rows className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode('side-by-side')}
-                      className={cn(
-                        "p-1.5 rounded-md transition-all",
-                        layoutMode === 'side-by-side' 
-                          ? "bg-background shadow-sm text-foreground" 
-                          : isDark 
-                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      title="Visualização lado a lado"
-                    >
-                      <Columns className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -439,8 +395,8 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
                 onClick={handleGenerate}
                 disabled={!canGenerate}
                 className={cn(
-                  "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed border border-border",
-                  "bg-white dark:bg-slate-100 text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-200"
+                  "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full disabled:opacity-50 disabled:cursor-not-allowed border border-border",
+                  isDark ? "bg-slate-100 text-slate-900 hover:bg-slate-200" : "!bg-[#0d1c34] !text-white hover:!bg-[#0d1c34]/90"
                 )}
               >
                 {isGenerating ? (

@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Bot, Loader2, Send, User } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useOutletContext } from 'react-router-dom'
@@ -8,6 +10,8 @@ import type { ChatMessage } from '../types'
 
 export function ChatJuridicoTool() {
   const { isAuthenticated } = useUser()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
@@ -129,7 +133,10 @@ export function ChatJuridicoTool() {
             type="button"
             onClick={sendChatMessage}
             disabled={!chatInput.trim() || isChatLoading}
-            className="inline-flex items-center justify-center rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-5"
+            className={cn(
+              "inline-flex items-center justify-center rounded-xl disabled:opacity-50 disabled:cursor-not-allowed px-5",
+              isDark ? "bg-slate-800 text-white hover:bg-slate-700" : "!bg-[#0d1c34] !text-white hover:!bg-[#0d1c34]/90"
+            )}
             aria-label="Enviar mensagem"
           >
             <Send className="h-5 w-5" />

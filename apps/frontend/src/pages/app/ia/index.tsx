@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Brain, Coins, ChevronDown, Info } from 'lucide-react'
+import { Brain, Coins, ChevronDown, Info, Rows, Columns } from 'lucide-react'
 
 import { useAiTools } from '@/features/ai/context'
 import { useCreditsStore } from '@/stores/credits-store'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useOutletContext } from 'react-router-dom'
+import { useTheme } from 'next-themes'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
+import { ClientSelector } from '@/components/forms/client-selector'
+import { cn } from '@/lib/utils'
 
 export default function IAHubPage() {
   const { toolId } = useParams<{ toolId?: string }>()
@@ -15,6 +18,8 @@ export default function IAHubPage() {
   const { isLoading: isAuthLoading } = useUser()
   const { tools: aiTools, isLoading: isLoadingTools } = useAiTools()
   const { costs, fetchCosts } = useCreditsStore()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
   const openRegisterModal = outletContext?.openRegisterModal || (() => {})
 
@@ -35,11 +40,18 @@ export default function IAHubPage() {
   const activeSlug = resolvedToolSlug ?? defaultSlug
 
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
+  const [layoutMode, setLayoutMode] = useState<'stack' | 'side-by-side'>('side-by-side')
 
   const currentTool = useMemo(() => {
     if (!activeSlug) return null
     return allTools.find((t) => t.slug === activeSlug) || null
   }, [activeSlug, allTools])
+
+  const showLayoutToggle = useMemo(() => {
+    if (!currentTool) return false
+    const toolsWithLayout = ['cnis', 'scanner', 'process_summary', 'labor_claim']
+    return toolsWithLayout.includes(currentTool.variant)
+  }, [currentTool])
 
   const costDisplay = useMemo(() => {
     if (!currentTool) return null
@@ -141,7 +153,7 @@ export default function IAHubPage() {
         <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
           <div className="flex items-center space-x-4 min-w-0">
             <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl shadow-sm shrink-0 border border-slate-200 dark:border-slate-700">
-              <Brain className="h-6 w-6 text-slate-900 dark:text-slate-100" strokeWidth={1.5} />
+              <Brain className={`h-7 w-7 ${isDark ? "text-slate-100" : "!text-[#0d1c34]"}`} strokeWidth={1.5} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -167,6 +179,50 @@ export default function IAHubPage() {
               {currentTool?.description ? <p className="text-muted-foreground mt-1 text-sm">{currentTool.description}</p> : null}
             </div>
           </div>
+
+          <div className="flex items-end gap-3">
+            <ClientSelector
+              value={selectedClientId}
+              onChange={(id) => setSelectedClientId(id)}
+              className="w-60"
+              label="Cliente"
+            />
+            
+            {showLayoutToggle && (
+              <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1 h-[40px] items-center">
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('stack')}
+                  className={cn(
+                    "p-1.5 rounded-md transition-all h-8 w-8 flex items-center justify-center",
+                    layoutMode === 'stack' 
+                      ? "bg-background shadow-sm text-foreground" 
+                      : isDark 
+                        ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                  title="Visualização empilhada"
+                >
+                  <Rows className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('side-by-side')}
+                  className={cn(
+                    "p-1.5 rounded-md transition-all h-8 w-8 flex items-center justify-center",
+                    layoutMode === 'side-by-side' 
+                      ? "bg-background shadow-sm text-foreground" 
+                      : isDark 
+                        ? "text-gray-400 hover:text-white hover:bg-gray-800"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                  title="Visualização lado a lado"
+                >
+                  <Columns className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 min-h-0 relative">
@@ -174,8 +230,8 @@ export default function IAHubPage() {
             <currentTool.Component
               key={activeSlug}
               selectedClientId={selectedClientId}
-              onClientChange={setSelectedClientId}
               onOpenRegisterModal={openRegisterModal}
+              layoutMode={layoutMode}
             />
           ) : null}
         </div>

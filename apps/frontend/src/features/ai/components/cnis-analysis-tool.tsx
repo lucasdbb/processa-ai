@@ -16,10 +16,10 @@ import { ClientSelector } from '@/components/forms/client-selector'
 interface CnisAnalysisToolProps {
   onOpenRegisterModal?: () => void
   selectedClientId?: string | null
-  onClientChange?: (id: string | null) => void
+  layoutMode?: 'stack' | 'side-by-side'
 }
 
-export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, onClientChange }: CnisAnalysisToolProps) {
+export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layoutMode = 'stack' }: CnisAnalysisToolProps) {
   const { isAuthenticated } = useUser()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -33,7 +33,6 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, onClie
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
-  const [layoutMode, setLayoutMode] = useState<'stack' | 'side-by-side'>('stack')
   
   // Ref para URL do PDF para revogar quando mudar
   const cnisPdfUrlRef = useRef<string | null>(null)
@@ -272,52 +271,14 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, onClie
         <div className="flex flex-col h-full min-h-0">
           <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl p-4 gap-4">
             <div className="flex-shrink-0">
-              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-                <label htmlFor="cnis-file" className="block text-sm font-medium text-foreground">
+              <div className="mb-4">
+                <label htmlFor="cnis-file" className="block text-sm font-bold text-foreground mb-1">
                   Envie o CNIS (PDF) <span className="text-destructive">*</span>
                 </label>
-
-                <div className="flex items-center gap-2">
-                  {onClientChange && (
-                    <ClientSelector
-                      value={selectedClientId ?? null}
-                      onChange={onClientChange}
-                      className="w-48"
-                    />
-                  )}
-                  <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode('stack')}
-                      className={cn(
-                        "p-1.5 rounded-md transition-all",
-                        layoutMode === 'stack' 
-                          ? "bg-background shadow-sm text-foreground" 
-                          : isDark 
-                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      title="Visualização empilhada"
-                    >
-                      <Rows className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode('side-by-side')}
-                      className={cn(
-                        "p-1.5 rounded-md transition-all",
-                        layoutMode === 'side-by-side' 
-                          ? "bg-background shadow-sm text-foreground" 
-                          : isDark 
-                            ? "text-gray-400 hover:text-white hover:bg-gray-800"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      title="Visualização lado a lado"
-                    >
-                      <Columns className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Anexe o extrato previdenciário (CNIS) completo em PDF. A IA identificará vínculos, 
+                  remunerações e possíveis inconsistências.
+                </p>
               </div>
             </div>
 
@@ -403,8 +364,8 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, onClie
                 onClick={handleGenerate}
                 disabled={!cnisFile || isGenerating}
                 className={cn(
-                  "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed border border-border",
-                  "bg-white dark:bg-slate-100 text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-200"
+                  "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full disabled:opacity-50 disabled:cursor-not-allowed border border-border",
+                  isDark ? "bg-slate-100 text-slate-900 hover:bg-slate-200" : "!bg-[#0d1c34] !text-white hover:!bg-[#0d1c34]/90"
                 )}
               >
                 {isGenerating ? (

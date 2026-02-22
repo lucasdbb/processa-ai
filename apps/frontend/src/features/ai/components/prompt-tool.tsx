@@ -3,7 +3,8 @@ import { Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import { normalizeMarkdown } from '@/lib/utils'
+import { normalizeMarkdown, cn } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useOutletContext } from 'react-router-dom'
@@ -18,6 +19,8 @@ export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) 
   const { isAuthenticated } = useUser()
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
   const openRegisterModal = outletContext?.openRegisterModal || (() => {})
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   const [prompt, setPrompt] = useState(externalPrompt || '')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -120,7 +123,10 @@ export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) 
         <button
           onClick={handleGenerate}
           disabled={isGenerating || !prompt.trim()}
-          className="w-full py-3 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
+          className={cn(
+            "w-full py-3 font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2",
+            isDark ? "bg-slate-800 text-white hover:bg-slate-700 shadow-slate-900/20" : "!bg-[#0d1c34] !text-white hover:!bg-[#0d1c34]/90 shadow-slate-900/20"
+          )}
         >
           {isGenerating ? (
             <>

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
-import { Download, FileText, Gavel, Trash2, Upload, Columns, Rows, Plus } from 'lucide-react'
+import { Download, FileText, Gavel, Trash2, Upload, Plus } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { marked } from 'marked'
@@ -13,16 +13,15 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 
-import { ClientSelector } from '@/components/forms/client-selector'
 
 const MAX_FILES = 5
 
 interface LaborClaimToolProps {
   selectedClientId?: string | null
-  onClientChange?: (id: string | null) => void
+  layoutMode?: 'stack' | 'side-by-side'
 }
 
-export function LaborClaimTool({ selectedClientId, onClientChange }: LaborClaimToolProps) {
+export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }: LaborClaimToolProps) {
   const { user, isAuthenticated } = useUser()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -37,7 +36,6 @@ export function LaborClaimTool({ selectedClientId, onClientChange }: LaborClaimT
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
-  const [layoutMode, setLayoutMode] = useState<'stack' | 'side-by-side'>('stack')
   
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -219,55 +217,13 @@ export function LaborClaimTool({ selectedClientId, onClientChange }: LaborClaimT
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto min-h-0 pr-2 space-y-4">
               <div className="flex-shrink-0">
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-semibold text-foreground">Relato dos Fatos</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Descreva detalhadamente o caso, incluindo datas e valores.
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                  {onClientChange && (
-                    <ClientSelector
-                      value={selectedClientId ?? null}
-                      onChange={onClientChange}
-                      className="w-48"
-                    />
-                  )}
-                    <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setLayoutMode('stack')}
-                        className={cn(
-                          "p-1.5 rounded-md transition-all",
-                          layoutMode === 'stack' 
-                            ? "bg-background shadow-sm text-foreground" 
-                            : isDark 
-                              ? "text-gray-400 hover:text-white hover:bg-gray-800"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                        title="Visualização empilhada"
-                      >
-                        <Rows className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLayoutMode('side-by-side')}
-                        className={cn(
-                          "p-1.5 rounded-md transition-all",
-                          layoutMode === 'side-by-side' 
-                            ? "bg-background shadow-sm text-foreground" 
-                            : isDark 
-                              ? "text-gray-400 hover:text-white hover:bg-gray-800"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                        title="Visualização lado a lado"
-                      >
-                        <Columns className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-bold text-foreground mb-1">
+                    Relato dos Fatos <span className="text-destructive">*</span>
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    Descreva detalhadamente o caso, incluindo datas e valores.
+                  </p>
                 </div>
 
                 <div className="relative">
@@ -387,7 +343,7 @@ export function LaborClaimTool({ selectedClientId, onClientChange }: LaborClaimT
                 disabled={isGenerating || !prompt.trim()}
                 className={cn(
                   "w-full py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-border",
-                  "bg-white dark:bg-slate-100 text-slate-900 hover:bg-slate-50 dark:hover:bg-slate-200"
+                  isDark ? "bg-slate-100 text-slate-900 hover:bg-slate-200" : "!bg-[#0d1c34] !text-white hover:!bg-[#0d1c34]/90"
                 )}
               >
                 {isGenerating ? (
