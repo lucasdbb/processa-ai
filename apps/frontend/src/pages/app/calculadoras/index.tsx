@@ -151,7 +151,7 @@ export default function CalculadorasHubPage() {
   // Se uma calculadora estiver selecionada, usa o layout "Frame" estilo IA
   if (selectedCalculator && current) {
     return (
-      <div className="h-[calc(100vh-160px)] flex flex-col gap-4">
+      <div className="min-h-[calc(100vh-160px)] h-auto flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4 flex-shrink-0">
           <div>
             <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ export default function CalculadorasHubPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border shadow-sm p-4 flex-1 flex flex-col min-h-0">
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-4 flex-1 flex flex-col">
           <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
             <div className="flex items-center space-x-4 min-w-0">
               <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl shadow-sm shrink-0 border border-slate-200 dark:border-slate-700">
@@ -206,7 +206,7 @@ export default function CalculadorasHubPage() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 relative">
+          <div className="flex-1 relative">
             {CalculatorComponent ? (
               <CalculatorComponent selectedClientId={selectedClientId} />
             ) : (
