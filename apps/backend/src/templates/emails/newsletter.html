@@ -1,279 +1,88 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
-    <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-      <!--[if !mso]><!-->
-      <meta http-equiv="X-UA-Compatible" content="IE=Edge">
-      <!--<![endif]-->
-      <!--[if (gte mso 9)|(IE)]>
-      <xml>
-        <o:OfficeDocumentSettings>
-          <o:AllowPNG/>
-          <o:PixelsPerInch>96</o:PixelsPerInch>
-        </o:OfficeDocumentSettings>
-      </xml>
-      <![endif]-->
-      <!--[if (gte mso 9)|(IE)]>
-  <style type="text/css">
-    body {width: 800px;margin: 0 auto;}
-    table {border-collapse: collapse;}
-    table, td {mso-table-lspace: 0pt;mso-table-rspace: 0pt;}
-    img {-ms-interpolation-mode: bicubic;}
-  </style>
-<![endif]-->
-      <style type="text/css">
-    body, p, div {
-      font-family: arial,helvetica,sans-serif;
-      font-size: 14px;
+{% extends "base.html" %}
+
+{% block title %}Newsletter Processa AI{% endblock %}
+
+{% block styles %}
+    .date-badge { 
+        display: inline-block; 
+        background-color: #f1f5f9; 
+        color: #64748b; 
+        font-size: 12px; 
+        font-weight: 600; 
+        padding: 4px 12px; 
+        border-radius: 20px; 
+        margin-bottom: 20px; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px;
     }
-    body {
-      color: #000000;
+
+    .highlight-box { 
+        background-color: #ab8c3b; 
+        background-image: linear-gradient(135deg, #ab8c3b 0%, #caa446 100%);
+        color: #ffffff; 
+        padding: 30px; 
+        border-radius: 12px; 
+        margin: 30px 0; 
+        text-align: center; 
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
-    body a {
-      color: #1188E6;
-      text-decoration: none;
+    .highlight-box p { color: #fdfdfd; font-size: 15px; }
+    .highlight-title { font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 12px; display: block; }
+    
+    .divider { border-top: 1px solid #e2e8f0; margin: 30px 0; }
+    
+    .post-card { 
+        background-color: #ffffff; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 12px; 
+        overflow: hidden; 
+        margin-top: 20px; 
     }
-    p { margin: 0; padding: 0; }
-    table.wrapper {
-      width:100% !important;
-      table-layout: fixed;
-      -webkit-font-smoothing: antialiased;
-      -webkit-text-size-adjust: 100%;
-      -moz-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
+    .post-image { width: 100%; height: auto; display: block; }
+    .post-content { padding: 25px; }
+
+    @media screen and (max-width: 600px) {
+        .highlight-box { padding: 20px; margin: 20px -10px; border-radius: 8px; }
     }
-    img.max-width {
-      max-width: 100% !important;
-    }
-    .column.of-2 {
-      width: 50%;
-    }
-    .column.of-3 {
-      width: 33.333%;
-    }
-    .column.of-4 {
-      width: 25%;
-    }
-    ul ul ul ul  {
-      list-style-type: disc !important;
-    }
-    ol ol {
-      list-style-type: lower-roman !important;
-    }
-    ol ol ol {
-      list-style-type: lower-latin !important;
-    }
-    ol ol ol ol {
-      list-style-type: decimal !important;
-    }
-    @media screen and (max-width:480px) {
-      .preheader .rightColumnContent,
-      .footer .rightColumnContent {
-        text-align: left !important;
-      }
-      .preheader .rightColumnContent div,
-      .preheader .rightColumnContent span,
-      .footer .rightColumnContent div,
-      .footer .rightColumnContent span {
-        text-align: left !important;
-      }
-      .preheader .rightColumnContent,
-      .preheader .leftColumnContent {
-        font-size: 80% !important;
-        padding: 5px 0;
-      }
-      table.wrapper-mobile {
-        width: 100% !important;
-        table-layout: fixed;
-      }
-      img.max-width {
-        height: auto !important;
-        max-width: 100% !important;
-      }
-      a.bulletproof-button {
-        display: block !important;
-        width: auto !important;
-        font-size: 80%;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-      }
-      .columns {
-        width: 100% !important;
-      }
-      .column {
-        display: block !important;
-        width: 100% !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-      }
-      .social-icon-column {
-        display: inline-block !important;
-      }
-    }
-  </style>
-      <!--user entered Head Start--><!--End Head user entered-->
-    </head>
-    <body>
-      <center class="wrapper" data-link-color="#1188E6" data-body-style="font-size:14px; font-family:arial,helvetica,sans-serif; color:#000000; background-color:#FFFFFF;">
-        <div class="webkit">
-          <table cellpadding="0" cellspacing="0" border="0" width="100%" class="wrapper" bgcolor="#FFFFFF">
-            <tr>
-              <td valign="top" bgcolor="#FFFFFF" width="100%">
-                <table width="100%" role="content-container" class="outer" align="center" cellpadding="0" cellspacing="0" border="0">
-                  <tr>
-                    <td width="100%">
-                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                        <tr>
-                          <td>
-                            <!--[if mso]>
-    <center>
-    <table><tr><td width="800">
-  <![endif]-->
-                                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:800px;" align="center">
-                                      <tr>
-                                        <td role="modules-container" style="padding:0px 0px 0px 0px; color:#000000; text-align:left;" bgcolor="#FFFFFF" width="100%" align="left"><table class="module preheader preheader-hide" role="module" data-type="preheader" border="0" cellpadding="0" cellspacing="0" width="100%" style="display: none !important; mso-hide: all; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0;">
-    <tr>
-      <td role="module-content">
-        <p></p>
-      </td>
-    </tr>
-  </table><table class="module" role="module" data-type="spacer" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="8e3bf3f7-cdc0-4a11-b08f-beabf1f5621b">
-    <tbody>
-      <tr>
-        <td style="padding:0px 0px 30px 0px;" role="module-content" bgcolor="#161616">
-        </td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="e448f025-b786-4c20-ba4e-0ae2d5e16487" data-mc-module-version="2019-10-22">
-    <tbody>
-      <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:0px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: center"><span style="font-family: georgia, serif">14 de fevereiro de 2026</span></div><div></div></div></td>
-      </tr>
-    </tbody>
-  </table><table class="wrapper" role="module" data-type="image" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="4a8d72a9-1b75-449c-b112-1ee007445f0b">
-    <tbody>
-      <tr>
-        <td style="font-size:6px; line-height:10px; padding:0px 0px 0px 0px;" valign="top" align="center">
-          
-        <a href="https://www.processai.app.br"><img class="max-width" border="0" style="display:block; color:#000000; text-decoration:none; font-family:Helvetica, arial, sans-serif; font-size:16px; max-width:75% !important; width:75%; height:auto !important;" width="600" alt="Processa AI" data-proportionally-constrained="true" data-responsive="true" src="http://cdn.mcauto-images-production.sendgrid.net/b8426fc8b121aa5a/ec9f8624-f598-41c5-8702-27a06f7dbc57/1280x367.png"></a></td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="357054cb-111b-4463-94ed-75be28693fb2" data-mc-module-version="2019-10-22">
-    <tbody>
-      <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:0px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><h2 style="text-align: center"><span style="color: rgba(15,51,102,var(--O42jJQ,1)); caret-color: rgb(15, 51, 102); ---ys--xu-q: none; font-weight: 700; font-style: normal; font-kerning: none; font-size: 30px"><strong>BOM DIA, {{USERNAME}}!</strong></span></h2>
-<h2 style="text-align: center"><br></h2>
-<h2 style="text-align: center"><span style="caret-color: rgb(15, 51, 102); ---ys--xu-q: none; font-weight: 400; font-style: normal; font-kerning: none; font-size: 18px">Seja bem-vindo(a)! Pode entrar, a casa é sua!</span></h2><div></div></div></td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="6edbba3d-65ca-44c1-8166-c8f3d9f665dd" data-mc-module-version="2019-10-22">
-    <tbody>
-      <tr>
-        <td style="padding:18px 18px 18px 18px; line-height:5px; text-align:inherit; background-color:#ab8c3b;" height="100%" valign="top" bgcolor="#ab8c3b" role="module-content"><div><div style="font-family: inherit; text-align: center"><span style="caret-color: rgb(253, 255, 246); --cy-v3-z-q: 13.3333px; --g-j-pl-x-q: 1.4; text-transform: none; --s8-nb-e-a: p; line-height: 18px; ---ys--xu-q: none; font-weight: 400; font-style: normal; font-kerning: normal; font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px">Fique tranquilo(a): você </span><span style="caret-color: rgb(253, 255, 246); --cy-v3-z-q: 13.3333px; --g-j-pl-x-q: 1.4; text-transform: none; --s8-nb-e-a: p; line-height: 18px; ---ys--xu-q: none; font-weight: 700; font-style: normal; font-kerning: normal; font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px">PROCESSA</span><span style="caret-color: rgb(253, 255, 246); --cy-v3-z-q: 13.3333px; --g-j-pl-x-q: 1.4; text-transform: none; --s8-nb-e-a: p; line-height: 18px; ---ys--xu-q: none; font-weight: 400; font-style: normal; font-kerning: normal; font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px"> d</span><span style="caret-color: rgb(253, 255, 246); --cy-v3-z-q: 13.3333px; --g-j-pl-x-q: 1.4; text-transform: none; --s8-nb-e-a: p; line-height: 18px; ---ys--xu-q: none; font-weight: 700; font-style: normal; font-kerning: normal; font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px">AÍ</span><span style="caret-color: rgb(253, 255, 246); --cy-v3-z-q: 13.3333px; --g-j-pl-x-q: 1.4; text-transform: none; --s8-nb-e-a: p; line-height: 18px; ---ys--xu-q: none; font-weight: 400; font-style: normal; font-kerning: normal; font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px"> e a gente informa daqui 😜</span></div>
-<div style="font-family: inherit; text-align: center"><span style="caret-color: rgb(253, 255, 246); --cy-v3-z-q: 13.3333px; --g-j-pl-x-q: 1.4; text-transform: none; --s8-nb-e-a: p; line-height: 18px; ---ys--xu-q: none; font-weight: 400; font-style: normal; font-kerning: normal; font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px">Aqui, o Direito é levado a sério, mas a comunicação não precisa ser complicada. Nossa missão é transformar as principais novidades do cenário jurídico em conteúdos claros, úteis e até gostosos de ler.</span></div>
-<div style="font-family: inherit; text-align: center"><span style="caret-color: rgb(253, 255, 246); --cy-v3-z-q: 13.3333px; --g-j-pl-x-q: 1.4; text-transform: none; --s8-nb-e-a: p; line-height: 18px; ---ys--xu-q: none; font-weight: 400; font-style: normal; font-kerning: normal; font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px">Pense nesta newsletter como aquele colega bem informado que sempre te conta primeiro o que está acontecendo, só que direto no seu e-mail.</span><span style="font-family: helvetica, sans-serif; color: #ffffff; font-size: 12px">&nbsp;</span></div><div></div></div></td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="81bf39f0-5a56-478e-9df7-e24e18ca4fa4" data-mc-module-version="2019-10-22">
-    <tbody>
-      <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:0px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: center"><span style="color: #0f3366; font-family: arial, helvetica, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; caret-color: rgb(15, 51, 102); white-space-collapse: preserve; text-wrap-mode: wrap; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline; font-size: 12px">BOA LEITURA E ÓTIMA {{DIA_DA_SEMANA}}!</span></div><div></div></div></td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="spacer" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="22711543-b3e2-4e24-8a8c-70bee232bfb8">
-    <tbody>
-      <tr>
-        <td style="padding:0px 0px 3px 0px;" role="module-content" bgcolor="#ab8c3b">
-        </td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="755bab15-204e-4710-9a28-039800e71000" data-mc-module-version="2019-10-22">
-    <tbody>
-      <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:25px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: center"><span style="caret-color: rgb(72, 72, 72); ---ys--xu-q: none; font-weight: 400; font-style: normal; font-kerning: none; color: #0f3366; font-size: 30px">{{TITULO_POST}}</span><span style="color: #0f3366; font-size: 30px">&nbsp;</span></div><div></div></div></td>
-      </tr>
-    </tbody>
-  </table><table border="0" cellpadding="0" cellspacing="0" align="center" width="100%" role="module" data-type="columns" style="padding:0px 0px 0px 0px;" bgcolor="#FFFFFF" data-distribution="1,1">
-    <tbody>
-      <tr role="module-content">
-        <td height="100%" valign="top"><table width="390" style="width:390px; border-spacing:0; border-collapse:collapse; margin:0px 10px 0px 0px;" cellpadding="0" cellspacing="0" align="left" border="0" bgcolor="" class="column column-0">
-      <tbody>
-        <tr>
-          <td style="padding:0px;margin:0px;border-spacing:0;"><table class="wrapper" role="module" data-type="image" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="384fa5c4-a056-4aaa-ac33-7bff895c8ea7">
-    <tbody>
-      <tr>
-        <td style="font-size:6px; line-height:10px; padding:0px 0px 0px 0px;" valign="top" align="center">
-          <img class="max-width" border="0" style="display:block; color:#000000; text-decoration:none; font-family:Helvetica, arial, sans-serif; font-size:16px; max-width:100% !important; width:100%; height:auto !important;" width="390" alt="" data-proportionally-constrained="true" data-responsive="true" src="{{URL_IMAGEM_POST}}">
-        </td>
-      </tr>
-    </tbody>
-  </table></td>
-        </tr>
-      </tbody>
-    </table><table width="390" style="width:390px; border-spacing:0; border-collapse:collapse; margin:0px 0px 0px 10px;" cellpadding="0" cellspacing="0" align="left" border="0" bgcolor="" class="column column-1">
-      <tbody>
-        <tr>
-          <td style="padding:0px;margin:0px;border-spacing:0;"><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;" data-muid="263d4da4-eb4d-4af0-8b1d-b7d0ddd93a8a" data-mc-module-version="2019-10-22">
-    <tbody>
-      <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content"><div><div style="font-family: inherit; text-align: inherit">{{RESUMO_POST}}</div><div></div></div></td>
-      </tr>
-    </tbody>
-  </table><table border="0" cellpadding="0" cellspacing="0" class="module" data-role="module-button" data-type="button" role="module" style="table-layout:fixed;" width="100%" data-muid="7bbd3e05-f3cf-4fa8-a50b-9a1ff23ca977">
-      <tbody>
-        <tr>
-          <td align="center" bgcolor="" class="outer-td" style="padding:0px 0px 0px 0px;">
-            <table border="0" cellpadding="0" cellspacing="0" class="wrapper-mobile" style="text-align:center;">
-              <tbody>
-                <tr>
-                <td align="center" bgcolor="#0f3366" class="inner-td" style="border-radius:6px; font-size:16px; text-align:center; background-color:inherit;">
-                  <a href="{{Url_Post}}" style="background-color:#0f3366; border:1px solid #333333; border-color:#333333; border-radius:6px; border-width:1px; color:#ffffff; display:inline-block; font-size:14px; font-weight:normal; letter-spacing:0px; line-height:normal; padding:12px 18px 12px 18px; text-align:center; text-decoration:none; border-style:solid; font-family:lucida sans unicode,lucida grande,sans-serif;" target="_blank">Veja mais posts</a>
-                </td>
-                </tr>
-              </tbody>
-            </table>
-          </td>
-        </tr>
-      </tbody>
-    </table></td>
-        </tr>
-      </tbody>
-    </table></td>
-      </tr>
-    </tbody>
-  </table><table class="module" role="module" data-type="text" border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
-    <tbody>
-      <tr>
-        <td style="padding:18px 0px 18px 0px; line-height:22px; text-align:inherit;" height="100%" valign="top" bgcolor="" role="module-content">
-          <div style="text-align: center; font-family: inherit; color: #64748b; font-size: 13px;">
-            <p>Atenciosamente,<br>Equipe Processa AI</p>
-            <p>&copy; 2026 Processa AI. Todos os direitos reservados.</p>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table><div data-role="module-unsubscribe" class="module" role="module" data-type="unsubscribe" style="color:#444444; font-size:12px; line-height:20px; padding:16px 16px 16px 16px; text-align:Center;" data-muid="4e838cf3-9892-4a6d-94d6-170e474d21e5"><div class="Unsubscribe--addressLine"></div><p style="font-size:12px; line-height:20px;"><a class="Unsubscribe--unsubscribeLink" href="{{unsubscribe}}" target="_blank" style="">Cancelar inscrição</a></p></div></td>
-                                      </tr>
-                                    </table>
-                                    <!--[if mso]>
-                                  </td>
-                                </tr>
-                              </table>
-                            </center>
-                            <![endif]-->
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
+{% endblock %}
+
+{% block content %}
+    <div style="text-align: center;">
+        <span class="date-badge">14 de fevereiro de 2026</span>
+        <h1>BOM DIA, {{USERNAME}}!</h1>
+        <p style="font-size: 18px; color: #64748b;">Seja bem-vindo(a)! Pode entrar, a casa é sua!</p>
+    </div>
+
+    <!-- Highlight Box -->
+    <div class="highlight-box">
+        <span class="highlight-title">Fique tranquilo(a): você PROCESSA d AÍ e a gente informa daqui 😜</span>
+        <p>Aqui, o Direito é levado a sério, mas a comunicação não precisa ser complicada. Nossa missão é transformar as principais novidades do cenário jurídico em conteúdos claros, úteis e até gostosos de ler.</p>
+        <p style="margin-bottom: 0;">Pense nesta newsletter como aquele colega bem informado que sempre te conta primeiro o que está acontecendo, só que direto no seu e-mail.</p>
+    </div>
+
+    <p style="text-align: center; font-weight: 700; color: #0f3366; margin-top: 30px; font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase;">
+        BOA LEITURA E ÓTIMA {{DIA_DA_SEMANA}}!
+    </p>
+
+    <div class="divider"></div>
+
+    <!-- Main Post Section -->
+    <div class="post-card">
+        <div style="background-color: #f8fafc; padding: 20px; border-bottom: 1px solid #e2e8f0;">
+            <h2 style="margin: 0; font-size: 18px; line-height: 1.4;">{{TITULO_POST}}</h2>
         </div>
-      </center>
-    </body>
-  </html>
+        
+        <a href="{{Url_Post}}">
+            <img src="{{URL_IMAGEM_POST}}" alt="Imagem do Post" class="post-image">
+        </a>
+        
+        <div class="post-content">
+            <div style="margin-bottom: 24px; color: #475569; line-height: 1.7;">
+                {{RESUMO_POST}}
+            </div>
+            <div style="text-align: center;">
+                <a href="{{Url_Post}}" class="btn">Ler post completo</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
