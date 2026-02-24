@@ -102,6 +102,15 @@ async def cnis_analysis(
             "file_url": file_url
         }]
 
+    # Consume credits before enqueuing
+    credits_service = CreditsService()
+    credit_result = await credits_service.consume_credits(user_id, "cnis_analysis")
+    if not credit_result.success:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes para analisar CNIS.",
+        )
+
     # Se vier job_uuid do upload, usar. Senão gerar novo.
     if data.job_uuid:
         try:
@@ -291,6 +300,15 @@ async def process_summary_analysis(
         job_uuid = uuid4()
 
     job_id = f"ai:{job_uuid}"
+
+    # Consume credits before enqueuing
+    credits_service = CreditsService()
+    credit_result = await credits_service.consume_credits(user_id, "process_summary")
+    if not credit_result.success:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes para gerar resumo.",
+        )
 
     try:
         await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
