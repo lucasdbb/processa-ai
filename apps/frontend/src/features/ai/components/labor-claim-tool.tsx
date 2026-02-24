@@ -193,8 +193,8 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
             
             if (statusData.result) {
               setGeneratedText(statusData.result.text || '')
-              if (statusData.result.pdf_url) {
-                setGeneratedPdfUrl(statusData.result.pdf_url)
+              if (statusData.result.pdf_url || statusData.result.download_url) {
+                setGeneratedPdfUrl(statusData.result.pdf_url || statusData.result.download_url)
               }
               setIsResultModalOpen(true)
             }
