@@ -56,9 +56,7 @@ async def response_create(
             return text
         except Exception as e:
             last_error = e
-            logger.warning(
-                "LLM call failed (attempt %d/%d): %s", attempt, retries, e
-            )
+            logger.warning("LLM call failed (attempt %d/%d): %s", attempt, retries, e)
             if attempt < retries:
                 await asyncio.sleep(RETRY_DELAY_S)
 

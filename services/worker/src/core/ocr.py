@@ -40,9 +40,7 @@ async def extract_text_from_url(pdf_url: str) -> str:
             break
         except Exception as e:
             last_error = e
-            logger.warning(
-                "OCR failed (attempt %d/%d): %s", attempt, MAX_RETRIES, e
-            )
+            logger.warning("OCR failed (attempt %d/%d): %s", attempt, MAX_RETRIES, e)
             if attempt < MAX_RETRIES:
                 await asyncio.sleep(RETRY_DELAY_S)
     else:

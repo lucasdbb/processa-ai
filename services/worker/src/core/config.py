@@ -28,4 +28,5 @@ class Settings(BaseSettings):
     # Worker
     PORT: int = 8001
 
+
 settings = Settings()

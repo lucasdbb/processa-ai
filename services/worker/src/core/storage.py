@@ -1,4 +1,3 @@
-
 import hashlib
 import re
 from urllib.parse import unquote, urlparse
@@ -87,7 +86,7 @@ class StorageService:
             signed_url = data.get("signedURL") or data.get("signedUrl")
         if not signed_url or not isinstance(signed_url, str):
             raise WorkerException(status_code=502, detail="Resposta inválida ao gerar URL assinada")
-        
+
         # Ensure full URL if relative
         if signed_url.startswith("/"):
             if signed_url.startswith("/storage/v1"):
@@ -112,11 +111,11 @@ class StorageService:
         """Upload input PDF to Supabase Storage."""
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        
+
         # Determine bucket based on functionality (though input usually comes from AI/Office)
         # Assuming "documents" as default for worker inputs
         bucket = "documents"
-        
+
         if not base_url or not api_key:
             raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
 
@@ -199,7 +198,7 @@ class StorageService:
         """Upload PDF to Supabase Storage. Structure: user_id/functionality/client_id/job_uuid/[input|output]/hash.pdf"""
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        
+
         # Select bucket based on functionality
         func_lower = functionality.lower().strip()
         bucket = "blog-images" if func_lower in ("blog", "media") else "documents"
@@ -210,12 +209,12 @@ class StorageService:
         sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
         folder = "output" if output else "input"
         storage_filename = f"{sha}.pdf"
-        
+
         uid = self.sanitize_path_segment(user_id, default="unknown-user")
         func = self.sanitize_path_segment(functionality, default="ai")
         cid = self.sanitize_path_segment(client_id, default="no_client")
         jid = self.sanitize_path_segment(job_uuid, default="unknown-job")
-        
+
         storage_path = f"{uid}/{func}/{cid}/{jid}/{folder}/{storage_filename}"
 
         upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
@@ -250,14 +249,14 @@ class StorageService:
         signed_url = await self.generate_signed_url(
             bucket=bucket, storage_path=storage_path, expires_in=expires_in
         )
-        
+
         # generate_signed_url already handles the full URL check in my implementation above
 
         return {
             "bucket": bucket,
             "storage_path": storage_path,
             "signed_url": signed_url,
-            "filename": storage_filename
+            "filename": storage_filename,
         }
 
     async def download_pdf_bytes(self, file_url: str) -> bytes:
@@ -295,7 +294,7 @@ class StorageService:
 
         # Endpoint: DELETE /storage/v1/object/{bucket}/{path}
         delete_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
-        
+
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.delete(
@@ -306,7 +305,9 @@ class StorageService:
                     },
                 )
                 if resp.status_code >= 400:
-                    logger.error(f"Failed to delete file {bucket}/{storage_path}: {resp.status_code} {resp.text}")
+                    logger.error(
+                        f"Failed to delete file {bucket}/{storage_path}: {resp.status_code} {resp.text}"
+                    )
                     return False
                 return True
         except Exception as e:

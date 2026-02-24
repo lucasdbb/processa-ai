@@ -138,9 +138,11 @@ async def run_multi_document_analysis(
     variables: dict[str, str] = {"extracted_text": combined_text}
     if user_prompt:
         variables["user_prompt"] = user_prompt
-        variables["extracted_documents"] = "\n\n".join(
-            f"--- DOCUMENTO {i} ---\n{t}" for i, t in enumerate(extracted_texts, 1)
-        ) if extracted_texts else ""
+        variables["extracted_documents"] = (
+            "\n\n".join(f"--- DOCUMENTO {i} ---\n{t}" for i, t in enumerate(extracted_texts, 1))
+            if extracted_texts
+            else ""
+        )
 
     markdown = await response_create(
         prompt_id=prompt.prompt_id,

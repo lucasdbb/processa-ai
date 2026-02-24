@@ -74,7 +74,6 @@ class AiService:
     #  Supabase Storage helpers (DELEGATED TO StorageService)
     # ------------------------------------------------------------------ #
 
-
     # ------------------------------------------------------------------ #
     #  PDF generation
     # ------------------------------------------------------------------ #
@@ -105,7 +104,7 @@ class AiService:
             expires_in=expires_in,
             output=True,
         )
-        
+
         if "signed_url" in uploaded:
             uploaded["download_url"] = uploaded["signed_url"]
 
@@ -440,15 +439,16 @@ class AiService:
         # Internal secret or admin key for backend communication
         # Assuming worker has permissions or uses a service role key if needed
         # For now, let's assume we can call an internal endpoint or use DB directly if in same network
-        
+
         # BETTER APPROACH: Since worker shares DB with backend, use DB directly to avoid auth overhead/circular deps
-        # But `CreditsService` logic is in backend. 
+        # But `CreditsService` logic is in backend.
         # Option A: Re-implement refund logic here (call RPC `grant_credits_to_user`)
         # Option B: Call backend API endpoint (requires auth)
-        
+
         # Let's go with Option A (DB Direct) for robustness in worker
         try:
             from src.core.db import get_pool
+
             pool = await get_pool()
             async with pool.connection() as conn:
                 async with conn.cursor() as cur:

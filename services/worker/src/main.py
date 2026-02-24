@@ -47,6 +47,7 @@ JOB_COSTS = {
     "brief_scanner": 3,
 }
 
+
 async def _validate_job_basic(job: dict) -> tuple[str, uuid.UUID | None, str, dict] | None:
     """Extract and validate basic job info. Returns (job_id, job_uuid, job_type, payload) or None if invalid."""
     job_id = str(job.get("job_id") or "").strip()
@@ -96,7 +97,9 @@ async def _validate_job_basic(job: dict) -> tuple[str, uuid.UUID | None, str, di
     return job_id, job_uuid, job_type, payload
 
 
-async def _prepare_files(job_id: str, job_uuid: uuid.UUID | None, job_type: str, payload: dict) -> tuple[str, list[str], str | None, str | None] | None:
+async def _prepare_files(
+    job_id: str, job_uuid: uuid.UUID | None, job_type: str, payload: dict
+) -> tuple[str, list[str], str | None, str | None] | None:
     """Handle file URLs and signed URL generation."""
     is_multi_file = job_type in ("labor_claim", "brief_scanner")
     file_url = ""
@@ -107,7 +110,7 @@ async def _prepare_files(job_id: str, job_uuid: uuid.UUID | None, job_type: str,
     if is_multi_file:
         files_list = payload.get("files") or []
         file_urls = [str(f.get("file_url") or "") for f in files_list if f.get("file_url")]
-        
+
         # labor_claim may have no files (text-only), but brief_scanner requires at least one
         if job_type == "brief_scanner" and not file_urls:
             await _safe_set_job_status(
@@ -117,7 +120,9 @@ async def _prepare_files(job_id: str, job_uuid: uuid.UUID | None, job_type: str,
             if job_uuid:
                 try:
                     await mark_job_failed(job_uuid=job_uuid, error="Nenhum arquivo enviado")
-                    await add_job_event(job_uuid=job_uuid, event_type="failed", message="Nenhum arquivo enviado")
+                    await add_job_event(
+                        job_uuid=job_uuid, event_type="failed", message="Nenhum arquivo enviado"
+                    )
                 except Exception:
                     logger.exception("Failed to persist job failure in database")
             return None
@@ -131,28 +136,29 @@ async def _prepare_files(job_id: str, job_uuid: uuid.UUID | None, job_type: str,
         if bucket and storage_path and not file_url:
             try:
                 from src.core.storage import StorageService
+
                 storage = StorageService()
                 file_url = await storage.generate_signed_url(
-                    bucket=bucket, 
-                    storage_path=storage_path, 
-                    expires_in=3600
+                    bucket=bucket, storage_path=storage_path, expires_in=3600
                 )
-                logger.info("Generated signed URL successfully for bucket=%s path=%s", bucket, storage_path)
+                logger.info(
+                    "Generated signed URL successfully for bucket=%s path=%s", bucket, storage_path
+                )
             except Exception as e:
                 logger.error("Failed to generate signed URL: %s", e, exc_info=True)
-        
+
         # file_urls = []  # not used for single-file (implicitly handled by initialization)
 
     return file_url, file_urls, bucket, storage_path
 
 
 async def _execute_ai_service(
-    job_type: str, 
-    job_id: str, 
-    job_uuid: uuid.UUID | None, 
-    payload: dict, 
-    file_url: str, 
-    file_urls: list[str]
+    job_type: str,
+    job_id: str,
+    job_uuid: uuid.UUID | None,
+    payload: dict,
+    file_url: str,
+    file_urls: list[str],
 ) -> dict:
     """Execute the specific AI service logic."""
     user_id = str(payload.get("user_id") or "").strip()
@@ -167,9 +173,7 @@ async def _execute_ai_service(
     if job_uuid:
         try:
             await mark_job_processing(job_uuid=job_uuid, progress=5)
-            await add_job_event(
-                job_uuid=job_uuid, event_type="processing", payload={"progress": 5}
-            )
+            await add_job_event(job_uuid=job_uuid, event_type="processing", payload={"progress": 5})
         except Exception:
             logger.exception("Failed to persist job processing in database")
 
@@ -227,14 +231,14 @@ async def _execute_ai_service(
 
 
 async def _handle_failure(
-    e: Exception, 
-    job_id: str, 
-    job_uuid: uuid.UUID | None, 
-    job_type: str, 
+    e: Exception,
+    job_id: str,
+    job_uuid: uuid.UUID | None,
+    job_type: str,
     user_id: str,
     payload: dict,
     bucket: str | None,
-    storage_path: str | None
+    storage_path: str | None,
 ) -> None:
     """Handle job failure, cleanup files, and refund credits."""
     err = str(getattr(e, "detail", None) or str(e) or "Erro")
@@ -247,7 +251,7 @@ async def _handle_failure(
             # 1. Mark job as failed in DB
             await mark_job_failed(job_uuid=job_uuid, error=err)
             await add_job_event(job_uuid=job_uuid, event_type="failed", message=err)
-            
+
             input_document_id = payload.get("input_document_id")
             is_multi_file = job_type in ("labor_claim", "brief_scanner")
             files_list = payload.get("files") or []
@@ -256,16 +260,20 @@ async def _handle_failure(
             if not input_document_id and not is_multi_file and bucket and storage_path:
                 try:
                     from src.core.storage import StorageService
+
                     storage = StorageService()
                     await storage.delete_file(bucket=bucket, storage_path=storage_path)
-                    logger.info(f"Deleted temporary input file {bucket}/{storage_path} due to failure")
+                    logger.info(
+                        f"Deleted temporary input file {bucket}/{storage_path} due to failure"
+                    )
                 except Exception as ex:
                     logger.warning(f"Failed to cleanup file {bucket}/{storage_path}: {ex}")
-            
+
             # For multi-file, we iterate and delete
             if not input_document_id and is_multi_file and files_list:
                 try:
                     from src.core.storage import StorageService
+
                     storage = StorageService()
                     for f in files_list:
                         b = f.get("bucket")
@@ -275,30 +283,26 @@ async def _handle_failure(
                     logger.info(f"Deleted {len(files_list)} temporary input files due to failure")
                 except Exception as ex:
                     logger.warning(f"Failed to cleanup files: {ex}")
-            
+
             # 3. Refund credits
             cost = JOB_COSTS.get(job_type, 0)
             if cost > 0:
                 logger.info(f"Refunding {cost} credits to user {user_id} due to job failure")
                 await ai_service.refund_credits(user_id, cost, reason=f"refund_{job_type}_{job_id}")
-                
+
         except Exception:
             logger.exception("Failed to persist job failure or refund credits")
 
 
 async def _save_results(
-    result: dict, 
-    job_id: str, 
-    job_uuid: uuid.UUID | None, 
-    job_type: str, 
-    payload: dict
+    result: dict, job_id: str, job_uuid: uuid.UUID | None, job_type: str, payload: dict
 ) -> None:
     """Save job results, create documents, and update status."""
     user_id = str(payload.get("user_id") or "").strip()
     client_id = payload.get("client_id")
     store_pdf = bool(payload.get("store_pdf"))
     input_document_id = payload.get("input_document_id")
-    
+
     status: dict = {"job_id": job_id, "status": "completed", "progress": 100}
     result_payload: dict = {}
 
@@ -353,11 +357,12 @@ async def _save_results(
                 # Generate signed URL for the output document so frontend can preview it immediately
                 try:
                     from src.core.storage import StorageService
+
                     storage = StorageService()
                     download_url = await storage.generate_signed_url(
                         bucket=bucket,
                         storage_path=storage_path,
-                        expires_in=3600 # 1 hour preview
+                        expires_in=3600,  # 1 hour preview
                     )
                     status["result"] = {
                         **(status.get("result") or {}),
@@ -422,7 +427,7 @@ async def _handle_ai_job(job: dict) -> None:
     # Note: user_id check is partially done in validation, but logic requires check after files for single-file case?
     # Original code had complex logic for user_id/file_url/is_multi_file checks.
     # Let's replicate exact logic.
-    
+
     # 2. Prepare Files
     files_result = await _prepare_files(job_id, job_uuid, job_type, payload)
     if not files_result:
@@ -432,11 +437,9 @@ async def _handle_ai_job(job: dict) -> None:
     # Additional validation logic from original code
     is_multi_file = job_type in ("labor_claim", "brief_scanner")
     if not is_multi_file and (not file_url or not user_id):
-
         logger.info("is_multi_file: %s", is_multi_file)
         logger.info("file_url: %s", file_url)
         logger.info("user_id: %s", user_id)
-
 
         await _safe_set_job_status(
             job_id,
@@ -460,7 +463,9 @@ async def _handle_ai_job(job: dict) -> None:
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
-                await add_job_event(job_uuid=job_uuid, event_type="failed", message="user_id obrigatório")
+                await add_job_event(
+                    job_uuid=job_uuid, event_type="failed", message="user_id obrigatório"
+                )
             except Exception:
                 logger.exception("Failed to persist job failure in database")
         return
