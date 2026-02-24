@@ -29,7 +29,9 @@ async def list_services(
     search: str | None = Query(None, description="Search by name"),
     client_id: UUID | None = Query(None, description="Filter by client ID"),
     category: ServiceCategory | None = Query(None, description="Filter by category"),
-    service_status: ServiceStatus | None = Query(None, alias="status", description="Filter by status"),
+    service_status: ServiceStatus | None = Query(
+        None, alias="status", description="Filter by status"
+    ),
     limit: int = Query(50, ge=1, le=100, description="Max results"),
     offset: int = Query(0, ge=0, description="Skip results"),
     user_id: UUID = Depends(get_user_id),

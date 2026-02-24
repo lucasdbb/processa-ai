@@ -267,9 +267,9 @@ class DashboardService:
 
                         # Calculate end date (first day of next month)
                         if month == "12":
-                            end_date = f"{int(year)+1}-01-01"
+                            end_date = f"{int(year) + 1}-01-01"
                         else:
-                            end_date = f"{year}-{int(month)+1:02d}-01"
+                            end_date = f"{year}-{int(month) + 1:02d}-01"
 
                         # Get received amount for this month
                         await cur.execute(

@@ -63,7 +63,7 @@ class CalculatorsService:
 
         # 1. Calcular Remuneração Bruta (Base de Cálculo)
         remuneracao = float(salario_base)
-        
+
         # Periculosidade (30% sobre Salário Base)
         val_periculosidade = 0.0
         if adicional_periculosidade:
@@ -73,7 +73,9 @@ class CalculatorsService:
         # Insalubridade (% sobre Salário Mínimo/Base Específica)
         val_insalubridade = 0.0
         if adicional_insalubridade_grau > 0:
-            val_insalubridade = float(base_insalubridade) * (float(adicional_insalubridade_grau) / 100.0)
+            val_insalubridade = float(base_insalubridade) * (
+                float(adicional_insalubridade_grau) / 100.0
+            )
             remuneracao += val_insalubridade
 
         # Adicional Noturno
@@ -82,7 +84,9 @@ class CalculatorsService:
             # Divisor padrão 220h
             valor_hora = salario_base / 220.0
             # Adicional noturno incide sobre a hora normal
-            val_noturno = valor_hora * media_horas_noturnas * (float(adicional_noturno_percent) / 100.0)
+            val_noturno = (
+                valor_hora * media_horas_noturnas * (float(adicional_noturno_percent) / 100.0)
+            )
             # Nota: A hora noturna reduzida (52m30s) geralmente é tratada na quantidade de horas
             # Vamos assumir que "media_horas_noturnas" já considera a hora reduzida ou é hora relógio convertida
             remuneracao += val_noturno
@@ -94,21 +98,25 @@ class CalculatorsService:
         dias_trabalhados = max(0.0, float((data_rescisao - data_admissao).days))
         meses_trabalhados_total = dias_trabalhados / 30.0
 
-        saldo_salario = (remuneracao / 30.0) * min(30, data_rescisao.day) # Proporcional aos dias do mês da rescisão
+        saldo_salario = (remuneracao / 30.0) * min(
+            30, data_rescisao.day
+        )  # Proporcional aos dias do mês da rescisão
         # Se rescisão dia 31, paga 30 dias (salário cheio)
-        
+
         # Aviso Prévio (Lei 12.506/2011)
         # 30 dias + 3 dias por ano completo, até max 90 dias
         anos_completos = int(dias_trabalhados / 365.0)
         dias_aviso = 30
         if anos_completos > 0:
             dias_aviso += min(60, anos_completos * 3)
-            
+
         valor_aviso_previo = (remuneracao / 30.0) * dias_aviso if aviso_previo else 0.0
 
         dias_ferias_vencidas = max(0, int(ferias_vencidas or 0))
-        valor_ferias_vencidas = (remuneracao / 30.0) * float(dias_ferias_vencidas) * (4.0 / 3.0) # + 1/3
-        
+        valor_ferias_vencidas = (
+            (remuneracao / 30.0) * float(dias_ferias_vencidas) * (4.0 / 3.0)
+        )  # + 1/3
+
         # Férias Proporcionais (Avos)
         # Contar meses do período aquisitivo atual
         # Simplificação: meses trabalhados desde o aniversário da admissão no ano corrente
@@ -120,13 +128,13 @@ class CalculatorsService:
             aniversario = date(ano_aniversario, data_admissao.month, data_admissao.day)
             if aniversario > data_rescisao:
                 aniversario = date(ano_aniversario - 1, data_admissao.month, data_admissao.day)
-            
+
             delta_ferias = data_rescisao - aniversario
             meses_ferias_prop = delta_ferias.days // 30
             if (delta_ferias.days % 30) >= 15:
                 meses_ferias_prop += 1
             meses_ferias_prop = min(12, meses_ferias_prop)
-            
+
             # Projeção do Aviso Prévio Indenizado nas Férias?
             # Se aviso_previo=True (indenizado), projeta mais 1 avo (ou mais dias)
             # Vamos manter simples por enquanto ou adicionar projeção?
@@ -147,9 +155,9 @@ class CalculatorsService:
             if (delta_13.days % 30) >= 15:
                 meses_13 += 1
             meses_13 = min(12, meses_13)
-        
+
         valor_13 = (remuneracao / 12.0) * meses_13 if decimo_terceiro else 0.0
-        
+
         # FGTS
         # 8% sobre a remuneração de todo o período
         fgts_base = remuneracao * 0.08 * meses_trabalhados_total
@@ -162,7 +170,7 @@ class CalculatorsService:
             + valor_ferias_vencidas
             + valor_ferias_prop
             + valor_13
-            + fgts_base # FGTS depositado não entra no TRCT para saque em dinheiro, mas entra na multa?
+            + fgts_base  # FGTS depositado não entra no TRCT para saque em dinheiro, mas entra na multa?
             # Na verdade, FGTS mensal é depositado na conta. O que se paga na rescisão é a Multa.
             # E o saldo de salários/aviso/13 gera FGTS rescisório.
             # O código anterior somava TUDO no total. Vamos manter a lógica de "Custo Total da Rescisão" ou "Valor a Receber"?
@@ -193,8 +201,8 @@ class CalculatorsService:
                     "periculosidade": val_periculosidade,
                     "insalubridade": val_insalubridade,
                     "noturno": val_noturno,
-                    "outras": outras_verbas
-                }
+                    "outras": outras_verbas,
+                },
             },
         }
 
@@ -202,10 +210,8 @@ class CalculatorsService:
         detalhes = (
             output_payload.get("detalhes") if isinstance(output_payload, dict) else None
         ) or {}
-        
-        meta = (
-            output_payload.get("meta") if isinstance(output_payload, dict) else None
-        ) or {}
+
+        meta = (output_payload.get("meta") if isinstance(output_payload, dict) else None) or {}
         comps = meta.get("remuneracao_composta") or {}
 
         def money(v: object) -> str:
@@ -217,7 +223,7 @@ class CalculatorsService:
         lines: list[str] = []
         lines.append("# Rescisão Trabalhista")
         lines.append("")
-        
+
         lines.append("## Dados do Contrato")
         lines.append(f"- Admissão: {input_payload.get('data_admissao')}")
         lines.append(f"- Rescisão: {input_payload.get('data_rescisao')}")
@@ -227,19 +233,21 @@ class CalculatorsService:
 
         lines.append("## Composição da Remuneração")
         lines.append(f"- Salário Base: {money(input_payload.get('salario_base'))}")
-        if input_payload.get('adicional_periculosidade'):
+        if input_payload.get("adicional_periculosidade"):
             lines.append(f"- Periculosidade (30%): {money(comps.get('periculosidade'))}")
-        if input_payload.get('adicional_insalubridade_grau'):
-            grau = input_payload.get('adicional_insalubridade_grau')
+        if input_payload.get("adicional_insalubridade_grau"):
+            grau = input_payload.get("adicional_insalubridade_grau")
             lines.append(f"- Insalubridade ({grau}%): {money(comps.get('insalubridade'))}")
-        if input_payload.get('media_horas_noturnas'):
+        if input_payload.get("media_horas_noturnas"):
             lines.append(f"- Adicional Noturno: {money(comps.get('noturno'))}")
-        if input_payload.get('outras_verbas'):
+        if input_payload.get("outras_verbas"):
             lines.append(f"- Outras Verbas: {money(input_payload.get('outras_verbas'))}")
-        
-        lines.append(f"**Remuneração para Fins Rescisórios: {money(detalhes.get('remuneracao_bruta'))}**")
+
+        lines.append(
+            f"**Remuneração para Fins Rescisórios: {money(detalhes.get('remuneracao_bruta'))}**"
+        )
         lines.append("")
-        
+
         lines.append("## Detalhamento das Verbas")
         lines.append("")
         lines.append("| Item | Valor |")
@@ -247,13 +255,17 @@ class CalculatorsService:
         lines.append(f"| Saldo de Salário | {money(detalhes.get('saldo_salario'))} |")
         lines.append(f"| Aviso Prévio Indenizado | {money(detalhes.get('aviso_previo'))} |")
         lines.append(f"| Férias Vencidas + 1/3 | {money(detalhes.get('ferias_vencidas'))} |")
-        lines.append(f"| Férias Proporcionais + 1/3 | {money(detalhes.get('ferias_proporcionais'))} |")
+        lines.append(
+            f"| Férias Proporcionais + 1/3 | {money(detalhes.get('ferias_proporcionais'))} |"
+        )
         lines.append(f"| 13º Salário Proporcional | {money(detalhes.get('decimo_terceiro'))} |")
         lines.append(f"| FGTS (Depósitos) | {money(detalhes.get('fgts'))} |")
         lines.append(f"| Multa FGTS (40%) | {money(detalhes.get('multa_fgts'))} |")
         lines.append(f"| **Total Estimado** | **{money(detalhes.get('total'))}** |")
         lines.append("")
-        lines.append("> Nota: O cálculo do FGTS é uma estimativa baseada na remuneração atual aplicada a todo o período. O valor real depende dos depósitos efetuados.")
+        lines.append(
+            "> Nota: O cálculo do FGTS é uma estimativa baseada na remuneração atual aplicada a todo o período. O valor real depende dos depósitos efetuados."
+        )
         return "\n".join(lines)
 
     def _markdown_to_pdf_bytes(self, markdown: str, *, title: str | None = None) -> bytes:
@@ -480,27 +492,27 @@ class CalculatorsService:
     ) -> dict:
         # Lógica simplificada (regra geral 65/62 anos, 15 anos contribuição)
         # TODO: Expandir com regras de transição reais
-        
+
         idade_minima = 65 if sexo == "masculino" else 62
         tempo_minimo_contrib = 15
-        
+
         pode_aposentar = (idade >= idade_minima) and (tempo_contribuicao >= tempo_minimo_contrib)
-        
+
         anos_restantes = max(0, idade_minima - idade)
         tempo_restante = max(0, tempo_minimo_contrib - tempo_contribuicao)
-        
+
         # Cálculo simplificado do benefício: 60% + 2% por ano acima de 15/20 anos
         # Baseado na regra pós-EC 103/2019
         coeficiente = 0.60
-        anos_excedentes = max(0, tempo_contribuicao - 15) # Simplificação: usando 15 para ambos
+        anos_excedentes = max(0, tempo_contribuicao - 15)  # Simplificação: usando 15 para ambos
         if anos_excedentes > 0:
-            coeficiente += (anos_excedentes * 0.02)
-            
+            coeficiente += anos_excedentes * 0.02
+
         # Limita a 100% (ou mais se permitir >100%, mas regra geral teto é 100% da média, podendo passar em casos específicos)
         # Vamos deixar passar de 100% pois a regra permite
-        
+
         beneficio = salario_contribuicao * coeficiente if pode_aposentar else 0.0
-        
+
         return {
             "detalhes": {
                 "pode_aposentar": pode_aposentar,
@@ -510,9 +522,7 @@ class CalculatorsService:
                 "idade_minima": idade_minima,
                 "tempo_minimo_contrib": tempo_minimo_contrib,
             },
-            "meta": {
-                "coeficiente_calculado": coeficiente
-            }
+            "meta": {"coeficiente_calculado": coeficiente},
         }
 
     def _render_aposentadoria_markdown(self, *, input_payload: dict, output_payload: dict) -> str:
@@ -534,31 +544,43 @@ class CalculatorsService:
         lines.append(f"- Sexo: {input_payload.get('sexo', '').capitalize()}")
         lines.append(f"- Idade atual: {input_payload.get('idade')} anos")
         lines.append(f"- Tempo de contribuição: {input_payload.get('tempo_contribuicao')} anos")
-        lines.append(f"- Salário de contribuição: {money(input_payload.get('salario_contribuicao'))}")
+        lines.append(
+            f"- Salário de contribuição: {money(input_payload.get('salario_contribuicao'))}"
+        )
         lines.append("")
         lines.append("## Resultado")
         lines.append("")
-        
-        pode = detalhes.get('pode_aposentar')
-        status_text = "APROVADO - Requisitos atendidos" if pode else "PENDENTE - Requisitos não atendidos"
-        
+
+        pode = detalhes.get("pode_aposentar")
+        status_text = (
+            "APROVADO - Requisitos atendidos" if pode else "PENDENTE - Requisitos não atendidos"
+        )
+
         lines.append(f"**Status: {status_text}**")
         lines.append("")
-        
+
         if pode:
             lines.append(f"### Valor Estimado do Benefício: {money(detalhes.get('beneficio'))}")
             lines.append("")
-            lines.append("> Nota: Este valor é uma estimativa baseada nas regras gerais. O valor real depende do cálculo da média de todos os salários de contribuição.")
+            lines.append(
+                "> Nota: Este valor é uma estimativa baseada nas regras gerais. O valor real depende do cálculo da média de todos os salários de contribuição."
+            )
         else:
             lines.append("### O que falta:")
             lines.append("")
-            lines.append(f"- Idade mínima exigida: {detalhes.get('idade_minima')} anos (Faltam {detalhes.get('anos_restantes')} anos)")
-            lines.append(f"- Tempo de contribuição mínimo: {detalhes.get('tempo_minimo_contrib')} anos (Faltam {detalhes.get('tempo_restante')} anos)")
-            
+            lines.append(
+                f"- Idade mínima exigida: {detalhes.get('idade_minima')} anos (Faltam {detalhes.get('anos_restantes')} anos)"
+            )
+            lines.append(
+                f"- Tempo de contribuição mínimo: {detalhes.get('tempo_minimo_contrib')} anos (Faltam {detalhes.get('tempo_restante')} anos)"
+            )
+
         lines.append("")
         lines.append("---")
-        lines.append("Este relatório é uma simulação e não possui valor legal. Consulte um advogado previdenciário.")
-        
+        lines.append(
+            "Este relatório é uma simulação e não possui valor legal. Consulte um advogado previdenciário."
+        )
+
         return "\n".join(lines)
 
     async def export_aposentadoria_pdf(

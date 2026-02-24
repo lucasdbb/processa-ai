@@ -5,14 +5,16 @@ Revises: k0e1f2g3h4i5
 Create Date: 2024-05-23 10:00:00.000000
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'l1f2g3h4i5j6'
-down_revision = ('k0e1f2g3h4i5', 'e7a8b1d9657b')
+revision = "l1f2g3h4i5j6"
+down_revision = ("k0e1f2g3h4i5", "e7a8b1d9657b")
 branch_labels = None
 depends_on = None
+
 
 def upgrade() -> None:
     op.execute("""
@@ -78,6 +80,7 @@ def upgrade() -> None:
     END;
     $$ LANGUAGE plpgsql SECURITY DEFINER;
     """)
+
 
 def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS get_credits_usage_stats(INTEGER);")

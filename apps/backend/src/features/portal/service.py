@@ -29,12 +29,12 @@ from src.features.portal.schemas import (
 
 # Map raw process status -> (label, tailwind color token)
 _PROCESS_STATUS_MAP: dict[str, tuple[str, str]] = {
-    "active":    ("Em andamento",  "blue"),
-    "pending":   ("Aguardando",    "yellow"),
-    "suspended": ("Suspenso",      "orange"),
-    "archived":  ("Arquivado",     "gray"),
-    "concluded": ("Concluído",     "green"),
-    "cancelled": ("Cancelado",     "red"),
+    "active": ("Em andamento", "blue"),
+    "pending": ("Aguardando", "yellow"),
+    "suspended": ("Suspenso", "orange"),
+    "archived": ("Arquivado", "gray"),
+    "concluded": ("Concluído", "green"),
+    "cancelled": ("Cancelado", "red"),
 }
 
 
@@ -361,14 +361,13 @@ class PortalService:
 
         # Generate signed URL via Supabase Storage
         from src.core.config import settings
+
         supabase = get_supabase()
         try:
             signed = supabase.storage.from_(settings.SUPABASE_OFFICE_BUCKET).create_signed_url(
                 file_url, expires_in
             )
-            return PortalDocumentDownloadResponse(
-                url=signed["signedURL"], expires_in=expires_in
-            )
+            return PortalDocumentDownloadResponse(url=signed["signedURL"], expires_in=expires_in)
         except Exception as e:
             logger.error(f"Error generating signed URL: {e}")
             raise HTTPException(
@@ -519,14 +518,14 @@ class PortalService:
 
         # Create/update the profile with office_client role
         try:
-            existing = (
-                supabase.table("profiles").select("id").eq("id", invited_user_id).execute()
-            )
+            existing = supabase.table("profiles").select("id").eq("id", invited_user_id).execute()
             if existing.data:
-                supabase.table("profiles").update({
-                    "role": "office_client",
-                    "name": client["name"],
-                }).eq("id", invited_user_id).execute()
+                supabase.table("profiles").update(
+                    {
+                        "role": "office_client",
+                        "name": client["name"],
+                    }
+                ).eq("id", invited_user_id).execute()
             else:
                 supabase.table("profiles").insert(
                     {

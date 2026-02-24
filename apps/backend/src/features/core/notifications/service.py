@@ -120,9 +120,7 @@ class NotificationService:
 
     # Admin endpoints
 
-    async def create_notification(
-        self, admin_id: str, data: NotificationCreate
-    ) -> dict:
+    async def create_notification(self, admin_id: str, data: NotificationCreate) -> dict:
         """Create notification(s) (admin only)"""
         # If user_id is None, send to all users
         if data.user_id is None:
@@ -160,9 +158,7 @@ class NotificationService:
     async def get_stats(self) -> NotificationStatsResponse:
         """Get notification statistics (admin only)"""
         # Total sent
-        total_result = (
-            self.supabase.table("notifications").select("id", count="exact").execute()
-        )
+        total_result = self.supabase.table("notifications").select("id", count="exact").execute()
 
         # Total read
         read_result = (
@@ -202,9 +198,7 @@ class NotificationService:
         )
 
         # Get total count and unread count
-        count_result = (
-            self.supabase.table("notifications").select("id", count="exact").execute()
-        )
+        count_result = self.supabase.table("notifications").select("id", count="exact").execute()
 
         unread_result = (
             self.supabase.table("notifications")

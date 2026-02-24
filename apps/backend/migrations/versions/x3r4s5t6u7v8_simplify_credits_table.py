@@ -5,13 +5,14 @@ Revises: w2q3r4s5t6u7
 Create Date: 2024-03-20 12:00:00.000000
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'simplify_credits_table'
-down_revision = 'w2q3r4s5t6u7'
+revision = "simplify_credits_table"
+down_revision = "w2q3r4s5t6u7"
 branch_labels = None
 depends_on = None
 
@@ -43,7 +44,7 @@ def upgrade() -> None:
             DROP COLUMN IF EXISTS subscription_used,
             DROP COLUMN IF EXISTS purchased_used;
     """)
-    
+
     # 4. Create index on new balances for quick lookup of positive balances
     op.execute("""
         CREATE INDEX IF NOT EXISTS idx_user_credits_subscription_balance
@@ -215,7 +216,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # This downgrade is destructive/complicated because we lost the 'used' vs 'total' distinction.
     # We will just re-add the columns and assume used=0 for now, restoring the schema structure.
-    
+
     op.execute("""
         ALTER TABLE public.user_credits
             ADD COLUMN subscription_used INTEGER NOT NULL DEFAULT 0,
@@ -237,7 +238,7 @@ def downgrade() -> None:
                     (purchased_credits - purchased_used)
                 ) STORED;
     """)
-    
+
     # Restore old functions (simplified versions)
     # ... (omitted for brevity, but would involve reverting to previous logic)
     pass

@@ -1,8 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
 
-
-
 class CnisAnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

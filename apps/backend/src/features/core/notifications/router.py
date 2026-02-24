@@ -151,7 +151,7 @@ async def manually_check_deadlines(
     await deadline_service.check_upcoming_deadlines()
 
     # Get current time for response
-    brazil_tz = ZoneInfo('America/Sao_Paulo')
+    brazil_tz = ZoneInfo("America/Sao_Paulo")
     checked_at = datetime.now(brazil_tz).isoformat()
 
     return {

@@ -35,27 +35,27 @@ def _sanitize_filename(filename: str) -> str:
     """
     if not filename:
         return "document"
-    
+
     # Split extension if present
-    parts = filename.rsplit('.', 1)
+    parts = filename.rsplit(".", 1)
     name = parts[0]
     ext = f".{parts[1]}" if len(parts) > 1 else ""
-    
+
     # Normalize unicode characters (NFD = decompose accents)
-    nfd = unicodedata.normalize('NFD', name)
+    nfd = unicodedata.normalize("NFD", name)
     # Remove diacritics/accents (category Mn = non-spacing marks)
-    without_accents = ''.join(c for c in nfd if unicodedata.category(c) != 'Mn')
+    without_accents = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
     # Replace spaces and non-alphanumeric chars with underscores
-    sanitized = re.sub(r'[^a-zA-Z0-9._-]+', '_', without_accents)
+    sanitized = re.sub(r"[^a-zA-Z0-9._-]+", "_", without_accents)
     # Remove leading/trailing underscores and dashes
-    sanitized = sanitized.strip('_-')
+    sanitized = sanitized.strip("_-")
     # Collapse multiple consecutive underscores/dashes
-    sanitized = re.sub(r'[_-]{2,}', '_', sanitized)
-    
+    sanitized = re.sub(r"[_-]{2,}", "_", sanitized)
+
     # Fallback if nothing left
     if not sanitized:
         sanitized = "document"
-    
+
     return sanitized + ext
 
 
@@ -274,7 +274,9 @@ class DocumentsService:
                 row = await cur.fetchone()
                 return DocumentResponse(**_convert_uuids_to_str(row))
 
-    async def get_download_url(self, file_url: str, expires_in: int = 3600, filename: str | None = None) -> str:
+    async def get_download_url(
+        self, file_url: str, expires_in: int = 3600, filename: str | None = None
+    ) -> str:
         """Generate a signed URL for downloading a document (same pattern as AI service)."""
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
@@ -285,7 +287,7 @@ class DocumentsService:
             marker = f"/object/public/{bucket}/"
             idx = file_url.find(marker)
             if idx != -1:
-                file_url = file_url[idx + len(marker):]
+                file_url = file_url[idx + len(marker) :]
 
         sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{file_url}"
         async with httpx.AsyncClient(timeout=30) as client:
@@ -316,6 +318,7 @@ class DocumentsService:
         # Add download parameter to force download instead of inline preview
         if filename:
             from urllib.parse import quote
+
             sep = "&" if "?" in signed_url else "?"
             signed_url = f"{signed_url}{sep}download={quote(filename)}"
 

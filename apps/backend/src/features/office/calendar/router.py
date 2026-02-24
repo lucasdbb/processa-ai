@@ -51,7 +51,9 @@ async def list_events(
     return EventListResponse(events=events, total=total)
 
 
-@router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED, dependencies=_auth)
+@router.post(
+    "/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED, dependencies=_auth
+)
 async def create_event(
     data: EventCreateRequest,
     user_id: str = Depends(get_user_id),
@@ -118,7 +120,9 @@ async def google_calendar_callback(
             return RedirectResponse(url=redirect_url)
 
     except Exception as e:
-        redirect_url = f"{settings.FRONTEND_URL}/app/calendario?google_connected=false&error={str(e)}"
+        redirect_url = (
+            f"{settings.FRONTEND_URL}/app/calendario?google_connected=false&error={str(e)}"
+        )
         return RedirectResponse(url=redirect_url)
 
 

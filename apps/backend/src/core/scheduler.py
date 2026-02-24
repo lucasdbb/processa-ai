@@ -2,6 +2,7 @@
 Scheduler configuration for background jobs
 Uses APScheduler with optional Redis for distributed locking
 """
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -21,7 +22,7 @@ def create_scheduler() -> AsyncIOScheduler:
     For production: Should use RedisJobStore (distributed lock)
     """
     jobstores = {
-        'default': MemoryJobStore()
+        "default": MemoryJobStore()
         # For production with multiple instances, use Redis:
         # 'default': RedisJobStore(
         #     host=settings.REDIS_HOST,
@@ -30,21 +31,19 @@ def create_scheduler() -> AsyncIOScheduler:
         # )
     }
 
-    executors = {
-        'default': ThreadPoolExecutor(max_workers=1)
-    }
+    executors = {"default": ThreadPoolExecutor(max_workers=1)}
 
     job_defaults = {
-        'coalesce': True,  # If missed, run only once (not multiple times)
-        'max_instances': 1,  # Only one instance of each job at a time
-        'misfire_grace_time': 3600,  # Job can be late up to 1 hour
+        "coalesce": True,  # If missed, run only once (not multiple times)
+        "max_instances": 1,  # Only one instance of each job at a time
+        "misfire_grace_time": 3600,  # Job can be late up to 1 hour
     }
 
     scheduler = AsyncIOScheduler(
         jobstores=jobstores,
         executors=executors,
         job_defaults=job_defaults,
-        timezone='America/Sao_Paulo'  # Brazil timezone
+        timezone="America/Sao_Paulo",  # Brazil timezone
     )
 
     return scheduler
@@ -70,18 +69,18 @@ def setup_jobs(scheduler: AsyncIOScheduler):
     # Check deadlines daily at 8:00 AM Brazil time
     scheduler.add_job(
         check_deadlines_job,
-        'cron',
+        "cron",
         hour=8,
         minute=0,
-        timezone='America/Sao_Paulo',
-        id='check_deadlines_daily',
+        timezone="America/Sao_Paulo",
+        id="check_deadlines_daily",
         replace_existing=True,
-        name='Check upcoming deadlines (8AM Brazil time)'
+        name="Check upcoming deadlines (8AM Brazil time)",
     )
 
     logger.info("Scheduled jobs configured:")
     for job in scheduler.get_jobs():
-        next_run = getattr(job, 'next_run_time', 'Not scheduled yet (scheduler not started)')
+        next_run = getattr(job, "next_run_time", "Not scheduled yet (scheduler not started)")
         logger.info(f"  - {job.name} (id: {job.id}, next run: {next_run})")
 
 

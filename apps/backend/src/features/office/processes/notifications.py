@@ -2,6 +2,7 @@
 Process notifications helpers
 Create notifications when processes are updated
 """
+
 from src.core.supabase import get_supabase
 
 

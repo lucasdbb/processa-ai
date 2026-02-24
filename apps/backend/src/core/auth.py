@@ -51,15 +51,17 @@ def get_user_role(request: Request, x_user_role: str = Header(None)) -> str:
 from pydantic import BaseModel
 from typing import Optional
 
+
 class CurrentUser(BaseModel):
     id: str
     role: str
+
 
 def get_current_user(request: Request) -> CurrentUser:
     """Dependency to get the current authenticated user."""
     user_id = getattr(request.state, "user_id", None)
     user_role = getattr(request.state, "user_role", "client")
-    
+
     if not user_id:
         # Check header fallback
         user_id = request.headers.get("x-user-id")
@@ -70,8 +72,9 @@ def get_current_user(request: Request) -> CurrentUser:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
-        
+
     return CurrentUser(id=user_id, role=user_role)
+
 
 def get_current_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     """Dependency to require admin privileges."""
@@ -81,6 +84,7 @@ def get_current_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentU
             detail="Admin privileges required",
         )
     return user
+
 
 async def require_internal_auth(
     x_internal_token: str | None = Header(default=None),

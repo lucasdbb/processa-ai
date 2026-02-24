@@ -238,7 +238,9 @@ class GoogleCalendarSync:
 
                     # Set expiry (strip timezone: google-auth compares with utcnow() which is naive)
                     if expires_at:
-                        credentials.expiry = expires_at.replace(tzinfo=None) if expires_at.tzinfo else expires_at
+                        credentials.expiry = (
+                            expires_at.replace(tzinfo=None) if expires_at.tzinfo else expires_at
+                        )
 
                     # Refresh if expired
                     if credentials.expired and credentials.refresh_token:
@@ -419,9 +421,7 @@ class GoogleCalendarSync:
                 "message": f"Sync failed: {str(e)}",
             }
 
-    async def delete_event_from_google(
-        self, user_id: str, google_event_id: str
-    ) -> bool:
+    async def delete_event_from_google(self, user_id: str, google_event_id: str) -> bool:
         """Delete an event from Google Calendar.
 
         Args:
@@ -435,29 +435,21 @@ class GoogleCalendarSync:
             # Get valid credentials
             credentials = await self._get_valid_credentials(user_id)
             if not credentials:
-                logger.warning(
-                    f"Cannot delete from Google: no connection for user {user_id}"
-                )
+                logger.warning(f"Cannot delete from Google: no connection for user {user_id}")
                 return False
 
             # Build Calendar service
             service = build("calendar", "v3", credentials=credentials)
 
             # Delete event from Google Calendar
-            service.events().delete(
-                calendarId="primary", eventId=google_event_id
-            ).execute()
+            service.events().delete(calendarId="primary", eventId=google_event_id).execute()
 
-            logger.info(
-                f"Deleted event {google_event_id} from Google Calendar for user {user_id}"
-            )
+            logger.info(f"Deleted event {google_event_id} from Google Calendar for user {user_id}")
             return True
 
         except Exception as e:
             # Log but don't raise - deletion should succeed locally even if Google fails
-            logger.error(
-                f"Error deleting event {google_event_id} from Google Calendar: {e}"
-            )
+            logger.error(f"Error deleting event {google_event_id} from Google Calendar: {e}")
             return False
 
     async def disconnect(self, user_id: str) -> bool:

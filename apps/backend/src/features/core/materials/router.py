@@ -119,4 +119,3 @@ async def get_download_url(slug: str, user_id: str = Depends(get_user_id)):
 async def download_material(slug: str, user_id: str = Depends(get_user_id)):
     url = await service.get_download_redirect_url(slug)
     return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
-

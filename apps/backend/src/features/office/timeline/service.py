@@ -19,9 +19,7 @@ from src.features.office.timeline.schemas import (
 class TimelineService:
     """Service for timeline event operations."""
 
-    async def _fetch_event_documents(
-        self, conn, event_id: UUID
-    ) -> list[DocumentSummary]:
+    async def _fetch_event_documents(self, conn, event_id: UUID) -> list[DocumentSummary]:
         """Fetch documents associated with a timeline event."""
         async with conn.cursor(row_factory=dict_row) as cur:
             await cur.execute(
@@ -38,9 +36,7 @@ class TimelineService:
             rows = await cur.fetchall()
             return [DocumentSummary(**row) for row in rows]
 
-    async def _link_documents(
-        self, conn, event_id: UUID, document_ids: list[UUID]
-    ) -> None:
+    async def _link_documents(self, conn, event_id: UUID, document_ids: list[UUID]) -> None:
         """Link documents to a timeline event."""
         if not document_ids:
             return
@@ -118,9 +114,7 @@ class TimelineService:
                     ORDER BY event_date DESC, created_at DESC
                     LIMIT %s OFFSET %s
                 """
-                await cur.execute(
-                    data_query, query_params + [params.limit, params.offset]
-                )
+                await cur.execute(data_query, query_params + [params.limit, params.offset])
                 rows = await cur.fetchall()
 
                 # Fetch documents for each event
@@ -132,9 +126,7 @@ class TimelineService:
 
                 return events, total
 
-    async def get_event(
-        self, user_id: UUID, event_id: UUID
-    ) -> TimelineEventResponse | None:
+    async def get_event(self, user_id: UUID, event_id: UUID) -> TimelineEventResponse | None:
         """Get a single timeline event by ID with documents."""
         pool = await get_pool()
 
@@ -156,9 +148,7 @@ class TimelineService:
                 event_data = {**row, "documents": documents}
                 return TimelineEventResponse(**event_data)
 
-    async def create_event(
-        self, user_id: UUID, data: TimelineEventCreate
-    ) -> TimelineEventResponse:
+    async def create_event(self, user_id: UUID, data: TimelineEventCreate) -> TimelineEventResponse:
         """Create a new timeline event with optional document links."""
         pool = await get_pool()
 
@@ -203,8 +193,10 @@ class TimelineService:
         """Update an existing timeline event and its document links."""
         pool = await get_pool()
 
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None and k != "document_ids"}
-        
+        update_data = {
+            k: v for k, v in data.model_dump().items() if v is not None and k != "document_ids"
+        }
+
         async with pool.connection() as conn:
             if update_data:
                 # Handle metadata serialization

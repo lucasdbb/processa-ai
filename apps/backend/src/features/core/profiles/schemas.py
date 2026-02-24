@@ -11,7 +11,7 @@ def validate_cpf(cpf: str) -> bool:
         return True  # Allow empty CPF
 
     # Remove non-digits
-    cpf_digits = re.sub(r'\D', '', cpf)
+    cpf_digits = re.sub(r"\D", "", cpf)
 
     # Check length
     if len(cpf_digits) != 11:
@@ -50,7 +50,7 @@ def validate_phone(phone: str) -> bool:
         return True  # Allow empty phone
 
     # Remove non-digits
-    phone_digits = re.sub(r'\D', '', phone)
+    phone_digits = re.sub(r"\D", "", phone)
 
     # Brazilian phone must have 10 or 11 digits (with DDD)
     return len(phone_digits) in (10, 11)
@@ -94,27 +94,27 @@ class UpdateProfile(BaseModel):
     cpf: str  # CPF é obrigatório
     newsletter_opt_in: bool | None = None
 
-    @field_validator('cpf')
+    @field_validator("cpf")
     @classmethod
     def validate_cpf_field(cls, v: str) -> str:
         """Validate CPF format and check digit."""
         if not v or v.strip() == "":
-            raise ValueError('CPF é obrigatório')
+            raise ValueError("CPF é obrigatório")
         if not validate_cpf(v):
-            raise ValueError('CPF inválido')
+            raise ValueError("CPF inválido")
         # Return only digits
-        return re.sub(r'\D', '', v)
+        return re.sub(r"\D", "", v)
 
-    @field_validator('phone')
+    @field_validator("phone")
     @classmethod
     def validate_phone_field(cls, v: str | None) -> str | None:
         """Validate phone format."""
         if v is None or v.strip() == "":
             return None
         if not validate_phone(v):
-            raise ValueError('Telefone inválido. Deve conter 10 ou 11 dígitos.')
+            raise ValueError("Telefone inválido. Deve conter 10 ou 11 dígitos.")
         # Return only digits
-        return re.sub(r'\D', '', v)
+        return re.sub(r"\D", "", v)
 
 
 class UpdateRoleRequest(BaseModel):
@@ -128,7 +128,9 @@ class UpdateRoleRequest(BaseModel):
     purchased_credits: int | None = Field(
         None, ge=0, description="Purchased credits", alias="purchasedCredits"
     )
-    plan_id: str | None = Field(None, description="Plan ID (free, student, autonomo)", alias="planId")
+    plan_id: str | None = Field(
+        None, description="Plan ID (free, student, autonomo)", alias="planId"
+    )
 
     # Legacy field for backward compatibility
     credits: int | None = Field(None, ge=0, description="[DEPRECATED] Use subscription_credits")

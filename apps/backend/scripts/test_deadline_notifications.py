@@ -4,6 +4,7 @@ Script para testar notificações de prazos manualmente
 Uso:
     uv run python scripts/test_deadline_notifications.py
 """
+
 import asyncio
 import logging
 import sys
@@ -18,8 +19,7 @@ from src.features.office.deadlines.notifications import DeadlineNotificationServ
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ async def main():
     logger.info("=" * 60)
 
     # Show current time
-    brazil_tz = ZoneInfo('America/Sao_Paulo')
+    brazil_tz = ZoneInfo("America/Sao_Paulo")
     now = datetime.now(brazil_tz)
     today = now.date()
 

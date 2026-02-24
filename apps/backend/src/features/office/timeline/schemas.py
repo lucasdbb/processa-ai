@@ -8,23 +8,23 @@ from pydantic import BaseModel, Field
 
 
 TimelineEventType = Literal[
-    "creation",      # Processo criado
-    "update",        # Processo atualizado
-    "deadline",      # Prazo criado/vencido
-    "document",      # Documento anexado
-    "note",          # Anotacao adicionada
-    "status_change", # Mudanca de status
-    "hearing",       # Audiencia
-    "petition",      # Peticao
-    "decision",      # Decisao judicial
-    "citation",      # Citacao
-    "other",         # Outros
+    "creation",  # Processo criado
+    "update",  # Processo atualizado
+    "deadline",  # Prazo criado/vencido
+    "document",  # Documento anexado
+    "note",  # Anotacao adicionada
+    "status_change",  # Mudanca de status
+    "hearing",  # Audiencia
+    "petition",  # Peticao
+    "decision",  # Decisao judicial
+    "citation",  # Citacao
+    "other",  # Outros
 ]
 
 
 class DocumentSummary(BaseModel):
     """Summary of a document linked to a timeline event."""
-    
+
     id: UUID
     name: str
     type: str

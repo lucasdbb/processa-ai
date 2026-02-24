@@ -9,6 +9,7 @@ from src.core.config import settings
 from src.core.logging import logger
 from src.features.core.storage.schemas import FunctionalityType
 
+
 class StorageService:
     def _sanitize_path_segment(self, value: str | None, *, default: str) -> str:
         v = (value or "").strip()
@@ -77,7 +78,7 @@ class StorageService:
 
         data = signed.json()
         signed_url = data.get("signedURL")
-        
+
         # A API do Supabase retorna um caminho relativo, precisamos adicionar a base_url
         if signed_url and signed_url.startswith("/"):
             # Se começa com /object/sign, adicionar /storage/v1 antes se não tiver
@@ -88,7 +89,7 @@ class StorageService:
                 signed_url = f"{base_url}/storage/v1{signed_url}"
             else:
                 signed_url = f"{base_url}{signed_url}"
-        
+
         return signed_url
 
     def _get_bucket_for_functionality(self, functionality: str) -> str:
@@ -114,7 +115,7 @@ class StorageService:
         """
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        
+
         if not base_url or not api_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -135,25 +136,25 @@ class StorageService:
         sanitized_func = self._sanitize_path_segment(functionality.value, default="ai")
         sanitized_user = self._sanitize_path_segment(user_id, default="unknown-user")
         sanitized_client = self._sanitize_path_segment(client_id, default="no-client")
-        
+
         final_job_uuid = job_uuid or str(uuid.uuid4())
         sanitized_job = self._sanitize_path_segment(final_job_uuid, default="no-job")
-        
+
         slug_filename = self._slugify_filename(filename)
         # Garantir extensão .pdf se for AI/Office, mas permitir outras se for storage genérico
         # Para consistência com AI, se for PDF mantemos .pdf
         if filename.lower().endswith(".pdf") and not slug_filename.endswith(".pdf"):
             slug_filename += ".pdf"
-            
+
         # Estrutura: user_id/functionality/client_id/job_uuid/input/filename
         # Mantendo compatibilidade com AI Worker que espera input/
         folder = "input"
         storage_path = f"{sanitized_user}/{sanitized_func}/{sanitized_client}/{sanitized_job}/{folder}/{slug_filename}"
-        
+
         # 3. Gerar URL assinada para UPLOAD (PUT)
         # Endpoint: /storage/v1/object/upload/sign/{bucket}/{path}
         sign_url = f"{base_url}/storage/v1/object/upload/sign/{bucket}/{storage_path}"
-        
+
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(
@@ -185,18 +186,20 @@ class StorageService:
 
         data = resp.json()
         signed_url = data.get("signedURL") or data.get("url")
-        
+
         if not signed_url:
-             # Tentar construir se vier token
-             token = data.get("token")
-             if token:
-                 # Se vier token, assumimos que podemos montar a URL de upload direto com token?
-                 # Geralmente signedURL vem completo.
-                 pass
-                 
+            # Tentar construir se vier token
+            token = data.get("token")
+            if token:
+                # Se vier token, assumimos que podemos montar a URL de upload direto com token?
+                # Geralmente signedURL vem completo.
+                pass
+
         if not signed_url:
-             raise HTTPException(status_code=502, detail="Resposta inválida do Supabase (upload url)")
-             
+            raise HTTPException(
+                status_code=502, detail="Resposta inválida do Supabase (upload url)"
+            )
+
         # Se a URL for relativa
         if signed_url.startswith("/"):
             # Se começa com /object/sign, adicionar /storage/v1 antes

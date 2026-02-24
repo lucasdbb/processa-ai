@@ -2,6 +2,7 @@
 Blog post notifications helpers
 Create in-app notifications when new blog posts are published
 """
+
 from src.core.logging import logger
 from src.core.supabase import get_supabase
 
@@ -43,7 +44,9 @@ async def notify_new_blog_post(post_id: str, post_title: str, post_slug: str):
 
         result = supabase.table("notifications").insert(notifications).execute()
 
-        logger.info(f"Created {len(result.data)} in-app notifications for new blog post: {post_title}")
+        logger.info(
+            f"Created {len(result.data)} in-app notifications for new blog post: {post_title}"
+        )
         return len(result.data)
 
     except Exception as e:

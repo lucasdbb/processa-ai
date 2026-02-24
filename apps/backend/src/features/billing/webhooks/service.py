@@ -155,9 +155,7 @@ class WebhooksService:
         except TransientError as e:
             # Transient error - tell Stripe to retry
             logger.error(f"Transient error processing webhook {event_type}: {e}")
-            self._record_event(
-                event_id, event_type, event_status="failed", error_message=str(e)
-            )
+            self._record_event(event_id, event_type, event_status="failed", error_message=str(e))
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Temporary error, please retry",
@@ -166,17 +164,13 @@ class WebhooksService:
         except PermanentError as e:
             # Permanent error - log but acknowledge to Stripe (no retry needed)
             logger.error(f"Permanent error processing webhook {event_type}: {e}")
-            self._record_event(
-                event_id, event_type, event_status="failed", error_message=str(e)
-            )
+            self._record_event(event_id, event_type, event_status="failed", error_message=str(e))
             # Return success to prevent retries, but error is logged for investigation
 
         except Exception as e:
             # Unknown error - treat as transient to be safe (Stripe will retry)
             logger.error(f"Unknown error processing webhook {event_type}: {e}")
-            self._record_event(
-                event_id, event_type, event_status="failed", error_message=str(e)
-            )
+            self._record_event(event_id, event_type, event_status="failed", error_message=str(e))
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal error, please retry",
@@ -188,14 +182,14 @@ class WebhooksService:
         """Handle checkout.session.completed for credit purchase."""
         user_id = session.get("metadata", {}).get("user_id")
         credits_str = session.get("metadata", {}).get("credits")
-        
+
         if not user_id or not credits_str:
-             logger.warning("checkout.session.completed (payment) missing metadata")
-             return
-             
+            logger.warning("checkout.session.completed (payment) missing metadata")
+            return
+
         try:
             credits_amount = int(credits_str)
-            
+
             # Grant credits
             self.supabase.rpc(
                 "grant_credits_to_user",
@@ -203,8 +197,8 @@ class WebhooksService:
                     "p_user_id": user_id,
                     "p_amount": credits_amount,
                     "p_reason": "credit_purchase",
-                    "p_credit_type": "purchased"
-                }
+                    "p_credit_type": "purchased",
+                },
             ).execute()
             logger.info(f"Granted {credits_amount} purchased credits to user {user_id}")
         except Exception as e:
@@ -214,7 +208,7 @@ class WebhooksService:
     async def _handle_checkout_completed(self, session: dict) -> None:
         """Handle checkout.session.completed event."""
         mode = session.get("mode")
-        
+
         if mode == "payment":
             # Credit purchase
             await self._handle_credit_purchase(session)
@@ -403,16 +397,16 @@ class WebhooksService:
 
             user_id = result.data[0]["user_id"]
             current_status = result.data[0]["status"]
-            
+
             # If user already has an active subscription, this might be a race condition with checkout.session.completed
             # We only want to process this if the subscription is NOT already active/trialing from checkout
             if current_status in ["active", "trialing"] and subscription["status"] == "active":
-                 logger.info(f"Skipping subscription.created for user {user_id} (already active from checkout)")
-                 return
+                logger.info(
+                    f"Skipping subscription.created for user {user_id} (already active from checkout)"
+                )
+                return
 
-            plan_id = self._get_plan_id_from_price(
-                subscription["items"]["data"][0]["price"]["id"]
-            )
+            plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
 
             self.supabase.table("subscriptions").update(
                 {
@@ -430,12 +424,12 @@ class WebhooksService:
             ).eq("stripe_customer_id", customer_id).execute()
 
             # Grant credits ONLY if it wasn't processed by checkout (though checkout handles initial grant)
-            # Strategy: Let checkout handle initial grant. 
+            # Strategy: Let checkout handle initial grant.
             # If this event comes later or standalone, we grant ONLY if status changed to active and wasn't before.
             # But safer approach: rely on checkout.session.completed for initial purchase credits.
             # Rely on invoice.paid for renewals.
             # So here we SKIP granting credits to avoid duplication.
-            
+
             logger.info(f"Subscription created/synced for user {user_id}: {subscription_id}")
         except Exception as e:
             logger.error(f"Failed to handle subscription created: {e}")
@@ -451,13 +445,13 @@ class WebhooksService:
         # previous_attributes contains fields that changed
         previous_attributes = subscription.get("previous_attributes", {})
         price_changed = False
-        
+
         # Check if items changed (which implies price/plan change)
         if "items" in previous_attributes:
-             price_changed = True
+            price_changed = True
         # Or if the price ID in the first item is different from what we might have expected?
         # Simpler: check if the new price ID maps to a different plan than what we have stored
-        
+
         new_price_id = subscription["items"]["data"][0]["price"]["id"]
         new_plan_id = self._get_plan_id_from_price(new_price_id)
 
@@ -470,10 +464,10 @@ class WebhooksService:
                 .single()
                 .execute()
             )
-            
+
             user_id = None
             old_plan_id = None
-            
+
             if current_sub.data:
                 user_id = current_sub.data.get("user_id")
                 old_plan_id = current_sub.data.get("plan_id")
@@ -492,17 +486,24 @@ class WebhooksService:
                     "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
                 }
             ).eq("stripe_subscription_id", subscription_id).execute()
-            
+
             logger.info(f"Subscription updated: {subscription_id}, plan: {new_plan_id}")
 
             # Handle Proration / Plan Change Credits
             # If plan changed AND subscription is active
-            if user_id and old_plan_id and new_plan_id != old_plan_id and subscription["status"] == "active":
-                logger.info(f"Plan changed from {old_plan_id} to {new_plan_id} for user {user_id}. Resetting credits to new plan limit.")
+            if (
+                user_id
+                and old_plan_id
+                and new_plan_id != old_plan_id
+                and subscription["status"] == "active"
+            ):
+                logger.info(
+                    f"Plan changed from {old_plan_id} to {new_plan_id} for user {user_id}. Resetting credits to new plan limit."
+                )
                 # Reset monthly credits to the new plan's limit immediately.
                 # User gets the new plan's credits (whether upgrade or downgrade).
                 await self._reset_monthly_credits(user_id, new_plan_id)
-                
+
         except Exception as e:
             logger.error(f"Failed to update subscription: {e}")
             raise TransientError(f"Failed to update subscription in database: {e}")
@@ -527,25 +528,35 @@ class WebhooksService:
                 .eq("stripe_subscription_id", subscription_id)
                 .execute()
             )
-            
+
             # 2. Reset monthly credits to 0 immediately
             # Since the subscription is gone, the user loses access to the plan's credits.
             if result.data and len(result.data) > 0:
                 user_id = result.data[0].get("user_id")
                 if user_id:
-                     # Reset monthly credits to 0 (Free plan default or just zeroed out)
-                     # Assuming 'free' plan has 0 monthly credits or small amount.
-                     # Better: explicitly call reset with 0 or the free plan limit.
-                     
-                     # Check free plan limit
-                     free_plan_res = self.supabase.table("billing_plans").select("monthly_credits").eq("slug", "free").single().execute()
-                     free_credits = free_plan_res.data.get("monthly_credits", 0) if free_plan_res.data else 0
-                     
-                     await self.supabase.rpc(
-                        "reset_monthly_credits", 
-                        {"p_user_id": user_id, "p_new_amount": free_credits}
-                     ).execute()
-                     logger.info(f"Subscription canceled: {subscription_id}. Credits reset to free tier ({free_credits}).")
+                    # Reset monthly credits to 0 (Free plan default or just zeroed out)
+                    # Assuming 'free' plan has 0 monthly credits or small amount.
+                    # Better: explicitly call reset with 0 or the free plan limit.
+
+                    # Check free plan limit
+                    free_plan_res = (
+                        self.supabase.table("billing_plans")
+                        .select("monthly_credits")
+                        .eq("slug", "free")
+                        .single()
+                        .execute()
+                    )
+                    free_credits = (
+                        free_plan_res.data.get("monthly_credits", 0) if free_plan_res.data else 0
+                    )
+
+                    await self.supabase.rpc(
+                        "reset_monthly_credits",
+                        {"p_user_id": user_id, "p_new_amount": free_credits},
+                    ).execute()
+                    logger.info(
+                        f"Subscription canceled: {subscription_id}. Credits reset to free tier ({free_credits})."
+                    )
 
             # Send subscription canceled email
             if result.data and len(result.data) > 0:
@@ -726,9 +737,7 @@ class WebhooksService:
                     update_data["name"] = name
 
                 if update_data:
-                    self.supabase.table("profiles").update(update_data).eq(
-                        "id", user_id
-                    ).execute()
+                    self.supabase.table("profiles").update(update_data).eq("id", user_id).execute()
                     logger.info(f"Updated profile for user {user_id} from Stripe customer data")
 
         except Exception as e:
@@ -814,11 +823,7 @@ class WebhooksService:
         """Get user email from profiles table."""
         try:
             result = (
-                self.supabase.table("profiles")
-                .select("email")
-                .eq("id", user_id)
-                .limit(1)
-                .execute()
+                self.supabase.table("profiles").select("email").eq("id", user_id).limit(1).execute()
             )
             if result.data and len(result.data) > 0:
                 return result.data[0].get("email")

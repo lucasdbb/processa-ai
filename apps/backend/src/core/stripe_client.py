@@ -63,7 +63,9 @@ def retrieve_customer(customer_id: str) -> stripe.Customer:
 
 
 @stripe_retry
-def create_customer(email: str, name: str | None = None, metadata: dict | None = None) -> stripe.Customer:
+def create_customer(
+    email: str, name: str | None = None, metadata: dict | None = None
+) -> stripe.Customer:
     """Create a Stripe customer with retry."""
     return stripe.Customer.create(
         email=email,
@@ -85,7 +87,7 @@ def create_checkout_session(
     """Create a Stripe checkout session with retry."""
     if line_items is None and price_id:
         line_items = [{"price": price_id, "quantity": 1}]
-    
+
     return stripe.checkout.Session.create(
         customer=customer,
         payment_method_types=["card"],

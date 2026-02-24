@@ -291,7 +291,9 @@ class ServicesService:
                 if not service:
                     return None
 
-                new_paid = paid_amount if paid_amount is not None else (service["value"] or Decimal(0))
+                new_paid = (
+                    paid_amount if paid_amount is not None else (service["value"] or Decimal(0))
+                )
                 new_status = service["status"]
                 if service["value"] and new_paid >= service["value"]:
                     new_status = "completed"

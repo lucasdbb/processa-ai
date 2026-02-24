@@ -78,11 +78,10 @@ async def rescisao_trabalhista(
     calculator_key = "trabalhista.rescisao-trabalhista"
 
     # Consumir créditos
-    credit_result = await credits_service.consume_credits(user_id, 'calculator_rescisao')
+    credit_result = await credits_service.consume_credits(user_id, "calculator_rescisao")
     if not credit_result.success:
-         raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Créditos insuficientes"
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Créditos insuficientes"
         )
 
     input_payload = data.model_dump(mode="json")
@@ -166,7 +165,9 @@ async def rescisao_trabalhista(
         }
     except HTTPException as e:
         # Reembolsar
-        await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_calculator_rescisao_error")
+        await credits_service.refund_credits(
+            user_id, credit_result.credits_consumed, "refund_calculator_rescisao_error"
+        )
         try:
             await mark_calculation_failed(calculation_id=calculation_id, error=str(e.detail))
         except Exception:
@@ -174,7 +175,9 @@ async def rescisao_trabalhista(
         raise
     except Exception:
         # Reembolsar
-        await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_calculator_rescisao_error")
+        await credits_service.refund_credits(
+            user_id, credit_result.credits_consumed, "refund_calculator_rescisao_error"
+        )
         try:
             await mark_calculation_failed(calculation_id=calculation_id, error="Erro ao calcular")
         except Exception:
@@ -203,11 +206,10 @@ async def calcular_aposentadoria(
     calculator_key = "previdencia.aposentadoria"
 
     # Consumir créditos
-    credit_result = await credits_service.consume_credits(user_id, 'calculator_aposentadoria')
+    credit_result = await credits_service.consume_credits(user_id, "calculator_aposentadoria")
     if not credit_result.success:
-         raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Créditos insuficientes"
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Créditos insuficientes"
         )
 
     input_payload = data.model_dump(mode="json")
@@ -284,7 +286,9 @@ async def calcular_aposentadoria(
         }
     except HTTPException as e:
         # Reembolsar
-        await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_calculator_aposentadoria_error")
+        await credits_service.refund_credits(
+            user_id, credit_result.credits_consumed, "refund_calculator_aposentadoria_error"
+        )
         try:
             await mark_calculation_failed(calculation_id=calculation_id, error=str(e.detail))
         except Exception:
@@ -292,7 +296,9 @@ async def calcular_aposentadoria(
         raise
     except Exception:
         # Reembolsar
-        await credits_service.refund_credits(user_id, credit_result.credits_consumed, "refund_calculator_aposentadoria_error")
+        await credits_service.refund_credits(
+            user_id, credit_result.credits_consumed, "refund_calculator_aposentadoria_error"
+        )
         try:
             await mark_calculation_failed(calculation_id=calculation_id, error="Erro ao calcular")
         except Exception:

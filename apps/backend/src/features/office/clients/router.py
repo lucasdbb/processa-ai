@@ -116,6 +116,7 @@ async def delete_client(
             detail="Client not found",
         )
 
+
 @router.post("/{client_id}/invite", response_model=InviteClientResponse)
 async def invite_client_to_portal(
     client_id: UUID,

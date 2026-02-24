@@ -138,13 +138,13 @@ async def download_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No file attached to this document",
         )
-    
+
     # Generate signed URL without download parameter (let Supabase handle it)
     signed_url = await documents_service.get_download_url(
         document.file_url,
-        filename=None  # Don't add download parameter
+        filename=None,  # Don't add download parameter
     )
-    
+
     return {
         "download_url": signed_url,
         "filename": document.name,

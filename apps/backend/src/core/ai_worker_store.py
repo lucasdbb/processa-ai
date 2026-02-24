@@ -273,16 +273,24 @@ async def get_job_status_from_db(*, job_uuid: uuid.UUID) -> dict | None:
         async with cur_cm as cur:
             await cur.execute(
                 (
-                    "select status, progress, error, result_payload, started_at, finished_at "
-                    "from public.ai_jobs where id = %s"
+                    "select j.status, j.progress, j.error, j.result_payload, j.started_at, j.finished_at, d.id as output_doc_id "
+                    "from public.ai_jobs j "
+                    "left join public.generated_documents d on d.job_id = j.id and d.document_type = 'output' "
+                    "where j.id = %s"
                 ),
-                (job_uuid,),
+                (str(job_uuid),),
             )
             row = await cur.fetchone()
             if not row:
                 return None
 
-            result_payload = row.get("result_payload")
+            result_payload = row.get("result_payload") or {}
+
+            # Injetar document_id no result se existir
+            if row.get("output_doc_id"):
+                if isinstance(result_payload, dict):
+                    result_payload["document_id"] = str(row.get("output_doc_id"))
+
             return {
                 "status": str(row.get("status") or "unknown"),
                 "progress": int(row.get("progress") or 0),
@@ -373,13 +381,14 @@ async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
             row = await cur.fetchone()
             return dict(row) if row else None
 
+
 async def get_all_user_jobs(
-    *, 
-    user_id: str, 
+    *,
+    user_id: str,
     client_id: str | None = None,
     endpoint_key: str | None = None,
-    limit: int = 50, 
-    offset: int = 0
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[dict]:
     pool = await get_pool()
     query = """
@@ -401,7 +410,7 @@ async def get_all_user_jobs(
         WHERE j.status = 'completed' AND j.user_id = %s
     """
     params = [user_id]
-    
+
     if endpoint_key:
         query += " AND j.endpoint_key = %s"
         params.append(endpoint_key)
@@ -409,28 +418,30 @@ async def get_all_user_jobs(
     if client_id:
         query += " AND j.client_id::text = %s"
         params.append(str(client_id))
-        
+
     query += " ORDER BY j.created_at DESC LIMIT %s OFFSET %s"
     params.extend([limit, offset])
-    
+
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(query, params)
             rows = await cur.fetchall()
-            
+
             results = []
             for row in rows:
-                results.append({
-                    "id": str(row[0]),
-                    "created_at": row[1],
-                    "status": row[2],
-                    "endpoint_key": row[3],
-                    "request_payload": row[4],
-                    "result_payload": row[5],
-                    "client_name": row[6],
-                    "client_id": str(row[7]) if row[7] else None,
-                    "output_bucket": row[8],
-                    "output_storage_path": row[9],
-                    "output_document_id": str(row[10]) if row[10] else None
-                })
+                results.append(
+                    {
+                        "id": str(row[0]),
+                        "created_at": row[1],
+                        "status": row[2],
+                        "endpoint_key": row[3],
+                        "request_payload": row[4],
+                        "result_payload": row[5],
+                        "client_name": row[6],
+                        "client_id": str(row[7]) if row[7] else None,
+                        "output_bucket": row[8],
+                        "output_storage_path": row[9],
+                        "output_document_id": str(row[10]) if row[10] else None,
+                    }
+                )
             return results

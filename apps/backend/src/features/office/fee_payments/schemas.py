@@ -13,7 +13,9 @@ class FeePaymentCreate(BaseModel):
     fee_id: UUID
     amount: Decimal = Field(..., gt=0, description="Payment amount")
     payment_date: date | None = Field(default=None, description="Payment date (defaults to today)")
-    payment_method: str | None = Field(None, max_length=50, description="Payment method (e.g., PIX, card)")
+    payment_method: str | None = Field(
+        None, max_length=50, description="Payment method (e.g., PIX, card)"
+    )
     notes: str | None = Field(None, description="Additional notes about the payment")
 
 

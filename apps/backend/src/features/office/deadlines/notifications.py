@@ -2,6 +2,7 @@
 Deadline notifications service
 Create notifications when deadlines are approaching based on user preferences
 """
+
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -25,7 +26,7 @@ class DeadlineNotificationService:
         - Prevents duplicate notifications
         """
         # Get current date in Brazil timezone (date only, no time)
-        brazil_tz = ZoneInfo('America/Sao_Paulo')
+        brazil_tz = ZoneInfo("America/Sao_Paulo")
         today = datetime.now(brazil_tz).date()
 
         logger.info(f"Checking deadlines for notifications (today: {today})")
@@ -45,7 +46,7 @@ class DeadlineNotificationService:
             for event in result.data:
                 # Get due date (date only, no time)
                 due_date_str = event["start_at"]
-                due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00')).date()
+                due_date = datetime.fromisoformat(due_date_str.replace("Z", "+00:00")).date()
 
                 # Get user preference (default 3 days if not set)
                 reminder_days = event.get("reminder_days_before", 3)
@@ -63,7 +64,10 @@ class DeadlineNotificationService:
                         .select("id")
                         .eq("user_id", event["user_id"])
                         .eq("type", "deadline")
-                        .contains("metadata", {"event_id": event["id"], "notification_date": today.isoformat()})
+                        .contains(
+                            "metadata",
+                            {"event_id": event["id"], "notification_date": today.isoformat()},
+                        )
                         .execute()
                     )
 

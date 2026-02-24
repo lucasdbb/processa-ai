@@ -21,6 +21,7 @@ router = APIRouter(
 def _require_portal_client(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     """Ensure the caller has the office_client role."""
     from fastapi import HTTPException, status as http_status
+
     if user.role != "office_client":
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,

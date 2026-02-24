@@ -11,6 +11,7 @@ from pydantic import BaseModel
 # Portal identity
 # ---------------------------------------------------------------------------
 
+
 class PortalMeResponse(BaseModel):
     """Identity and context for the logged-in portal client."""
 
@@ -27,10 +28,11 @@ class PortalMeResponse(BaseModel):
 # Processes
 # ---------------------------------------------------------------------------
 
+
 class PortalProcessStatus(BaseModel):
     raw: str
-    label: str      # human-readable Portuguese label
-    color: str      # tailwind color token for the badge
+    label: str  # human-readable Portuguese label
+    color: str  # tailwind color token for the badge
 
 
 class PortalTimelineEvent(BaseModel):
@@ -61,15 +63,16 @@ class PortalProcessListResponse(BaseModel):
 # Events / Agenda
 # ---------------------------------------------------------------------------
 
+
 class PortalEvent(BaseModel):
     id: UUID
     title: str
     description: str | None
     start_at: datetime
-    event_type: str          # "audiencia" | "prazo" | "reuniao"
+    event_type: str  # "audiencia" | "prazo" | "reuniao"
     process_number: str | None
     process_id: UUID | None
-    is_urgent: bool          # True if within the next 7 days
+    is_urgent: bool  # True if within the next 7 days
 
 
 class PortalEventsResponse(BaseModel):
@@ -80,6 +83,7 @@ class PortalEventsResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Documents
 # ---------------------------------------------------------------------------
+
 
 class PortalDocument(BaseModel):
     id: UUID
@@ -98,12 +102,13 @@ class PortalDocumentsResponse(BaseModel):
 
 class PortalDocumentDownloadResponse(BaseModel):
     url: str
-    expires_in: int   # seconds
+    expires_in: int  # seconds
 
 
 # ---------------------------------------------------------------------------
 # Finances
 # ---------------------------------------------------------------------------
+
 
 class PortalFee(BaseModel):
     id: UUID
@@ -111,7 +116,7 @@ class PortalFee(BaseModel):
     fee_type: str
     amount: float
     paid_amount: float
-    status: str               # pending | paid | overdue | cancelled
+    status: str  # pending | paid | overdue | cancelled
     due_date: date | None
     paid_at: date | None
     process_number: str | None
@@ -132,6 +137,7 @@ class PortalFinancesResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Invite (used by the lawyer-facing endpoint)
 # ---------------------------------------------------------------------------
+
 
 class InviteClientResponse(BaseModel):
     message: str

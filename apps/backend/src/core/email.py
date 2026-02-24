@@ -23,7 +23,7 @@ def _get_pt_day_name() -> str:
         3: "Quinta-feira",
         4: "Sexta-feira",
         5: "Sábado",
-        6: "Domingo"
+        6: "Domingo",
     }
     return days[datetime.now().weekday()]
 
@@ -31,11 +31,11 @@ def _get_pt_day_name() -> str:
 def load_email_template(template_name: str, context: dict) -> str:
     """
     Load an HTML email template and replace placeholders.
-    
+
     Args:
         template_name: Name of the template file (e.g. 'default.html')
         context: Dictionary of values to replace placeholders
-        
+
     Returns:
         The rendered HTML string
     """
@@ -43,30 +43,32 @@ def load_email_template(template_name: str, context: dict) -> str:
         # Determine the template path
         base_dir = Path(__file__).parent.parent.parent
         template_path = base_dir / "src" / "templates" / "emails" / template_name
-        
+
         if not template_path.exists():
-            logger.warning(f"Template {template_name} not found, falling back to basic string replacement")
+            logger.warning(
+                f"Template {template_name} not found, falling back to basic string replacement"
+            )
             return ""
-            
+
         with open(template_path, "r", encoding="utf-8") as f:
             template = f.read()
-            
+
         # Replace standard placeholders
         for key, value in context.items():
             placeholder = "{{" + key + "}}"
             if value is None:
                 value = ""
             template = template.replace(placeholder, str(value))
-            
+
         # Handle conditional button
         # If Botao_Link is empty/missing, remove the button placeholder entirely if it wasn't replaced
         # But our template logic is simple string replacement.
         # Ideally, we should pre-process: if Botao_Link is present, generate Botao_HTML.
-        
+
         # Helper for button logic if using default.html
         cta_text = context.get("Botao_Texto")
         cta_link = context.get("Botao_Link")
-        
+
         button_html = ""
         if cta_text and cta_link:
             button_html = f"""
@@ -74,12 +76,12 @@ def load_email_template(template_name: str, context: dict) -> str:
                 <a href="{cta_link}" class="button">{cta_text}</a>
             </div>
             """
-        
+
         template = template.replace("{{Botao_HTML}}", button_html)
-        
+
         # Cleanup any remaining placeholders? Or leave them?
         # For now, we assume the caller provides everything needed.
-        
+
         return template
     except Exception as e:
         logger.error(f"Error loading email template {template_name}: {e}")
@@ -165,7 +167,7 @@ async def send_email(
 async def send_subscription_welcome(user_email: str, plan_name: str) -> bool:
     """Send welcome email when subscription is activated."""
     subject = "Bem-vindo ao Processa AI!"
-    
+
     content = f"""Olá!
 
 Sua assinatura do plano {plan_name} foi ativada com sucesso.
@@ -175,16 +177,19 @@ Agora você tem acesso a todas as funcionalidades do seu plano.
 Se tiver alguma dúvida, entre em contato conosco."""
 
     body = f"{content}\n\nAcesse o sistema em: {settings.FRONTEND_URL}/app\n\nAtenciosamente,\nEquipe Processa AI"
-    
+
     # Load HTML template
-    html_body = load_email_template("default.html", {
-        "Titulo": "Bem-vindo ao Processa AI!",
-        "Segundo_Titulo": "Sua assinatura está ativa",
-        "Conteudo": content.replace("\n", "<br>"),
-        "Botao_Texto": "Acessar Sistema",
-        "Botao_Link": f"{settings.FRONTEND_URL}/app",
-        "Rodape": "Este é um email automático, por favor não responda."
-    })
+    html_body = load_email_template(
+        "default.html",
+        {
+            "Titulo": "Bem-vindo ao Processa AI!",
+            "Segundo_Titulo": "Sua assinatura está ativa",
+            "Conteudo": content.replace("\n", "<br>"),
+            "Botao_Texto": "Acessar Sistema",
+            "Botao_Link": f"{settings.FRONTEND_URL}/app",
+            "Rodape": "Este é um email automático, por favor não responda.",
+        },
+    )
 
     return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
@@ -196,7 +201,7 @@ async def send_payment_failed(user_email: str, invoice_url: str | None = None) -
     invoice_text = ""
     cta_link = ""
     cta_text = ""
-    
+
     if invoice_url:
         invoice_text = f"\nAtualize seu método de pagamento aqui: {invoice_url}\n"
         cta_link = invoice_url
@@ -211,15 +216,18 @@ Por favor, atualize suas informações de pagamento para evitar a suspensão do 
 Se precisar de ajuda, entre em contato conosco."""
 
     body = f"{content}\n{invoice_text}\nAtenciosamente,\nEquipe Processa AI"
-    
-    html_body = load_email_template("default.html", {
-        "Titulo": "Falha no Pagamento",
-        "Segundo_Titulo": "Ação Necessária",
-        "Conteudo": content.replace("\n", "<br>"),
-        "Botao_Texto": cta_text,
-        "Botao_Link": cta_link,
-        "Rodape": "Evite a suspensão dos seus serviços atualizando seu pagamento."
-    })
+
+    html_body = load_email_template(
+        "default.html",
+        {
+            "Titulo": "Falha no Pagamento",
+            "Segundo_Titulo": "Ação Necessária",
+            "Conteudo": content.replace("\n", "<br>"),
+            "Botao_Texto": cta_text,
+            "Botao_Link": cta_link,
+            "Rodape": "Evite a suspensão dos seus serviços atualizando seu pagamento.",
+        },
+    )
 
     return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
@@ -227,7 +235,7 @@ Se precisar de ajuda, entre em contato conosco."""
 async def send_subscription_canceled(user_email: str) -> bool:
     """Send email when subscription is canceled."""
     subject = "Sua assinatura foi cancelada - Processa AI"
-    
+
     content = """Olá!
 
 Sua assinatura do Processa AI foi cancelada.
@@ -235,15 +243,18 @@ Sua assinatura do Processa AI foi cancelada.
 Sentiremos sua falta! Se mudar de ideia, você pode reativar sua assinatura a qualquer momento."""
 
     body = f"{content}\n\nAcesse: {settings.FRONTEND_URL}/planos\n\nAtenciosamente,\nEquipe Processa AI"
-    
-    html_body = load_email_template("default.html", {
-        "Titulo": "Assinatura Cancelada",
-        "Segundo_Titulo": "Até logo!",
-        "Conteudo": content.replace("\n", "<br>"),
-        "Botao_Texto": "Ver Planos",
-        "Botao_Link": f"{settings.FRONTEND_URL}/planos",
-        "Rodape": "Esperamos vê-lo novamente em breve."
-    })
+
+    html_body = load_email_template(
+        "default.html",
+        {
+            "Titulo": "Assinatura Cancelada",
+            "Segundo_Titulo": "Até logo!",
+            "Conteudo": content.replace("\n", "<br>"),
+            "Botao_Texto": "Ver Planos",
+            "Botao_Link": f"{settings.FRONTEND_URL}/planos",
+            "Rodape": "Esperamos vê-lo novamente em breve.",
+        },
+    )
 
     return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
@@ -255,7 +266,7 @@ async def send_payment_action_required(user_email: str, invoice_url: str | None 
     invoice_text = ""
     cta_link = ""
     cta_text = ""
-    
+
     if invoice_url:
         invoice_text = f"\nClique aqui para completar o pagamento: {invoice_url}\n"
         cta_link = invoice_url
@@ -268,15 +279,18 @@ Seu pagamento requer uma ação adicional para ser concluído (como verificaçã
 Por favor, complete o processo para manter sua assinatura ativa."""
 
     body = f"{content}\n{invoice_text}\nAtenciosamente,\nEquipe Processa AI"
-    
-    html_body = load_email_template("default.html", {
-        "Titulo": "Pagamento Pendente",
-        "Segundo_Titulo": "Verificação Necessária",
-        "Conteudo": content.replace("\n", "<br>"),
-        "Botao_Texto": cta_text,
-        "Botao_Link": cta_link,
-        "Rodape": "Seu pagamento só será processado após esta confirmação."
-    })
+
+    html_body = load_email_template(
+        "default.html",
+        {
+            "Titulo": "Pagamento Pendente",
+            "Segundo_Titulo": "Verificação Necessária",
+            "Conteudo": content.replace("\n", "<br>"),
+            "Botao_Texto": cta_text,
+            "Botao_Link": cta_link,
+            "Rodape": "Seu pagamento só será processado após esta confirmação.",
+        },
+    )
 
     return await send_email(to_email=user_email, subject=subject, body=body, html_body=html_body)
 
@@ -289,7 +303,7 @@ async def send_dispute_alert(
 ) -> bool:
     """Send urgent notification to admin about a dispute."""
     subject = "URGENTE: Disputa de cobrança recebida"
-    
+
     content = f"""Uma disputa de cobrança foi aberta:
 
 - User ID: {user_id}
@@ -300,21 +314,24 @@ async def send_dispute_alert(
 Acesse o dashboard do Stripe para mais detalhes e responder à disputa."""
 
     body = f"ALERTA DE DISPUTA\n\n{content}\n\nAÇÃO URGENTE NECESSÁRIA!"
-    
-    html_body = load_email_template("default.html", {
-        "Titulo": "ALERTA DE DISPUTA",
-        "Segundo_Titulo": "Ação Urgente Necessária",
-        "Conteudo": content.replace("\n", "<br>"),
-        "Botao_Texto": "Dashboard Stripe",
-        "Botao_Link": "https://dashboard.stripe.com/disputes",
-        "Rodape": "Mensagem automática do sistema de billing."
-    })
-    
+
+    html_body = load_email_template(
+        "default.html",
+        {
+            "Titulo": "ALERTA DE DISPUTA",
+            "Segundo_Titulo": "Ação Urgente Necessária",
+            "Conteudo": content.replace("\n", "<br>"),
+            "Botao_Texto": "Dashboard Stripe",
+            "Botao_Link": "https://dashboard.stripe.com/disputes",
+            "Rodape": "Mensagem automática do sistema de billing.",
+        },
+    )
+
     # Using send_email directly as send_admin_notification might not be imported or available here contextually
     # Assuming the original code used send_admin_notification which might be an alias or separate function.
     # The original code snippet showed `return await send_admin_notification(subject, body)` but I don't see definition of send_admin_notification in the snippet.
     # I will assume I should use send_email to the admin email.
-    
+
     admin_email = settings.ADMIN_EMAIL or settings.SENDGRID_FROM
     return await send_email(to_email=admin_email, subject=subject, body=body, html_body=html_body)
 
@@ -366,15 +383,19 @@ Equipe Processa AI
 {unsubscribe_text}
 """
 
-    html_body = load_email_template("newsletter.html", {
-        "USERNAME": subscriber_name or "Leitor",
-        "DIA_DA_SEMANA": _get_pt_day_name(),
-        "TITULO_POST": post_title,
-        "URL_IMAGEM_POST": post_cover_image_url or "https://placehold.co/600x200?text=Processa+AI",
-        "RESUMO_POST": post_excerpt or "Confira nosso novo artigo no blog!",
-        "Url_Post": post_url,
-        "unsubscribe": unsubscribe_url
-    })
+    html_body = load_email_template(
+        "newsletter.html",
+        {
+            "USERNAME": subscriber_name or "Leitor",
+            "DIA_DA_SEMANA": _get_pt_day_name(),
+            "TITULO_POST": post_title,
+            "URL_IMAGEM_POST": post_cover_image_url
+            or "https://placehold.co/600x200?text=Processa+AI",
+            "RESUMO_POST": post_excerpt or "Confira nosso novo artigo no blog!",
+            "Url_Post": post_url,
+            "unsubscribe": unsubscribe_url,
+        },
+    )
 
     return await send_email(
         to_email=to_email,
@@ -430,15 +451,19 @@ Atenciosamente,
 Equipe Processa AI
 """
 
-    html_body = load_email_template("newsletter.html", {
-        "USERNAME": "Leitor",
-        "DIA_DA_SEMANA": _get_pt_day_name(),
-        "TITULO_POST": post_title,
-        "URL_IMAGEM_POST": post_cover_image_url or "https://placehold.co/600x200?text=Processa+AI",
-        "RESUMO_POST": post_excerpt or "Confira nosso novo artigo no blog!",
-        "Url_Post": post_url,
-        "unsubscribe": unsubscribe_url
-    })
+    html_body = load_email_template(
+        "newsletter.html",
+        {
+            "USERNAME": "Leitor",
+            "DIA_DA_SEMANA": _get_pt_day_name(),
+            "TITULO_POST": post_title,
+            "URL_IMAGEM_POST": post_cover_image_url
+            or "https://placehold.co/600x200?text=Processa+AI",
+            "RESUMO_POST": post_excerpt or "Confira nosso novo artigo no blog!",
+            "Url_Post": post_url,
+            "unsubscribe": unsubscribe_url,
+        },
+    )
 
     # Use sender as TO and all subscribers as BCC
     sender = settings.SENDGRID_FROM

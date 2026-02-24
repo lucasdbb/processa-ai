@@ -355,9 +355,7 @@ class CalendarService:
                 user_id, event.google_event_id
             )
             if deleted_from_google:
-                logger.info(
-                    f"Successfully deleted event {event_id} from Google Calendar"
-                )
+                logger.info(f"Successfully deleted event {event_id} from Google Calendar")
             else:
                 logger.warning(
                     f"Could not delete event {event_id} from Google Calendar, "

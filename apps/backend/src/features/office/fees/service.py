@@ -156,7 +156,9 @@ class FeesService:
                     (str(user_id), str(fee_id)),
                 )
                 old_fee = await cur.fetchone()
-                old_service_id = old_fee["service_id"] if old_fee and old_fee["service_id"] else None
+                old_service_id = (
+                    old_fee["service_id"] if old_fee and old_fee["service_id"] else None
+                )
 
                 await cur.execute(
                     f"""

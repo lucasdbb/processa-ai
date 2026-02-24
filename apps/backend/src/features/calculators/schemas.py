@@ -13,7 +13,9 @@ class RescisaoTrabalhistaRequest(BaseModel):
     salario_base: float = Field(gt=0, description="Salário base registrado na carteira")
     adicional_periculosidade: bool = False
     adicional_insalubridade_grau: int = Field(default=0, description="0, 10, 20 ou 40")
-    base_insalubridade: float = Field(default=1621.00, description="Base de cálculo da insalubridade")
+    base_insalubridade: float = Field(
+        default=1621.00, description="Base de cálculo da insalubridade"
+    )
     adicional_noturno_percent: float = Field(default=20.0, ge=0)
     media_horas_noturnas: float = Field(default=0.0, ge=0)
     outras_verbas: float = Field(default=0.0, ge=0)

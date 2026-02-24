@@ -8,6 +8,7 @@ from src.features.core.storage.service import StorageService
 
 router = APIRouter()
 
+
 @router.post(
     "/upload-url",
     response_model=UploadUrlResponse,
@@ -25,7 +26,7 @@ async def create_upload_signed_url(
     # Gerar UUID aqui se não vier no request (embora o service também gere)
     # Mas para consistência, vamos passar.
     job_uuid = str(uuid4())
-    
+
     result = await service.create_upload_signed_url(
         filename=data.filename,
         user_id=data.user_id,
@@ -34,5 +35,5 @@ async def create_upload_signed_url(
         job_uuid=job_uuid,
         expires_in=data.expires_in,
     )
-    
+
     return UploadUrlResponse(**result)

@@ -180,9 +180,7 @@ class ProfilesService:
                 logger.info("Fetching user_credits...")
                 user_credits_response = (
                     self.supabase.table("user_credits")
-                    .select(
-                        "user_id, subscription_available, purchased_available, total_available"
-                    )
+                    .select("user_id, subscription_available, purchased_available, total_available")
                     .in_("user_id", user_ids)
                     .execute()
                 )
@@ -207,7 +205,10 @@ class ProfilesService:
                     .execute()
                 )
                 logger.info(f"subscriptions response: {subs_response.data}")
-                subs_map = {s["user_id"]: {"plan_id": s["plan_id"], "status": s["status"]} for s in (subs_response.data or [])}
+                subs_map = {
+                    s["user_id"]: {"plan_id": s["plan_id"], "status": s["status"]}
+                    for s in (subs_response.data or [])
+                }
 
             logger.info("Building final response...")
             return [
@@ -527,10 +528,7 @@ class ProfilesService:
 
             # Check if subscription exists
             sub_res = (
-                self.supabase.table("subscriptions")
-                .select("id")
-                .eq("user_id", user_id)
-                .execute()
+                self.supabase.table("subscriptions").select("id").eq("user_id", user_id).execute()
             )
 
             now = datetime.now(timezone.utc).isoformat()

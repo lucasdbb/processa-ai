@@ -73,9 +73,7 @@ class NotesService:
                     ORDER BY n.is_pinned DESC, n.updated_at DESC
                     LIMIT %s OFFSET %s
                 """
-                await cur.execute(
-                    data_query, query_params + [params.limit, params.offset]
-                )
+                await cur.execute(data_query, query_params + [params.limit, params.offset])
                 rows = await cur.fetchall()
 
                 notes = [NoteResponse(**row) for row in rows]

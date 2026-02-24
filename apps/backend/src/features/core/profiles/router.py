@@ -79,7 +79,9 @@ async def update_role_deprecated(
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     # Use legacy credits field if new fields not provided
-    sub_credits = data.subscription_credits if data.subscription_credits is not None else data.credits
+    sub_credits = (
+        data.subscription_credits if data.subscription_credits is not None else data.credits
+    )
     return await profiles_service.update_role(
         data.user_id, data.role, sub_credits, data.purchased_credits, data.plan_id
     )

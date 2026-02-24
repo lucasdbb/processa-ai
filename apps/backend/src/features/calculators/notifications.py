@@ -2,6 +2,7 @@
 Calculator notifications helpers
 Create notifications when calculations are completed
 """
+
 from src.core.supabase import get_supabase
 
 
