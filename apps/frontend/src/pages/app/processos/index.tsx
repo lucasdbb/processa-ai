@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Filter, FolderKanban, ChevronDown, LayoutGrid, List } from 'lucide-react'
+import { Search, Plus, Filter, FolderKanban, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { ProcessListSkeleton } from '@/components/skeletons/process-list-skeleton'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
-import { InfoTooltip } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,

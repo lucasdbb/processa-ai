@@ -1,6 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { cn } from '@/lib/utils'
 
 interface GenericKanbanColumnProps<T extends { id: string }> {
   id: string

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Download, Sparkles, Trash2, Upload, FileText, Columns, Rows } from 'lucide-react'
+import { Download, Sparkles, Trash2, Upload, FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
@@ -10,8 +10,6 @@ import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
-
-import { ClientSelector } from '@/components/forms/client-selector'
 
 interface CnisAnalysisToolProps {
   onOpenRegisterModal?: () => void

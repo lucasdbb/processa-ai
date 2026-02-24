@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Calculator, ArrowRight, Loader2, Coins, ChevronDown, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCalculators } from '@/features/calculators/context'
@@ -8,7 +8,6 @@ import { useCreditsStore } from '@/stores/credits-store'
 import { ClientSelector } from '@/components/forms/client-selector'
 import type { LucideIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 
 import { RescisaoCalculator } from '@/features/calculators/components/rescisao-calculator'
 import { AposentadoriaCalculator } from '@/features/calculators/components/aposentadoria-calculator'
@@ -49,8 +48,6 @@ export default function CalculadorasHubPage() {
   const { costs, fetchCosts } = useCreditsStore()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const outletContext = useOutletContext<RootLayoutOutletContext | null>()
-  const openRegisterModal = outletContext?.openRegisterModal || (() => {})
 
   useEffect(() => {
     fetchCosts()

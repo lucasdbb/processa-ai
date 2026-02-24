@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react'
-import { Calculator, Loader2, FileText, Calendar, DollarSign, Briefcase, Percent, AlertTriangle, Moon, ChevronDown, Check } from 'lucide-react'
+import { Calculator, Loader2, FileText, Calendar, DollarSign, Percent, AlertTriangle, Moon, ChevronDown, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'

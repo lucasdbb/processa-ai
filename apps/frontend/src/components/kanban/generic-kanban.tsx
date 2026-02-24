@@ -126,26 +126,6 @@ export function GenericKanban<T extends { id: string; status: string }>({
     }
 
     setItems((prev) => {
-      const activeItems = prev.filter((i) => i.status === activeContainer)
-      const overItems = prev.filter((i) => i.status === overContainer)
-      const activeIndex = activeItems.findIndex((i) => i.id === active.id)
-      const overIndex = overItems.findIndex((i) => i.id === overId)
-
-      let newIndex: number
-
-      if (overId in columns) {
-        newIndex = overItems.length + 1
-      } else {
-        const isBelowOverItem =
-          over &&
-          active.rect.current.translated &&
-          active.rect.current.translated.top >
-            over.rect.top + over.rect.height
-
-        const modifier = isBelowOverItem ? 1 : 0
-        newIndex = overIndex >= 0 ? overIndex + modifier : overItems.length + 1
-      }
-
       return prev.map((item) => {
         if (item.id === active.id) {
           return { ...item, status: overContainer }
@@ -214,7 +194,7 @@ export function GenericKanban<T extends { id: string; status: string }>({
             id={status}
             title={columns[status]}
             items={groupedItems[status] || []}
-            renderCard={(item, isDragging) => (
+            renderCard={(item) => (
               <SortableItemWrapper
                 key={item.id}
                 item={item}
