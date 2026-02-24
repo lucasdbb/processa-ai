@@ -7,7 +7,6 @@ import { servicesService, type Service, type ServiceStatus, type ServiceCategory
 import { ServiceFormDialog } from '@/components/forms/service-form-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/tooltip'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +14,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { GenericKanban } from '@/components/kanban/generic-kanban'
+import { ServiceCard } from '@/components/kanban/service-card'
+import { PageLayout } from '@/components/layout/page-layout'
+import { ClientSelect } from '@/components/ui/client-select'
 
 const CATEGORIES: ServiceCategory[] = [
   'previdenciario',
@@ -54,11 +57,25 @@ const getServiceStatusLabel = (status: string) => {
   return labels[status] || status
 }
 
+const SERVICE_COLUMNS: Record<string, string> = {
+  active: 'Ativos',
+  completed: 'Concluídos',
+  cancelled: 'Cancelados',
+}
+
+const SERVICE_COLUMN_ORDER: string[] = [
+  'active',
+  'completed',
+  'cancelled',
+]
+
 export default function ServicosPage() {
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | ServiceStatus>('all')
   const [categoryFilter, setCategoryFilter] = useState<ServiceCategory | 'all'>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
 
   type SaveServicePayload = Parameters<ComponentProps<typeof ServiceFormDialog>['onSave']>[0]
 
@@ -68,11 +85,14 @@ export default function ServicosPage() {
   // const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchServices = useCallback(async (searchQuery: string, statusFilter: string, catFilter: string) => {
+  const fetchServices = useCallback(async (searchQuery: string, statusFilter: string, catFilter: string, mode: 'list' | 'kanban') => {
     setIsLoading(true)
     try {
-      const status = statusFilter !== 'all' ? (statusFilter as ServiceStatus) : undefined
+      // In Kanban mode, we want all statuses to populate columns
+      // In List mode, we respect the filter
+      const status = (mode === 'list' && statusFilter !== 'all') ? (statusFilter as ServiceStatus) : undefined
       const category = catFilter !== 'all' ? (catFilter as ServiceCategory) : undefined
+      
       const res = await servicesService.list(undefined, category, status, searchQuery.trim())
       
       setServices(res.services)
@@ -88,38 +108,54 @@ export default function ServicosPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      void fetchServices(search, filter, categoryFilter)
+      void fetchServices(search, filter, categoryFilter, viewMode)
     }, search ? 300 : 0)
 
     return () => clearTimeout(timeout)
-  }, [search, filter, categoryFilter, fetchServices])
+  }, [search, filter, categoryFilter, viewMode, fetchServices])
 
   const handleSaveService = async (serviceData: SaveServicePayload) => {
     try {
       if (editingService) {
         await servicesService.update(editingService.id, serviceData)
-        toast.success('Serviço atualizado com sucesso')
+        toast.success('Serviço atualizado com sucesso!')
       } else {
-        // Create is handled inside the dialog for now if passing client_id, 
-        // but here we are creating a new service potentially without pre-selected client.
-        // The ServiceFormDialog might need adjustment to handle creation without pre-selected client if intended.
-        // However, looking at ServiceFormDialog usage in other places, it seems to expect onSave to handle the API call.
-        // Let's check ServiceFormDialog implementation.
-        
-        // Actually, for new service on this page, we might need a client selector in the form.
-        // The current ServiceFormDialog might be designed to work within a client context.
-        // Let's assume for now we just refresh the list.
+        if (!selectedClientId) {
+          toast.error('Selecione um cliente para criar o serviço')
+          return
+        }
+        const name = (serviceData as any).name as string | undefined
+        const category = (serviceData as any).category as ServiceCategory | undefined
+        const value = (serviceData as any).value as number | null | undefined
+        const notes = (serviceData as any).notes as string | null | undefined
+
+        if (!name || !category) {
+          toast.error('Preencha os campos obrigatórios do serviço')
+          return
+        }
+
+        await servicesService.create({
+          client_id: selectedClientId,
+          name,
+          category,
+          value: typeof value === 'number' ? value : null,
+          notes: notes ?? null,
+        })
+        toast.success('Serviço criado com sucesso!')
       }
       setIsFormOpen(false)
       setEditingService(undefined)
-      await fetchServices(search, filter, categoryFilter)
-    } catch (error) {
-      console.error('Error saving service:', error)
+      void fetchServices(search, filter, categoryFilter, viewMode)
+    } catch {
       toast.error('Erro ao salvar serviço')
     }
   }
 
   const handleNewService = () => {
+    if (!selectedClientId) {
+      toast.error('Selecione um cliente antes de criar um serviço')
+      return
+    }
     setEditingService(undefined)
     setIsFormOpen(true)
   }
@@ -136,86 +172,97 @@ export default function ServicosPage() {
   const filteredServices = services
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">Serviços</h1>
-          <p className="text-muted-foreground mt-1">Gerencie seus serviços extrajudiciais e consultorias.</p>
-        </div>
+    <PageLayout
+      title="Serviços"
+      description="Gerencie seus serviços extrajudiciais e consultorias."
+      isLoading={isLoading}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      actions={
         <button
           onClick={handleNewService}
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
-          Novo Serviço
+          <span className="hidden sm:inline">Novo Serviço</span>
         </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome ou categoria..."
-            className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
-                <Filter className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
-                  {categoryFilter === 'all'
-                    ? 'Todas categorias'
-                    : getServiceCategoryLabel(categoryFilter)}
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
-              <DropdownMenuItem onClick={() => setCategoryFilter('all')}>
-                Todas categorias
-              </DropdownMenuItem>
-              {CATEGORIES.map((cat) => (
-                <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)}>
-                  {getServiceCategoryLabel(cat)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          <InfoTooltip content="Filtre serviços por status" />
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {(['all', 'active', 'completed', 'cancelled'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  'px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  filter === f
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-background text-muted-foreground hover:bg-muted'
-                )}
-              >
-                {f === 'all' ? 'Todos' : getServiceStatusLabel(f)}
-              </button>
-            ))}
+      }
+      filters={
+        <>
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome ou categoria..."
+              className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            />
           </div>
-        </div>
-      </div>
+          <div className="flex items-center gap-2">
+            <ClientSelect
+              value={selectedClientId ?? undefined}
+              onChange={(id) => setSelectedClientId(id)}
+              placeholder="Selecione um cliente..."
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
+                  <Filter className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">
+                    {categoryFilter === 'all'
+                      ? 'Todas categorias'
+                      : getServiceCategoryLabel(categoryFilter)}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem onClick={() => setCategoryFilter('all')}>
+                  Todas categorias
+                </DropdownMenuItem>
+                {CATEGORIES.map((cat) => (
+                  <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)}>
+                    {getServiceCategoryLabel(cat)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-      {/* Service List */}
+            {viewMode === 'list' && (
+              <>
+                <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                <InfoTooltip content="Filtre serviços por status: todos, apenas ativos, concluídos ou cancelados" />
+                <div className="flex rounded-md border border-border overflow-hidden">
+                  {(['all', 'active', 'completed', 'cancelled'] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      className={cn(
+                        'px-2.5 py-1.5 text-xs font-medium transition-colors',
+                        filter === f
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      {getServiceStatusLabel(f === 'all' ? 'Todos' : f)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      }
+    >
+      {/* Services List or Kanban */}
       {isLoading ? (
-        <div className="flex justify-center py-12">
-            <LoadingSpinner size="lg" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-24 bg-muted/20 rounded-lg animate-pulse" />
+          ))}
         </div>
-      ) : filteredServices.length === 0 ? (
+      ) : services.length === 0 ? (
         <EmptyState
           icon={Briefcase}
           title="Nenhum serviço encontrado"
@@ -226,6 +273,26 @@ export default function ServicosPage() {
           }
           action={!search ? { label: 'Novo Serviço', onClick: handleNewService } : undefined}
         />
+      ) : viewMode === 'kanban' ? (
+        <div className="h-[calc(100vh-280px)] min-h-[500px]">
+          <GenericKanban
+            items={services}
+            columns={SERVICE_COLUMNS}
+            columnOrder={SERVICE_COLUMN_ORDER}
+            onStatusChange={async (item, newStatus) => {
+              try {
+                await servicesService.update(item.id, { status: newStatus as any })
+                toast.success(`Serviço movido para ${SERVICE_COLUMNS[newStatus]}`)
+              } catch {
+                toast.error('Erro ao atualizar status do serviço')
+                void fetchServices(search, filter, categoryFilter, viewMode)
+              }
+            }}
+            renderCard={(item, isDragging) => (
+              <ServiceCard service={item} isDragging={isDragging} />
+            )}
+          />
+        </div>
       ) : (
         <div className="space-y-3">
           {filteredServices.map((service) => (
@@ -238,7 +305,7 @@ export default function ServicosPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 flex-wrap mb-1">
-                        <h3 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors">
+                        <h3 className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors">
                           {service.name}
                         </h3>
                         <span
@@ -247,23 +314,26 @@ export default function ServicosPage() {
                             service.status === 'active'
                               ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                               : service.status === 'completed'
-                              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                              : 'bg-muted text-muted-foreground'
+                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                : 'bg-red-500/10 text-red-600 dark:text-red-400'
                           )}
                         >
                           {getServiceStatusLabel(service.status)}
                         </span>
+                        <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground border border-border">
+                          {getServiceCategoryLabel(service.category)}
+                        </span>
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
-                        {getServiceCategoryLabel(service.category)}
+                        {service.client_name || 'Sem cliente vinculado'}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 shrink-0">
-                    <div className="text-right">
-                        <p className="text-xs text-muted-foreground mb-0.5">Valor</p>
-                        <p className="text-base font-semibold text-foreground">{formatCurrency(service.value)}</p>
-                    </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-base font-bold text-foreground">
+                      {formatCurrency(service.value)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Valor</p>
                   </div>
                 </div>
               </div>
@@ -272,6 +342,7 @@ export default function ServicosPage() {
         </div>
       )}
 
+      {/* Service Form Dialog */}
       <ServiceFormDialog
         isOpen={isFormOpen}
         onClose={() => {
@@ -281,6 +352,6 @@ export default function ServicosPage() {
         service={editingService}
         onSave={handleSaveService}
       />
-    </div>
+    </PageLayout>
   )
 }

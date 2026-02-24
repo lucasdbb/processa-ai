@@ -54,6 +54,7 @@ class ServiceResponse(BaseModel):
     id: UUID
     user_id: UUID
     client_id: UUID
+    client_name: str | None = None
     name: str
     category: ServiceCategory
     status: ServiceStatus

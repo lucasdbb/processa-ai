@@ -30,23 +30,23 @@ class ServicesService:
         """List services for a user."""
         pool = await get_pool()
 
-        where_conditions = ["user_id = %s"]
+        where_conditions = ["s.user_id = %s"]
         query_params: list[Any] = [str(user_id)]
 
         if params.client_id:
-            where_conditions.append("client_id = %s")
+            where_conditions.append("s.client_id = %s")
             query_params.append(str(params.client_id))
 
         if params.search:
-            where_conditions.append("name ILIKE %s")
+            where_conditions.append("s.name ILIKE %s")
             query_params.append(f"%{params.search}%")
 
         if params.category:
-            where_conditions.append("category = %s")
+            where_conditions.append("s.category = %s")
             query_params.append(params.category)
 
         if params.status:
-            where_conditions.append("status = %s")
+            where_conditions.append("s.status = %s")
             query_params.append(params.status)
 
         where_clause = " AND ".join(where_conditions)
@@ -55,7 +55,7 @@ class ServicesService:
             async with conn.cursor(row_factory=dict_row) as cur:
                 count_query = f"""
                     SELECT COUNT(*) as total
-                    FROM office_api.services
+                    FROM office_api.services s
                     WHERE {where_clause}
                 """
                 await cur.execute(count_query, query_params)
@@ -63,10 +63,11 @@ class ServicesService:
                 total = count_result["total"] if count_result else 0
 
                 data_query = f"""
-                    SELECT *
-                    FROM office_api.services
+                    SELECT s.*, c.name as client_name
+                    FROM office_api.services s
+                    LEFT JOIN office_api.clients c ON s.client_id = c.id
                     WHERE {where_clause}
-                    ORDER BY created_at DESC
+                    ORDER BY s.created_at DESC
                     LIMIT %s OFFSET %s
                 """
                 await cur.execute(data_query, query_params + [params.limit, params.offset])

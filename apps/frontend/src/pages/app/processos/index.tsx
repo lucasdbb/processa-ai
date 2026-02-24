@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Filter, FolderKanban, ChevronDown } from 'lucide-react'
+import { Search, Plus, Filter, FolderKanban, ChevronDown, LayoutGrid, List } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -16,28 +16,40 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { TRIBUNALS } from '@/lib/constants'
+import { type Process, type ProcessListResponse } from '@/services/processes-service'
+import { GenericKanban } from '@/components/kanban/generic-kanban'
+import { ProcessCard } from '@/components/kanban/process-card'
+import { PageLayout } from '@/components/layout/page-layout'
 
-type Process = {
-  id: string
-  number: string
-  type: string
-  area: string | null
-  court: string
-  tribunal: string | null
-  client_id: string
-  client_name: string
-  defendant: string
-  value: number
-  status: 'active' | 'archived'
-  next_deadline: string | null
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  active: { label: 'Ativo', className: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  pending: { label: 'Pendente', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  suspended: { label: 'Suspenso', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+  concluded: { label: 'Concluído', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  archived: { label: 'Arquivado', className: 'bg-muted text-muted-foreground' },
+  cancelled: { label: 'Cancelado', className: 'bg-red-500/10 text-red-600 dark:text-red-400' },
 }
 
-type ProcessListResponse = {
-  processes: Process[]
-  total: number
+const PROCESS_COLUMNS: Record<string, string> = {
+  active: 'Ativos',
+  pending: 'Pendentes',
+  suspended: 'Suspensos',
+  concluded: 'Concluídos',
+  archived: 'Arquivados',
+  cancelled: 'Cancelados',
 }
+
+const PROCESS_COLUMN_ORDER: string[] = [
+  'active',
+  'pending',
+  'suspended',
+  'concluded',
+  'archived',
+  'cancelled',
+]
 
 export default function ProcessosPage() {
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
   const [tribunalFilter, setTribunalFilter] = useState<string>('all')
@@ -54,15 +66,23 @@ export default function ProcessosPage() {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string) => {
+  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string, mode: 'list' | 'kanban') => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams()
       if (searchQuery.trim()) params.set('search', searchQuery.trim())
-      if (statusFilter !== 'all') params.set('status', statusFilter)
+      
+      // In Kanban mode, we want all statuses to populate columns
+      // In List mode, we respect the filter
+      if (mode === 'list' && statusFilter !== 'all') {
+        params.set('status', statusFilter)
+      }
+      
       if (tribunal !== 'all') params.set('tribunal', tribunal)
       
-      params.set('limit', '50')
+      // For Kanban, we might need more items or pagination per column
+      // For now, let's just increase limit for Kanban to show a good overview
+      params.set('limit', mode === 'kanban' ? '100' : '50')
       params.set('offset', '0')
 
       const res = await fetchWithCredentials(`${API_URL}/office/processes?${params.toString()}`)
@@ -82,18 +102,18 @@ export default function ProcessosPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      void fetchProcesses(search, filter, tribunalFilter)
+      void fetchProcesses(search, filter, tribunalFilter, viewMode)
     }, search ? 300 : 0)
 
     return () => clearTimeout(timeout)
-  }, [search, filter, tribunalFilter, fetchProcesses])
+  }, [search, filter, tribunalFilter, viewMode, fetchProcesses])
 
   const handleSaveProcess = async (processData: SaveProcessPayload) => {
     console.log('Salvando processo:', processData)
     setIsFormOpen(false)
     setEditingProcess(undefined)
     // Reload processes list
-    await fetchProcesses(search, filter, tribunalFilter)
+    await fetchProcesses(search, filter, tribunalFilter, viewMode)
   }
 
   const handleNewProcess = () => {
@@ -109,82 +129,85 @@ export default function ProcessosPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">Processos</h1>
-          <p className="text-muted-foreground mt-1">Acompanhe seus processos e prazos.</p>
-        </div>
+    <PageLayout
+      title="Processos"
+      description="Acompanhe seus processos e prazos."
+      isLoading={isLoading}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      actions={
         <button
           onClick={handleNewProcess}
           data-tour="new-process-btn"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
-          Novo Processo
+          <span className="hidden sm:inline">Novo Processo</span>
         </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por numero, cliente ou tipo..."
-            className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-          />
-        </div>
-        <div data-tour="process-filters" className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
-                <Filter className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
-                  {tribunalFilter === 'all'
-                    ? 'Todos tribunais'
-                    : tribunalFilter}
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px] max-h-[300px] overflow-y-auto">
-              <DropdownMenuItem onClick={() => setTribunalFilter('all')}>
-                Todos tribunais
-              </DropdownMenuItem>
-              {TRIBUNALS.map((tribunal) => (
-                <DropdownMenuItem key={tribunal} onClick={() => setTribunalFilter(tribunal)}>
-                  {tribunal}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          <InfoTooltip content="Filtre processos por status: todos, apenas ativos ou arquivados" />
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {(['all', 'active', 'archived'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  'px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  filter === f
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-background text-muted-foreground hover:bg-muted'
-                )}
-              >
-                {f === 'all' ? 'Todos' : f === 'active' ? 'Ativos' : 'Arquivados'}
-              </button>
-            ))}
+      }
+      filters={
+        <>
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por numero, cliente ou tipo..."
+              className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            />
           </div>
-        </div>
-      </div>
+          <div data-tour="process-filters" className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
+                  <Filter className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">
+                    {tribunalFilter === 'all'
+                      ? 'Todos tribunais'
+                      : tribunalFilter}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px] max-h-[300px] overflow-y-auto">
+                <DropdownMenuItem onClick={() => setTribunalFilter('all')}>
+                  Todos tribunais
+                </DropdownMenuItem>
+                {TRIBUNALS.map((tribunal) => (
+                  <DropdownMenuItem key={tribunal} onClick={() => setTribunalFilter(tribunal)}>
+                    {tribunal}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-      {/* Process List */}
+            {viewMode === 'list' && (
+              <>
+                <div className="w-px h-6 bg-border mx-1" />
+                <div className="flex rounded-md border border-border overflow-hidden">
+                  {(['all', 'active', 'archived'] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      className={cn(
+                        'px-2.5 py-1.5 text-xs font-medium transition-colors',
+                        filter === f
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      {f === 'all' ? 'Todos' : f === 'active' ? 'Ativos' : 'Arquivados'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      }
+    >
+      {/* Process List or Kanban */}
       {isLoading ? (
         <ProcessListSkeleton />
       ) : processes.length === 0 ? (
@@ -198,6 +221,30 @@ export default function ProcessosPage() {
           }
           action={!search ? { label: 'Novo Processo', onClick: handleNewProcess } : undefined}
         />
+      ) : viewMode === 'kanban' ? (
+        <div className="h-[calc(100vh-280px)] min-h-[500px]">
+          <GenericKanban
+            items={processes}
+            columns={PROCESS_COLUMNS}
+            columnOrder={PROCESS_COLUMN_ORDER}
+            onStatusChange={async (item, newStatus) => {
+              try {
+                await fetchWithCredentials(`${API_URL}/office/processes/${item.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: newStatus }),
+                })
+                toast.success(`Processo movido para ${PROCESS_COLUMNS[newStatus]}`)
+              } catch {
+                toast.error('Erro ao atualizar status do processo')
+                void fetchProcesses(search, filter, tribunalFilter, viewMode)
+              }
+            }}
+            renderCard={(item, isDragging) => (
+              <ProcessCard process={item} isDragging={isDragging} />
+            )}
+          />
+        </div>
       ) : (
         <div className="space-y-3">
           {processes.map((process) => (
@@ -211,17 +258,15 @@ export default function ProcessosPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 flex-wrap mb-1">
                         <h3 className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                          {process.number}
+                          {process.process_number}
                         </h3>
                         <span
                           className={cn(
                             'px-2.5 py-0.5 text-xs font-medium rounded-full',
-                            process.status === 'active'
-                              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                              : 'bg-muted text-muted-foreground'
+                            (STATUS_CONFIG[process.status] || STATUS_CONFIG['active']).className
                           )}
                         >
-                          {process.status === 'active' ? 'Ativo' : 'Arquivado'}
+                          {(STATUS_CONFIG[process.status] || STATUS_CONFIG['active']).label}
                         </span>
                         {process.area && (
                           <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -233,7 +278,7 @@ export default function ProcessosPage() {
                         {process.type} • {process.court}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        <span className="font-medium text-foreground">{process.client_name}</span> vs{' '}
+                        <span className="font-medium text-foreground">{process.client_name || process.client_id}</span> vs{' '}
                         <span className="font-medium text-foreground">{process.defendant}</span>
                       </p>
                     </div>
@@ -246,7 +291,7 @@ export default function ProcessosPage() {
                     )}
                     <div className="text-right">
                       <p className="text-base font-bold text-foreground">
-                        {formatCurrency(process.value)}
+                        {formatCurrency(process.value || 0)}
                       </p>
                       <p className="text-xs text-muted-foreground">Valor</p>
                     </div>
@@ -270,6 +315,6 @@ export default function ProcessosPage() {
         process={editingProcess}
         onSave={handleSaveProcess}
       />
-    </div>
+    </PageLayout>
   )
 }

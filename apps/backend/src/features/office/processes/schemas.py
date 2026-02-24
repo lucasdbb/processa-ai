@@ -41,6 +41,7 @@ class ProcessResponse(BaseModel):
     id: UUID
     user_id: UUID
     client_id: UUID
+    client_name: str | None = None
     process_number: str
     court: str | None
     tribunal: str | None

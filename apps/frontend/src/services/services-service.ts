@@ -18,6 +18,7 @@ export interface Service {
   id: string;
   user_id: string;
   client_id: string;
+  client_name?: string;
   name: string;
   category: ServiceCategory;
   status: ServiceStatus;

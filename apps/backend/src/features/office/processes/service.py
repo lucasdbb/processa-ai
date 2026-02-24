@@ -28,31 +28,31 @@ class ProcessesService:
         """List processes for a user."""
         pool = await get_pool()
 
-        where_conditions = ["user_id = %s"]
+        where_conditions = ["p.user_id = %s"]
         query_params: list[Any] = [str(user_id)]
 
         if params.search:
             where_conditions.append(
-                "(process_number ILIKE %s OR type ILIKE %s OR "
-                "defendant ILIKE %s OR subject ILIKE %s)"
+                "(p.process_number ILIKE %s OR p.type ILIKE %s OR "
+                "p.defendant ILIKE %s OR p.subject ILIKE %s)"
             )
             search_pattern = f"%{params.search}%"
             query_params.extend([search_pattern] * 4)
 
         if params.status:
-            where_conditions.append("status = %s")
+            where_conditions.append("p.status = %s")
             query_params.append(params.status)
 
         if params.client_id:
-            where_conditions.append("client_id = %s")
+            where_conditions.append("p.client_id = %s")
             query_params.append(str(params.client_id))
 
         if params.court:
-            where_conditions.append("court = %s")
+            where_conditions.append("p.court = %s")
             query_params.append(params.court)
 
         if params.tribunal:
-            where_conditions.append("tribunal = %s")
+            where_conditions.append("p.tribunal = %s")
             query_params.append(params.tribunal)
 
         where_clause = " AND ".join(where_conditions)
@@ -60,16 +60,18 @@ class ProcessesService:
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
                 count_query = (
-                    f"SELECT COUNT(*) as total FROM office_api.processes WHERE {where_clause}"
+                    f"SELECT COUNT(*) as total FROM office_api.processes p WHERE {where_clause}"
                 )
                 await cur.execute(count_query, query_params)
                 count_result = await cur.fetchone()
                 total = count_result["total"] if count_result else 0
 
                 data_query = f"""
-                    SELECT * FROM office_api.processes
+                    SELECT p.*, c.name as client_name
+                    FROM office_api.processes p
+                    LEFT JOIN office_api.clients c ON p.client_id = c.id
                     WHERE {where_clause}
-                    ORDER BY created_at DESC
+                    ORDER BY p.created_at DESC
                     LIMIT %s OFFSET %s
                 """
                 await cur.execute(data_query, query_params + [params.limit, params.offset])

@@ -1,9 +1,11 @@
 import { API_URL, fetchWithCredentials } from "@/lib/fetch";
 
 export interface Process {
+  next_deadline: any;
   id: string;
   user_id: string;
   client_id: string;
+  client_name?: string;
   process_number: string;
   court: string | null;
   tribunal: string | null;
