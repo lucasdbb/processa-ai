@@ -142,29 +142,23 @@ export const router = createBrowserRouter([
             path: 'processos/:id',
             element: <ProcessoDetalhePage />,
           },
+          {
+            path: 'servicos',
+            element: <ServicosPage />,
+          },
+          {
+            path: 'servicos/:id',
+            element: <ServicoDetalhePage />,
+          },
+          {
+            path: 'calendario',
+            element: <CalendarioPage />,
+          },
         ]
-      },
-      {
-        path: 'servicos',
-        element: <ServicosPage />,
-      },
-      {
-        path: 'servicos/:id',
-        element: <ServicoDetalhePage />,
       },
       {
         path: 'notificacoes',
         element: <NotificacoesPage />,
-      },
-      {
-        path: 'prazos',
-        loader: () => {
-          throw redirect('/app/calendario')
-        },
-      },
-      {
-        path: 'calendario',
-        element: <CalendarioPage />,
       },
       {
         path: 'calculadoras',
