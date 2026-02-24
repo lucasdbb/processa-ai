@@ -9,18 +9,16 @@ class Analytics {
   private constructor() {
     const apiKey = import.meta.env.VITE_POSTHOG_KEY;
     const apiHost = import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com';
-    const isProd = import.meta.env.PROD;
 
-    // Se tivermos a chave e estivermos em produção, usamos PostHog.
+    // Se tivermos a chave, usamos PostHog (mesmo em DEV para testes).
     // Caso contrário, usamos o ConsoleAnalyticsService para debug local.
-    if (apiKey && isProd) {
+    if (apiKey) {
       this.service = new PostHogAnalyticsService(apiKey, apiHost);
+      this.service.init(); // Inicializar aqui explicitamente
     } else {
       this.service = new ConsoleAnalyticsService();
+      this.service.init();
     }
-    
-    // ATENÇÃO: Se não aparecer nada no console em DEV, verifique se o 'console.groupCollapsed' não está filtrado no seu navegador.
-    this.service.init();
   }
 
   public static getInstance(): Analytics {
