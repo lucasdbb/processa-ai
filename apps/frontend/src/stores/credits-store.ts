@@ -103,7 +103,6 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
     }
 
     const supabase = createClient()
-    console.log('Subscribing to credits for user:', userId)
     
     creditsChannel = supabase
       .channel(`credits-realtime-${userId}`)
@@ -139,13 +138,7 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
           }
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to credits updates')
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Failed to subscribe to credits updates')
-        }
-      })
+      .subscribe()
   },
 
   unsubscribeFromCredits: () => {
