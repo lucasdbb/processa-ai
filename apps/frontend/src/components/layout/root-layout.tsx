@@ -6,6 +6,7 @@ import { Footer } from './footer'
 import { PageTransition } from './page-transition'
 import { LoginModal } from '@/features/auth/components/login-modal'
 import { useAuth } from '@/features/auth/hooks/use-auth'
+import { usePageTracking } from '@/lib/analytics/hooks'
 
 type RootLayoutOutletContext = {
   openLoginModal: () => void
@@ -51,6 +52,9 @@ export function RootLayout() {
 
   // Initialize auth on app load
   useAuth()
+  
+  // Initialize analytics tracking
+  usePageTracking()
 
   const isAdminRoute = location.pathname.startsWith('/admin')
 

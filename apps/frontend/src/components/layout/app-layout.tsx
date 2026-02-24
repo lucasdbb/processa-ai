@@ -15,6 +15,7 @@ import { AiToolsProvider } from '@/features/ai/provider'
 import { CalculatorsProvider } from '@/features/calculators/provider'
 import { useBillingStore } from '@/stores/billing-store'
 import { useCreditsStore } from '@/stores/credits-store'
+import { usePageTracking } from '@/lib/analytics/hooks'
 
 function RouteLoadingBar() {
   const navigation = useNavigation()
@@ -49,6 +50,9 @@ export function AppLayout() {
   const { toggle: toggleCommandPalette } = useCommandPaletteStore()
   const { fetchSubscription } = useBillingStore()
   const { subscribeToCredits, unsubscribeFromCredits, fetchCredits } = useCreditsStore()
+
+  // Initialize analytics tracking
+  usePageTracking()
 
   // Initialize auth
   const { user } = useAuth()

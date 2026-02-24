@@ -10,6 +10,7 @@ import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
+import { analytics } from '@/lib/analytics'
 
 interface CnisAnalysisToolProps {
   onOpenRegisterModal?: () => void
@@ -104,6 +105,11 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
     }
 
     setIsGenerating(true)
+    analytics.track('feature_used', { 
+      feature: 'cnis_analysis', 
+      action: 'started',
+      file_size: cnisFile.size 
+    })
 
     try {
       // Get user from Supabase session
@@ -203,13 +209,8 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
         if (statusData.status === 'completed') {
           // Job completed - get the result
           if (statusData.result?.download_url) {
-            // Download from signed URL
-            const pdfResponse = await fetch(statusData.result.download_url)
-            if (!pdfResponse.ok) {
-              throw new Error('Erro ao baixar PDF')
-            }
-            const blob = await pdfResponse.blob()
-            setCnisPdfUrl(URL.createObjectURL(blob))
+            // Use signed URL directly
+            setCnisPdfUrl(statusData.result.download_url)
           } else if (statusData.result?.content) {
             // Base64 content
             const binary = atob(statusData.result.content)
@@ -228,14 +229,25 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
           }
 
           toast.success('CNIS analisado com sucesso!')
+          analytics.track('feature_used', { 
+            feature: 'cnis_analysis', 
+            action: 'completed',
+            success: true 
+          })
           return
         }
 
         // Still processing - continue polling
       }
-
+      
       throw new Error('Tempo esgotado. Tente novamente.')
     } catch (error) {
+      analytics.track('feature_used', { 
+        feature: 'cnis_analysis', 
+        action: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        success: false 
+      })
       toast.error(error instanceof Error ? error.message : 'Erro ao processar CNIS')
       setProgress(0)
     } finally {
@@ -250,6 +262,11 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
     }
 
     if (!generatedPdfUrl) return
+
+    analytics.track('feature_used', { 
+      feature: 'cnis_analysis', 
+      action: 'downloaded_pdf',
+    })
 
     const element = document.createElement('a')
     element.href = generatedPdfUrl

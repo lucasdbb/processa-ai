@@ -13,6 +13,7 @@ import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
+import { analytics } from '@/lib/analytics'
 
 
 interface BriefScannerToolProps {
@@ -116,6 +117,12 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
     setGeneratedText('')
     setGeneratedPdfUrl('')
 
+    analytics.track('feature_used', {
+      feature: 'brief_scanner',
+      action: 'started',
+      file_count: files.length
+    })
+
     try {
       const supabase = (await import('@/lib/supabase/client')).createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -210,10 +217,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
 
         if (statusData.status === 'completed') {
           if (statusData.result?.download_url) {
-            const pdfResponse = await fetch(statusData.result.download_url)
-            if (!pdfResponse.ok) throw new Error('Erro ao baixar PDF')
-            const blob = await pdfResponse.blob()
-            setGeneratedPdfUrl(URL.createObjectURL(blob))
+            setGeneratedPdfUrl(statusData.result.download_url)
           } else if (statusData.result?.content) {
             const binary = atob(statusData.result.content)
             const bytes = new Uint8Array(binary.length)
@@ -225,12 +229,23 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
           }
 
           toast.success('Análise da peça concluída com sucesso!')
+          analytics.track('feature_used', {
+            feature: 'brief_scanner',
+            action: 'completed',
+            success: true
+          })
           return
         }
       }
 
       throw new Error('Tempo esgotado. Tente novamente.')
     } catch (error) {
+      analytics.track('feature_used', {
+        feature: 'brief_scanner',
+        action: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        success: false
+      })
       toast.error(error instanceof Error ? error.message : 'Erro ao analisar peça')
     } finally {
       setIsGenerating(false)
@@ -244,8 +259,17 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
     }
 
     if (generatedPdfUrl) {
+      analytics.track('feature_used', {
+        feature: 'brief_scanner',
+        action: 'downloaded_pdf',
+      })
+      
       const element = document.createElement('a')
       element.href = generatedPdfUrl
+      // Se for uma URL assinada do Supabase/S3, o navegador pode tentar abrir.
+      // O atributo 'download' só funciona se for mesma origem ou blob.
+      // Mas a maioria dos navegadores modernos respeita se o header Content-Disposition vier do servidor.
+      element.target = "_blank" 
       element.download = `analise_scanner_${Date.now()}.pdf`
       document.body.appendChild(element)
       element.click()

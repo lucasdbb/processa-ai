@@ -7,6 +7,7 @@ import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCreditsStore } from '@/stores/credits-store'
 import type { AposentadoriaDetalhes, CalculatorResult } from '../types'
+import { analytics } from '@/lib/analytics'
 
 interface AposentadoriaCalculatorProps {
   selectedClientId: string | null
@@ -51,6 +52,13 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
     }
 
     setIsCalculating(true)
+    
+    analytics.track('feature_used', {
+      feature: 'aposentadoria_calculator',
+      action: 'started',
+      tipo: formData.tipoAposentadoria
+    })
+
     try {
       const res = await fetchWithCredentials(`${API_URL}/calculators/previdencia/aposentadoria`, {
         method: 'POST',
@@ -96,7 +104,20 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
       
       // Update credits
       fetchCredits()
+      
+      analytics.track('feature_used', {
+        feature: 'aposentadoria_calculator',
+        action: 'completed',
+        success: true,
+        pode_aposentar: data.detalhes.pode_aposentar
+      })
     } catch (err) {
+      analytics.track('feature_used', {
+        feature: 'aposentadoria_calculator',
+        action: 'failed',
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      })
       toast.error(err instanceof Error ? err.message : 'Erro ao calcular aposentadoria')
     } finally {
       setIsCalculating(false)

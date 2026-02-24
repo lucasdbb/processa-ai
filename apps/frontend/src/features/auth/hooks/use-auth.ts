@@ -6,6 +6,7 @@ import type {
   UpdateProfileData,
 } from "../types";
 import { createClient } from "@/lib/supabase/client";
+import { analytics } from "@/lib/analytics";
 
 export function useAuth() {
   const {
@@ -98,13 +99,23 @@ export function useAuth() {
         .single();
 
       if (profileError) {
-        throw new Error("Falha ao carregar perfil do usuário");
+        throw new Error("Erro ao carregar perfil do usuário");
       }
 
+      // Check status immediately
       if (profile.status === 'suspended' || profile.status === 'deleted') {
         await supabase.auth.signOut();
         throw new Error("Sua conta foi inativada ou suspensa. Entre em contato com o suporte.");
       }
+
+      // Identificar usuário no Analytics
+      analytics.identify(data.user.id, {
+        email: data.user.email,
+        name: profile.name,
+        role: profile.role,
+        status: profile.status,
+      });
+      analytics.track('user_logged_in', { method: 'email' });
 
       const currentUser = {
         id: data.user.id,
@@ -194,7 +205,11 @@ export function useAuth() {
   const logout = async () => {
     setLoading(true);
     try {
-      await createClient().auth.signOut();
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      
+      analytics.track('user_logged_out');
+      
       clearUser();
     } catch (error) {
       console.error("Logout failed:", error);

@@ -4,8 +4,11 @@ import { Outlet } from 'react-router-dom'
 import { LogOut, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/features/auth/hooks/use-auth'
+import { usePageTracking } from '@/lib/analytics/hooks'
 
 export function PortalLayout() {
+  usePageTracking()
+
   const { logout } = useAuth()
   const { resolvedTheme, setTheme } = useTheme()
 

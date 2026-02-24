@@ -7,6 +7,7 @@ import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCreditsStore } from '@/stores/credits-store'
 import type { RescisaoDetalhes, CalculatorResult } from '../types'
+import { analytics } from '@/lib/analytics'
 
 interface RescisaoCalculatorProps {
   selectedClientId: string | null
@@ -64,6 +65,13 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
     }
 
     setIsCalculating(true)
+
+    analytics.track('feature_used', {
+      feature: 'rescisao_calculator',
+      action: 'started',
+      tipo: formData.tipoRescisao
+    })
+
     try {
       const res = await fetchWithCredentials(`${API_URL}/calculators/trabalhista/rescisao-trabalhista`, {
         method: 'POST',
@@ -128,7 +136,19 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
       
       // Update credits
       fetchCredits()
+      
+      analytics.track('feature_used', {
+        feature: 'rescisao_calculator',
+        action: 'completed',
+        success: true
+      })
     } catch (err) {
+      analytics.track('feature_used', {
+        feature: 'rescisao_calculator',
+        action: 'failed',
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      })
       toast.error(err instanceof Error ? err.message : 'Erro ao calcular rescisão')
     } finally {
       setIsCalculating(false)

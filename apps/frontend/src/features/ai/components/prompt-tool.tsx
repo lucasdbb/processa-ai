@@ -9,6 +9,7 @@ import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
+import { analytics } from '@/lib/analytics'
 
 interface PromptToolProps {
   externalPrompt?: string
@@ -71,6 +72,12 @@ export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) 
     setIsGenerating(true)
     setGeneratedText('')
 
+    analytics.track('feature_used', {
+      feature: 'prompt_tool',
+      action: 'started',
+      prompt_length: prompt.length
+    })
+
     try {
       const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
         method: 'POST',
@@ -89,8 +96,21 @@ export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) 
       const data = await response.json()
       setGeneratedText(data.response)
       toast.success('Resposta gerada!')
+      
+      analytics.track('feature_used', {
+        feature: 'prompt_tool',
+        action: 'completed',
+        success: true,
+        response_length: data.response.length
+      })
     } catch (error) {
       console.error(error)
+      analytics.track('feature_used', {
+        feature: 'prompt_tool',
+        action: 'failed',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
       toast.error('Erro ao conectar com a IA')
     } finally {
       setIsGenerating(false)
@@ -153,6 +173,7 @@ export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) 
               onClick={() => {
                 navigator.clipboard.writeText(generatedText)
                 toast.success('Copiado para a área de transferência')
+                analytics.track('feature_used', { feature: 'prompt_tool', action: 'copied_text' })
               }}
               className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >

@@ -12,6 +12,7 @@ import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
+import { analytics } from '@/lib/analytics'
 
 
 const MAX_FILES = 5
@@ -116,6 +117,13 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
     setGeneratedPdfUrl('')
     setGeneratedText('')
 
+    analytics.track('feature_used', {
+      feature: 'labor_claim',
+      action: 'started',
+      file_count: files.length,
+      prompt_length: prompt.length
+    })
+
     try {
       // 1. Upload files if any
       let uploadedFiles: any[] = []
@@ -188,6 +196,11 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
             
             toast.success('Reclamação trabalhista gerada com sucesso!')
             setIsGenerating(false)
+            analytics.track('feature_used', {
+              feature: 'labor_claim',
+              action: 'completed',
+              success: true
+            })
           } else if (statusData.status === 'failed') {
             clearInterval(pollInterval)
             throw new Error(statusData.error || 'Falha na geração')
@@ -199,6 +212,12 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
 
     } catch (error) {
       console.error(error)
+      analytics.track('feature_used', {
+        feature: 'labor_claim',
+        action: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        success: false
+      })
       toast.error(error instanceof Error ? error.message : 'Erro ao processar')
       setIsGenerating(false)
     }
@@ -374,8 +393,10 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
                 <a
                   href={generatedPdfUrl}
                   target="_blank"
+                  download
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors"
+                  onClick={() => analytics.track('feature_used', { feature: 'labor_claim', action: 'downloaded_pdf' })}
                 >
                   <Download className="h-4 w-4" />
                   Baixar PDF

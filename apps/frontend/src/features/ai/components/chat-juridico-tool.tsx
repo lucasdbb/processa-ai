@@ -7,6 +7,7 @@ import { useUser } from '@/features/auth/hooks/use-user'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import type { ChatMessage } from '../types'
+import { analytics } from '@/lib/analytics'
 
 export function ChatJuridicoTool() {
   const { isAuthenticated } = useUser()
@@ -36,6 +37,12 @@ export function ChatJuridicoTool() {
     setChatInput('')
     setIsChatLoading(true)
 
+    analytics.track('feature_used', {
+      feature: 'chat_juridico',
+      action: 'message_sent',
+      message_length: userMessage.content.length
+    })
+
     try {
       const response = await fetchWithCredentials(`${API_URL}/ai/chat`, {
         method: 'POST',
@@ -58,7 +65,18 @@ export function ChatJuridicoTool() {
         content: data.response || 'Desculpe, não consegui processar sua mensagem.',
       }
       setChatMessages((prev) => [...prev, assistantMessage])
+      
+      analytics.track('feature_used', {
+        feature: 'chat_juridico',
+        action: 'response_received',
+        response_length: assistantMessage.content.length
+      })
     } catch {
+      analytics.track('feature_used', {
+        feature: 'chat_juridico',
+        action: 'failed',
+        success: false
+      })
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
