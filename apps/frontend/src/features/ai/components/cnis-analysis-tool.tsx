@@ -255,7 +255,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
     }
   }, [isAuthenticated, cnisFile, openRegisterModal, setCnisPdfUrl])
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!isAuthenticated) {
       openRegisterModal()
       return
@@ -263,17 +263,31 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
 
     if (!generatedPdfUrl) return
 
-    analytics.track('feature_used', { 
-      feature: 'cnis_analysis', 
-      action: 'downloaded_pdf',
-    })
+    try {
+      analytics.track('feature_used', { 
+        feature: 'cnis_analysis', 
+        action: 'downloaded_pdf',
+      })
 
-    const element = document.createElement('a')
-    element.href = generatedPdfUrl
-    element.download = `analise_cnis_${Date.now()}.pdf`
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
+      // Fetch blob to force download
+      const response = await fetch(generatedPdfUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      
+      const element = document.createElement('a')
+      element.href = url
+      element.download = `analise_cnis_${Date.now()}.pdf`
+      document.body.appendChild(element)
+      element.click()
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(element)
+    } catch (error) {
+      console.error('Download failed:', error)
+      // Fallback to direct link
+      window.open(generatedPdfUrl, '_blank')
+    }
   }, [generatedPdfUrl, isAuthenticated, openRegisterModal])
 
   return (

@@ -252,28 +252,38 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
     }
   }, [files, isAuthenticated, openRegisterModal])
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!isAuthenticated) {
       openRegisterModal()
       return
     }
 
     if (generatedPdfUrl) {
-      analytics.track('feature_used', {
-        feature: 'brief_scanner',
-        action: 'downloaded_pdf',
-      })
-      
-      const element = document.createElement('a')
-      element.href = generatedPdfUrl
-      // Se for uma URL assinada do Supabase/S3, o navegador pode tentar abrir.
-      // O atributo 'download' só funciona se for mesma origem ou blob.
-      // Mas a maioria dos navegadores modernos respeita se o header Content-Disposition vier do servidor.
-      element.target = "_blank" 
-      element.download = `analise_scanner_${Date.now()}.pdf`
-      document.body.appendChild(element)
-      element.click()
-      document.body.removeChild(element)
+      try {
+        analytics.track('feature_used', {
+          feature: 'brief_scanner',
+          action: 'downloaded_pdf',
+        })
+        
+        // Fetch blob to force download
+        const response = await fetch(generatedPdfUrl)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+
+        const element = document.createElement('a')
+        element.href = url
+        element.download = `analise_scanner_${Date.now()}.pdf`
+        document.body.appendChild(element)
+        element.click()
+        
+        // Cleanup
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(element)
+      } catch (error) {
+        console.error('Download failed:', error)
+        // Fallback to direct link
+        window.open(generatedPdfUrl, '_blank')
+      }
       return
     }
   }, [generatedPdfUrl, isAuthenticated, openRegisterModal])

@@ -223,6 +223,30 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
     }
   }
 
+  const handleDownload = useCallback(async () => {
+    if (!generatedPdfUrl) return
+
+    try {
+      analytics.track('feature_used', { feature: 'labor_claim', action: 'downloaded_pdf' })
+
+      const response = await fetch(generatedPdfUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      
+      const element = document.createElement('a')
+      element.href = url
+      element.download = `reclamacao_trabalhista_${Date.now()}.pdf`
+      document.body.appendChild(element)
+      element.click()
+      
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(element)
+    } catch (error) {
+      console.error('Download failed:', error)
+      window.open(generatedPdfUrl, '_blank')
+    }
+  }, [generatedPdfUrl])
+
   return (
     <div className="h-full flex flex-col gap-4">
       <div className={cn(
@@ -390,17 +414,13 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
                 Petição Gerada
               </h3>
               {generatedPdfUrl && (
-                <a
-                  href={generatedPdfUrl}
-                  target="_blank"
-                  download
-                  rel="noopener noreferrer"
+                <button
+                  onClick={handleDownload}
                   className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors"
-                  onClick={() => analytics.track('feature_used', { feature: 'labor_claim', action: 'downloaded_pdf' })}
                 >
                   <Download className="h-4 w-4" />
                   Baixar PDF
-                </a>
+                </button>
               )}
             </div>
             
