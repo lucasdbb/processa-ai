@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Download, Sparkles, Trash2, Upload, FileText } from 'lucide-react'
+import { Sparkles, Trash2, Upload, FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
@@ -11,6 +11,9 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 import { analytics } from '@/lib/analytics'
+
+import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
+import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 
 interface CnisAnalysisToolProps {
   onOpenRegisterModal?: () => void
@@ -32,6 +35,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   
   // Ref para URL do PDF para revogar quando mudar
   const cnisPdfUrlRef = useRef<string | null>(null)
@@ -150,6 +154,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
           job_uuid: commonJobUuid,
           user_id: user.id,
           client_id: selectedClientId || undefined,
+          functionality: FunctionalityType.AI,
           store_pdf: true,
         }),
       })
@@ -211,6 +216,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
           if (statusData.result?.download_url) {
             // Use signed URL directly
             setCnisPdfUrl(statusData.result.download_url)
+            setIsResultModalOpen(true)
           } else if (statusData.result?.content) {
             // Base64 content
             const binary = atob(statusData.result.content)
@@ -218,6 +224,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
             for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
             const blob = new Blob([bytes], { type: 'application/pdf' })
             setCnisPdfUrl(URL.createObjectURL(blob))
+            setIsResultModalOpen(true)
           } else if (statusData.result?.document_id) {
              // Se tiver document_id mas não url/content, pode ser que o worker não gerou a URL ou expirou.
              // Idealmente o worker deve retornar download_url.
@@ -413,51 +420,23 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
           </div>
         </div>
 
-        {/* Right Column: Results */}
-        {generatedPdfUrl ? (
-          <div role="region" aria-labelledby="result-heading" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <h3 id="result-heading" className="text-base font-semibold text-foreground">
-                Análise do CNIS
-              </h3>
-              <div className="flex space-x-2" role="toolbar" aria-label="Ações do documento">
-                <button
-                  onClick={handleDownload}
-                  aria-label="Baixar como PDF"
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                  title="Baixar PDF"
-                >
-                  <Download className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-            <div
-              className={cn(
-                "bg-muted/30 border border-border rounded-2xl p-8 shadow-inner flex-1 min-h-0",
-                layoutMode === 'side-by-side' ? "" : "h-[70vh]"
-              )}
-              role="article"
-              aria-label="Análise do CNIS"
-              tabIndex={0}
-            >
-              <iframe 
-                title="Análise do CNIS" 
-                src={generatedPdfUrl} 
-                className="w-full h-full rounded-xl border border-border bg-background"
-              />
-            </div>
-          </div>
-        ) : (
-           layoutMode === 'side-by-side' && (
-            <div className="hidden lg:flex items-center justify-center h-full min-h-[400px] border-2 border-dashed border-border/50 rounded-2xl bg-muted/10 text-muted-foreground">
-              <div className="text-center max-w-xs p-6">
-                 <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                 <p className="text-sm">O resultado da análise aparecerá aqui</p>
-              </div>
-            </div>
-           )
-        )}
+        {/* Right Column: History */}
+        <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
+          <AnalysisHistoryList 
+            functionality="cnis_analysis"
+            clientId={selectedClientId} 
+            title="Histórico de Análises CNIS"
+          />
+        </div>
       </div>
+
+      <AnalysisResultModal
+        isOpen={isResultModalOpen}
+        onClose={() => setIsResultModalOpen(false)}
+        title="Análise do CNIS"
+        pdfUrl={generatedPdfUrl}
+        onDownload={handleDownload}
+      />
     </div>
   )
 }

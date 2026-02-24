@@ -13,6 +13,7 @@ from src.core.ai_worker_store import (
     parse_job_uuid,
     update_job_payload,
     mark_job_failed,
+    get_all_user_jobs,
 )
 from src.core.auth import require_internal_auth
 from src.core.logging import logger
@@ -977,3 +978,58 @@ async def download_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao gerar URL de download",
         )
+
+@router.get("/jobs", status_code=status.HTTP_200_OK)
+async def get_user_jobs_list(
+    user_id: str = Query(..., description="ID do usuário"),
+    client_id: str | None = Query(None, description="ID do cliente opcional"),
+    functionality: str | None = Query(None, description="Filtro por funcionalidade (endpoint_key)"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    _internal=Depends(require_internal_auth),
+):
+    """Lista jobs de IA do usuário."""
+    jobs = await get_all_user_jobs(
+        user_id=user_id,
+        client_id=client_id,
+        endpoint_key=functionality,
+        limit=limit,
+        offset=offset
+    )
+    
+    storage_service = StorageService()
+    processed = []
+    for job in jobs:
+        # Extrair metadados úteis do payload
+        metadata = {}
+        request_payload = job.get("request_payload") or {}
+        result_payload = job.get("result_payload") or {}
+        
+        # Nome do arquivo (input)
+        files = request_payload.get("files") or []
+        if files and len(files) > 0:
+             metadata["file_name"] = files[0].get("filename")
+        elif request_payload.get("storage_path"):
+             metadata["file_name"] = request_payload.get("storage_path").split("/")[-1]
+        else:
+             metadata["file_name"] = "Análise"
+             
+        metadata["client_name"] = job.get("client_name")
+        metadata["client_id"] = job.get("client_id")
+
+        processed.append({
+            "id": job["id"],
+            "created_at": job["created_at"].isoformat() if job["created_at"] else None,
+            "status": job["status"],
+            "functionality": job["endpoint_key"], 
+            "metadata": metadata,
+            "result": {
+                "download_url": result_payload.get("download_url") or result_payload.get("pdf_url"),
+                "pdf_url": result_payload.get("pdf_url"),
+                "document_id": job.get("output_document_id"),
+                "content": result_payload.get("content"),
+                "text": result_payload.get("text")
+            }
+        })
+        
+    return processed

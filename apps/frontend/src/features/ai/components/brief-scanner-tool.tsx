@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { Download, FileText, Plus, ScanSearch, Trash2, Upload } from 'lucide-react'
+import { FileText, Plus, ScanSearch, Trash2, Upload } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
@@ -15,6 +15,9 @@ import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 import { analytics } from '@/lib/analytics'
 
+
+import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
+import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 
 interface BriefScannerToolProps {
   onOpenRegisterModal?: () => void
@@ -36,6 +39,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false)
 
   const markdownToRender = normalizeMarkdown(generatedText)
   const previewHtml = useMemo(() => {
@@ -158,6 +162,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         store_pdf: true,
         job_uuid: commonJobUuid || undefined,
         files: uploadMetadata,
+        functionality: FunctionalityType.AI,
       }
 
       const submitResponse = await fetchWithCredentials(endpoint, {
@@ -218,12 +223,14 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         if (statusData.status === 'completed') {
           if (statusData.result?.download_url) {
             setGeneratedPdfUrl(statusData.result.download_url)
+            setIsResultModalOpen(true)
           } else if (statusData.result?.content) {
             const binary = atob(statusData.result.content)
             const bytes = new Uint8Array(binary.length)
             for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
             const blob = new Blob([bytes], { type: 'application/pdf' })
             setGeneratedPdfUrl(URL.createObjectURL(blob))
+            setIsResultModalOpen(true)
           } else {
             throw new Error('Resultado inválido do servidor')
           }
@@ -449,70 +456,24 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
           </div>
         </div>
 
-        {/* Right Column: Results */}
-        {generatedPdfUrl ? (
-          <div role="region" aria-labelledby="result-heading" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <h3 id="result-heading" className="text-base font-semibold text-foreground">
-                Relatorio de Analise
-              </h3>
-              <button
-                onClick={handleDownload}
-                aria-label="Baixar como PDF"
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                title="Baixar PDF"
-              >
-                <Download className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-            <div className={cn(
-              "bg-muted/30 border border-border rounded-2xl p-8 shadow-inner flex-1 min-h-0",
-              layoutMode === 'side-by-side' ? "" : "h-[70vh]"
-            )}>
-              <iframe
-                title="Relatorio de Analise"
-                src={generatedPdfUrl}
-                className="w-full h-full rounded-xl border border-border bg-background"
-              />
-            </div>
-          </div>
-        ) : hasResult && previewHtml ? (
-          /* Resultado em HTML */
-          <div role="region" aria-labelledby="result-heading" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <h3 id="result-heading" className="text-lg font-bold text-foreground">
-                Relatorio de Analise
-              </h3>
-              <button
-                onClick={handleDownload}
-                aria-label="Baixar documento"
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                title="Baixar"
-              >
-                <Download className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-            <div className={cn(
-               "bg-muted/30 border border-border rounded-2xl p-8 shadow-inner flex-1 min-h-0 overflow-y-auto",
-               layoutMode === 'side-by-side' ? "" : ""
-            )}>
-              <div
-                className="prose prose-lg max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
-            </div>
-          </div>
-        ) : (
-           layoutMode === 'side-by-side' && (
-            <div className="hidden lg:flex items-center justify-center h-full min-h-[400px] border-2 border-dashed border-border/50 rounded-2xl bg-muted/10 text-muted-foreground">
-              <div className="text-center max-w-xs p-6">
-                 <ScanSearch className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                 <p className="text-sm">O resultado da análise aparecerá aqui</p>
-              </div>
-            </div>
-           )
-        )}
+        {/* Right Column: History */}
+        <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
+          <AnalysisHistoryList 
+            functionality="brief_scanner"
+            clientId={selectedClientId} 
+            title="Histórico de Análises de Peças"
+          />
+        </div>
       </div>
+
+      <AnalysisResultModal
+        isOpen={isResultModalOpen}
+        onClose={() => setIsResultModalOpen(false)}
+        title="Análise da Peça"
+        pdfUrl={generatedPdfUrl}
+        htmlContent={hasResult && !generatedPdfUrl ? previewHtml : undefined}
+        onDownload={handleDownload}
+      />
     </div>
   )
 }

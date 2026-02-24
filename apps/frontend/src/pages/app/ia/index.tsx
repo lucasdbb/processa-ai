@@ -87,12 +87,12 @@ export default function IAHubPage() {
   }
 
   const tipsButton = (
-    <details className="relative z-[60]">
+    <details className="relative z-10">
       <summary className="cursor-pointer list-none inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background [&::-webkit-details-marker]:hidden">
         <Info className="h-5 w-5" aria-hidden="true" />
         <span className="sr-only">Dicas para melhores resultados</span>
       </summary>
-      <div className="absolute left-0 mt-3 w-[320px] rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-xl p-4 z-[70]">
+      <div className="absolute left-0 mt-3 w-[320px] rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-xl p-4 z-20">
         <div className="text-sm font-bold text-foreground mb-3">Dicas para melhores resultados</div>
         <ul className="grid gap-2 text-sm text-muted-foreground">
           <li className="flex items-start">

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Download, FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
+import { FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn, normalizeMarkdown } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
@@ -17,6 +17,9 @@ import { analytics } from '@/lib/analytics'
 
 
 const MAX_FILES = 5
+
+import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
+import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 
 interface ProcessSummaryToolProps {
   selectedClientId?: string | null
@@ -38,6 +41,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string>('')
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false)
 
   const previewHtml = useMemo(() => {
     if (!generatedText) return ''
@@ -175,6 +179,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
               if (statusData.result.pdf_url) {
                 setGeneratedPdfUrl(statusData.result.pdf_url)
               }
+              setIsResultModalOpen(true)
             }
             
             toast.success('Resumo gerado com sucesso!')
@@ -187,10 +192,19 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
             })
           } else if (statusData.status === 'failed') {
             clearInterval(pollInterval)
-            throw new Error(statusData.error || 'Falha na análise')
+            setIsGenerating(false)
+            const errorMessage = statusData.error || 'Falha na análise'
+            toast.error(errorMessage)
+            
+            analytics.track('feature_used', {
+              feature: 'process_summary',
+              action: 'failed',
+              error: errorMessage,
+              success: false
+            })
           }
         } catch (error) {
-          // Ignore polling errors
+          console.error('Polling error:', error)
         }
       }, 2000)
 
@@ -376,43 +390,24 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
           </div>
         </div>
 
-        {/* Right Column: Results */}
-        {(generatedText || generatedPdfUrl) ? (
-          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between flex-shrink-0">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Resultado da Análise
-              </h3>
-              {generatedPdfUrl && (
-                <button
-                  onClick={handleDownload}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors"
-                >
-                  <Download className="h-4 w-4" />
-                  Baixar PDF
-                </button>
-              )}
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6">
-              <div 
-                className="prose prose-slate dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
-            </div>
-          </div>
-        ) : (
-           layoutMode === 'side-by-side' && (
-            <div className="hidden lg:flex items-center justify-center h-full min-h-[400px] border-2 border-dashed border-border/50 rounded-2xl bg-muted/10 text-muted-foreground">
-              <div className="text-center max-w-xs p-6">
-                 <FileSearch className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                 <p className="text-sm">O resumo do processo aparecerá aqui</p>
-              </div>
-            </div>
-           )
-        )}
+        {/* Right Column: History */}
+        <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
+          <AnalysisHistoryList 
+            functionality="process_summary"
+            clientId={selectedClientId} 
+            title="Histórico de Resumos"
+          />
+        </div>
       </div>
+
+      <AnalysisResultModal
+        isOpen={isResultModalOpen}
+        onClose={() => setIsResultModalOpen(false)}
+        title="Resumo do Processo"
+        pdfUrl={generatedPdfUrl}
+        htmlContent={generatedText ? previewHtml : undefined}
+        onDownload={handleDownload}
+      />
     </div>
   )
 }

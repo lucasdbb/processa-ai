@@ -432,6 +432,12 @@ async def _handle_ai_job(job: dict) -> None:
     # Additional validation logic from original code
     is_multi_file = job_type in ("labor_claim", "brief_scanner")
     if not is_multi_file and (not file_url or not user_id):
+
+        logger.info("is_multi_file: %s", is_multi_file)
+        logger.info("file_url: %s", file_url)
+        logger.info("user_id: %s", user_id)
+
+
         await _safe_set_job_status(
             job_id,
             {"job_id": job_id, "status": "failed", "error": "Dados inválidos"},

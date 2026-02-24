@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
-import { Download, FileText, Gavel, Trash2, Upload, Plus } from 'lucide-react'
+import { FileText, Gavel, Trash2, Upload, Plus } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { marked } from 'marked'
@@ -16,6 +16,9 @@ import { analytics } from '@/lib/analytics'
 
 
 const MAX_FILES = 5
+
+import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
+import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 
 interface LaborClaimToolProps {
   selectedClientId?: string | null
@@ -37,6 +40,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -192,6 +196,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
               if (statusData.result.pdf_url) {
                 setGeneratedPdfUrl(statusData.result.pdf_url)
               }
+              setIsResultModalOpen(true)
             }
             
             toast.success('Reclamação trabalhista gerada com sucesso!')
@@ -203,10 +208,19 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
             })
           } else if (statusData.status === 'failed') {
             clearInterval(pollInterval)
-            throw new Error(statusData.error || 'Falha na geração')
+            setIsGenerating(false)
+            const errorMessage = statusData.error || 'Falha na geração'
+            toast.error(errorMessage)
+            
+            analytics.track('feature_used', {
+              feature: 'labor_claim',
+              action: 'failed',
+              error: errorMessage,
+              success: false
+            })
           }
         } catch (error) {
-          // Ignore polling errors
+          console.error('Polling error:', error)
         }
       }, 2000)
 
@@ -405,43 +419,24 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
           </div>
         </div>
 
-        {/* Right Column: Results */}
-        {(generatedText || generatedPdfUrl) ? (
-          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col">
-            <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between flex-shrink-0">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Petição Gerada
-              </h3>
-              {generatedPdfUrl && (
-                <button
-                  onClick={handleDownload}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-sm font-medium transition-colors"
-                >
-                  <Download className="h-4 w-4" />
-                  Baixar PDF
-                </button>
-              )}
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6">
-              <div 
-                className="prose prose-slate dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
-            </div>
-          </div>
-        ) : (
-           layoutMode === 'side-by-side' && (
-            <div className="hidden lg:flex items-center justify-center h-full min-h-[400px] border-2 border-dashed border-border/50 rounded-2xl bg-muted/10 text-muted-foreground">
-              <div className="text-center max-w-xs p-6">
-                 <Gavel className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                 <p className="text-sm">A petição gerada aparecerá aqui</p>
-              </div>
-            </div>
-           )
-        )}
+        {/* Right Column: History */}
+        <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
+          <AnalysisHistoryList 
+            functionality="labor_claim"
+            clientId={selectedClientId} 
+            title="Histórico de Reclamações"
+          />
+        </div>
       </div>
+
+      <AnalysisResultModal
+        isOpen={isResultModalOpen}
+        onClose={() => setIsResultModalOpen(false)}
+        title="Reclamação Trabalhista"
+        pdfUrl={generatedPdfUrl}
+        htmlContent={generatedText ? previewHtml : undefined}
+        onDownload={handleDownload}
+      />
     </div>
   )
 }
