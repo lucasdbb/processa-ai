@@ -11,11 +11,11 @@ import {
   BookOpen,
   Settings,
   HelpCircle,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   X,
+  LogOut,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,7 @@ import { useCalculators } from '@/features/calculators/context'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+
 
 interface NavItem {
   name: string
@@ -116,28 +117,28 @@ const bottomNavigation: NavItem[] = [
 export function Sidebar() {
   const location = useLocation()
   const { isExpanded, isMobileOpen, toggle, closeMobile } = useSidebarStore()
-  const { logout } = useAuthStore()
   const { resolvedTheme } = useTheme()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const { tools: aiTools } = useAiTools()
   const { calculators } = useCalculators()
+  const { logout } = useAuthStore()
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
 
   const navigation = getNavigationGroups(aiTools, calculators)
 
-  const isActive = (href: string) => {
-    if (href === '/app') {
-      return location.pathname === '/app'
+  const isActive = (path: string) => {
+    if (path === '/app' && location.pathname !== '/app') {
+      return false
     }
-    return location.pathname.startsWith(href)
+    return location.pathname.startsWith(path)
   }
 
-  const toggleExpanded = (name: string) => {
+  const toggleExpanded = (itemName: string) => {
     setExpandedItems((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+      prev.includes(itemName) ? prev.filter((n) => n !== itemName) : [...prev, itemName]
     )
   }
 

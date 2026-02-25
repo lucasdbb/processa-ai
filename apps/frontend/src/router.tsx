@@ -35,6 +35,7 @@ import DocumentosPage from '@/pages/app/documentos'
 import NotificacoesPage from '@/pages/app/notificacoes'
 import ConfiguracoesPage from '@/pages/app/configuracoes'
 import CreditosPage from '@/pages/app/creditos'
+import AppPlanosPage from '@/pages/app/planos'
 import AjudaPage from '@/pages/app/ajuda'
 
 // App pages (lazy loading - less frequently accessed)
@@ -207,6 +208,10 @@ export const router = createBrowserRouter([
       {
         path: 'creditos',
         element: <CreditosPage />,
+      },
+      {
+        path: 'planos',
+        element: <AppPlanosPage />,
       },
       {
         path: 'ajuda',

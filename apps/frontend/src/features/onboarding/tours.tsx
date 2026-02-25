@@ -159,6 +159,17 @@ export const TOURS: Record<string, TourConfig> = {
         ),
       },
       {
+        selector: '[data-tour="user-menu"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Menu do Usuário 👤</h3>
+            <p className="text-sm">
+              Acesse seu perfil, configurações e envie sugestões para nossa equipe.
+            </p>
+          </div>
+        ),
+      },
+      {
         selector: 'body',
         content: (
           <div className="space-y-3">

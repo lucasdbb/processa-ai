@@ -254,7 +254,7 @@ export function AppHeader() {
                   Ver Histórico Completo
                 </Link>
                 <Link
-                  to="/planos"
+                  to="/app/creditos"
                   className="flex items-center justify-center gap-2 rounded-lg bg-foreground text-background text-sm font-semibold py-2.5 hover:opacity-90 transition-opacity"
                 >
                   Adquirir mais créditos
@@ -379,7 +379,10 @@ export function AppHeader() {
           {/* Menu Usuario */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 h-10 pl-2 pr-3 rounded-lg hover:bg-accent transition-colors">
+              <button 
+                data-tour="user-menu"
+                className="flex items-center gap-2 h-10 pl-2 pr-3 rounded-lg hover:bg-accent transition-colors"
+              >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.avatar_url || undefined} alt={user?.name || user?.email || 'Usuario'} />
                   <AvatarFallback className="bg-slate-900 text-white text-xs">

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Mail, Lock, Eye, EyeOff, Loader2, User, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/use-auth'
 import { useOnboardingStore } from '@/features/onboarding'
 import { registerSchema, type RegisterFormData } from '../../schemas/auth-schemas'
@@ -21,6 +22,7 @@ export function RegisterForm({ onSuccess, onLogin }: RegisterFormProps) {
   const [successMessage, setSuccessMessage] = useState('')
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { register: registerUser } = useAuth()
+  const navigate = useNavigate()
   const { startTour } = useOnboardingStore()
   const supabase = createClient()
   const { resolvedTheme } = useTheme()
@@ -59,6 +61,10 @@ export function RegisterForm({ onSuccess, onLogin }: RegisterFormProps) {
       if (user) {
         toast.success('Conta criada com sucesso!')
         onSuccess()
+        
+        // Redireciona para o app
+        navigate('/app', { replace: true })
+        
         // Pequeno delay para o modal fechar antes do tour iniciar
         setTimeout(() => {
           startTour('welcome')

@@ -170,7 +170,7 @@ export default function CreditosPage() {
                   Planos recorrentes incluem renovação mensal de créditos e acesso prioritário.
                 </p>
                 <Button variant="outline" className="w-full" asChild>
-                  <a href="/planos">Ver Planos de Assinatura</a>
+                  <a href="/app/planos">Ver Planos de Assinatura</a>
                 </Button>
               </CardContent>
             </Card>

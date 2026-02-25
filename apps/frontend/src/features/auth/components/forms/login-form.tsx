@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/use-auth'
 import { loginSchema, type LoginFormData } from '../../schemas/auth-schemas'
 import { createClient } from '@/lib/supabase/client'
@@ -22,6 +22,7 @@ export function LoginForm({ onSuccess, onForgotPassword, onRegister }: LoginForm
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const supabase = createClient()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -51,8 +52,17 @@ export function LoginForm({ onSuccess, onForgotPassword, onRegister }: LoginForm
       const loggedUser = await login(data)
       toast.success('Login realizado com sucesso!')
       onSuccess()
+      
       if (loggedUser?.role === 'office_client') {
         navigate('/portal', { replace: true })
+        return
+      }
+
+      const redirect = searchParams.get('redirect')
+      if (redirect) {
+        navigate(redirect, { replace: true })
+      } else {
+        navigate('/app', { replace: true })
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login'

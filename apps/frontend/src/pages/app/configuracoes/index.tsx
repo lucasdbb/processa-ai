@@ -1080,7 +1080,7 @@ export default function ConfiguracoesPage() {
                             </button>
 
                             <button
-                              onClick={() => navigate('/planos')}
+                              onClick={() => navigate('/app/planos')}
                               className="w-full px-4 py-2.5 border-2 border-border rounded-lg font-medium text-foreground hover:bg-muted transition-colors"
                             >
                               Ver Planos Disponíveis
@@ -1106,7 +1106,7 @@ export default function ConfiguracoesPage() {
                               Comprar Créditos Avulsos
                             </button>
                             <button
-                              onClick={() => navigate('/planos')}
+                              onClick={() => navigate('/app/planos')}
                               className="px-6 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
                             >
                               Ver Planos de Assinatura
