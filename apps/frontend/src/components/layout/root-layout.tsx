@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useLocation, useNavigation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Header } from './header'
@@ -7,6 +7,7 @@ import { PageTransition } from './page-transition'
 import { LoginModal } from '@/features/auth/components/login-modal'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { usePageTracking } from '@/lib/analytics/hooks'
+import { createClient } from '@/lib/supabase/client'
 
 type RootLayoutOutletContext = {
   openLoginModal: () => void
@@ -47,8 +48,9 @@ function RouteLoadingBar() {
 
 export function RootLayout() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
-  const [loginModalView, setLoginModalView] = useState<'login' | 'register'>('login')
+  const [loginModalView, setLoginModalView] = useState<'login' | 'register' | 'reset_password'>('login')
   const location = useLocation()
+  const supabase = createClient()
 
   // Initialize auth on app load
   useAuth()
@@ -57,6 +59,19 @@ export function RootLayout() {
   usePageTracking()
 
   const isAdminRoute = location.pathname.startsWith('/admin')
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setLoginModalView('reset_password')
+        setIsLoginModalOpen(true)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase])
 
   const openLoginModal = () => {
     setLoginModalView('login')
@@ -80,14 +95,14 @@ export function RootLayout() {
         </AnimatePresence>
       </main>
       {isAdminRoute ? null : <Footer />}
-      {isLoginModalOpen ? (
+      {isLoginModalOpen && (
         <LoginModal
           key={loginModalView}
-          isOpen
+          isOpen={isLoginModalOpen}
           onClose={() => setIsLoginModalOpen(false)}
           initialView={loginModalView}
         />
-      ) : null}
+      )}
     </div>
   )
 }
