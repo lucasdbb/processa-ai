@@ -84,16 +84,8 @@ export function WelcomeCreditsModal() {
 
     setIsLoading(true)
     try {
-      // 1. Tenta atualizar o perfil direto no Supabase
-      const supabase = createClient()
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ cpf: cleanCpf })
-        .eq('id', user?.id)
-
-      if (updateError) throw updateError
-
-      // 2. Chama o serviço de créditos para liberar os créditos
+      // Chama o serviço de créditos para liberar os créditos e salvar CPF
+      // O endpoint já cuida de atualizar o CPF e verificar se já foi usado
       const result = await creditsService.claimWelcomeCredits(cleanCpf)
       
       if (result.success) {
@@ -120,10 +112,10 @@ export function WelcomeCreditsModal() {
 
     } catch (error: any) {
       console.error('Failed to claim credits:', error)
-      if (error?.message?.includes('violates unique constraint') || error?.status === 409) {
+      if (error?.message?.includes('violates unique constraint') || error?.status === 409 || error?.message?.includes('CPF já cadastrado')) {
         toast.error('Este CPF já está em uso por outra conta.')
       } else {
-        toast.error('Erro ao processar solicitação. Tente novamente.')
+        toast.error(error?.message || 'Erro ao processar solicitação. Tente novamente.')
       }
     } finally {
       setIsLoading(false)
