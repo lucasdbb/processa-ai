@@ -1,11 +1,9 @@
 """Schemas for the client portal (read-only views for office clients)."""
 
 from datetime import date, datetime
-from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel
-
 
 # ---------------------------------------------------------------------------
 # Portal identity

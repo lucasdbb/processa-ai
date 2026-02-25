@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from src.core.db import init_db, get_pool
+
+from src.core.db import get_pool, init_db
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -41,7 +42,10 @@ async def check_fees():
             # Check total_paid calculation
             await cur.execute("""
                 SELECT
-                    COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) as sum_by_amount,
+                    COALESCE(
+                        SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END),
+                        0
+                    ) as sum_by_amount,
                     COALESCE(SUM(paid_amount), 0) as sum_by_paid_amount,
                     COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_count
                 FROM office_api.fees

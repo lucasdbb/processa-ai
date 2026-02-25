@@ -64,7 +64,7 @@ def upgrade() -> None:
             ON public.credit_transactions(user_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_credit_transactions_type
             ON public.credit_transactions(transaction_type);
-        
+
         ALTER TABLE public.credit_transactions ENABLE ROW LEVEL SECURITY;
 
         CREATE POLICY "Users can view own transactions"
@@ -104,7 +104,7 @@ def upgrade() -> None:
         CREATE INDEX IF NOT EXISTS idx_subscriptions_status
             ON public.subscriptions(status)
             WHERE status IN ('active', 'trialing');
-        
+
         ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 
         CREATE POLICY "Users can view own subscription"
@@ -177,23 +177,23 @@ def upgrade() -> None:
             SELECT available_credits INTO v_available
             FROM public.user_credits
             WHERE user_id = p_user_id;
-            
+
             IF v_available IS NULL OR v_available < p_amount THEN
                 RETURN false;
             END IF;
-            
+
             -- Consume credits
             UPDATE public.user_credits
             SET used_credits = used_credits + p_amount,
                 updated_at = NOW()
             WHERE user_id = p_user_id;
-            
+
             -- Log transaction
             INSERT INTO public.credit_transactions (
                 user_id, amount, transaction_type, reason
             )
             VALUES (p_user_id, -p_amount, 'consume', p_reason);
-            
+
             RETURN true;
         END;
         $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -213,7 +213,7 @@ def upgrade() -> None:
                 last_reset_at = NOW(),
                 updated_at = NOW()
             WHERE user_id = p_user_id;
-            
+
             -- Log transaction
             INSERT INTO public.credit_transactions (
                 user_id, amount, transaction_type, reason

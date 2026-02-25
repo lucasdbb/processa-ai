@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 from src.core.logging import logger
 from src.core.security import (
@@ -132,7 +132,8 @@ class CreditsService:
         # Usa grant_credits_to_user via RPC ou insert direto em transactions?
         # A função grant_credits_to_user existe no banco? O plano diz que sim.
         # Vamos assumir que sim, ou implementar via RPC.
-        # Se não tiver RPC exposta, podemos fazer via insert em user_credits (increment) + transaction log.
+        # Se não tiver RPC exposta,
+        # podemos fazer via insert em user_credits (increment) + transaction log.
         # Mas o ideal é ter uma RPC `grant_credits`.
 
         # O plano menciona `grant_credits_to_user` como existente.
@@ -143,7 +144,8 @@ class CreditsService:
                     "p_user_id": user_id,
                     "p_amount": amount,
                     "p_reason": reason,
-                    "p_credit_type": "purchased",  # Devolve como purchased para não expirar? Ou subscription?
+                    # Devolve como purchased para não expirar? Ou subscription?
+                    "p_credit_type": "purchased",
                     # Melhor devolver como purchased para garantir que o usuário não perca.
                 },
             ).execute()
@@ -259,7 +261,8 @@ class CreditsService:
             raise HTTPException(status_code=400, detail="CPF inválido")
 
         # 3. Verificar CPF duplicado
-        # A constraint unique no banco já cuida disso, mas podemos checar antes para erro mais amigável
+        # A constraint unique no banco já cuida disso,
+        # mas podemos checar antes para erro mais amigável
         cpf_check = self.supabase.table("profiles").select("id").eq("cpf", cpf).execute()
         if cpf_check.data:
             raise HTTPException(status_code=409, detail="CPF já cadastrado em outra conta")
@@ -272,18 +275,24 @@ class CreditsService:
 
         # 5. Salvar CPF e marcar claimed
         try:
-            result = self.supabase.table("profiles").update(
-                {"cpf": cpf, "welcome_credits_claimed": True}
-            ).eq("id", user_id).execute()
-            
+            result = (
+                self.supabase.table("profiles")
+                .update({"cpf": cpf, "welcome_credits_claimed": True})
+                .eq("id", user_id)
+                .execute()
+            )
+
             if not result.data:
                 logger.error(f"Failed to update profile for {user_id}. No rows affected.")
-                raise HTTPException(status_code=500, detail="Erro ao atualizar perfil. Tente novamente.")
-                
+                raise HTTPException(
+                    status_code=500, detail="Erro ao atualizar perfil. Tente novamente."
+                )
+
         except HTTPException:
             raise
         except Exception as e:
-            # Provavelmente violação de constraint unique se passou da checagem anterior (race condition)
+            # Provavelmente violação de constraint unique se passou da checagem anterior
+            # (race condition)
             logger.error(f"Error updating profile cpf: {e}")
             raise HTTPException(
                 status_code=409, detail="Erro ao salvar CPF. Verifique se já não está em uso."
@@ -306,19 +315,21 @@ class CreditsService:
             ).execute()
         except Exception as e:
             logger.error(f"Error granting welcome credits: {e}")
-            
+
             # Rollback: desfazer marcação de claimed e limpar CPF para permitir nova tentativa
             try:
-                self.supabase.table("profiles").update(
-                    {"welcome_credits_claimed": False}
-                ).eq("id", user_id).execute()
+                self.supabase.table("profiles").update({"welcome_credits_claimed": False}).eq(
+                    "id", user_id
+                ).execute()
                 logger.info(f"Rolled back welcome credits claim for user {user_id}")
             except Exception as rollback_error:
-                logger.error(f"Failed to rollback welcome credits claim for user {user_id}: {rollback_error}")
-            
+                logger.error(
+                    f"Failed to rollback welcome credits claim for user {user_id}: {rollback_error}"
+                )
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Erro ao conceder créditos. Tente novamente."
+                detail="Erro ao conceder créditos. Tente novamente.",
             )
 
         return {"success": True, "credits_granted": WELCOME_CREDITS_AMOUNT}

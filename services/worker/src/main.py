@@ -18,7 +18,6 @@ from src.core.ai_worker_store import (
     mark_job_processing,
     parse_job_uuid,
 )
-from src.core.config import settings
 from src.core.db import init_db
 from src.core.logging import logger
 from src.core.progress import ProgressReporter

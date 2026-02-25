@@ -273,10 +273,15 @@ async def get_job_status_from_db(*, job_uuid: uuid.UUID) -> dict | None:
         async with cur_cm as cur:
             await cur.execute(
                 (
-                    "select j.status, j.progress, j.error, j.result_payload, j.started_at, j.finished_at, d.id as output_doc_id "
-                    "from public.ai_jobs j "
-                    "left join public.generated_documents d on d.job_id = j.id and d.document_type = 'output' "
-                    "where j.id = %s"
+                    """
+                        select j.status, j.progress, j.error, j.result_payload,
+                        j.started_at, j.finished_at, d.id as output_doc_id
+                        from public.ai_jobs j
+                        left join public.generated_documents d
+                        on d.job_id = j.id
+                        and d.document_type = 'output'
+                        where j.id = %s
+                    """
                 ),
                 (str(job_uuid),),
             )

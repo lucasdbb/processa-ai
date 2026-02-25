@@ -1,12 +1,14 @@
-from typing import List
+from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, status, HTTPException, Query
-from src.core.auth import get_current_user, get_current_admin
+
+from fastapi import APIRouter, Depends, Query, status
+
+from src.core.auth import get_current_admin, get_current_user
 from src.features.core.feedback.schemas import (
     FeedbackCreate,
+    FeedbackListResponse,
     FeedbackResponse,
     FeedbackUpdate,
-    FeedbackListResponse,
 )
 from src.features.core.feedback.service import FeedbackService
 
@@ -17,9 +19,6 @@ router = APIRouter()
 async def create_feedback(data: FeedbackCreate, current_user=Depends(get_current_user)):
     service = FeedbackService()
     return await service.create(current_user.id, data)
-
-
-from typing import Optional
 
 
 @router.get("/", response_model=FeedbackListResponse)

@@ -9,8 +9,6 @@ Create Date: 2026-02-17 02:10:31.922912
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = "540ee1c57afa"
@@ -67,15 +65,21 @@ def upgrade() -> None:
 
     # Add comments to table
     op.execute("""
-        COMMENT ON TABLE notifications IS 'User notifications for deadlines, processes, calculations, and system messages'
+        COMMENT ON TABLE notifications IS (
+            'User notifications for deadlines, processes, calculations, and system messages'
+        )
     """)
 
     op.execute("""
-        COMMENT ON COLUMN notifications.type IS 'Type of notification: deadline, process, calculation, system, blog, feature'
+        COMMENT ON COLUMN notifications.type IS (
+            'Type of notification: deadline, process, calculation, system, blog, feature'
+        )
     """)
 
     op.execute("""
-        COMMENT ON COLUMN notifications.metadata IS 'Additional data (process_id, post_id, calculation_id, etc.)'
+        COMMENT ON COLUMN notifications.metadata IS (
+            'Additional data (process_id, post_id, calculation_id, etc.)'
+        )
     """)
 
 

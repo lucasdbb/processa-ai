@@ -13,7 +13,6 @@ from typing import Sequence, Union
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision: str = "s8m9n0o1p2q3"
 down_revision: Union[str, None] = "r7l8m9n0o1p2"
@@ -24,13 +23,25 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("""
         INSERT INTO public.ai_endpoints
-            (key, path, display_name, description, icon, variant, display_order, is_locked, is_active)
+            (
+                key,
+                path,
+                display_name,
+                description,
+                icon,
+                variant,
+                display_order,
+                is_locked,
+                is_active
+            )
         VALUES
             (
                 'jurimetria',
                 '/api/v1/ai/jurimetria',
                 'Jurimetria',
-                'Análise preditiva de processos judiciais. Descubra probabilidade de êxito, tempo estimado e valores médios de condenação com base em dados reais de tribunais.',
+                'Análise preditiva de processos judiciais. Descubra probabilidade de êxito, '
+                'tempo estimado e valores médios de condenação\n'
+                'com base em dados reais de tribunais.',
                 'ChartColumn',
                 'prompt',
                 6,
@@ -41,7 +52,8 @@ def upgrade() -> None:
                 'jurisprudencia',
                 '/api/v1/ai/jurisprudencia',
                 'Pesquisa de Jurisprudência',
-                'Busca inteligente de jurisprudência. A IA encontra decisões relevantes para o seu caso e resume os pontos-chave de cada acórdão.',
+                'Busca inteligente de jurisprudência. A IA encontra decisões para o seu caso\n'
+                'e resume os pontos-chave de cada acórdão.',
                 'BookOpen',
                 'prompt',
                 7,

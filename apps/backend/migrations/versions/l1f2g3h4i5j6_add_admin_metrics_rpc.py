@@ -7,7 +7,6 @@ Create Date: 2024-05-23 10:00:00.000000
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "l1f2g3h4i5j6"
@@ -42,8 +41,8 @@ def upgrade() -> None:
 
         -- Usage by Feature (All Time)
         WITH grouped AS (
-            SELECT 
-                reason as feature_key, 
+            SELECT
+                reason as feature_key,
                 ABS(SUM(amount)) as total_consumed,
                 COUNT(*) as count
             FROM credit_transactions
@@ -65,7 +64,7 @@ def upgrade() -> None:
     ) AS $$
     BEGIN
         RETURN QUERY
-        SELECT 
+        SELECT
             ct.user_id,
             p.name,
             u.email::TEXT,

@@ -9,8 +9,6 @@ Create Date: 2026-02-13 17:21:42.882458
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = "e7a8b1d9657b"
@@ -45,13 +43,40 @@ def upgrade() -> None:
 
     # Dados iniciais
     op.execute("""
-        INSERT INTO public.credit_costs (feature_key, display_name, base_cost, description, is_active)
+        INSERT INTO public.credit_costs (
+            feature_key, display_name, base_cost, description, is_active
+        )
         VALUES
-            ('ai_chat', 'Mensagem IA Chat', 1, 'Uma mensagem no chat jurídico', true),
-            ('cnis_analysis', 'Análise CNIS', 5, 'Análise completa de CNIS com PDF', true),
-            ('process_summary', 'Resumo de Processo', 5, 'Resumo de processo com PDF', true),
-            ('calculator_rescisao', 'Calculadora Rescisão', 2, 'Cálculo rescisão trabalhista com PDF', true),
-            ('calculator_aposentadoria', 'Calculadora Aposentadoria', 2, 'Simulação de aposentadoria com PDF', true)
+            ('ai_chat',
+                'Mensagem IA Chat',
+                1,
+                'Uma mensagem no chat jurídico',
+                true
+            ),
+            ('cnis_analysis',
+                'Análise CNIS',
+                5,
+                'Análise completa de CNIS com PDF',
+                true
+            ),
+            ('process_summary',
+                'Resumo de Processo',
+                5,
+                'Resumo de processo com PDF',
+                true
+            ),
+            ('calculator_rescisao',
+                'Calculadora Rescisão',
+                2,
+                'Cálculo rescisão trabalhista com PDF',
+                true
+            ),
+            ('calculator_aposentadoria',
+                'Calculadora Aposentadoria',
+                2,
+                'Simulação de aposentadoria com PDF',
+                true
+            )
         ON CONFLICT (feature_key) DO NOTHING;
     """)
 
@@ -143,7 +168,8 @@ def upgrade() -> None:
                 SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'profiles' AND column_name = 'welcome_credits_claimed'
             ) THEN
-                ALTER TABLE public.profiles ADD COLUMN welcome_credits_claimed BOOLEAN DEFAULT false;
+                ALTER TABLE public.profiles
+                    ADD COLUMN welcome_credits_claimed BOOLEAN DEFAULT false;
             END IF;
         END$$;
     """)
@@ -241,7 +267,13 @@ def upgrade() -> None:
 
             -- Se não existe registro, criar com valores zerados
             IF NOT FOUND THEN
-                INSERT INTO public.user_credits (user_id, subscription_credits, subscription_used, purchased_credits, purchased_used)
+                INSERT INTO public.user_credits (
+                    user_id,
+                    subscription_credits,
+                    subscription_used,
+                    purchased_credits,
+                    purchased_used
+                )
                 VALUES (p_user_id, 0, 0, 0, 0);
                 RETURN false;
             END IF;

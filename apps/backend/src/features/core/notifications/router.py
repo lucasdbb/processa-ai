@@ -141,9 +141,10 @@ async def manually_check_deadlines(
             detail="Only admins and authors can trigger deadline checks",
         )
 
-    from src.features.office.deadlines.notifications import DeadlineNotificationService
     from datetime import datetime
     from zoneinfo import ZoneInfo
+
+    from src.features.office.deadlines.notifications import DeadlineNotificationService
 
     deadline_service = DeadlineNotificationService()
 

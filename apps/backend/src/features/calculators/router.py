@@ -2,23 +2,23 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.core.auth import require_internal_auth
 from src.core.calc_engine_store import (
     create_calculation,
     create_document,
     mark_calculation_completed,
     mark_calculation_failed,
 )
-from src.core.auth import require_internal_auth
+from src.features.billing.credits.service import credits_service
 from src.features.calculators.schemas import (
+    AposentadoriaRequest,
+    AposentadoriaResponse,
     CalculatorResponse,
     CalculatorsListResponse,
     RescisaoTrabalhistaRequest,
     RescisaoTrabalhistaResponse,
-    AposentadoriaRequest,
-    AposentadoriaResponse,
 )
 from src.features.calculators.service import CalculatorsService
-from src.features.billing.credits.service import credits_service
 
 router = APIRouter()
 
@@ -234,7 +234,8 @@ async def calcular_aposentadoria(
         )
 
         pdf = None
-        # PDF é opcional por enquanto, mas se o usuário pedir (ou se for padrão da feature paga), geramos
+        # PDF é opcional por enquanto,
+        # mas se o usuário pedir (ou se for padrão da feature paga), geramos
         # Vamos assumir que sempre gera se export_pdf=True, assim como na rescisão
         if bool(data.export_pdf):
             stored = await service.export_aposentadoria_pdf(

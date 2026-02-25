@@ -2,11 +2,10 @@
 Email service using SendGrid.
 """
 
-import httpx
-import os
-from pathlib import Path
 from datetime import datetime
-import locale
+from pathlib import Path
+
+import httpx
 
 from src.core.config import settings
 from src.core.logging import logger
@@ -61,7 +60,8 @@ def load_email_template(template_name: str, context: dict) -> str:
             template = template.replace(placeholder, str(value))
 
         # Handle conditional button
-        # If Botao_Link is empty/missing, remove the button placeholder entirely if it wasn't replaced
+        # If Botao_Link is empty/missing,
+        # remove the button placeholder entirely if it wasn't replaced
         # But our template logic is simple string replacement.
         # Ideally, we should pre-process: if Botao_Link is present, generate Botao_HTML.
 
@@ -176,7 +176,10 @@ Agora você tem acesso a todas as funcionalidades do seu plano.
 
 Se tiver alguma dúvida, entre em contato conosco."""
 
-    body = f"{content}\n\nAcesse o sistema em: {settings.FRONTEND_URL}/app\n\nAtenciosamente,\nEquipe Processa AI"
+    body = (
+        f"{content}\n\nAcesse o sistema em: {settings.FRONTEND_URL}/app\n"
+        "\nAtenciosamente,\nEquipe Processa AI"
+    )
 
     # Load HTML template
     html_body = load_email_template(
@@ -207,7 +210,7 @@ async def send_payment_failed(user_email: str, invoice_url: str | None = None) -
         cta_link = invoice_url
         cta_text = "Atualizar Pagamento"
 
-    content = f"""Olá!
+    content = """Olá!
 
 Não conseguimos processar o pagamento da sua assinatura do Processa AI.
 
@@ -242,7 +245,10 @@ Sua assinatura do Processa AI foi cancelada.
 
 Sentiremos sua falta! Se mudar de ideia, você pode reativar sua assinatura a qualquer momento."""
 
-    body = f"{content}\n\nAcesse: {settings.FRONTEND_URL}/planos\n\nAtenciosamente,\nEquipe Processa AI"
+    body = (
+        f"{content}\n\nAcesse: {settings.FRONTEND_URL}/planos\n"
+        "\nAtenciosamente,\nEquipe Processa AI"
+    )
 
     html_body = load_email_template(
         "default.html",
@@ -272,11 +278,12 @@ async def send_payment_action_required(user_email: str, invoice_url: str | None 
         cta_link = invoice_url
         cta_text = "Completar Pagamento"
 
-    content = """Olá!
-
-Seu pagamento requer uma ação adicional para ser concluído (como verificação de segurança do cartão).
-
-Por favor, complete o processo para manter sua assinatura ativa."""
+    content = (
+        "Olá!\n\n"
+        "Seu pagamento requer uma ação adicional para ser concluído "
+        "(como verificação de segurança do cartão).\n\n"
+        "Por favor, complete o processo para manter sua assinatura ativa."
+    )
 
     body = f"{content}\n{invoice_text}\nAtenciosamente,\nEquipe Processa AI"
 
@@ -327,9 +334,13 @@ Acesse o dashboard do Stripe para mais detalhes e responder à disputa."""
         },
     )
 
-    # Using send_email directly as send_admin_notification might not be imported or available here contextually
-    # Assuming the original code used send_admin_notification which might be an alias or separate function.
-    # The original code snippet showed `return await send_admin_notification(subject, body)` but I don't see definition of send_admin_notification in the snippet.
+    # Using send_email directly as send_admin_notification might not be imported
+    # or available here contextually.
+    # Assuming the original code used send_admin_notification
+    # which might be an alias or separate function.
+    # The original code snippet showed:
+    # `return await send_admin_notification(subject, body)`
+    # Mas não vejo definição de send_admin_notification no trecho.
     # I will assume I should use send_email to the admin email.
 
     admin_email = settings.ADMIN_EMAIL or settings.SENDGRID_FROM

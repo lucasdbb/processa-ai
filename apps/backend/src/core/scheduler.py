@@ -3,11 +3,10 @@ Scheduler configuration for background jobs
 Uses APScheduler with optional Redis for distributed locking
 """
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor
+from apscheduler.jobstores.memory import MemoryJobStore
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from src.core.config import settings
 from src.core.logging import logger
 
 # Import job functions

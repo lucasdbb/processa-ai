@@ -2,17 +2,18 @@ import uuid
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from src.core.logging import logger
+
 from src.core.ai_worker_store import (
-    create_job,
     add_job_event,
     create_document,
-    update_job_payload,
+    create_job,
     mark_job_failed,
+    update_job_payload,
 )
-from src.core.queue import set_job_status, enqueue_job
-from src.features.core.storage.service import StorageService
+from src.core.logging import logger
+from src.core.queue import enqueue_job, set_job_status
 from src.features.billing.credits.service import CreditsService
+from src.features.core.storage.service import StorageService
 
 
 class AiJobService:
@@ -192,7 +193,7 @@ class AiJobService:
             # Tentar falhar o job no banco
             try:
                 await mark_job_failed(job_uuid=job_uuid, error=str(e))
-            except:
+            except Exception:
                 pass
 
             # Reembolsar créditos se falhou antes de enfileirar com sucesso

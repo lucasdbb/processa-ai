@@ -14,7 +14,6 @@ from typing import Sequence, Union
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision: str = "t9n0o1p2q3r4"
 down_revision: Union[str, None] = "s8m9n0o1p2q3"
@@ -26,7 +25,9 @@ def upgrade() -> None:
     # 1. Add portal columns to office_api.clients
     op.execute("""
         ALTER TABLE office_api.clients
-            ADD COLUMN IF NOT EXISTS portal_user_id    UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+            ADD COLUMN IF NOT EXISTS portal_user_id UUID
+                REFERENCES auth.users(id)
+                ON DELETE SET NULL,
             ADD COLUMN IF NOT EXISTS portal_invited_at TIMESTAMPTZ,
             ADD COLUMN IF NOT EXISTS portal_status     TEXT NOT NULL DEFAULT 'not_invited'
                 CHECK (portal_status IN ('not_invited', 'invited', 'active', 'revoked'));

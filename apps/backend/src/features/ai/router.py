@@ -1,13 +1,15 @@
 import uuid
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+
 from src.core.ai_worker_store import (
+    get_all_user_jobs,
     get_document_by_id,
     get_job_status_from_db,
     get_user_analysis_history,
     parse_job_uuid,
-    get_all_user_jobs,
 )
-from src.core.auth import require_internal_auth
+from src.core.auth import get_user_id, require_internal_auth
 from src.core.logging import logger
 from src.core.queue import get_job_status
 from src.features.ai.schemas import (
@@ -15,18 +17,17 @@ from src.features.ai.schemas import (
     AiToolsListResponse,
     AnalysisHistoryItem,
     AnalysisHistoryResponse,
+    ChatRequest,
+    ChatResponse,
     CnisAnalysisRequest,
     DocumentDownloadResponse,
     DocumentResponse,
     EnqueueJobResponse,
     JobStatusResponse,
     ProcessSummaryRequest,
-    ChatRequest,
-    ChatResponse,
 )
-from src.features.core.storage.service import StorageService
 from src.features.ai.service import AiJobService
-from src.core.auth import get_user_id
+from src.features.core.storage.service import StorageService
 
 router = APIRouter()
 ai_job_service = AiJobService()
@@ -88,7 +89,9 @@ async def cnis_analysis(
         if not file_url and not storage_path:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="É necessário fornecer arquivos para análise (file_url/storage_path ou files)",
+                detail=(
+                    "É necessário fornecer arquivos para análise (file_url/storage_path ou files)"
+                ),
             )
 
         # Create a single file entry for compatibility
@@ -147,7 +150,9 @@ async def process_summary_analysis(
         if not file_url and not storage_path:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="É necessário fornecer arquivos para análise (file_url/storage_path ou files)",
+                detail=(
+                    "É necessário fornecer arquivos para análise (file_url/storage_path ou files)"
+                ),
             )
 
         # Create a single file entry for compatibility
@@ -529,7 +534,7 @@ async def get_user_jobs_list(
         user_id=user_id, client_id=client_id, endpoint_key=functionality, limit=limit, offset=offset
     )
 
-    storage_service = StorageService()
+    StorageService()
     processed = []
     for job in jobs:
         # Extrair metadados úteis do payload

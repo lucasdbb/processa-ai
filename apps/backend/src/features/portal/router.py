@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends
 
-from src.core.auth import get_current_user, CurrentUser, verify_internal_token
+from src.core.auth import CurrentUser, get_current_user, verify_internal_token
 from src.features.portal.schemas import (
     PortalDocumentDownloadResponse,
     PortalDocumentsResponse,
@@ -20,7 +20,8 @@ router = APIRouter(
 
 def _require_portal_client(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     """Ensure the caller has the office_client role."""
-    from fastapi import HTTPException, status as http_status
+    from fastapi import HTTPException
+    from fastapi import status as http_status
 
     if user.role != "office_client":
         raise HTTPException(

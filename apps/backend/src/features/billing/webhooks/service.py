@@ -170,9 +170,17 @@ class WebhooksService:
         except Exception as e:
             # Unknown error - treat as transient to be safe (Stripe will retry)
             import traceback
+
             error_details = traceback.format_exc()
-            logger.error(f"Unknown error processing webhook {event_type}: {e}\nTraceback:\n{error_details}")
-            self._record_event(event_id, event_type, event_status="failed", error_message=f"{str(e)}\n{error_details}")
+            logger.error(
+                f"Unknown error processing webhook {event_type}: {e}\nTraceback:\n{error_details}"
+            )
+            self._record_event(
+                event_id,
+                event_type,
+                event_status="failed",
+                error_message=f"{str(e)}\n{error_details}",
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal error, please retry",
@@ -373,7 +381,10 @@ class WebhooksService:
             raise TransientError(f"Failed to update subscription status: {e}")
 
     async def _handle_subscription_created(self, subscription: dict) -> None:
-        """Handle customer.subscription.created event (for subscriptions created outside checkout)."""
+        """
+        Handle customer.subscription.created event
+        (for subscriptions created outside checkout).
+        """
         subscription_id = subscription.get("id")
         customer_id = subscription.get("customer")
 
@@ -400,11 +411,13 @@ class WebhooksService:
             user_id = result.data[0]["user_id"]
             current_status = result.data[0]["status"]
 
-            # If user already has an active subscription, this might be a race condition with checkout.session.completed
-            # We only want to process this if the subscription is NOT already active/trialing from checkout
+            # If user already has an active subscription, this might be a race condition
+            # with checkout.session.completed.
+            # We only want to process this if the subscription is NOT already active/trialing
             if current_status in ["active", "trialing"] and subscription["status"] == "active":
                 logger.info(
-                    f"Skipping subscription.created for user {user_id} (already active from checkout)"
+                    f"Skipping subscription.created for user {user_id} "
+                    f"(already active from checkout)"
                 )
                 return
 
@@ -425,9 +438,11 @@ class WebhooksService:
                 }
             ).eq("stripe_customer_id", customer_id).execute()
 
-            # Grant credits ONLY if it wasn't processed by checkout (though checkout handles initial grant)
+            # Grant credits ONLY if it wasn't processed by checkout
+            # (though checkout handles initial grant)
             # Strategy: Let checkout handle initial grant.
-            # If this event comes later or standalone, we grant ONLY if status changed to active and wasn't before.
+            # If this event comes later or standalone, we grant ONLY if status changed
+            # to active and wasn't before.
             # But safer approach: rely on checkout.session.completed for initial purchase credits.
             # Rely on invoice.paid for renewals.
             # So here we SKIP granting credits to avoid duplication.
@@ -446,11 +461,10 @@ class WebhooksService:
         # Check for plan change (upgrade/downgrade)
         # previous_attributes contains fields that changed
         previous_attributes = subscription.get("previous_attributes", {})
-        price_changed = False
 
         # Check if items changed (which implies price/plan change)
         if "items" in previous_attributes:
-            price_changed = True
+            pass
         # Or if the price ID in the first item is different from what we might have expected?
         # Simpler: check if the new price ID maps to a different plan than what we have stored
 
@@ -500,7 +514,8 @@ class WebhooksService:
                 and subscription["status"] == "active"
             ):
                 logger.info(
-                    f"Plan changed from {old_plan_id} to {new_plan_id} for user {user_id}. Resetting credits to new plan limit."
+                    f"Plan changed from {old_plan_id} to {new_plan_id} for user {user_id}. "
+                    f"Resetting credits to new plan limit."
                 )
                 # Reset monthly credits to the new plan's limit immediately.
                 # User gets the new plan's credits (whether upgrade or downgrade).
@@ -557,7 +572,8 @@ class WebhooksService:
                         {"p_user_id": user_id, "p_new_amount": free_credits},
                     ).execute()
                     logger.info(
-                        f"Subscription canceled: {subscription_id}. Credits reset to free tier ({free_credits})."
+                        f"Subscription canceled: {subscription_id}. "
+                        f"Credits reset to free tier ({free_credits})."
                     )
 
             # Send subscription canceled email

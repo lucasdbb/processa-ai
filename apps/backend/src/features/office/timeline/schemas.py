@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 TimelineEventType = Literal[
     "creation",  # Processo criado
     "update",  # Processo atualizado

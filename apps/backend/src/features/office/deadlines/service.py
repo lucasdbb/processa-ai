@@ -293,7 +293,8 @@ class DeadlinesService:
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
-                    "DELETE FROM office_api.events WHERE user_id = %s AND id = %s AND event_type = %s",
+                    "DELETE FROM office_api.events "
+                    "WHERE user_id = %s AND id = %s AND event_type = %s",
                     (str(user_id), str(deadline_id), "prazo"),
                 )
                 return cur.rowcount > 0

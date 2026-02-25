@@ -1,6 +1,6 @@
-from uuid import UUID, uuid4
 import re
 import unicodedata
+from uuid import UUID, uuid4
 
 import httpx
 from psycopg.rows import dict_row

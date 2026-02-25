@@ -136,7 +136,9 @@ def downgrade() -> None:
         CREATE OR REPLACE FUNCTION public.increment_material_download_count()
         RETURNS TRIGGER AS $$
         BEGIN
-            UPDATE public.materials SET download_count = download_count + 1 WHERE id = NEW.material_id;
+            UPDATE public.materials
+                SET download_count = download_count + 1
+                WHERE id = NEW.material_id;
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;

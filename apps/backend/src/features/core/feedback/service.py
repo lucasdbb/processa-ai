@@ -1,7 +1,9 @@
-from typing import List, Optional
-from uuid import UUID
 import logging
-from fastapi import HTTPException, status
+from typing import Optional
+from uuid import UUID
+
+from fastapi import HTTPException
+
 from src.core.supabase import get_supabase
 from src.features.core.feedback.schemas import FeedbackCreate, FeedbackUpdate
 
@@ -29,7 +31,8 @@ class FeedbackService:
         sort_order: str = "desc",
     ):
         # Join with profiles to get email/name
-        # Note: 'profiles' table name in Supabase is usually exposed as 'profiles' if it's in public schema.
+        # Note: 'profiles' table name in Supabase is usually exposed as 'profiles'
+        # if it's in public schema.
         # We need to make sure the foreign key is detected.
         # The migration set user_id REFERENCES public.profiles(id).
         # So we should be able to select profiles(email, name).
@@ -70,5 +73,5 @@ class FeedbackService:
         return res.data[0]
 
     async def delete(self, id: UUID):
-        res = self.supabase.table("feedback").delete().eq("id", str(id)).execute()
+        self.supabase.table("feedback").delete().eq("id", str(id)).execute()
         return True

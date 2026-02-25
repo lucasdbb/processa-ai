@@ -251,9 +251,12 @@ class FeesService:
                     """
                     SELECT
                         COALESCE(SUM(amount), 0) as total_amount,
-                        COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) as total_paid,
-                        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as total_pending,
-                        COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END), 0) as total_overdue,
+                        COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0)
+                            as total_paid,
+                        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0)
+                            as total_pending,
+                        COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END), 0)
+                            as total_overdue,
                         COUNT(*) as fees_count,
                         COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_count,
                         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,

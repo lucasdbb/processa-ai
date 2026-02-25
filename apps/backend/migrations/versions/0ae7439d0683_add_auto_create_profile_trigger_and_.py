@@ -53,7 +53,7 @@ def upgrade() -> None:
     # Create trigger that executes function after user is created in auth.users
     op.execute("""
         DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-        
+
         CREATE TRIGGER on_auth_user_created
           AFTER INSERT ON auth.users
           FOR EACH ROW

@@ -14,31 +14,31 @@ from src.features.billing.webhooks.router import router as webhooks_router
 from src.features.calculators.router import router as calculators_router
 from src.features.core.blog.router import router as blog_router
 from src.features.core.dashboard.router import router as dashboard_router
+from src.features.core.feedback.router import router as feedback_router
 from src.features.core.materials.router import router as materials_router
 from src.features.core.newsletter.router import router as newsletter_router
+from src.features.core.notifications.router import router as notifications_router
 from src.features.core.plans.router import router as plans_router
 
 # Core features
 from src.features.core.profiles.router import router as profiles_router
+from src.features.core.storage.router import router as storage_router
 from src.features.core.support.router import router as support_router
-from src.features.core.feedback.router import router as feedback_router
-from src.features.core.notifications.router import router as notifications_router
-
-# Portal (client-facing read-only views)
-from src.features.portal.router import router as portal_router
 
 # Office features
 from src.features.office.calendar.router import router as calendar_router
 from src.features.office.clients.router import router as clients_router
 from src.features.office.deadlines.router import router as deadlines_router
 from src.features.office.documents.router import router as documents_router
-from src.features.office.fees.router import router as fees_router
 from src.features.office.fee_payments.router import router as fee_payments_router
+from src.features.office.fees.router import router as fees_router
 from src.features.office.notes.router import router as notes_router
 from src.features.office.processes.router import router as processes_router
 from src.features.office.services.router import router as services_router
 from src.features.office.timeline.router import router as timeline_router
-from src.features.core.storage.router import router as storage_router
+
+# Portal (client-facing read-only views)
+from src.features.portal.router import router as portal_router
 
 api_router = APIRouter()
 

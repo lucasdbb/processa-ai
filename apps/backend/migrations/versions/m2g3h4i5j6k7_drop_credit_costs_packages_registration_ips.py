@@ -46,13 +46,40 @@ def downgrade() -> None:
             is_active BOOLEAN DEFAULT true
         );
 
-        INSERT INTO public.credit_costs (feature_key, display_name, base_cost, description, is_active)
+        INSERT INTO public.credit_costs (
+            feature_key, display_name, base_cost, description, is_active
+        )
         VALUES
-            ('ai_chat', 'Chat IA Jurídica', 1, 'Cada mensagem no chat com a IA', true),
-            ('cnis_analysis', 'Análise de CNIS', 5, 'Análise completa de extrato previdenciário', true),
-            ('process_summary', 'Resumo de Processo', 5, 'Resumo inteligente de processo judicial', true),
-            ('calculator_rescisao', 'Calculadora Rescisão', 2, 'Cálculo de rescisão trabalhista', true),
-            ('calculator_aposentadoria', 'Calculadora Aposentadoria', 2, 'Simulação de aposentadoria', true)
+            ('ai_chat',
+                'Chat IA Jurídica',
+                1,
+                'Cada mensagem no chat com a IA',
+                true
+            ),
+            ('cnis_analysis',
+                'Análise de CNIS',
+                5,
+                'Análise completa de extrato previdenciário',
+                true
+            ),
+            ('process_summary',
+                'Resumo de Processo',
+                5,
+                'Resumo inteligente de processo judicial',
+                true
+            ),
+            ('calculator_rescisao',
+                'Calculadora Rescisão',
+                2,
+                'Cálculo de rescisão trabalhista',
+                true
+            ),
+            ('calculator_aposentadoria',
+                'Calculadora Aposentadoria',
+                2,
+               'Simulação de aposentadoria',
+               true
+            )
         ON CONFLICT DO NOTHING;
 
         ALTER TABLE public.credit_costs ENABLE ROW LEVEL SECURITY;

@@ -68,7 +68,7 @@ def upgrade() -> None:
         ALTER TABLE public.credit_transactions
             ADD COLUMN IF NOT EXISTS credit_type TEXT NOT NULL DEFAULT 'subscription'
                 CHECK (credit_type IN ('subscription', 'purchased'));
-        
+
         CREATE INDEX IF NOT EXISTS idx_credit_transactions_credit_type
             ON public.credit_transactions(credit_type);
     """)
@@ -133,23 +133,26 @@ def upgrade() -> None:
             INTO v_subscription_available, v_purchased_available
             FROM public.user_credits
             WHERE user_id = p_user_id;
-            
+
             -- Check if enough total credits
-            IF COALESCE(v_subscription_available, 0) + COALESCE(v_purchased_available, 0) < p_amount THEN
+            IF (
+                COALESCE(v_subscription_available, 0) + COALESCE(v_purchased_available, 0)
+                < p_amount
+            ) THEN
                 RETURN false;
             END IF;
-            
+
             -- Calculate how much from each type (subscription first)
             v_from_subscription := LEAST(COALESCE(v_subscription_available, 0), p_amount);
             v_from_purchased := p_amount - v_from_subscription;
-            
+
             -- Consume credits
             UPDATE public.user_credits
             SET subscription_used = subscription_used + v_from_subscription,
                 purchased_used = purchased_used + v_from_purchased,
                 updated_at = NOW()
             WHERE user_id = p_user_id;
-            
+
             -- Log transaction(s)
             IF v_from_subscription > 0 THEN
                 INSERT INTO public.credit_transactions (
@@ -157,14 +160,14 @@ def upgrade() -> None:
                 )
                 VALUES (p_user_id, -v_from_subscription, 'consume', p_reason, 'subscription');
             END IF;
-            
+
             IF v_from_purchased > 0 THEN
                 INSERT INTO public.credit_transactions (
                     user_id, amount, transaction_type, reason, credit_type
                 )
                 VALUES (p_user_id, -v_from_purchased, 'consume', p_reason, 'purchased');
             END IF;
-            
+
             RETURN true;
         END;
         $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -184,7 +187,7 @@ def upgrade() -> None:
                 last_reset_at = NOW(),
                 updated_at = NOW()
             WHERE user_id = p_user_id;
-            
+
             -- Log transaction
             INSERT INTO public.credit_transactions (
                 user_id, amount, transaction_type, reason, credit_type
@@ -234,21 +237,21 @@ def downgrade() -> None:
             SELECT available_credits INTO v_available
             FROM public.user_credits
             WHERE user_id = p_user_id;
-            
+
             IF v_available IS NULL OR v_available < p_amount THEN
                 RETURN false;
             END IF;
-            
+
             UPDATE public.user_credits
             SET used_credits = used_credits + p_amount,
                 updated_at = NOW()
             WHERE user_id = p_user_id;
-            
+
             INSERT INTO public.credit_transactions (
                 user_id, amount, transaction_type, reason
             )
             VALUES (p_user_id, -p_amount, 'consume', p_reason);
-            
+
             RETURN true;
         END;
         $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -266,7 +269,7 @@ def downgrade() -> None:
                 last_reset_at = NOW(),
                 updated_at = NOW()
             WHERE user_id = p_user_id;
-            
+
             INSERT INTO public.credit_transactions (
                 user_id, amount, transaction_type, reason
             )

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from src.features.billing.webhooks.schemas import WebhookResponse
 from src.features.billing.webhooks.service import webhooks_service
@@ -23,9 +23,8 @@ async def stripe_webhook(request: Request):
         raise
     except Exception as e:
         import traceback
+
         from src.core.logging import logger
+
         logger.error(f"Unhandled error in stripe_webhook endpoint: {e}\n{traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal Server Error"
-        )
+        raise HTTPException(status_code=500, detail="Internal Server Error")

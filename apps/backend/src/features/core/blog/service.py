@@ -1,5 +1,5 @@
-import re
 import base64
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -782,8 +782,8 @@ class BlogService:
             notifications_sent = len(subscriber_emails) if success else 0
 
             logger.info(
-                f"Blog post notification: sent to {notifications_sent}/{len(subscribers)} subscribers "
-                f"for post '{post['title']}' (bulk BCC)"
+                f"Blog post notification: sent to {notifications_sent}/{len(subscribers)} "
+                f"subscribers for post '{post['title']}' (bulk BCC)"
             )
 
             return notifications_sent

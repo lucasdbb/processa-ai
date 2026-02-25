@@ -477,7 +477,7 @@ class ProfilesService:
             profile = profile_res.data[0]
 
             # Add user_credits via RPC function
-            result = self.supabase.rpc(
+            self.supabase.rpc(
                 "grant_credits_to_user",
                 {"p_user_id": user_id, "p_amount": amount, "p_reason": "admin_grant"},
             ).execute()

@@ -18,7 +18,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create feedback table
-    # We reference public.profiles instead of auth.users to facilitate joins with profile data (name, email)
+    # We reference public.profiles
+    # instead of auth.users
+    # to facilitate joins with profile data (name, email)
     op.execute("""
         CREATE TABLE IF NOT EXISTS public.feedback (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -27,7 +29,8 @@ def upgrade() -> None:
             content TEXT NOT NULL,
             path TEXT,
             user_agent TEXT,
-            status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'done', 'archived')),
+            status TEXT NOT NULL DEFAULT 'new'
+                CHECK (status IN ('new', 'in_progress', 'done', 'archived')),
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
@@ -54,7 +57,7 @@ def upgrade() -> None:
         -- Admins can update feedback (e.g. status)
         CREATE POLICY "Admins can update feedback" ON public.feedback
         FOR UPDATE USING (public.is_admin());
-        
+
         -- Admins can delete feedback
         CREATE POLICY "Admins can delete feedback" ON public.feedback
         FOR DELETE USING (public.is_admin());

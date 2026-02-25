@@ -82,7 +82,8 @@ class StorageService:
         # A API do Supabase retorna um caminho relativo, precisamos adicionar a base_url
         if signed_url and signed_url.startswith("/"):
             # Se começa com /object/sign, adicionar /storage/v1 antes se não tiver
-            # Supabase self-hosted pode retornar /storage/v1/object/sign... ou apenas /object/sign...
+            # Supabase self-hosted pode retornar /storage/v1/object/sign...
+            # ou apenas /object/sign...
             if signed_url.startswith("/storage/v1"):
                 signed_url = f"{base_url}{signed_url}"
             elif signed_url.startswith("/object/"):
@@ -129,7 +130,8 @@ class StorageService:
             )
 
         # 1. Definir bucket
-        # functionality já é validado pelo Pydantic/FastAPI, então podemos confiar que é um dos valores do Enum
+        # functionality já é validado pelo Pydantic/FastAPI,
+        # então podemos confiar que é um dos valores do Enum
         bucket = self._get_bucket_for_functionality(functionality.value)
 
         # 2. Definir caminho
@@ -149,7 +151,10 @@ class StorageService:
         # Estrutura: user_id/functionality/client_id/job_uuid/input/filename
         # Mantendo compatibilidade com AI Worker que espera input/
         folder = "input"
-        storage_path = f"{sanitized_user}/{sanitized_func}/{sanitized_client}/{sanitized_job}/{folder}/{slug_filename}"
+        storage_path = (
+            f"{sanitized_user}/{sanitized_func}/{sanitized_client}/"
+            f"{sanitized_job}/{folder}/{slug_filename}"
+        )
 
         # 3. Gerar URL assinada para UPLOAD (PUT)
         # Endpoint: /storage/v1/object/upload/sign/{bucket}/{path}
@@ -181,7 +186,7 @@ class StorageService:
             logger.error(f"Erro Supabase Upload Sign ({resp.status_code}): {resp.text}")
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Falha ao gerar URL de upload",
+                detail="Falha ao gerar URL de upload",
             )
 
         data = resp.json()

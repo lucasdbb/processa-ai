@@ -3,7 +3,7 @@ Deadline notifications service
 Create notifications when deadlines are approaching based on user preferences
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from src.core.logging import logger
@@ -57,7 +57,7 @@ class DeadlineNotificationService:
                 # Check if we should notify today
                 if days_until_deadline == reminder_days:
                     # Check if notification already exists
-                    notification_key = f"{event['id']}_{today.isoformat()}"
+                    f"{event['id']}_{today.isoformat()}"
 
                     existing = (
                         self.supabase.table("notifications")

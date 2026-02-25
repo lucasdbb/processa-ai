@@ -8,7 +8,6 @@ from src.features.core.notifications.schemas import (
     NotificationItem,
     NotificationListResponse,
     NotificationStatsResponse,
-    NotificationUpdate,
 )
 
 

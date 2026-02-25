@@ -87,8 +87,10 @@ class CalculatorsService:
             val_noturno = (
                 valor_hora * media_horas_noturnas * (float(adicional_noturno_percent) / 100.0)
             )
-            # Nota: A hora noturna reduzida (52m30s) geralmente é tratada na quantidade de horas
-            # Vamos assumir que "media_horas_noturnas" já considera a hora reduzida ou é hora relógio convertida
+            # Nota: A hora noturna reduzida (52m30s)
+            # geralmente é tratada na quantidade de horas
+            # Vamos assumir que "media_horas_noturnas"
+            # já considera a hora reduzida ou é hora relógio convertida
             remuneracao += val_noturno
 
         # Outras Verbas (Comissões, Gratificações, Médias de HE)
@@ -170,11 +172,15 @@ class CalculatorsService:
             + valor_ferias_vencidas
             + valor_ferias_prop
             + valor_13
-            + fgts_base  # FGTS depositado não entra no TRCT para saque em dinheiro, mas entra na multa?
+            + fgts_base  # FGTS depositado não entra no TRCT para saque em dinheiro,
+            # mas entra na multa?
             # Na verdade, FGTS mensal é depositado na conta. O que se paga na rescisão é a Multa.
             # E o saldo de salários/aviso/13 gera FGTS rescisório.
-            # O código anterior somava TUDO no total. Vamos manter a lógica de "Custo Total da Rescisão" ou "Valor a Receber"?
-            # Se for "Valor a Receber", o FGTS acumulado (fgts_base) fica na conta vinculada e é sacado via chave.
+            # O código anterior somava TUDO no total.
+            # Vamos manter a lógica de "Custo Total da Rescisão" ou "Valor a Receber"?
+            # Se for "Valor a Receber",
+            # o FGTS acumulado (fgts_base) fica na conta vinculada
+            # e é sacado via chave.
             # A Multa é paga via GRRF.
             # Geralmente calculadoras mostram o TOTAL GERAL envolvido.
             + fgts_base
@@ -264,8 +270,10 @@ class CalculatorsService:
         lines.append(f"| **Total Estimado** | **{money(detalhes.get('total'))}** |")
         lines.append("")
         lines.append(
-            "> Nota: O cálculo do FGTS é uma estimativa baseada na remuneração atual aplicada a todo o período. O valor real depende dos depósitos efetuados."
+            "> Nota: O cálculo do FGTS é uma estimativa baseada na remuneração atual aplicada "
+            "a todo o período."
         )
+        lines.append("> O valor real depende dos depósitos efetuados.")
         return "\n".join(lines)
 
     def _markdown_to_pdf_bytes(self, markdown: str, *, title: str | None = None) -> bytes:
@@ -508,7 +516,9 @@ class CalculatorsService:
         if anos_excedentes > 0:
             coeficiente += anos_excedentes * 0.02
 
-        # Limita a 100% (ou mais se permitir >100%, mas regra geral teto é 100% da média, podendo passar em casos específicos)
+        # Limita a 100% (ou mais se permitir >100%)
+        # Mas regra geral teto é 100% da média,
+        # podendo passar em casos específicos
         # Vamos deixar passar de 100% pois a regra permite
 
         beneficio = salario_contribuicao * coeficiente if pode_aposentar else 0.0
@@ -562,24 +572,26 @@ class CalculatorsService:
         if pode:
             lines.append(f"### Valor Estimado do Benefício: {money(detalhes.get('beneficio'))}")
             lines.append("")
+            lines.append("> Nota: Este valor é uma estimativa baseada nas regras gerais.")
             lines.append(
-                "> Nota: Este valor é uma estimativa baseada nas regras gerais. O valor real depende do cálculo da média de todos os salários de contribuição."
+                "> O valor real depende do cálculo da média de todos os salários de contribuição."
             )
         else:
             lines.append("### O que falta:")
             lines.append("")
             lines.append(
-                f"- Idade mínima exigida: {detalhes.get('idade_minima')} anos (Faltam {detalhes.get('anos_restantes')} anos)"
+                f"- Idade mínima exigida: {detalhes.get('idade_minima')} anos "
+                f"(Faltam {detalhes.get('anos_restantes')} anos)"
             )
             lines.append(
-                f"- Tempo de contribuição mínimo: {detalhes.get('tempo_minimo_contrib')} anos (Faltam {detalhes.get('tempo_restante')} anos)"
+                f"- Tempo de contribuição mínimo: {detalhes.get('tempo_minimo_contrib')} anos "
+                f"(Faltam {detalhes.get('tempo_restante')} anos)"
             )
 
         lines.append("")
         lines.append("---")
-        lines.append(
-            "Este relatório é uma simulação e não possui valor legal. Consulte um advogado previdenciário."
-        )
+        lines.append("Este relatório é uma simulação e não possui valor legal.")
+        lines.append("Consulte um advogado previdenciário.")
 
         return "\n".join(lines)
 

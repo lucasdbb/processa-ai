@@ -1,18 +1,18 @@
 import hashlib
 import io
 
-from src.core.storage import StorageService
 import httpx
 from markdown_pdf import MarkdownPdf, Section
 
 from src.core.config import settings
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
+from src.core.storage import StorageService
 from src.handlers.pipeline import run_document_analysis, run_multi_document_analysis
-from src.handlers.prompts.cnis import CNIS_PROMPT
-from src.handlers.prompts.process_summary import PROCESS_SUMMARY_PROMPT
-from src.handlers.prompts.labor_claim import LABOR_CLAIM_PROMPT
 from src.handlers.prompts.brief_scanner import BRIEF_SCANNER_PROMPT
+from src.handlers.prompts.cnis import CNIS_PROMPT
+from src.handlers.prompts.labor_claim import LABOR_CLAIM_PROMPT
+from src.handlers.prompts.process_summary import PROCESS_SUMMARY_PROMPT
 
 
 class WorkerException(Exception):

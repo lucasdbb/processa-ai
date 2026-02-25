@@ -1,6 +1,7 @@
 """Authentication and authorization utilities for the backend."""
 
-from fastapi import Header, HTTPException, Request, status, Depends
+from fastapi import Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel
 
 from src.core.config import settings
 
@@ -46,10 +47,6 @@ def get_user_role(request: Request, x_user_role: str = Header(None)) -> str:
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="User role not provided",
     )
-
-
-from pydantic import BaseModel
-from typing import Optional
 
 
 class CurrentUser(BaseModel):

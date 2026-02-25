@@ -62,7 +62,11 @@ def upgrade() -> None:
 
         ALTER TABLE public.subscriptions
             ADD CONSTRAINT subscriptions_status_check
-            CHECK (status IN ('active', 'past_due', 'canceled', 'incomplete', 'trialing', 'paused', 'none'));
+            CHECK (
+                status IN (
+                    'active', 'past_due', 'canceled', 'incomplete', 'trialing', 'paused', 'none'
+                )
+            );
     """)
 
 

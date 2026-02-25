@@ -13,8 +13,8 @@ from src.features.office.clients.schemas import (
     ClientUpdate,
 )
 from src.features.office.clients.service import clients_service
-from src.features.portal.service import portal_service
 from src.features.portal.schemas import InviteClientResponse, RevokePortalResponse
+from src.features.portal.service import portal_service
 
 router = APIRouter(
     dependencies=[Depends(verify_internal_token)],

@@ -248,7 +248,10 @@ class ProcessesService:
                     """
                     SELECT
                         COUNT(*) as total,
-                        COUNT(*) FILTER (WHERE start_at < CURRENT_DATE AND deadline_status != 'completed') as overdue
+                        COUNT(*) FILTER (
+                            WHERE start_at < CURRENT_DATE
+                            AND deadline_status != 'completed'
+                        ) as overdue
                     FROM office_api.events
                     WHERE user_id = %s AND processo_id = %s AND event_type = 'prazo'
                     """,

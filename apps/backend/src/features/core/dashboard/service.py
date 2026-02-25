@@ -161,8 +161,10 @@ class DashboardService:
                         FROM office_api.events e
                         LEFT JOIN office_api.processes p ON e.processo_id = p.id
                         LEFT JOIN office_api.clients c ON p.client_id = c.id
-                        WHERE e.user_id = %s AND e.event_type = 'prazo' AND e.deadline_status = 'pending'
-                          AND e.start_at::date >= %s
+                                                WHERE e.user_id = %s
+                                                AND e.event_type = 'prazo'
+                                                AND e.deadline_status = 'pending'
+                                                AND e.start_at::date >= %s
                         ORDER BY e.start_at ASC
                         LIMIT %s
                         """,

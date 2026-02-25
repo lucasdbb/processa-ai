@@ -1,7 +1,6 @@
 """Business logic for the client portal (read-only views for office clients)."""
 
-from datetime import datetime, timezone, timedelta
-from uuid import UUID
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from psycopg.rows import dict_row
@@ -391,10 +390,16 @@ class PortalService:
                 await cur.execute(
                     """
                     SELECT
-                        COALESCE(SUM(amount), 0)                                                   AS total_amount,
-                        COALESCE(SUM(paid_amount), 0)                                             AS total_paid,
-                        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount - COALESCE(paid_amount,0) ELSE 0 END), 0) AS total_pending,
-                        COALESCE(SUM(CASE WHEN status = 'overdue'  THEN amount - COALESCE(paid_amount,0) ELSE 0 END), 0) AS total_overdue
+                        COALESCE(SUM(amount), 0) AS total_amount,
+                        COALESCE(SUM(paid_amount), 0) AS total_paid,
+                        COALESCE(SUM(
+                            CASE WHEN status = 'pending' THEN amount - COALESCE(paid_amount,0)
+                            ELSE 0 END
+                        ), 0) AS total_pending,
+                        COALESCE(SUM(
+                            CASE WHEN status = 'overdue' THEN amount - COALESCE(paid_amount,0)
+                            ELSE 0 END
+                        ), 0) AS total_overdue
                     FROM office_api.fees
                     WHERE user_id = %s AND client_id = %s
                     """,
