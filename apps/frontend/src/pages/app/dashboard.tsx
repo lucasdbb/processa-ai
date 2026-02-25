@@ -32,6 +32,10 @@ import { TourButton } from '@/features/onboarding/tour-button'
 import { RevenueChart } from '@/components/charts/revenue-chart'
 import { ProcessesChart } from '@/components/charts/processes-chart'
 import { AgingChart } from '@/components/charts/aging-chart'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { PartyPopper } from 'lucide-react'
+import { useOnboardingStore } from '@/features/onboarding/store'
 
 interface StatCard {
   name: string
@@ -65,6 +69,7 @@ export default function DashboardPage() {
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [servicesCount, setServicesCount] = useState<number>(0)
   const { credits } = useCreditsStore()
+  const { openWelcomeModal } = useOnboardingStore()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -171,9 +176,32 @@ export default function DashboardPage() {
   if (loading) {
     return <DashboardSkeleton />
   }
-
+  
   return (
     <div className="space-y-6">
+      {/* Welcome Alert */}
+      {(!user?.welcome_credits_claimed) && (
+         <Alert className="border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 flex items-center justify-between">
+           <div className="flex items-center gap-4">
+             <PartyPopper className="h-5 w-5" />
+             <div>
+               <AlertTitle>Ganhe 10 créditos grátis!</AlertTitle>
+               <AlertDescription>
+                 Complete seu cadastro informando seu CPF para ganhar créditos de boas-vindas.
+               </AlertDescription>
+             </div>
+           </div>
+           <Button 
+             size="sm" 
+             variant="outline" 
+             className="border-yellow-500/50 hover:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 whitespace-nowrap ml-4" 
+             onClick={openWelcomeModal}
+           >
+             Resgatar agora
+           </Button>
+         </Alert>
+       )}
+
       {/* Header */}
       <div data-tour="welcome" className="flex items-center justify-between">
         <div>
@@ -182,7 +210,7 @@ export default function DashboardPage() {
             Aqui está um resumo da sua atividade.
           </p>
         </div>
-        <TourButton tourId="dashboard" />
+        <TourButton tourId="dashboard" forceShow />
       </div>
 
       {/* Stats Grid */}

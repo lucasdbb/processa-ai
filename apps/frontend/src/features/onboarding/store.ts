@@ -6,11 +6,14 @@ interface OnboardingState {
   completedTours: TourId[];
   currentTour: TourId | null;
   isOpen: boolean;
+  isWelcomeModalOpen: boolean;
   startTour: (tourId: TourId) => void;
   completeTour: (tourId: TourId) => void;
   closeTour: () => void;
   resetTours: () => void;
   hasCompletedTour: (tourId: TourId) => boolean;
+  openWelcomeModal: () => void;
+  closeWelcomeModal: () => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -19,6 +22,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       completedTours: [],
       currentTour: null,
       isOpen: false,
+      isWelcomeModalOpen: false,
 
       startTour: (tourId) => {
         set({ currentTour: tourId, isOpen: true });
@@ -42,6 +46,14 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       hasCompletedTour: (tourId) => {
         return get().completedTours.includes(tourId);
+      },
+
+      openWelcomeModal: () => {
+        set({ isWelcomeModalOpen: true });
+      },
+
+      closeWelcomeModal: () => {
+        set({ isWelcomeModalOpen: false });
       },
     }),
     {

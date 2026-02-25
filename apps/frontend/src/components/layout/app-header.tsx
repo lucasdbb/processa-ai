@@ -171,98 +171,97 @@ export function AppHeader() {
         {/* Lado Direito */}
         <div className="flex items-center gap-2">
           {/* Credits Display */}
-          {credits && (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-full bg-muted/50 border border-border hover:bg-accent hover:border-foreground/20 transition-colors group"
-                  aria-label="Ver detalhes de créditos"
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                data-tour="header-credits"
+                className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-full bg-muted/50 border border-border hover:bg-accent hover:border-foreground/20 transition-colors group"
+                aria-label="Ver detalhes de créditos"
+              >
+                <div className="relative text-amber-500">
+                  <Coins className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                  <Sparkles className="h-3 w-3 absolute -top-1 -right-1 text-amber-400/90" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">
+                  {credits ? credits.total_available.toLocaleString('pt-BR') : '0'}
+                </span>
+                <span className="text-xs text-muted-foreground">créditos</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 p-0">
+              <div className="px-4 pt-4 pb-3 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                    <Coins className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Créditos</p>
+                    <p className="text-xs text-muted-foreground">Detalhes do seu saldo</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 py-3 space-y-3">
+                {/* Subscription Credits */}
+                <div className="rounded-xl border border-border bg-muted/40 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-foreground">Assinatura</span>
+                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      Mensal
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Saldo</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {credits ? credits.subscription_credits.toLocaleString('pt-BR') : '0'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Purchased Credits */}
+                <div className="rounded-xl border border-border bg-muted/40 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-foreground">Créditos Extras</span>
+                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      Nunca expiram
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Saldo</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {credits ? credits.purchased_credits.toLocaleString('pt-BR') : '0'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="rounded-xl border-2 border-amber-500/30 bg-amber-500/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-foreground">Total Disponível</span>
+                    <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                      {credits ? credits.total_available.toLocaleString('pt-BR') : '0'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 pb-4 space-y-2">
+                <Link
+                  to="/app/creditos"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-sm font-semibold py-2.5 transition-colors"
                 >
-                  <div className="relative text-amber-500">
-                    <Coins className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                    <Sparkles className="h-3 w-3 absolute -top-1 -right-1 text-amber-400/90" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">
-                    {credits.total_available.toLocaleString('pt-BR')}
-                  </span>
-                  <span className="text-xs text-muted-foreground">créditos</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-0">
-                <div className="px-4 pt-4 pb-3 border-b border-border">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
-                      <Coins className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Créditos</p>
-                      <p className="text-xs text-muted-foreground">Detalhes do seu saldo</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="px-4 py-3 space-y-3">
-                  {/* Subscription Credits */}
-                  <div className="rounded-xl border border-border bg-muted/40 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-foreground">Assinatura</span>
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        Mensal
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Saldo</span>
-                      <span className="text-sm font-semibold text-foreground">
-                        {credits.subscription_credits.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Purchased Credits */}
-                  <div className="rounded-xl border border-border bg-muted/40 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-foreground">Créditos Extras</span>
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        Nunca expiram
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Saldo</span>
-                      <span className="text-sm font-semibold text-foreground">
-                        {credits.purchased_credits.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Total */}
-                  <div className="rounded-xl border-2 border-amber-500/30 bg-amber-500/5 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-foreground">Total Disponível</span>
-                      <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                        {credits.total_available.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="px-4 pb-4 space-y-2">
-                  <Link
-                    to="/app/creditos"
-                    className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-sm font-semibold py-2.5 transition-colors"
-                  >
-                    Ver Histórico Completo
-                  </Link>
-                  <Link
-                    to="/planos"
-                    className="flex items-center justify-center gap-2 rounded-lg bg-foreground text-background text-sm font-semibold py-2.5 hover:opacity-90 transition-opacity"
-                  >
-                    Adquirir mais créditos
-                  </Link>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                  Ver Histórico Completo
+                </Link>
+                <Link
+                  to="/planos"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-foreground text-background text-sm font-semibold py-2.5 hover:opacity-90 transition-opacity"
+                >
+                  Adquirir mais créditos
+                </Link>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Toggle Tema */}
           <button

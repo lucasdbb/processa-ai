@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useOnboardingStore } from '@/features/onboarding/store'
 import { creditsService } from '@/services/credits-service'
 import { toast } from 'sonner'
 import { Loader2, PartyPopper } from 'lucide-react'
@@ -12,17 +13,20 @@ import confetti from 'canvas-confetti'
 
 export function WelcomeCreditsModal() {
   const { user, setUser } = useAuthStore()
-  const [isOpen, setIsOpen] = useState(false)
+  const { isWelcomeModalOpen, openWelcomeModal, closeWelcomeModal, startTour } = useOnboardingStore()
   const [cpf, setCpf] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState<'cpf' | 'success'>('cpf')
 
   useEffect(() => {
-    // Show modal if user is logged in, hasn't claimed credits, and we haven't checked yet (or check logic here)
-    if (user && user.welcome_credits_claimed === false) {
-      setIsOpen(true)
+    // Show modal if user is logged in, hasn't claimed credits
+    if (user && !user.welcome_credits_claimed) {
+      openWelcomeModal()
+    } else if (user?.welcome_credits_claimed && isWelcomeModalOpen) {
+      // Ensure modal is closed if already claimed (fixes persisted state issues)
+      closeWelcomeModal()
     }
-  }, [user])
+  }, [user, isWelcomeModalOpen, openWelcomeModal, closeWelcomeModal])
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCpf(cpfMask(e.target.value))
@@ -53,6 +57,12 @@ export function WelcomeCreditsModal() {
           spread: 70,
           origin: { y: 0.6 }
         })
+
+        // Inicia o tour automaticamente após o sucesso
+        setTimeout(() => {
+          closeWelcomeModal()
+          startTour('dashboard')
+        }, 1500)
       }
     } catch (error) {
       console.error('Failed to claim credits:', error)
@@ -70,18 +80,14 @@ export function WelcomeCreditsModal() {
   }
 
   const handleClose = () => {
-    if (step === 'success') {
-      setIsOpen(false)
-    }
-    // If still on CPF step, we don't allow closing without claiming (or maybe we do but show a reminder?)
-    // For now, let's allow closing but it will pop up again on refresh unless we store a "remind later" in local storage
-    setIsOpen(false)
+    closeWelcomeModal()
   }
 
-  if (!user) return null
+  // Se não tiver usuário ou já tiver resgatado, não renderiza nada
+  if (!user || user.welcome_credits_claimed) return null
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isWelcomeModalOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         {step === 'cpf' ? (
           <form onSubmit={handleSubmit}>
@@ -111,7 +117,7 @@ export function WelcomeCreditsModal() {
               </div>
             </div>
             <DialogFooter className="flex-col sm:justify-between gap-2">
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
+              <Button type="button" variant="ghost" onClick={handleClose}>
                 Depois
               </Button>
               <Button type="submit" disabled={isLoading || cpf.length < 14}>
@@ -140,7 +146,7 @@ export function WelcomeCreditsModal() {
               </div>
             </div>
             <DialogFooter>
-              <Button className="w-full" onClick={handleClose}>
+              <Button className="w-full" onClick={() => { handleClose(); startTour('dashboard'); }}>
                 Começar a usar
               </Button>
             </DialogFooter>

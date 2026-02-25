@@ -51,6 +51,10 @@ export function useAuth() {
                 status: profile.status,
                 avatar_url: profile.avatar_url,
                 created_at: profile.created_at,
+                welcome_credits_claimed: profile.welcome_credits_claimed,
+                cpf: profile.cpf,
+                phone: profile.phone,
+                newsletter_opt_in: profile.newsletter_opt_in,
               });
             } else {
               setUser(null);
@@ -125,6 +129,10 @@ export function useAuth() {
         status: profile.status,
         avatar_url: profile.avatar_url,
         created_at: profile.created_at,
+        welcome_credits_claimed: profile.welcome_credits_claimed,
+        cpf: profile.cpf,
+        phone: profile.phone,
+        newsletter_opt_in: profile.newsletter_opt_in,
       };
 
       setUser(currentUser);
@@ -188,6 +196,10 @@ export function useAuth() {
             status: profile.status,
             avatar_url: profile.avatar_url,
             created_at: profile.created_at,
+            welcome_credits_claimed: profile.welcome_credits_claimed,
+            cpf: profile.cpf,
+            phone: profile.phone,
+            newsletter_opt_in: profile.newsletter_opt_in,
           };
           setUser(currentUser);
           return currentUser;

@@ -67,16 +67,16 @@ const getNavigationGroups = (
     {
       label: '',
       items: [
-        { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
+        { name: 'Dashboard', href: '/app', icon: LayoutDashboard, dataTour: 'menu-dashboard' },
       ],
     },
     {
       label: 'Gestão',
       items: [
-        { name: 'Clientes', href: '/app/clientes', icon: Users },
-        { name: 'Processos', href: '/app/processos', icon: FolderKanban },
-        { name: 'Serviços', href: '/app/servicos', icon: Briefcase },
-        { name: 'Calendário', href: '/app/calendario', icon: CalendarDays },
+        { name: 'Clientes', href: '/app/clientes', icon: Users, dataTour: 'menu-clientes' },
+        { name: 'Processos', href: '/app/processos', icon: FolderKanban, dataTour: 'menu-processos' },
+        { name: 'Serviços', href: '/app/servicos', icon: Briefcase, dataTour: 'menu-servicos' },
+        { name: 'Calendário', href: '/app/calendario', icon: CalendarDays, dataTour: 'menu-calendario' },
       ],
     },
     {
@@ -87,20 +87,22 @@ const getNavigationGroups = (
           href: '/app/calculadoras',
           icon: Calculator,
           children: calcChildren,
+          dataTour: 'menu-calculadoras',
         },
         {
           name: 'IA Juridica',
           href: '/app/ia',
           icon: Bot,
           children: iaChildren,
+          dataTour: 'menu-ia',
         },
       ],
     },
     {
       label: 'Recursos',
       items: [
-        { name: 'Documentos', href: '/app/documentos', icon: FileText },
-        { name: 'Materiais', href: '/app/materiais', icon: BookOpen },
+        { name: 'Documentos', href: '/app/documentos', icon: FileText, dataTour: 'menu-documentos' },
+        { name: 'Materiais', href: '/app/materiais', icon: BookOpen, dataTour: 'menu-materiais' },
       ],
     },
   ]
@@ -226,6 +228,7 @@ export function Sidebar() {
         key={item.href}
         to={item.href}
         onClick={closeMobile}
+        data-tour={item.dataTour}
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
           active
@@ -313,6 +316,7 @@ export function Sidebar() {
 
       {/* Sidebar Mobile */}
       <aside
+        id="sidebar-mobile"
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex flex-col bg-background border-r border-border transition-transform duration-300 lg:hidden',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full',
@@ -324,6 +328,7 @@ export function Sidebar() {
 
       {/* Sidebar Desktop */}
       <aside
+        id="sidebar-desktop"
         className={cn(
           'hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 bg-background border-r border-border transition-all duration-300',
           isExpanded ? 'lg:w-64' : 'lg:w-[72px]'

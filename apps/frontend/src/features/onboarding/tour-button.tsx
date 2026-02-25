@@ -6,13 +6,14 @@ interface TourButtonProps {
   tourId: TourId
   label?: string
   className?: string
+  forceShow?: boolean
 }
 
-export function TourButton({ tourId, label = 'Iniciar Tour', className }: TourButtonProps) {
+export function TourButton({ tourId, label = 'Iniciar Tour', className, forceShow }: TourButtonProps) {
   const { startTour, hasCompletedTour } = useOnboardingStore()
 
-  // Don't show if tour is already completed
-  if (hasCompletedTour(tourId)) {
+  // Don't show if tour is already completed, unless forced
+  if (hasCompletedTour(tourId) && !forceShow) {
     return null
   }
 

@@ -49,23 +49,111 @@ export const TOURS: Record<string, TourConfig> = {
         ),
       },
       {
-        selector: '[data-tour="stats"]',
+        selector: '#sidebar-desktop [data-tour="menu-dashboard"]',
         content: (
           <div className="space-y-2">
-            <h3 className="font-semibold">Estatísticas</h3>
+            <h3 className="font-semibold">Dashboard 📊</h3>
             <p className="text-sm">
-              Acompanhe aqui um resumo dos seus clientes, processos ativos e cálculos realizados.
+              Aqui você tem uma visão geral do seu escritório, estatísticas e prazos.
             </p>
           </div>
         ),
       },
       {
-        selector: '[data-tour="deadlines"]',
+        selector: '#sidebar-desktop [data-tour="menu-clientes"]',
         content: (
           <div className="space-y-2">
-            <h3 className="font-semibold">Prazos Próximos</h3>
+            <h3 className="font-semibold">Clientes 👥</h3>
             <p className="text-sm">
-              Fique atento aos próximos prazos para não perder nenhum vencimento importante.
+              Cadastre e gerencie seus clientes de forma organizada.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-processos"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Processos ⚖️</h3>
+            <p className="text-sm">
+              Acompanhe seus processos, andamentos e prazos.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-servicos"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Serviços 💼</h3>
+            <p className="text-sm">
+              Gerencie os serviços prestados e contratos.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-calendario"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Calendário 📅</h3>
+            <p className="text-sm">
+              Visualize seus prazos e compromissos em uma agenda integrada.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-calculadoras"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Calculadoras 🧮</h3>
+            <p className="text-sm">
+              Ferramentas para realizar cálculos jurídicos complexos em instantes.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-ia"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">IA Jurídica 🤖</h3>
+            <p className="text-sm">
+              Utilize nossa Inteligência Artificial para analisar documentos e peças.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-documentos"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Documentos 📄</h3>
+            <p className="text-sm">
+              Acesse e gerencie seus documentos gerados e armazenados.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-materiais"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Materiais 📚</h3>
+            <p className="text-sm">
+              Consulte materiais de apoio e modelos.
+            </p>
+          </div>
+        ),
+      },
+      {
+        selector: '[data-tour="header-credits"]',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Seus Créditos 🪙</h3>
+            <p className="text-sm">
+              Acompanhe aqui seu saldo de créditos para utilizar as ferramentas de IA.
             </p>
           </div>
         ),
@@ -74,18 +162,9 @@ export const TOURS: Record<string, TourConfig> = {
         selector: 'body',
         content: (
           <div className="space-y-3">
-            <h3 className="font-semibold text-lg">Navegação 🧭</h3>
+            <h3 className="font-semibold text-lg">Tudo pronto! 🚀</h3>
             <p className="text-sm">
-              Use o <strong>menu lateral esquerdo</strong> para acessar todas as funcionalidades:
-            </p>
-            <ul className="text-sm space-y-1.5 ml-2">
-              <li>📋 <strong>Clientes</strong> - Gerencie seus clientes</li>
-              <li>⚖️ <strong>Processos</strong> - Acompanhe processos e prazos</li>
-              <li>🧮 <strong>Calculadoras</strong> - Ferramentas de cálculo</li>
-              <li>🤖 <strong>IA Jurídica</strong> - Análise com inteligência artificial</li>
-            </ul>
-            <p className="text-sm text-muted-foreground mt-3">
-              Pronto para começar! Explore a plataforma. 🚀
+              Agora você já conhece a plataforma. Aproveite para explorar!
             </p>
           </div>
         ),

@@ -109,13 +109,19 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'user_credits',
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           console.log('Realtime credit update received:', payload)
+          
+          if (payload.eventType === 'DELETE') {
+             set({ credits: null })
+             return
+          }
+
           // Update local state directly from payload to avoid extra API call
           const newRecord = payload.new as any
           

@@ -66,10 +66,10 @@ export function TourProvider({ children }: TourWrapperProps) {
         close: (base) => ({
           ...base,
           color: 'hsl(var(--muted-foreground))',
-          right: '1rem',
-          top: '1rem',
-          width: '2rem',
-          height: '2rem',
+          right: '0.75rem',
+          top: '0.75rem',
+          width: '1.25rem',
+          height: '1.25rem',
         }),
       }}
       padding={{ mask: 10, popover: [10, 10] }}
@@ -77,6 +77,10 @@ export function TourProvider({ children }: TourWrapperProps) {
         const { closeTour } = useOnboardingStore.getState()
         closeTour()
         setIsOpen(false)
+      }}
+      beforeClose={() => {
+        const { closeTour } = useOnboardingStore.getState()
+        closeTour()
       }}
       showNavigation={true}
       showBadge={true}

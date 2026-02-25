@@ -272,9 +272,16 @@ class CreditsService:
 
         # 5. Salvar CPF e marcar claimed
         try:
-            self.supabase.table("profiles").update(
+            result = self.supabase.table("profiles").update(
                 {"cpf": cpf, "welcome_credits_claimed": True}
             ).eq("id", user_id).execute()
+            
+            if not result.data:
+                logger.error(f"Failed to update profile for {user_id}. No rows affected.")
+                raise HTTPException(status_code=500, detail="Erro ao atualizar perfil. Tente novamente.")
+                
+        except HTTPException:
+            raise
         except Exception as e:
             # Provavelmente violação de constraint unique se passou da checagem anterior (race condition)
             logger.error(f"Error updating profile cpf: {e}")
@@ -299,10 +306,20 @@ class CreditsService:
             ).execute()
         except Exception as e:
             logger.error(f"Error granting welcome credits: {e}")
-            # Se falhar o grant, deveríamos reverter o profile?
-            # Idealmente sim, mas por simplicidade vamos deixar assim e o user reclama no suporte
-            # Ou tentar retry.
-            pass
+            
+            # Rollback: desfazer marcação de claimed e limpar CPF para permitir nova tentativa
+            try:
+                self.supabase.table("profiles").update(
+                    {"welcome_credits_claimed": False}
+                ).eq("id", user_id).execute()
+                logger.info(f"Rolled back welcome credits claim for user {user_id}")
+            except Exception as rollback_error:
+                logger.error(f"Failed to rollback welcome credits claim for user {user_id}: {rollback_error}")
+            
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao conceder créditos. Tente novamente."
+            )
 
         return {"success": True, "credits_granted": WELCOME_CREDITS_AMOUNT}
 
