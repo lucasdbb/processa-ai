@@ -169,8 +169,10 @@ class WebhooksService:
 
         except Exception as e:
             # Unknown error - treat as transient to be safe (Stripe will retry)
-            logger.error(f"Unknown error processing webhook {event_type}: {e}")
-            self._record_event(event_id, event_type, event_status="failed", error_message=str(e))
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Unknown error processing webhook {event_type}: {e}\nTraceback:\n{error_details}")
+            self._record_event(event_id, event_type, event_status="failed", error_message=f"{str(e)}\n{error_details}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Internal error, please retry",
