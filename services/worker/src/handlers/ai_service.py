@@ -207,7 +207,8 @@ class AiService:
                 expires_in=signed_url_expires_in,
                 output=False,
             )
-            # Adapt return to match expected format if needed (StorageService returns signed_url, we might need download_url)
+            # Adapt return to match expected format if needed.
+            # StorageService returns signed_url, we might need download_url.
             if "signed_url" in input_storage:
                 input_storage["download_url"] = input_storage["signed_url"]
 
@@ -438,9 +439,11 @@ class AiService:
 
         # Internal secret or admin key for backend communication
         # Assuming worker has permissions or uses a service role key if needed
-        # For now, let's assume we can call an internal endpoint or use DB directly if in same network
+        # For now, let's assume we can call an internal endpoint
+        # or use DB directly if in same network
 
-        # BETTER APPROACH: Since worker shares DB with backend, use DB directly to avoid auth overhead/circular deps
+        # BETTER APPROACH: Since worker shares DB with backend,
+        # use DB directly to avoid auth overhead/circular deps
         # But `CreditsService` logic is in backend.
         # Option A: Re-implement refund logic here (call RPC `grant_credits_to_user`)
         # Option B: Call backend API endpoint (requires auth)

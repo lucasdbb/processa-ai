@@ -195,7 +195,10 @@ class StorageService:
         expires_in: int,
         output: bool = False,
     ) -> dict:
-        """Upload PDF to Supabase Storage. Structure: user_id/functionality/client_id/job_uuid/[input|output]/hash.pdf"""
+        """
+        Upload PDF to Supabase Storage.
+        Structure: user_id/functionality/client_id/job_uuid/[input|output]/hash.pdf
+        """
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
 
@@ -306,7 +309,8 @@ class StorageService:
                 )
                 if resp.status_code >= 400:
                     logger.error(
-                        f"Failed to delete file {bucket}/{storage_path}: {resp.status_code} {resp.text}"
+                        f"Failed to delete file {bucket}/{storage_path}: "
+                        f"{resp.status_code} {resp.text}"
                     )
                     return False
                 return True

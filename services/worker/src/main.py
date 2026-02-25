@@ -48,7 +48,10 @@ JOB_COSTS = {
 
 
 async def _validate_job_basic(job: dict) -> tuple[str, uuid.UUID | None, str, dict] | None:
-    """Extract and validate basic job info. Returns (job_id, job_uuid, job_type, payload) or None if invalid."""
+    """
+    Extract and validate basic job info.
+    Returns (job_id, job_uuid, job_type, payload) or None if invalid.
+    """
     job_id = str(job.get("job_id") or "").strip()
     if not job_id:
         return None
@@ -130,8 +133,10 @@ async def _prepare_files(
         bucket = str(payload.get("bucket") or "").strip()
         storage_path = str(payload.get("storage_path") or "").strip()
 
-        # If we have bucket + storage_path but no file_url (or expired), generate a signed URL
-        # NOTE: Backend usually sends signed URL in file_url, but if it's missing or we need to refresh:
+        # If we have bucket + storage_path but no file_url (or expired),
+        # generate a signed URL
+        # NOTE: Backend usually sends signed URL in file_url,
+        # but if it's missing or we need to refresh:
         if bucket and storage_path and not file_url:
             try:
                 from src.core.storage import StorageService
@@ -423,7 +428,8 @@ async def _handle_ai_job(job: dict) -> None:
     job_id, job_uuid, job_type, payload = validation_result
 
     user_id = str(payload.get("user_id") or "").strip()
-    # Note: user_id check is partially done in validation, but logic requires check after files for single-file case?
+    # Note: user_id check is partially done in validation,
+    # but logic requires check after files for single-file case?
     # Original code had complex logic for user_id/file_url/is_multi_file checks.
     # Let's replicate exact logic.
 
