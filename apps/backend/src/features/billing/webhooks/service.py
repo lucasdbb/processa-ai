@@ -37,12 +37,17 @@ class WebhooksService:
         self.supabase = get_supabase()
 
     def _is_event_processed(self, event_id: str) -> bool:
-        """Check if event was already processed (idempotency check)."""
+        """Check if event was already successfully processed (idempotency check).
+
+        Only considers events with status 'processed' or 'skipped' as done.
+        Events with status 'failed' are allowed to be retried.
+        """
         try:
             result = (
                 self.supabase.table("stripe_webhook_events")
                 .select("event_id, status")
                 .eq("event_id", event_id)
+                .in_("status", ["processed", "skipped"])
                 .limit(1)
                 .execute()
             )
