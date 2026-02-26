@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut, FileText, Info } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut, FileText, Info, Users, Zap, Crown, GraduationCap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -22,6 +22,38 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/use-auth'
+import { useBillingStore } from '@/stores/billing-store'
+
+// Plan badge config
+const PLAN_CONFIG: Record<string, { label: string; icon: typeof Users; className: string }> = {
+  basico:    { label: 'Básico',     icon: Users,         className: 'bg-muted text-muted-foreground hover:bg-muted/80' },
+  estudante: { label: 'Estudante',  icon: GraduationCap, className: 'bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20' },
+  autonomo:  { label: 'Autônomo',   icon: Zap,           className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20' },
+  escritorio:{ label: 'Escritório', icon: Crown,         className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20' },
+}
+
+function PlanBadge({ planId }: { planId: string | null | undefined }) {
+  const isFree = !planId || planId === 'none'
+  const config = isFree ? null : PLAN_CONFIG[planId]
+
+  if (isFree) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit bg-muted text-muted-foreground">
+        <Sparkles className="h-3 w-3" strokeWidth={2} />
+        Fazer upgrade
+      </span>
+    )
+  }
+
+  if (!config) return null
+  const Icon = config.icon
+  return (
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit', config.className)}>
+      <Icon className="h-3 w-3" strokeWidth={2} />
+      {config.label}
+    </span>
+  )
+}
 
 // Helper functions
 const getNotificationIcon = (type: string) => {
@@ -57,7 +89,8 @@ export function AppHeader() {
   const { user } = useUser()
   const { logout } = useAuth()
   const navigate = useNavigate()
-  const { credits } = useCreditsStore() // Use store instead of local state
+  const { credits } = useCreditsStore()
+  const { subscription } = useBillingStore()
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -246,13 +279,7 @@ export function AppHeader() {
                 </div>
               </div>
 
-              <div className="px-4 pb-4 space-y-2">
-                <Link
-                  to="/app/creditos"
-                  className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-sm font-semibold py-2.5 transition-colors"
-                >
-                  Ver Histórico Completo
-                </Link>
+              <div className="px-4 pb-4">
                 <Link
                   to="/app/creditos"
                   className="flex items-center justify-center gap-2 rounded-lg bg-foreground text-background text-sm font-semibold py-2.5 hover:opacity-90 transition-opacity"
@@ -379,7 +406,7 @@ export function AppHeader() {
           {/* Menu Usuario */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <button 
+              <button
                 data-tour="user-menu"
                 className="flex items-center gap-2 h-10 pl-2 pr-3 rounded-lg hover:bg-accent transition-colors"
               >
@@ -389,9 +416,12 @@ export function AppHeader() {
                     {getInitials(user?.name, user?.email)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden lg:block text-sm font-medium text-foreground">
-                  {user?.name || user?.email?.split('@')[0] || 'Usuario'}
-                </span>
+                <div className="hidden lg:flex flex-col items-start">
+                  <span className="text-sm font-medium text-foreground leading-tight">
+                    {user?.name || user?.email?.split('@')[0] || 'Usuario'}
+                  </span>
+                  <PlanBadge planId={subscription?.plan_id} />
+                </div>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

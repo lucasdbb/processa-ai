@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useCreditsStore } from '@/stores/credits-store'
 import { creditsService, type CreditHistoryResponse } from '@/services/credits-service'
-import { Coins, CreditCard, CheckCircle2, History, AlertCircle, Loader2 } from 'lucide-react'
+import { Coins, CreditCard, History, AlertCircle, Loader2, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Link } from 'react-router-dom'
 
 export default function CreditosPage() {
   const { credits, packages, costs, fetchCredits, fetchPackages, fetchCosts, isLoading } = useCreditsStore()
@@ -42,7 +43,7 @@ export default function CreditosPage() {
     try {
       const { checkout_url } = await creditsService.purchaseCredits(
         packageId,
-        window.location.href // Redirect back here
+        window.location.href
       )
       window.location.href = checkout_url
     } catch {
@@ -78,7 +79,7 @@ export default function CreditosPage() {
             Gerencie seu saldo e adquira pacotes para usar ferramentas avançadas.
           </p>
         </div>
-        
+
         {/* Balance Card */}
         <div className="bg-slate-900 text-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg flex items-center gap-6 min-w-[300px]">
           <div className="p-3 bg-white/10 rounded-xl">
@@ -104,76 +105,76 @@ export default function CreditosPage() {
         </TabsList>
 
         {/* Packages Tab */}
-        <TabsContent value="packages" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {packages.map((pkg) => (
-              <Card key={pkg.id} className="flex flex-col relative overflow-hidden border-2 hover:border-primary/50 transition-colors">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
+        <TabsContent value="packages" className="space-y-5">
+          {/* One-liner context */}
+          <p className="text-xs text-muted-foreground">
+            Créditos avulsos nunca expiram e funcionam em todas as ferramentas do seu plano.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {packages.map((pkg) => {
+              return (
+              <div
+                key={pkg.id}
+                className="relative flex flex-col rounded-2xl border-2 border-border bg-card p-6 hover:border-primary/40 hover:shadow-md transition-all overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                   <Coins className="w-24 h-24" />
                 </div>
-                
-                <CardHeader>
-                  <CardTitle className="text-xl">{pkg.name}</CardTitle>
-                  <CardDescription>{pkg.credits} créditos válidos por tempo indeterminado</CardDescription>
-                </CardHeader>
-                
-                <CardContent className="flex-1">
-                  <div className="text-3xl font-bold mb-4">
-                    {formatCurrency(pkg.price_cents)}
+
+                <div className="flex-1 mb-6">
+                  <div className="mb-1">
+                    <span className="text-4xl font-extrabold text-foreground tracking-tight">
+                      {pkg.credits.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="ml-2 text-sm font-medium text-muted-foreground">créditos</span>
                   </div>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      Sem validade (não expiram)
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      Uso em todas as ferramentas
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      Pagamento único e seguro
-                    </li>
-                  </ul>
-                </CardContent>
-                
-                <CardFooter>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handlePurchase(pkg.id)}
-                    disabled={!!purchasingId}
-                  >
-                    {purchasingId === pkg.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Comprar Agora
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-            
-            {/* Subscription Upsell */}
-            <Card className="flex flex-col bg-slate-50 dark:bg-slate-900/50 border-dashed border-2">
-              <CardHeader>
-                <CardTitle className="text-xl">Precisa de mais?</CardTitle>
-                <CardDescription>Assine um plano mensal e economize até 40%</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-center items-center text-center p-6">
-                <p className="text-muted-foreground mb-4">
-                  Planos recorrentes incluem renovação mensal de créditos e acesso prioritário.
-                </p>
-                <Button variant="outline" className="w-full" asChild>
-                  <a href="/app/planos">Ver Planos de Assinatura</a>
-                </Button>
-              </CardContent>
-            </Card>
+                  <p className="text-xs text-muted-foreground">{pkg.name}</p>
+                </div>
+
+                <button
+                  onClick={() => handlePurchase(pkg.id)}
+                  disabled={!!purchasingId}
+                  className={cn(
+                    'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all',
+                    purchasingId === pkg.id
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : 'bg-slate-900 text-white hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100'
+                  )}
+                >
+                  {purchasingId === pkg.id ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      {formatCurrency(pkg.price_cents)}
+                    </>
+                  )}
+                </button>
+              </div>
+              )
+            })}
+          </div>
+
+          {/* Subscription upsell — inline banner, no extra card */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                <Zap className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Precisa de créditos todos os meses?</p>
+                <p className="text-xs text-muted-foreground">Assine um plano e economize até 40% — renovação automática.</p>
+              </div>
+            </div>
+            <Link
+              to="/app/planos"
+              className="shrink-0 rounded-xl border-2 border-border px-4 py-2 text-sm font-semibold text-foreground hover:border-primary hover:bg-muted transition-all"
+            >
+              Ver planos
+            </Link>
           </div>
         </TabsContent>
 
@@ -228,8 +229,8 @@ export default function CreditosPage() {
                           </TableCell>
                           <TableCell className={cn(
                             "text-right font-medium",
-                            tx.transaction_type === 'grant' || tx.transaction_type === 'refund' 
-                              ? "text-green-600 dark:text-green-400" 
+                            tx.transaction_type === 'grant' || tx.transaction_type === 'refund'
+                              ? "text-green-600 dark:text-green-400"
                               : "text-red-600 dark:text-red-400"
                           )}>
                             {tx.transaction_type === 'grant' || tx.transaction_type === 'refund' ? '+' : '-'}
@@ -239,8 +240,7 @@ export default function CreditosPage() {
                       ))}
                     </TableBody>
                   </Table>
-                  
-                  {/* Pagination - Simple prev/next for now */}
+
                   <div className="flex items-center justify-end space-x-2 py-4 px-4 border-t">
                     <Button
                       variant="outline"

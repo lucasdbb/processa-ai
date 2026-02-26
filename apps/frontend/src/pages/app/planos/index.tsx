@@ -4,6 +4,7 @@ import { Check, Crown, GraduationCap, Loader2, Star, Users, Zap } from 'lucide-r
 import { toast } from 'sonner'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { billingService } from '@/services/billing-service'
+import { useBillingStore } from '@/stores/billing-store'
 
 type ApiPlanPrice = {
   currency: string
@@ -30,6 +31,8 @@ export default function AppPlanosPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { subscription, fetchSubscription } = useBillingStore()
+  const currentPlanId = subscription?.plan_id ?? null
 
   // Detecta retorno do Stripe com cancelamento
   useEffect(() => {
@@ -108,11 +111,22 @@ export default function AppPlanosPage() {
             ? '/ano'
             : '/mês'
 
+      const isCurrentPlan = p.slug === currentPlanId
+      const hasActiveStripeSubscription = !!(
+        subscription?.stripe_subscription_id &&
+        (subscription.status === 'active' || subscription.status === 'trialing')
+      )
+      const isFreeTarget = amountCents === 0
+
       const buttonText = isComingSoon
         ? 'Em breve'
-        : amountCents === 0
+        : isCurrentPlan
           ? 'Plano Atual'
-          : `Assinar ${p.name}`
+          : isFreeTarget && hasActiveStripeSubscription
+            ? 'Cancelar assinatura'
+            : hasActiveStripeSubscription
+              ? `Mudar para ${p.name}`
+              : `Assinar ${p.name}`
 
       return {
         slug: p.slug,
@@ -129,32 +143,52 @@ export default function AppPlanosPage() {
         sortOrder: p.sort_order ?? 0,
         stripePriceId: stripePriceId || null,
         isFree: amountCents === 0,
+        isCurrentPlan,
       }
     }
 
     return (apiPlans || []).map(normalize).sort((a, b) => a.sortOrder - b.sortOrder)
-  }, [apiPlans])
+  }, [apiPlans, currentPlanId])
 
   type Plan = (typeof plans)[number]
 
   const handlePlanClick = async (plan: Plan) => {
     if (plan.comingSoon) return
+    if (plan.isCurrentPlan) return
 
-    // Se for plano gratuito, apenas redireciona para dashboard (já está logado)
-    if (plan.isFree) {
-      toast.info('Você já está no plano gratuito.')
-      return
-    }
-
-    // Se não tiver stripe_price_id, mostrar erro
-    if (!plan.stripePriceId) {
-      toast.error('Este plano não está disponível no momento.')
-      return
-    }
+    const hasStripeSubscription = !!(
+      subscription?.stripe_subscription_id &&
+      (subscription.status === 'active' || subscription.status === 'trialing')
+    )
 
     setLoadingPlan(plan.slug)
 
     try {
+      // Cancelamento: downgrade para o plano gratuito com assinatura Stripe ativa
+      if (plan.isFree && hasStripeSubscription) {
+        await billingService.cancelSubscription()
+        await fetchSubscription()
+        toast.success('Assinatura cancelada. Você terá acesso até o fim do período atual.')
+        setLoadingPlan(null)
+        return
+      }
+
+      // Troca de plano: já tem assinatura Stripe ativa
+      if (hasStripeSubscription && plan.stripePriceId) {
+        await billingService.changePlan(plan.stripePriceId)
+        await fetchSubscription()
+        toast.success(`Plano alterado para ${plan.name} com sucesso!`)
+        setLoadingPlan(null)
+        return
+      }
+
+      // Novo checkout: sem assinatura Stripe ativa
+      if (!plan.stripePriceId) {
+        toast.error('Este plano não está disponível no momento.')
+        setLoadingPlan(null)
+        return
+      }
+
       const successUrl = `${window.location.origin}/app?subscription=success`
       const cancelUrl = `${window.location.origin}/app/planos?subscription=canceled`
 
@@ -164,11 +198,10 @@ export default function AppPlanosPage() {
         cancel_url: cancelUrl,
       })
 
-      // Redirecionar para o Stripe Checkout
       window.location.href = checkout_url
     } catch (error) {
-      console.error('Error creating checkout:', error)
-      toast.error('Erro ao iniciar checkout. Tente novamente.')
+      console.error('Error handling plan click:', error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao processar. Tente novamente.')
       setLoadingPlan(null)
     }
   }
@@ -261,9 +294,9 @@ export default function AppPlanosPage() {
                     <div className="flex-shrink-0">
                       <button
                         onClick={() => handlePlanClick(plan)}
-                        disabled={isComingSoon || loadingPlan === plan.slug}
+                        disabled={isComingSoon || plan.isCurrentPlan || loadingPlan === plan.slug}
                         className={`w-full min-h-[48px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 transform ${
-                          isComingSoon || loadingPlan === plan.slug
+                          isComingSoon || plan.isCurrentPlan || loadingPlan === plan.slug
                             ? 'bg-muted text-muted-foreground cursor-not-allowed border-2 border-border'
                             : plan.popular
                               ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl hover:-translate-y-0.5 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100'

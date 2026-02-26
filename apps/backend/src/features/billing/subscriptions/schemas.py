@@ -46,6 +46,14 @@ class InvoiceListResponse(BaseModel):
     has_more: bool
 
 
+class ChangePlanRequest(BaseModel):
+    price_id: str
+
+
+class ActionResponse(BaseModel):
+    success: bool
+
+
 class SyncResponse(BaseModel):
     synced: bool
     message: str | None = None

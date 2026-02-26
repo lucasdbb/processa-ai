@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, Query
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.billing.subscriptions.schemas import (
+    ActionResponse,
+    ChangePlanRequest,
     CheckoutResponse,
     CreateCheckoutRequest,
     InvoiceListResponse,
@@ -47,6 +49,21 @@ async def list_invoices(
 ):
     """List user's invoices."""
     return await subscriptions_service.list_invoices(user_id, limit=limit)
+
+
+@router.post("/change-plan", response_model=ActionResponse)
+async def change_plan(
+    data: ChangePlanRequest,
+    user_id: str = Depends(get_user_id),
+):
+    """Upgrade or downgrade an active Stripe subscription."""
+    return await subscriptions_service.change_plan(user_id, data.price_id)
+
+
+@router.post("/cancel", response_model=ActionResponse)
+async def cancel_subscription(user_id: str = Depends(get_user_id)):
+    """Cancel the active Stripe subscription at the end of the billing period."""
+    return await subscriptions_service.cancel_subscription(user_id)
 
 
 @router.post("/sync", response_model=SyncResponse)

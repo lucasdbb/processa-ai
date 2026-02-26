@@ -132,6 +132,27 @@ def retrieve_charge(charge_id: str) -> stripe.Charge:
     )
 
 
+@stripe_retry
+def modify_subscription(subscription_id: str, price_id: str) -> stripe.Subscription:
+    """Change a subscription's plan immediately with proration."""
+    sub = stripe.Subscription.retrieve(subscription_id)
+    item_id = sub["items"].data[0].id
+    return stripe.Subscription.modify(
+        subscription_id,
+        items=[{"id": item_id, "price": price_id}],
+        proration_behavior="create_prorations",
+    )
+
+
+@stripe_retry
+def cancel_subscription_at_period_end(subscription_id: str) -> stripe.Subscription:
+    """Cancel a subscription at the end of the current billing period."""
+    return stripe.Subscription.modify(
+        subscription_id,
+        cancel_at_period_end=True,
+    )
+
+
 def get_subscription_period(subscription) -> dict:
     """Extract billing period from subscription's first item.
 

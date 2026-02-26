@@ -7,6 +7,9 @@ from fastapi import HTTPException, status
 from src.core.config import settings
 from src.core.logging import logger
 from src.core.stripe_client import (
+    cancel_subscription_at_period_end as stripe_cancel_subscription,
+)
+from src.core.stripe_client import (
     create_checkout_session as stripe_create_checkout,
 )
 from src.core.stripe_client import (
@@ -15,13 +18,16 @@ from src.core.stripe_client import (
 from src.core.stripe_client import (
     create_portal_session as stripe_create_portal,
 )
+from src.core.stripe_client import get_first_item, get_subscription_period
 from src.core.stripe_client import (
     list_invoices as stripe_list_invoices,
 )
 from src.core.stripe_client import (
+    modify_subscription as stripe_modify_subscription,
+)
+from src.core.stripe_client import (
     retrieve_subscription as stripe_retrieve_subscription,
 )
-from src.core.stripe_client import get_first_item, get_subscription_period
 from src.core.supabase import get_supabase
 
 
@@ -188,9 +194,11 @@ class SubscriptionsService:
         success_url = self._validate_redirect_url(success_url)
         cancel_url = self._validate_redirect_url(cancel_url)
 
-        # Check if user already has an active subscription
+        # Check if user already has an active Stripe subscription
+        # (plan_id can be "active" for manually granted plans without a Stripe subscription)
         existing_sub = await self.get_subscription(user_id)
-        if existing_sub.get("status") in ("active", "trialing"):
+        has_stripe_sub = bool(existing_sub.get("stripe_subscription_id"))
+        if has_stripe_sub and existing_sub.get("status") in ("active", "trialing"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Você já possui uma assinatura ativa. Use o portal para gerenciar.",
@@ -255,6 +263,74 @@ class SubscriptionsService:
             )
 
         return {"portal_url": session.url}
+
+    async def change_plan(self, user_id: str, price_id: str) -> dict:
+        """Upgrade or downgrade the user's current Stripe subscription."""
+        self._validate_price_id(price_id)
+
+        existing_sub = await self.get_subscription(user_id)
+        stripe_sub_id = existing_sub.get("stripe_subscription_id")
+
+        if not stripe_sub_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma assinatura Stripe ativa para alterar. Use o checkout para assinar.",
+            )
+
+        if existing_sub.get("status") not in ("active", "trialing"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Assinatura não está ativa.",
+            )
+
+        try:
+            stripe_modify_subscription(stripe_sub_id, price_id)
+        except stripe.StripeError as e:
+            logger.error(f"Stripe error changing plan: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao alterar plano no Stripe",
+            )
+
+        logger.info(f"Plan change initiated for user {user_id} to price {price_id}")
+        return {"success": True}
+
+    async def cancel_subscription(self, user_id: str) -> dict:
+        """Cancel the user's Stripe subscription at period end."""
+        existing_sub = await self.get_subscription(user_id)
+        stripe_sub_id = existing_sub.get("stripe_subscription_id")
+
+        if not stripe_sub_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma assinatura Stripe ativa para cancelar.",
+            )
+
+        if existing_sub.get("status") not in ("active", "trialing"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Assinatura não está ativa.",
+            )
+
+        try:
+            stripe_cancel_subscription(stripe_sub_id)
+        except stripe.StripeError as e:
+            logger.error(f"Stripe error canceling subscription: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao cancelar assinatura no Stripe",
+            )
+
+        # Update local state immediately so UI reflects cancel_at_period_end
+        try:
+            self.supabase.table("subscriptions").update({"cancel_at_period_end": True}).eq(
+                "user_id", user_id
+            ).execute()
+        except Exception as e:
+            logger.warning(f"Failed to update cancel_at_period_end locally: {e}")
+
+        logger.info(f"Subscription cancellation scheduled for user {user_id}")
+        return {"success": True}
 
     async def get_subscription(self, user_id: str) -> dict:
         """Get user's current subscription status."""
