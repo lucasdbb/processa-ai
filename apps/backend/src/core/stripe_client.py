@@ -138,9 +138,21 @@ def get_subscription_period(subscription) -> dict:
     Since Stripe API 2025-03-31.basil (SDK v12+), current_period_start/end
     were removed from the Subscription object and moved to each
     SubscriptionItem. This helper reads from the first item.
+
+    NOTE: We use subscription["items"] (dict-style) instead of subscription.items
+    because in stripe-python v14, Subscription inherits from dict, and .items
+    collides with the builtin dict.items() method.
     """
-    item = subscription.items.data[0]
+    item = subscription["items"].data[0]
     return {
         "current_period_start": item.current_period_start,
         "current_period_end": item.current_period_end,
     }
+
+
+def get_first_item(subscription):
+    """Get the first SubscriptionItem from a Stripe Subscription object.
+
+    Uses dict-style access for 'items' to avoid collision with dict.items().
+    """
+    return subscription["items"].data[0]

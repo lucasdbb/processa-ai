@@ -13,6 +13,7 @@ from src.core.email import (
 )
 from src.core.logging import logger
 from src.core.stripe_client import (
+    get_first_item,
     get_subscription_period,
     retrieve_charge,
     retrieve_invoice,
@@ -249,7 +250,8 @@ class WebhooksService:
             logger.error(f"Failed to retrieve subscription: {e}")
             raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
 
-        plan_id = self._get_plan_id_from_price(subscription.items.data[0].price.id)
+        first_item = get_first_item(subscription)
+        plan_id = self._get_plan_id_from_price(first_item.price.id)
         period = get_subscription_period(subscription)
 
         try:

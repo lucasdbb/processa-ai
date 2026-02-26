@@ -944,7 +944,7 @@ requires-dist = [
     { name = "redis", specifier = ">=5.0.8" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.1" },
     { name = "sqlalchemy", specifier = ">=2.0.46" },
-    { name = "stripe", specifier = ">=8.0.0" },
+    { name = "stripe", specifier = ">=14.0.0" },
     { name = "supabase", specifier = ">=2.0.0" },
     { name = "tenacity", specifier = ">=8.2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },

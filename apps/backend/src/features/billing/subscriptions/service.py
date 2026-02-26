@@ -21,7 +21,7 @@ from src.core.stripe_client import (
 from src.core.stripe_client import (
     retrieve_subscription as stripe_retrieve_subscription,
 )
-from src.core.stripe_client import get_subscription_period
+from src.core.stripe_client import get_first_item, get_subscription_period
 from src.core.supabase import get_supabase
 
 
@@ -385,7 +385,7 @@ class SubscriptionsService:
             )
 
         # Get plan_id from price
-        plan_id = self._get_plan_id_from_stripe_price(stripe_sub.items.data[0].price.id)
+        plan_id = self._get_plan_id_from_stripe_price(get_first_item(stripe_sub).price.id)
         period = get_subscription_period(stripe_sub)
 
         # Update local record with Stripe data
