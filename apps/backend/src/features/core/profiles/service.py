@@ -479,7 +479,12 @@ class ProfilesService:
             # Add user_credits via RPC function
             self.supabase.rpc(
                 "grant_credits_to_user",
-                {"p_user_id": user_id, "p_amount": amount, "p_reason": "admin_grant"},
+                {
+                    "p_user_id": user_id,
+                    "p_amount": amount,
+                    "p_reason": "admin_grant",
+                    "p_credit_type": "purchased",
+                },
             ).execute()
 
             return {

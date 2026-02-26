@@ -795,12 +795,15 @@ class WebhooksService:
 
             if monthly_credits > 0:
                 # Use PostgreSQL function to grant credits
+                # Always pass p_credit_type to avoid PostgREST ambiguity
+                # between the 3-param and 4-param overloads
                 self.supabase.rpc(
                     "grant_credits_to_user",
                     {
                         "p_user_id": user_id,
                         "p_amount": monthly_credits,
                         "p_reason": f"subscription_activation_{plan_id}",
+                        "p_credit_type": "subscription",
                     },
                 ).execute()
                 logger.info(f"Granted {monthly_credits} credits to user {user_id}")
