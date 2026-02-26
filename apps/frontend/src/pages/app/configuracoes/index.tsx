@@ -373,7 +373,7 @@ export default function ConfiguracoesPage() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Configuracoes</h1>
+        <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
         <p className="text-muted-foreground mt-1">Gerencie sua conta e preferências.</p>
       </div>
 

@@ -109,6 +109,34 @@ class WebhooksService:
         event_type = event["type"]
         data = event["data"]["object"]
 
+        # Resolve user_id from the event: prefer metadata.user_id (checkout),
+        # fall back to lookup via stripe_customer_id in subscriptions table.
+        resolved_user_id: str | None = data.get("metadata", {}).get("user_id")
+        if not resolved_user_id:
+            customer_id = data.get("customer")
+            if customer_id:
+                try:
+                    lookup = (
+                        self.supabase.table("subscriptions")
+                        .select("user_id")
+                        .eq("stripe_customer_id", customer_id)
+                        .limit(1)
+                        .execute()
+                    )
+                    if lookup.data:
+                        resolved_user_id = lookup.data[0]["user_id"]
+                except Exception:
+                    pass
+
+        # Build metadata with key identifiers for diagnostics/monitoring
+        event_metadata: dict = {
+            k: data.get(k)
+            for k in ("id", "customer", "subscription", "invoice", "charge")
+            if data.get(k)
+        }
+        if resolved_user_id:
+            event_metadata["user_id"] = resolved_user_id
+
         # Idempotency check - skip if already processed
         if self._is_event_processed(event_id):
             logger.info(f"Skipping already processed webhook: {event_id}")
@@ -153,16 +181,16 @@ class WebhooksService:
 
             else:
                 logger.debug(f"Unhandled webhook event type: {event_type}")
-                self._record_event(event_id, event_type, event_status="skipped")
+                self._record_event(event_id, event_type, event_status="skipped", metadata=event_metadata)
                 return {"received": True}
 
             # Record successful processing
-            self._record_event(event_id, event_type, event_status="processed")
+            self._record_event(event_id, event_type, event_status="processed", metadata=event_metadata)
 
         except TransientError as e:
             # Transient error - tell Stripe to retry
             logger.error(f"Transient error processing webhook {event_type}: {e}")
-            self._record_event(event_id, event_type, event_status="failed", error_message=str(e))
+            self._record_event(event_id, event_type, event_status="failed", error_message=str(e), metadata=event_metadata)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Temporary error, please retry",
@@ -171,7 +199,7 @@ class WebhooksService:
         except PermanentError as e:
             # Permanent error - log but acknowledge to Stripe (no retry needed)
             logger.error(f"Permanent error processing webhook {event_type}: {e}")
-            self._record_event(event_id, event_type, event_status="failed", error_message=str(e))
+            self._record_event(event_id, event_type, event_status="failed", error_message=str(e), metadata=event_metadata)
             # Return success to prevent retries, but error is logged for investigation
 
         except Exception as e:
@@ -187,6 +215,7 @@ class WebhooksService:
                 event_type,
                 event_status="failed",
                 error_message=f"{str(e)}\n{error_details}",
+                metadata=event_metadata,
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
