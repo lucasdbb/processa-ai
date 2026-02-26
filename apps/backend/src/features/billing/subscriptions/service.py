@@ -325,7 +325,7 @@ class SubscriptionsService:
             items.append(
                 {
                     "id": inv.id,
-                    "amount": inv.paid_amount,
+                    "amount": inv.amount_paid,
                     "currency": inv.currency,
                     "status": inv.status,
                     "created": datetime.fromtimestamp(inv.created, tz=timezone.utc),

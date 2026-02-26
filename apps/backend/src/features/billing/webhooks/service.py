@@ -567,7 +567,7 @@ class WebhooksService:
                         free_plan_res.data.get("monthly_credits", 0) if free_plan_res.data else 0
                     )
 
-                    await self.supabase.rpc(
+                    self.supabase.rpc(
                         "reset_monthly_credits",
                         {"p_user_id": user_id, "p_new_amount": free_credits},
                     ).execute()
@@ -641,7 +641,7 @@ class WebhooksService:
         try:
             # Get invoice to find subscription
             invoice = retrieve_invoice(invoice_id)
-            subscription_id = invoice.get("subscription")
+            subscription_id = invoice.subscription
 
             if not subscription_id:
                 logger.debug("Refunded charge not associated with subscription")
@@ -694,11 +694,11 @@ class WebhooksService:
         try:
             if charge_id:
                 charge = retrieve_charge(charge_id)
-                invoice_id = charge.get("invoice")
+                invoice_id = charge.invoice
 
                 if invoice_id:
                     invoice = retrieve_invoice(invoice_id)
-                    subscription_id = invoice.get("subscription")
+                    subscription_id = invoice.subscription
 
                     if subscription_id:
                         result = (

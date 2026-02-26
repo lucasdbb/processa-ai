@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Check, Crown, GraduationCap, Loader2, Star, Users, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -27,6 +28,18 @@ type ApiPlan = {
 export default function AppPlanosPage() {
   const [apiPlans, setApiPlans] = useState<ApiPlan[] | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  // Detecta retorno do Stripe com cancelamento
+  useEffect(() => {
+    if (searchParams.get('subscription') === 'canceled') {
+      toast.info('Checkout cancelado. Escolha um plano quando quiser.')
+      const next = new URLSearchParams(searchParams)
+      next.delete('subscription')
+      navigate({ search: next.toString() }, { replace: true })
+    }
+  }, []) // Roda só na montagem
 
   useEffect(() => {
     let didCancel = false

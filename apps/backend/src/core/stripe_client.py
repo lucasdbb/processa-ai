@@ -90,7 +90,6 @@ def create_checkout_session(
 
     return stripe.checkout.Session.create(
         customer=customer,
-        payment_method_types=["card"],
         line_items=line_items,
         mode=mode,
         success_url=success_url,

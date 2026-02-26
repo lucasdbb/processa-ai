@@ -43,6 +43,7 @@ function RouteLoadingBar() {
 }
 
 import { WelcomeCreditsModal } from '@/components/onboarding/WelcomeCreditsModal'
+import { SubscriptionSuccessModal } from '@/components/billing/SubscriptionSuccessModal'
 
 export function AppLayout() {
   const location = useLocation()
@@ -115,6 +116,7 @@ export function AppLayout() {
           <BottomNav />
           <CommandPalette />
           <WelcomeCreditsModal />
+          <SubscriptionSuccessModal />
         </div>
       </CalculatorsProvider>
     </AiToolsProvider>
