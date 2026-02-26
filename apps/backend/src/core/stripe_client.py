@@ -130,3 +130,17 @@ def retrieve_charge(charge_id: str) -> stripe.Charge:
     return stripe.Charge.retrieve(
         charge_id,
     )
+
+
+def get_subscription_period(subscription) -> dict:
+    """Extract billing period from subscription's first item.
+
+    Since Stripe API 2025-03-31.basil (SDK v12+), current_period_start/end
+    were removed from the Subscription object and moved to each
+    SubscriptionItem. This helper reads from the first item.
+    """
+    item = subscription.items.data[0]
+    return {
+        "current_period_start": item.current_period_start,
+        "current_period_end": item.current_period_end,
+    }

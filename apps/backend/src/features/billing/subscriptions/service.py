@@ -21,6 +21,7 @@ from src.core.stripe_client import (
 from src.core.stripe_client import (
     retrieve_subscription as stripe_retrieve_subscription,
 )
+from src.core.stripe_client import get_subscription_period
 from src.core.supabase import get_supabase
 
 
@@ -384,21 +385,22 @@ class SubscriptionsService:
             )
 
         # Get plan_id from price
-        plan_id = self._get_plan_id_from_stripe_price(stripe_sub["items"]["data"][0]["price"]["id"])
+        plan_id = self._get_plan_id_from_stripe_price(stripe_sub.items.data[0].price.id)
+        period = get_subscription_period(stripe_sub)
 
         # Update local record with Stripe data
         try:
             self.supabase.table("subscriptions").update(
                 {
                     "plan_id": plan_id,
-                    "status": stripe_sub["status"],
+                    "status": stripe_sub.status,
                     "current_period_start": datetime.fromtimestamp(
-                        stripe_sub["current_period_start"], tz=timezone.utc
+                        period["current_period_start"], tz=timezone.utc
                     ).isoformat(),
                     "current_period_end": datetime.fromtimestamp(
-                        stripe_sub["current_period_end"], tz=timezone.utc
+                        period["current_period_end"], tz=timezone.utc
                     ).isoformat(),
-                    "cancel_at_period_end": stripe_sub.get("cancel_at_period_end", False),
+                    "cancel_at_period_end": stripe_sub.cancel_at_period_end or False,
                 }
             ).eq("user_id", user_id).execute()
 
@@ -407,9 +409,9 @@ class SubscriptionsService:
             return {
                 "synced": True,
                 "plan_id": plan_id,
-                "status": stripe_sub["status"],
+                "status": stripe_sub.status,
                 "current_period_end": datetime.fromtimestamp(
-                    stripe_sub["current_period_end"], tz=timezone.utc
+                    period["current_period_end"], tz=timezone.utc
                 ).isoformat(),
             }
 

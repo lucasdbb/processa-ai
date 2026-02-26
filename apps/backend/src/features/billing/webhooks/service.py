@@ -13,6 +13,7 @@ from src.core.email import (
 )
 from src.core.logging import logger
 from src.core.stripe_client import (
+    get_subscription_period,
     retrieve_charge,
     retrieve_invoice,
     retrieve_subscription,
@@ -248,7 +249,8 @@ class WebhooksService:
             logger.error(f"Failed to retrieve subscription: {e}")
             raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
 
-        plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
+        plan_id = self._get_plan_id_from_price(subscription.items.data[0].price.id)
+        period = get_subscription_period(subscription)
 
         try:
             # Update subscription
@@ -258,14 +260,14 @@ class WebhooksService:
                     "stripe_customer_id": customer_id,
                     "stripe_subscription_id": subscription_id,
                     "plan_id": plan_id,
-                    "status": subscription["status"],
+                    "status": subscription.status,
                     "current_period_start": datetime.fromtimestamp(
-                        subscription["current_period_start"], tz=timezone.utc
+                        period["current_period_start"], tz=timezone.utc
                     ).isoformat(),
                     "current_period_end": datetime.fromtimestamp(
-                        subscription["current_period_end"], tz=timezone.utc
+                        period["current_period_end"], tz=timezone.utc
                     ).isoformat(),
-                    "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
+                    "cancel_at_period_end": subscription.cancel_at_period_end or False,
                 },
                 on_conflict="user_id",
             ).execute()
@@ -298,6 +300,8 @@ class WebhooksService:
             logger.error(f"Failed to retrieve subscription for invoice.paid: {e}")
             raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
 
+        period = get_subscription_period(subscription)
+
         try:
             # Update subscription status
             result = (
@@ -306,10 +310,10 @@ class WebhooksService:
                     {
                         "status": "active",
                         "current_period_start": datetime.fromtimestamp(
-                            subscription["current_period_start"], tz=timezone.utc
+                            period["current_period_start"], tz=timezone.utc
                         ).isoformat(),
                         "current_period_end": datetime.fromtimestamp(
-                            subscription["current_period_end"], tz=timezone.utc
+                            period["current_period_end"], tz=timezone.utc
                         ).isoformat(),
                     }
                 )
@@ -426,7 +430,8 @@ class WebhooksService:
                 )
                 return
 
-            plan_id = self._get_plan_id_from_price(subscription["items"]["data"][0]["price"]["id"])
+            first_item = subscription["items"]["data"][0]
+            plan_id = self._get_plan_id_from_price(first_item["price"]["id"])
 
             self.supabase.table("subscriptions").update(
                 {
@@ -434,10 +439,10 @@ class WebhooksService:
                     "plan_id": plan_id,
                     "status": subscription["status"],
                     "current_period_start": datetime.fromtimestamp(
-                        subscription["current_period_start"], tz=timezone.utc
+                        first_item["current_period_start"], tz=timezone.utc
                     ).isoformat(),
                     "current_period_end": datetime.fromtimestamp(
-                        subscription["current_period_end"], tz=timezone.utc
+                        first_item["current_period_end"], tz=timezone.utc
                     ).isoformat(),
                     "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
                 }
@@ -473,7 +478,8 @@ class WebhooksService:
         # Or if the price ID in the first item is different from what we might have expected?
         # Simpler: check if the new price ID maps to a different plan than what we have stored
 
-        new_price_id = subscription["items"]["data"][0]["price"]["id"]
+        first_item = subscription["items"]["data"][0]
+        new_price_id = first_item["price"]["id"]
         new_plan_id = self._get_plan_id_from_price(new_price_id)
 
         try:
@@ -499,10 +505,10 @@ class WebhooksService:
                     "plan_id": new_plan_id,
                     "status": subscription["status"],
                     "current_period_start": datetime.fromtimestamp(
-                        subscription["current_period_start"], tz=timezone.utc
+                        first_item["current_period_start"], tz=timezone.utc
                     ).isoformat(),
                     "current_period_end": datetime.fromtimestamp(
-                        subscription["current_period_end"], tz=timezone.utc
+                        first_item["current_period_end"], tz=timezone.utc
                     ).isoformat(),
                     "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
                 }
