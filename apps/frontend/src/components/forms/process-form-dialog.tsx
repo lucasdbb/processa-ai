@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ClientSelect } from '@/components/ui/client-select'
-import { processesService, type ClientRole, type ProcessCreate, type ProcessUpdate } from '@/services/processes-service'
+import { processesService, type ClientRole, type ProcessCategory, type ProcessCreate, type ProcessUpdate } from '@/services/processes-service'
 import { PROCESS_AREAS, PROCESS_TYPES, TRIBUNALS } from '@/lib/constants'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -11,6 +11,7 @@ import type { Client } from '@/services/clients-service'
 export interface ProcessFormData {
   id: string
   process_number: string
+  process_category: ProcessCategory
   type: string
   area: string
   court: string
@@ -63,6 +64,7 @@ const numberToCurrencyDisplay = (value: number | string | null | undefined): str
 
 const getInitialFormData = (process?: ProcessFormData, preselectedClient?: Client) => ({
   process_number: process?.process_number ?? '',
+  process_category: process?.process_category ?? ('judicial' as ProcessCategory),
   type: process?.type ?? '',
   area: process?.area ?? '',
   court: process?.court ?? '',
@@ -98,7 +100,9 @@ function ProcessFormDialogBody({
     const newErrors: Record<string, string> = {}
 
     if (!formData.process_number.trim()) {
-      newErrors.process_number = 'Número do processo é obrigatório'
+      newErrors.process_number = formData.process_category === 'judicial'
+        ? 'Número do processo é obrigatório'
+        : 'Número / protocolo é obrigatório'
     }
 
     if (!formData.type.trim()) {
@@ -109,12 +113,13 @@ function ProcessFormDialogBody({
       newErrors.area = 'Área do direito é obrigatória'
     }
 
-    if (!formData.court.trim()) {
-      newErrors.court = 'Vara é obrigatória'
-    }
-
-    if (!formData.tribunal.trim()) {
-      newErrors.tribunal = 'Tribunal é obrigatório'
+    if (formData.process_category === 'judicial') {
+      if (!formData.court.trim()) {
+        newErrors.court = 'Vara é obrigatória'
+      }
+      if (!formData.tribunal.trim()) {
+        newErrors.tribunal = 'Tribunal é obrigatório'
+      }
     }
 
     if (!formData.client_id) {
@@ -122,7 +127,7 @@ function ProcessFormDialogBody({
     }
 
     if (!formData.defendant.trim()) {
-      newErrors.defendant = 'Réu é obrigatório'
+      newErrors.defendant = 'Parte contrária é obrigatória'
     }
 
     setErrors(newErrors)
@@ -143,6 +148,7 @@ function ProcessFormDialogBody({
         // Update existente
         const payload: ProcessUpdate = {
           process_number: formData.process_number,
+          process_category: formData.process_category,
           type: formData.type,
           area: formData.area,
           court: formData.court || undefined,
@@ -161,6 +167,7 @@ function ProcessFormDialogBody({
           ...process,
           ...updated,
           client_name: selectedClient?.name ?? process.client_name,
+          process_category: updated.process_category,
           area: updated.area || '',
           court: updated.court || '',
           tribunal: updated.tribunal || '',
@@ -179,6 +186,7 @@ function ProcessFormDialogBody({
         const payload: ProcessCreate = {
           client_id: formData.client_id,
           process_number: formData.process_number,
+          process_category: formData.process_category,
           type: formData.type,
           area: formData.area,
           court: formData.court || undefined,
@@ -195,6 +203,7 @@ function ProcessFormDialogBody({
         const savedProcess: ProcessFormData = {
           id: created.id,
           process_number: created.process_number,
+          process_category: created.process_category,
           type: created.type,
           area: created.area || '',
           court: created.court || '',
@@ -243,7 +252,9 @@ function ProcessFormDialogBody({
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     if (field === 'process_number') {
-      setFormData((prev) => ({ ...prev, [field]: formatProcessNumber(value) }))
+      // Aplica máscara CNJ apenas para processos judiciais
+      const formatted = formData.process_category === 'judicial' ? formatProcessNumber(value) : value
+      setFormData((prev) => ({ ...prev, [field]: formatted }))
     } else if (field === 'value') {
       setFormData((prev) => ({ ...prev, [field]: formatCurrencyInput(value) }))
     } else {
@@ -294,11 +305,47 @@ function ProcessFormDialogBody({
 
           {/* Informacoes Basicas */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Informacoes do Processo</h3>
+            <h3 className="text-sm font-semibold text-foreground">Informações do Processo</h3>
 
+            {/* Categoria */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Natureza <span className="text-destructive">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { value: 'judicial', label: 'Judicial', description: 'Número CNJ' },
+                  { value: 'administrative', label: 'Administrativo', description: 'Protocolo / número livre' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      handleChange('process_category', option.value)
+                      // Limpa número ao trocar categoria para evitar máscara errada
+                      if (option.value !== formData.process_category) {
+                        handleChange('process_number', '')
+                      }
+                    }}
+                    className={cn(
+                      'flex flex-col items-start px-4 py-3 rounded-lg border-2 text-left transition-all',
+                      formData.process_category === option.value
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border bg-background text-foreground hover:border-primary/40'
+                    )}
+                  >
+                    <span className="text-sm font-semibold">{option.label}</span>
+                    <span className="text-xs text-muted-foreground mt-0.5">{option.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Número do processo */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Numero do Processo <span className="text-destructive">*</span>
+                {formData.process_category === 'judicial' ? 'Número do Processo' : 'Número / Protocolo'}{' '}
+                <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -308,7 +355,11 @@ function ProcessFormDialogBody({
                   'w-full px-3 py-2 bg-background border rounded-lg text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                   errors.process_number ? 'border-destructive' : 'border-border'
                 )}
-                placeholder="0000000-00.0000.0.00.0000"
+                placeholder={
+                  formData.process_category === 'judicial'
+                    ? '0000000-00.0000.0.00.0000'
+                    : 'Ex: 12345/2026, INSS-001/2024'
+                }
               />
               {errors.process_number && <p className="mt-1 text-xs text-destructive">{errors.process_number}</p>}
             </div>
@@ -359,44 +410,61 @@ function ProcessFormDialogBody({
                 {errors.type && <p className="mt-1 text-xs text-destructive">{errors.type}</p>}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Tribunal <span className="text-destructive">*</span>
-                </label>
-                <select
-                  value={formData.tribunal}
-                  onChange={(e) => handleChange('tribunal', e.target.value)}
-                  className={cn(
-                    'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                    errors.tribunal ? 'border-destructive' : 'border-border'
-                  )}
-                >
-                  <option value="">Selecione...</option>
-                  {TRIBUNALS.map((tribunal) => (
-                    <option key={tribunal} value={tribunal}>
-                      {tribunal}
-                    </option>
-                  ))}
-                </select>
-                {errors.tribunal && <p className="mt-1 text-xs text-destructive">{errors.tribunal}</p>}
-              </div>
+              {formData.process_category === 'judicial' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      Tribunal <span className="text-destructive">*</span>
+                    </label>
+                    <select
+                      value={formData.tribunal}
+                      onChange={(e) => handleChange('tribunal', e.target.value)}
+                      className={cn(
+                        'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                        errors.tribunal ? 'border-destructive' : 'border-border'
+                      )}
+                    >
+                      <option value="">Selecione...</option>
+                      {TRIBUNALS.map((tribunal) => (
+                        <option key={tribunal} value={tribunal}>
+                          {tribunal}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.tribunal && <p className="mt-1 text-xs text-destructive">{errors.tribunal}</p>}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Vara <span className="text-destructive">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.court}
-                  onChange={(e) => handleChange('court', e.target.value)}
-                  className={cn(
-                    'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                    errors.court ? 'border-destructive' : 'border-border'
-                  )}
-                  placeholder="Ex: 1ª Vara Cível"
-                />
-                {errors.court && <p className="mt-1 text-xs text-destructive">{errors.court}</p>}
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                      Vara <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.court}
+                      onChange={(e) => handleChange('court', e.target.value)}
+                      className={cn(
+                        'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                        errors.court ? 'border-destructive' : 'border-border'
+                      )}
+                      placeholder="Ex: 1ª Vara Cível"
+                    />
+                    {errors.court && <p className="mt-1 text-xs text-destructive">{errors.court}</p>}
+                  </div>
+                </>
+              ) : (
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Órgão / Entidade
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.court}
+                    onChange={(e) => handleChange('court', e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Ex: INSS, Receita Federal, Prefeitura de SP"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">

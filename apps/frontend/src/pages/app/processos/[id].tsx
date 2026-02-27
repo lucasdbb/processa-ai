@@ -100,6 +100,7 @@ export default function ProcessoDetalhePage() {
         client_id: process.client_id,
         client_name: process.client?.name,
         process_number: process.process_number,
+        process_category: process.process_category ?? 'judicial',
         type: process.type,
         area: process.area || '',
         court: process.court || '',
@@ -294,9 +295,20 @@ export default function ProcessoDetalhePage() {
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary font-medium">
                 {process.type}
               </span>
-              {process.area && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-500/10 text-blue-600 dark:text-blue-500 font-medium">
+              {/* Badge de categoria */}
+              {process.process_category === 'administrative' ? (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium">
+                  <Building2 className="h-3 w-3" />
+                  Administrativo
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">
                   <Scale className="h-3 w-3" />
+                  Judicial
+                </span>
+              )}
+              {process.area && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-muted text-muted-foreground font-medium">
                   {process.area}
                 </span>
               )}

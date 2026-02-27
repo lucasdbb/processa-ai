@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Filter, FolderKanban, ChevronDown } from 'lucide-react'
+import { Search, Plus, Filter, FolderKanban, ChevronDown, Scale, Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -47,11 +47,25 @@ const PROCESS_COLUMN_ORDER: string[] = [
   'cancelled',
 ]
 
+const CATEGORY_CONFIG = {
+  judicial: {
+    label: 'Judicial',
+    className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    icon: Scale,
+  },
+  administrative: {
+    label: 'Administrativo',
+    className: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+    icon: Building2,
+  },
+} as const
+
 export default function ProcessosPage() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
   const [tribunalFilter, setTribunalFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'judicial' | 'administrative'>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   type EditingProcess =
@@ -65,20 +79,21 @@ export default function ProcessosPage() {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string, mode: 'list' | 'kanban') => {
+  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string, category: string, mode: 'list' | 'kanban') => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams()
       if (searchQuery.trim()) params.set('search', searchQuery.trim())
-      
+
       // In Kanban mode, we want all statuses to populate columns
       // In List mode, we respect the filter
       if (mode === 'list' && statusFilter !== 'all') {
         params.set('status', statusFilter)
       }
-      
+
       if (tribunal !== 'all') params.set('tribunal', tribunal)
-      
+      if (category !== 'all') params.set('process_category', category)
+
       // For Kanban, we might need more items or pagination per column
       // For now, let's just increase limit for Kanban to show a good overview
       params.set('limit', mode === 'kanban' ? '100' : '50')
@@ -101,11 +116,11 @@ export default function ProcessosPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      void fetchProcesses(search, filter, tribunalFilter, viewMode)
+      void fetchProcesses(search, filter, tribunalFilter, categoryFilter, viewMode)
     }, search ? 300 : 0)
 
     return () => clearTimeout(timeout)
-  }, [search, filter, tribunalFilter, viewMode, fetchProcesses])
+  }, [search, filter, tribunalFilter, categoryFilter, viewMode, fetchProcesses])
 
   const handleSaveProcess = async (processData: SaveProcessPayload) => {
     console.log('Salvando processo:', processData)
@@ -180,6 +195,24 @@ export default function ProcessosPage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Filtro de categoria */}
+            <div className="flex rounded-md border border-border overflow-hidden">
+              {(['all', 'judicial', 'administrative'] as const).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCategoryFilter(c)}
+                  className={cn(
+                    'px-2.5 py-1.5 text-xs font-medium transition-colors',
+                    categoryFilter === c
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  {c === 'all' ? 'Todos' : c === 'judicial' ? 'Judicial' : 'Administrativo'}
+                </button>
+              ))}
+            </div>
 
             {viewMode === 'list' && (
               <>
@@ -267,8 +300,16 @@ export default function ProcessosPage() {
                         >
                           {(STATUS_CONFIG[process.status] || STATUS_CONFIG['active']).label}
                         </span>
+                        {(() => {
+                          const cat = CATEGORY_CONFIG[process.process_category] ?? CATEGORY_CONFIG.judicial
+                          return (
+                            <span className={cn('px-2.5 py-0.5 text-xs font-medium rounded-full', cat.className)}>
+                              {cat.label}
+                            </span>
+                          )
+                        })()}
                         {process.area && (
-                          <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                          <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">
                             {process.area}
                           </span>
                         )}

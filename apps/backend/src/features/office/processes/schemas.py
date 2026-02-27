@@ -7,11 +7,13 @@ from pydantic import BaseModel, Field
 
 ProcessStatus = Literal["active", "pending", "suspended", "archived", "concluded", "cancelled"]
 ClientRole = Literal["author", "defendant"]
+ProcessCategory = Literal["judicial", "administrative"]
 
 
 class ProcessCreate(BaseModel):
     client_id: UUID
     process_number: str = Field(..., min_length=1, max_length=255)
+    process_category: ProcessCategory = "judicial"
     court: str | None = None
     tribunal: str | None = None
     defendant: str | None = None
@@ -26,6 +28,7 @@ class ProcessCreate(BaseModel):
 
 class ProcessUpdate(BaseModel):
     process_number: str | None = Field(None, min_length=1, max_length=255)
+    process_category: ProcessCategory | None = None
     court: str | None = None
     tribunal: str | None = None
     defendant: str | None = None
@@ -46,6 +49,7 @@ class ProcessResponse(BaseModel):
     client_id: UUID
     client_name: str | None = None
     process_number: str
+    process_category: ProcessCategory = "judicial"
     court: str | None
     tribunal: str | None
     defendant: str | None
@@ -72,6 +76,7 @@ class ProcessListResponse(BaseModel):
 class ProcessListParams(BaseModel):
     search: str | None = None
     status: ProcessStatus | None = None
+    process_category: ProcessCategory | None = None
     client_id: UUID | None = None
     court: str | None = None
     tribunal: str | None = None
@@ -130,6 +135,7 @@ class ProcessDetailResponse(BaseModel):
     user_id: UUID
     client_id: UUID
     process_number: str
+    process_category: ProcessCategory = "judicial"
     court: str | None
     tribunal: str | None
     defendant: str | None

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.processes.schemas import (
+    ProcessCategory,
     ProcessCreate,
     ProcessDetailResponse,
     ProcessListParams,
@@ -23,6 +24,7 @@ router = APIRouter(
 async def list_processes(
     search: str | None = Query(None, description="Search by number, type, defendant or subject"),
     status: ProcessStatus | None = Query(None, description="Filter by status"),
+    process_category: ProcessCategory | None = Query(None, description="Filter by category"),
     client_id: UUID | None = Query(None, description="Filter by client ID"),
     court: str | None = Query(None, description="Filter by court"),
     tribunal: str | None = Query(None, description="Filter by tribunal"),
@@ -34,6 +36,7 @@ async def list_processes(
     params = ProcessListParams(
         search=search,
         status=status,
+        process_category=process_category,
         client_id=client_id,
         court=court,
         tribunal=tribunal,

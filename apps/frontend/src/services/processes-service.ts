@@ -1,6 +1,7 @@
 import { API_URL, fetchWithCredentials } from "@/lib/fetch";
 
 export type ClientRole = "author" | "defendant";
+export type ProcessCategory = "judicial" | "administrative";
 
 export interface Process {
   next_deadline: any;
@@ -9,6 +10,7 @@ export interface Process {
   client_id: string;
   client_name?: string;
   process_number: string;
+  process_category: ProcessCategory;
   court: string | null;
   tribunal: string | null;
   defendant: string | null;
@@ -34,6 +36,7 @@ export interface Process {
 export interface ProcessCreate {
   client_id: string;
   process_number: string;
+  process_category?: ProcessCategory;
   court?: string;
   tribunal?: string;
   defendant?: string;
