@@ -277,8 +277,19 @@ export default function ProcessosPage() {
                         {process.type} • {process.court}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        <span className="font-medium text-foreground">{process.client_name || process.client_id}</span> vs{' '}
-                        <span className="font-medium text-foreground">{process.defendant}</span>
+                        {process.client_role === 'defendant' ? (
+                          <>
+                            <span className="font-medium text-foreground">{process.defendant}</span>
+                            {' vs '}
+                            <span className="font-medium text-foreground">{process.client_name || process.client_id}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-medium text-foreground">{process.client_name || process.client_id}</span>
+                            {' vs '}
+                            <span className="font-medium text-foreground">{process.defendant}</span>
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>

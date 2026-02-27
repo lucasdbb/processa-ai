@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ClientSelect } from '@/components/ui/client-select'
-import { processesService, type ProcessCreate, type ProcessUpdate } from '@/services/processes-service'
+import { processesService, type ClientRole, type ProcessCreate, type ProcessUpdate } from '@/services/processes-service'
 import { PROCESS_AREAS, PROCESS_TYPES, TRIBUNALS } from '@/lib/constants'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -18,6 +18,7 @@ export interface ProcessFormData {
   client_id: string
   client_name?: string
   defendant: string
+  client_role: ClientRole
   value: number
   status: 'active' | 'pending' | 'suspended' | 'archived' | 'concluded' | 'cancelled'
   start_date?: string
@@ -68,6 +69,7 @@ const getInitialFormData = (process?: ProcessFormData, preselectedClient?: Clien
   tribunal: process?.tribunal ?? '',
   client_id: process?.client_id ?? preselectedClient?.id ?? '',
   defendant: process?.defendant ?? '',
+  client_role: process?.client_role ?? ('author' as ClientRole),
   value: numberToCurrencyDisplay(process?.value),
   status: process?.status ?? ('active' as ProcessFormData['status']),
   start_date: process?.start_date ?? '',
@@ -146,6 +148,7 @@ function ProcessFormDialogBody({
           court: formData.court || undefined,
           tribunal: formData.tribunal || undefined,
           defendant: formData.defendant || undefined,
+          client_role: formData.client_role,
           value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
           notes: formData.notes || undefined,
           start_date: formData.start_date || undefined,
@@ -162,6 +165,7 @@ function ProcessFormDialogBody({
           court: updated.court || '',
           tribunal: updated.tribunal || '',
           defendant: updated.defendant || '',
+          client_role: updated.client_role,
           value: updated.value || 0,
           start_date: updated.start_date || undefined,
           notes: updated.notes || undefined,
@@ -180,6 +184,7 @@ function ProcessFormDialogBody({
           court: formData.court || undefined,
           tribunal: formData.tribunal || undefined,
           defendant: formData.defendant || undefined,
+          client_role: formData.client_role,
           value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
           notes: formData.notes || undefined,
           start_date: formData.start_date || undefined,
@@ -197,6 +202,7 @@ function ProcessFormDialogBody({
           client_id: created.client_id,
           client_name: selectedClient?.name,
           defendant: created.defendant || '',
+          client_role: created.client_role,
           value: created.value || 0,
           status: created.status as ProcessFormData['status'],
           start_date: created.start_date || undefined,
@@ -441,11 +447,39 @@ function ProcessFormDialogBody({
 
           {/* Partes */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Parte Contraria</h3>
+            <h3 className="text-sm font-semibold text-foreground">Partes</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Meu cliente é o <span className="text-destructive">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { value: 'author', label: 'Autor / Reclamante', description: 'Quem move a ação' },
+                  { value: 'defendant', label: 'Réu / Reclamado', description: 'Quem responde à ação' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleChange('client_role', option.value)}
+                    className={cn(
+                      'flex flex-col items-start px-4 py-3 rounded-lg border-2 text-left transition-all',
+                      formData.client_role === option.value
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-border bg-background text-foreground hover:border-primary/40'
+                    )}
+                  >
+                    <span className="text-sm font-semibold">{option.label}</span>
+                    <span className="text-xs text-muted-foreground mt-0.5">{option.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Réu/Reclamado <span className="text-destructive">*</span>
+                {formData.client_role === 'author' ? 'Réu / Reclamado' : 'Autor / Reclamante'}{' '}
+                <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -455,7 +489,7 @@ function ProcessFormDialogBody({
                   'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                   errors.defendant ? 'border-destructive' : 'border-border'
                 )}
-                placeholder="Nome do réu"
+                placeholder={formData.client_role === 'author' ? 'Nome do réu ou reclamado' : 'Nome do autor ou reclamante'}
               />
               {errors.defendant && (
                 <p className="mt-1 text-xs text-destructive">{errors.defendant}</p>

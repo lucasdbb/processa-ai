@@ -1,5 +1,7 @@
 import { API_URL, fetchWithCredentials } from "@/lib/fetch";
 
+export type ClientRole = "author" | "defendant";
+
 export interface Process {
   next_deadline: any;
   id: string;
@@ -10,6 +12,7 @@ export interface Process {
   court: string | null;
   tribunal: string | null;
   defendant: string | null;
+  client_role: ClientRole;
   type: string;
   area: string | null;
   subject: string | null;
@@ -34,6 +37,7 @@ export interface ProcessCreate {
   court?: string;
   tribunal?: string;
   defendant?: string;
+  client_role?: ClientRole;
   type: string;
   area?: string;
   subject?: string;

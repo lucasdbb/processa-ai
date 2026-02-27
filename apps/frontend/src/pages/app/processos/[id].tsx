@@ -105,6 +105,7 @@ export default function ProcessoDetalhePage() {
         court: process.court || '',
         tribunal: process.tribunal || '',
         defendant: process.defendant || '',
+        client_role: process.client_role ?? 'author',
         value: process.value || 0,
         status: process.status,
         notes: process.notes || undefined,
@@ -314,23 +315,48 @@ export default function ProcessoDetalhePage() {
 
             {/* Client + Defendant inline */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">{process.client.name}</span>
-                <Link
-                  to={`/app/clientes/${process.client.id}`}
-                  className="text-xs text-primary hover:underline"
-                  title="Ver cliente"
-                >
-                  (ver perfil)
-                </Link>
-              </div>
-              {process.defendant && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span>vs</span>
-                  <Building2 className="h-4 w-4" />
-                  <span>{process.defendant}</span>
-                </div>
+              {process.client_role === 'defendant' ? (
+                <>
+                  {process.defendant && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Building2 className="h-4 w-4" />
+                      <span>{process.defendant}</span>
+                    </div>
+                  )}
+                  {process.defendant && <span className="text-muted-foreground">vs</span>}
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-foreground">{process.client.name}</span>
+                    <Link
+                      to={`/app/clientes/${process.client.id}`}
+                      className="text-xs text-primary hover:underline"
+                      title="Ver cliente"
+                    >
+                      (ver perfil)
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-foreground">{process.client.name}</span>
+                    <Link
+                      to={`/app/clientes/${process.client.id}`}
+                      className="text-xs text-primary hover:underline"
+                      title="Ver cliente"
+                    >
+                      (ver perfil)
+                    </Link>
+                  </div>
+                  {process.defendant && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>vs</span>
+                      <Building2 className="h-4 w-4" />
+                      <span>{process.defendant}</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

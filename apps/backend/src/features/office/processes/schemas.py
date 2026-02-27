@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 ProcessStatus = Literal["active", "pending", "suspended", "archived", "concluded", "cancelled"]
+ClientRole = Literal["author", "defendant"]
 
 
 class ProcessCreate(BaseModel):
@@ -14,6 +15,7 @@ class ProcessCreate(BaseModel):
     court: str | None = None
     tribunal: str | None = None
     defendant: str | None = None
+    client_role: ClientRole = "author"
     type: str = Field(..., min_length=1, max_length=255)
     area: str | None = None
     subject: str | None = None
@@ -27,6 +29,7 @@ class ProcessUpdate(BaseModel):
     court: str | None = None
     tribunal: str | None = None
     defendant: str | None = None
+    client_role: ClientRole | None = None
     type: str | None = None
     area: str | None = None
     subject: str | None = None
@@ -46,6 +49,7 @@ class ProcessResponse(BaseModel):
     court: str | None
     tribunal: str | None
     defendant: str | None
+    client_role: ClientRole = "author"
     type: str
     area: str | None
     subject: str | None
@@ -129,6 +133,7 @@ class ProcessDetailResponse(BaseModel):
     court: str | None
     tribunal: str | None
     defendant: str | None
+    client_role: ClientRole = "author"
     type: str
     area: str | None
     subject: str | None
