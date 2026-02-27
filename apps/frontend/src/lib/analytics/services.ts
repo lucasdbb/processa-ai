@@ -21,6 +21,10 @@ export class ConsoleAnalyticsService implements AnalyticsService {
   pageView(path: string) {
     console.log(`[Analytics] Page View: ${path}`);
   }
+
+  reset() {
+    console.log('[Analytics] Reset (user logged out)');
+  }
 }
 
 // Implementação Real do PostHog
@@ -62,5 +66,9 @@ export class PostHogAnalyticsService implements AnalyticsService {
     posthog.capture('$pageview', {
       $current_url: path
     });
+  }
+
+  reset() {
+    posthog.reset();
   }
 }

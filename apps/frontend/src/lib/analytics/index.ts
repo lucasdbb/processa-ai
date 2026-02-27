@@ -41,6 +41,10 @@ class Analytics {
   public pageView(path: string) {
     this.service.pageView(path);
   }
+
+  public reset() {
+    this.service.reset();
+  }
 }
 
 export const analytics = Analytics.getInstance();

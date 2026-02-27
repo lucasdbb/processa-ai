@@ -221,7 +221,8 @@ export function useAuth() {
       await supabase.auth.signOut();
       
       analytics.track('user_logged_out');
-      
+      analytics.reset();
+
       clearUser();
     } catch (error) {
       console.error("Logout failed:", error);
