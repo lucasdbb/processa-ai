@@ -127,7 +127,7 @@ export default function ProcessosPage() {
     setIsFormOpen(false)
     setEditingProcess(undefined)
     // Reload processes list
-    await fetchProcesses(search, filter, tribunalFilter, viewMode)
+    await fetchProcesses(search, filter, tribunalFilter, categoryFilter, viewMode)
   }
 
   const handleNewProcess = () => {
@@ -269,7 +269,7 @@ export default function ProcessosPage() {
                 toast.success(`Processo movido para ${PROCESS_COLUMNS[newStatus]}`)
               } catch {
                 toast.error('Erro ao atualizar status do processo')
-                void fetchProcesses(search, filter, tribunalFilter, viewMode)
+                void fetchProcesses(search, filter, tribunalFilter, categoryFilter, viewMode)
               }
             }}
             renderCard={(item, isDragging) => (
