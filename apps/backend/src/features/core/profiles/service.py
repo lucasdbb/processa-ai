@@ -180,16 +180,16 @@ class ProfilesService:
                 logger.info("Fetching user_credits...")
                 user_credits_response = (
                     self.supabase.table("user_credits")
-                    .select("user_id, subscription_available, purchased_available, total_available")
+                    .select("user_id, subscription_credits, purchased_credits")
                     .in_("user_id", user_ids)
                     .execute()
                 )
                 logger.info(f"user_credits response: {user_credits_response.data}")
                 user_credits_map = {
                     c["user_id"]: {
-                        "subscription": c["subscription_available"],
-                        "purchased": c["purchased_available"],
-                        "total": c["total_available"],
+                        "subscription": c["subscription_credits"],
+                        "purchased": c["purchased_credits"],
+                        "total": c["subscription_credits"] + c["purchased_credits"],
                     }
                     for c in (user_credits_response.data or [])
                 }

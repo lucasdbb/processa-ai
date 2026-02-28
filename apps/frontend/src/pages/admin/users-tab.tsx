@@ -35,7 +35,7 @@ interface UserListItem {
   id: string
   email: string
   name: string
-  role: 'client' | 'author' | 'admin'
+  role: 'client' | 'author' | 'admin' | 'office_client'
   status: 'active' | 'suspended' | 'deleted'
   avatar_url?: string | null
   created_at: string
@@ -49,6 +49,7 @@ const roleLabel: Record<UserListItem['role'], string> = {
   client: 'Cliente',
   author: 'Autor',
   admin: 'Admin',
+  office_client: 'Cliente / Portal',
 }
 
 const getRoleIcon = (role: UserListItem['role']) => {
@@ -57,6 +58,8 @@ const getRoleIcon = (role: UserListItem['role']) => {
       return <Shield className="w-4 h-4 text-red-600 dark:text-red-400" />
     case 'author':
       return <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+    case 'office_client':
+      return <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
     default:
       return <Users className="w-4 h-4 text-muted-foreground" />
   }
@@ -68,6 +71,8 @@ const getRoleBadgeClass = (role: UserListItem['role']) => {
       return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-900/50'
     case 'author':
       return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-900/50'
+    case 'office_client':
+      return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-900/50'
     default:
       return 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800'
   }
@@ -252,9 +257,9 @@ export default function UsersTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as roles</SelectItem>
-                <SelectItem value="user">Usuário</SelectItem>
+                <SelectItem value="client">Cliente</SelectItem>
+                <SelectItem value="office_client">Cliente / Portal</SelectItem>
                 <SelectItem value="author">Autor</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
