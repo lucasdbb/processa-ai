@@ -494,7 +494,7 @@ export default function AssinaturaPage() {
               </div>
             ) : historyData && historyData.transactions.length > 0 ? (
               <div className="rounded-md border overflow-hidden">
-                <div className="overflow-x-auto overflow-y-auto max-h-[420px]">
+                <div className="overflow-x-auto overflow-y-auto max-h-[400px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/30">
                   <Table>
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
