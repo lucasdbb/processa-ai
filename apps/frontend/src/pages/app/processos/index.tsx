@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Filter, FolderKanban, ChevronDown, Scale, Building2 } from 'lucide-react'
+import { Search, Plus, Filter, FolderKanban, ChevronDown, Scale, Building2, Handshake } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -22,28 +22,19 @@ import { PageLayout } from '@/components/layout/page-layout'
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   active: { label: 'Ativo', className: 'bg-green-500/10 text-green-600 dark:text-green-400' },
-  pending: { label: 'Pendente', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-  suspended: { label: 'Suspenso', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
   concluded: { label: 'Concluído', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  archived: { label: 'Arquivado', className: 'bg-muted text-muted-foreground' },
   cancelled: { label: 'Cancelado', className: 'bg-red-500/10 text-red-600 dark:text-red-400' },
 }
 
 const PROCESS_COLUMNS: Record<string, string> = {
   active: 'Ativos',
-  pending: 'Pendentes',
-  suspended: 'Suspensos',
   concluded: 'Concluídos',
-  archived: 'Arquivados',
   cancelled: 'Cancelados',
 }
 
 const PROCESS_COLUMN_ORDER: string[] = [
   'active',
-  'pending',
-  'suspended',
   'concluded',
-  'archived',
   'cancelled',
 ]
 
@@ -63,9 +54,10 @@ const CATEGORY_CONFIG = {
 export default function ProcessosPage() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all')
+  const [filter, setFilter] = useState<'all' | 'active' | 'concluded' | 'cancelled'>('all')
   const [tribunalFilter, setTribunalFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'judicial' | 'administrative'>('all')
+  const [partnershipFilter, setPartnershipFilter] = useState<'all' | 'partnership' | 'own'>('all')
   const [isFormOpen, setIsFormOpen] = useState(false)
 
   type EditingProcess =
@@ -79,7 +71,7 @@ export default function ProcessosPage() {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string, category: string, mode: 'list' | 'kanban') => {
+  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string, category: string, partnership: string, mode: 'list' | 'kanban') => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams()
@@ -93,6 +85,8 @@ export default function ProcessosPage() {
 
       if (tribunal !== 'all') params.set('tribunal', tribunal)
       if (category !== 'all') params.set('process_category', category)
+      if (partnership === 'partnership') params.set('is_partnership', 'true')
+      if (partnership === 'own') params.set('is_partnership', 'false')
 
       // For Kanban, we might need more items or pagination per column
       // For now, let's just increase limit for Kanban to show a good overview
@@ -116,18 +110,18 @@ export default function ProcessosPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      void fetchProcesses(search, filter, tribunalFilter, categoryFilter, viewMode)
+      void fetchProcesses(search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode)
     }, search ? 300 : 0)
 
     return () => clearTimeout(timeout)
-  }, [search, filter, tribunalFilter, categoryFilter, viewMode, fetchProcesses])
+  }, [search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode, fetchProcesses])
 
   const handleSaveProcess = async (processData: SaveProcessPayload) => {
     console.log('Salvando processo:', processData)
     setIsFormOpen(false)
     setEditingProcess(undefined)
     // Reload processes list
-    await fetchProcesses(search, filter, tribunalFilter, categoryFilter, viewMode)
+    await fetchProcesses(search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode)
   }
 
   const handleNewProcess = () => {
@@ -153,89 +147,123 @@ export default function ProcessosPage() {
         <button
           onClick={handleNewProcess}
           data-tour="new-process-btn"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Novo Processo</span>
+          Novo Processo
         </button>
+      }
+      primaryFilter={
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por numero, cliente ou tipo..."
+            className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+          />
+        </div>
       }
       filters={
         <>
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por numero, cliente ou tipo..."
-              className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            />
-          </div>
-          <div data-tour="process-filters" className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1 text-xs">
-                  <Filter className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">
-                    {tribunalFilter === 'all'
-                      ? 'Todos tribunais'
-                      : tribunalFilter}
-                  </span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px] max-h-[300px] overflow-y-auto">
-                <DropdownMenuItem onClick={() => setTribunalFilter('all')}>
-                  Todos tribunais
-                </DropdownMenuItem>
-                {TRIBUNALS.map((tribunal) => (
-                  <DropdownMenuItem key={tribunal} onClick={() => setTribunalFilter(tribunal)}>
-                    {tribunal}
+            {/* Tribunal */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="text-xs text-muted-foreground font-medium sm:hidden">Tribunal</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-1 text-xs w-full sm:w-auto justify-between sm:justify-center">
+                    <span className="flex items-center gap-1">
+                      <Filter className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate max-w-[140px]">
+                        {tribunalFilter === 'all' ? 'Todos tribunais' : tribunalFilter}
+                      </span>
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px] max-h-[300px] overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setTribunalFilter('all')}>
+                    Todos tribunais
                   </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Filtro de categoria */}
-            <div className="flex rounded-md border border-border overflow-hidden">
-              {(['all', 'judicial', 'administrative'] as const).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategoryFilter(c)}
-                  className={cn(
-                    'px-2.5 py-1.5 text-xs font-medium transition-colors',
-                    categoryFilter === c
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background text-muted-foreground hover:bg-muted'
-                  )}
-                >
-                  {c === 'all' ? 'Todos' : c === 'judicial' ? 'Judicial' : 'Administrativo'}
-                </button>
-              ))}
+                  {TRIBUNALS.map((tribunal) => (
+                    <DropdownMenuItem key={tribunal} onClick={() => setTribunalFilter(tribunal)}>
+                      {tribunal}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
+            {/* Categoria */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="text-xs text-muted-foreground font-medium sm:hidden">Categoria</span>
+              <div className="flex rounded-md border border-border overflow-hidden w-full sm:w-auto">
+                {(['all', 'judicial', 'administrative'] as const).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategoryFilter(c)}
+                    className={cn(
+                      'flex-1 sm:flex-none px-2.5 py-1.5 text-xs font-medium transition-colors',
+                      categoryFilter === c
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    )}
+                  >
+                    {c === 'all' ? 'Todos' : c === 'judicial' ? 'Judicial' : 'Administrativo'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Parceria */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="text-xs text-muted-foreground font-medium sm:hidden">Parceria</span>
+              <div className="flex rounded-md border border-border overflow-hidden w-full sm:w-auto">
+                {([
+                  { value: 'all', label: 'Todos' },
+                  { value: 'partnership', label: 'Parcerias' },
+                  { value: 'own', label: 'Próprios' },
+                ] as const).map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setPartnershipFilter(f.value)}
+                    className={cn(
+                      'flex-1 sm:flex-none px-2.5 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1',
+                      partnershipFilter === f.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    )}
+                  >
+                    {f.value === 'partnership' && <Handshake className="h-3 w-3" />}
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status — só na view lista */}
             {viewMode === 'list' && (
-              <>
-                <div className="w-px h-6 bg-border mx-1" />
-                <div className="flex rounded-md border border-border overflow-hidden">
-                  {(['all', 'active', 'archived'] as const).map((f) => (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+                <span className="text-xs text-muted-foreground font-medium sm:hidden">Status</span>
+                <div className="flex rounded-md border border-border overflow-hidden w-full sm:w-auto">
+                  {(['all', 'active', 'concluded', 'cancelled'] as const).map((f) => (
                     <button
                       key={f}
                       onClick={() => setFilter(f)}
                       className={cn(
-                        'px-2.5 py-1.5 text-xs font-medium transition-colors',
+                        'flex-1 sm:flex-none px-2.5 py-1.5 text-xs font-medium transition-colors',
                         filter === f
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-background text-muted-foreground hover:bg-muted'
                       )}
                     >
-                      {f === 'all' ? 'Todos' : f === 'active' ? 'Ativos' : 'Arquivados'}
+                      {f === 'all' ? 'Todos' : STATUS_CONFIG[f].label}
                     </button>
                   ))}
                 </div>
-              </>
+              </div>
             )}
-          </div>
         </>
       }
     >
@@ -269,7 +297,7 @@ export default function ProcessosPage() {
                 toast.success(`Processo movido para ${PROCESS_COLUMNS[newStatus]}`)
               } catch {
                 toast.error('Erro ao atualizar status do processo')
-                void fetchProcesses(search, filter, tribunalFilter, categoryFilter, viewMode)
+                void fetchProcesses(search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode)
               }
             }}
             renderCard={(item, isDragging) => (
@@ -278,9 +306,9 @@ export default function ProcessosPage() {
           />
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-2">
           {processes.map((process) => (
-            <Link key={process.id} to={`/app/processos/${process.id}`}>
+            <Link key={process.id} to={`/app/processos/${process.id}`} className="block">
               <div className="group p-4 bg-card border border-border rounded-lg hover:shadow-md hover:border-primary/50 transition-all duration-200">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -288,35 +316,47 @@ export default function ProcessosPage() {
                       <FolderKanban className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 flex-wrap mb-1">
-                        <h3 className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                      {/* Linha 1: número + status */}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h3 className="font-mono text-base font-bold text-foreground group-hover:text-primary transition-colors truncate">
                           {process.process_number}
                         </h3>
                         <span
                           className={cn(
-                            'px-2.5 py-0.5 text-xs font-medium rounded-full',
+                            'px-2 py-0.5 text-xs font-medium rounded-full shrink-0',
                             (STATUS_CONFIG[process.status] || STATUS_CONFIG['active']).className
                           )}
                         >
                           {(STATUS_CONFIG[process.status] || STATUS_CONFIG['active']).label}
                         </span>
+                      </div>
+
+                      {/* Linha 2: valor · natureza · área · parceria (+ categoria em desktop) */}
+                      <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground mb-0.5">
+                        {(process.value ?? 0) > 0 && (
+                          <span className="font-semibold text-foreground">
+                            {formatCurrency(process.value || 0)}
+                          </span>
+                        )}
+                        {process.nature && <span>{process.nature}</span>}
+                        {process.area && <span>{process.area}</span>}
+                        {process.is_partnership && (
+                          <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                            <Handshake className="h-3 w-3" />
+                            Parceria {process.partner_percentage}%
+                          </span>
+                        )}
                         {(() => {
                           const cat = CATEGORY_CONFIG[process.process_category] ?? CATEGORY_CONFIG.judicial
                           return (
-                            <span className={cn('px-2.5 py-0.5 text-xs font-medium rounded-full', cat.className)}>
+                            <span className={cn('hidden sm:inline px-2 py-0.5 rounded-full font-medium', cat.className)}>
                               {cat.label}
                             </span>
                           )
                         })()}
-                        {process.area && (
-                          <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">
-                            {process.area}
-                          </span>
-                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground truncate mb-0.5">
-                        {process.type} • {process.court}
-                      </p>
+
+                      {/* Linha 3: partes */}
                       <p className="text-sm text-muted-foreground truncate">
                         {process.client_role === 'defendant' ? (
                           <>
@@ -334,19 +374,14 @@ export default function ProcessosPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 shrink-0">
-                    {process.next_deadline && (
+                  {/* Prazo — apenas desktop */}
+                  {process.next_deadline && (
+                    <div className="hidden sm:flex items-center shrink-0">
                       <div className="px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-md text-xs font-semibold">
                         {process.next_deadline}
                       </div>
-                    )}
-                    <div className="text-right">
-                      <p className="text-base font-bold text-foreground">
-                        {formatCurrency(process.value || 0)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Valor</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </Link>
@@ -355,8 +390,18 @@ export default function ProcessosPage() {
       )}
 
       {/* Pagination placeholder */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
         <span>Mostrando {processes.length} de {total} processos</span>
+      </div>
+
+      {/* Floating Action Button — apenas mobile */}
+      <div className="fixed bottom-22 right-4 z-50 sm:hidden">
+        <button
+          onClick={handleNewProcess}
+          className="flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
       </div>
 
       {/* Process Form Dialog */}

@@ -3,9 +3,9 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-ProcessStatus = Literal["active", "pending", "suspended", "archived", "concluded", "cancelled"]
+ProcessStatus = Literal["active", "concluded", "cancelled"]
 ClientRole = Literal["author", "defendant"]
 ProcessCategory = Literal["judicial", "administrative"]
 
@@ -24,6 +24,18 @@ class ProcessCreate(BaseModel):
     value: Decimal | None = None
     notes: str | None = None
     start_date: date | None = None
+    is_partnership: bool = False
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = Field(None, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validate_partnership_fields(self) -> "ProcessCreate":
+        if self.is_partnership:
+            if not self.partner_lawyer:
+                raise ValueError("Advogado(a) parceiro(a) é obrigatório quando é uma parceria")
+            if self.partner_percentage is None:
+                raise ValueError("Percentual do ganho é obrigatório quando é uma parceria")
+        return self
 
 
 class ProcessUpdate(BaseModel):
@@ -41,6 +53,9 @@ class ProcessUpdate(BaseModel):
     notes: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    is_partnership: bool | None = None
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = Field(None, ge=0, le=100)
 
 
 class ProcessResponse(BaseModel):
@@ -62,6 +77,9 @@ class ProcessResponse(BaseModel):
     notes: str | None
     start_date: date | None
     end_date: date | None
+    is_partnership: bool = False
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -80,6 +98,7 @@ class ProcessListParams(BaseModel):
     client_id: UUID | None = None
     court: str | None = None
     tribunal: str | None = None
+    is_partnership: bool | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
 
@@ -148,6 +167,9 @@ class ProcessDetailResponse(BaseModel):
     notes: str | None
     start_date: date | None
     end_date: date | None
+    is_partnership: bool = False
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = None
     created_at: datetime
     updated_at: datetime
 

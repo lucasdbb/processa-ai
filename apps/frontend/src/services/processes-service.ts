@@ -19,16 +19,13 @@ export interface Process {
   area: string | null;
   subject: string | null;
   value: number | null;
-  status:
-    | "active"
-    | "pending"
-    | "suspended"
-    | "archived"
-    | "concluded"
-    | "cancelled";
+  status: "active" | "concluded" | "cancelled";
   notes: string | null;
   start_date: string | null;
   end_date: string | null;
+  is_partnership: boolean;
+  partner_lawyer: string | null;
+  partner_percentage: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,32 +44,24 @@ export interface ProcessCreate {
   value?: number | null;
   notes?: string;
   start_date?: string;
+  is_partnership?: boolean;
+  partner_lawyer?: string;
+  partner_percentage?: number;
 }
 
 export interface ProcessUpdate extends Partial<
   Omit<ProcessCreate, "client_id">
 > {
-  status?:
-    | "active"
-    | "pending"
-    | "suspended"
-    | "archived"
-    | "concluded"
-    | "cancelled";
+  status?: "active" | "concluded" | "cancelled";
   end_date?: string;
 }
 
 export interface ProcessListParams {
   search?: string;
-  status?:
-    | "active"
-    | "pending"
-    | "suspended"
-    | "archived"
-    | "concluded"
-    | "cancelled";
+  status?: "active" | "concluded" | "cancelled";
   client_id?: string;
   tribunal?: string;
+  is_partnership?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -140,6 +129,7 @@ export const processesService = {
     if (params?.status) searchParams.set("status", params.status);
     if (params?.client_id) searchParams.set("client_id", params.client_id);
     if (params?.tribunal) searchParams.set("tribunal", params.tribunal);
+    if (params?.is_partnership !== undefined) searchParams.set("is_partnership", params.is_partnership.toString());
     if (params?.limit) searchParams.set("limit", params.limit.toString());
     if (params?.offset) searchParams.set("offset", params.offset.toString());
 

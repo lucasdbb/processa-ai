@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
-import { AlertTriangle, CalendarClock, CalendarDays, List } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarDays, ChevronDown, List, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PrazosCalendar, type CalendarEvent as PrazosCalendarEvent } from '@/components/calendar/prazos-calendar'
 import { CalendarEventFormDialog } from '@/components/forms/calendar-event-form-dialog'
@@ -28,12 +28,18 @@ export default function CalendarioPage() {
   const [googleStatus, setGoogleStatus] = useState<GoogleSyncStatus | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const summaryDropdownRef = useRef<HTMLDivElement>(null)
+  const [summaryDropdownOpen, setSummaryDropdownOpen] = useState(false)
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
 
   // Prazo events for summary cards + list
   const [prazoEvents, setPrazoEvents] = useState<CalendarEvent[]>([])
   const [isPrazosLoading, setIsPrazosLoading] = useState(false)
+
+  // Quick Stats sidebar
+  const [summaryPeriod, setSummaryPeriod] = useState<'today' | 'month' | 'year'>('today')
+  const [summaryEvents, setSummaryEvents] = useState<CalendarEvent[]>([])
 
   // Sync overlay state
   const [syncOverlay, setSyncOverlay] = useState<{
@@ -65,6 +71,22 @@ export default function CalendarioPage() {
     }
   }, [])
 
+  const loadSummaryEvents = useCallback(async (period: 'month' | 'year') => {
+    try {
+      const now = new Date()
+      const start = period === 'month'
+        ? format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+        : format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd')
+      const end = period === 'month'
+        ? format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+        : format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd')
+      const data = await calendarService.listEvents(start, end)
+      setSummaryEvents(data.events)
+    } catch {
+      setSummaryEvents([])
+    }
+  }, [])
+
   const loadPrazoEvents = useCallback(async () => {
     setIsPrazosLoading(true)
     try {
@@ -90,11 +112,20 @@ export default function CalendarioPage() {
     void loadPrazoEvents()
   }, [loadGoogleStatus, loadTodayEvents, loadPrazoEvents])
 
-  // Close dropdown on outside click
+  useEffect(() => {
+    if (summaryPeriod !== 'today') {
+      void loadSummaryEvents(summaryPeriod)
+    }
+  }, [summaryPeriod, loadSummaryEvents])
+
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowGoogleDropdown(false)
+      }
+      if (summaryDropdownRef.current && !summaryDropdownRef.current.contains(e.target as Node)) {
+        setSummaryDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -586,7 +617,7 @@ export default function CalendarioPage() {
 
           <button
             onClick={handleNewEvent}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-md text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -703,19 +734,79 @@ export default function CalendarioPage() {
 
               {/* Quick Stats */}
               <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">Resumo</h3>
-                <div className="space-y-2">
-                  {(['audiencia', 'prazo', 'reuniao'] as const).map((type) => (
-                    <div key={type} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className={cn('w-2 h-2 rounded-full', getEventTypeColor(type))} />
-                        <span className="text-muted-foreground">{getEventTypeLabel(type)}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">Resumo</h3>
+
+                  {/* Desktop: botões */}
+                  <div className="hidden sm:flex rounded-md border border-border overflow-hidden">
+                    {([
+                      { value: 'today', label: 'Hoje' },
+                      { value: 'month', label: 'Mês' },
+                      { value: 'year', label: 'Ano' },
+                    ] as const).map((p) => (
+                      <button
+                        key={p.value}
+                        onClick={() => setSummaryPeriod(p.value)}
+                        className={cn(
+                          'px-2 py-0.5 text-[11px] font-medium transition-colors',
+                          summaryPeriod === p.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-background text-muted-foreground hover:bg-muted'
+                        )}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Mobile: dropdown */}
+                  <div className="relative sm:hidden" ref={summaryDropdownRef}>
+                    <button
+                      onClick={() => setSummaryDropdownOpen((v) => !v)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors"
+                    >
+                      {summaryPeriod === 'today' ? 'Hoje' : summaryPeriod === 'month' ? 'Mês' : 'Ano'}
+                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                    {summaryDropdownOpen && (
+                      <div className="absolute right-0 top-full mt-1 w-24 bg-popover border border-border rounded-lg shadow-lg z-50 py-1">
+                        {([
+                          { value: 'today', label: 'Hoje' },
+                          { value: 'month', label: 'Mês' },
+                          { value: 'year', label: 'Ano' },
+                        ] as const).map((p) => (
+                          <button
+                            key={p.value}
+                            onClick={() => { setSummaryPeriod(p.value); setSummaryDropdownOpen(false) }}
+                            className={cn(
+                              'w-full px-3 py-2 text-left text-sm transition-colors',
+                              summaryPeriod === p.value
+                                ? 'text-primary font-semibold bg-primary/5'
+                                : 'text-foreground hover:bg-accent'
+                            )}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
                       </div>
-                      <span className="font-medium text-foreground">
-                        {todayEvents.filter((e) => e.event_type === type).length}
-                      </span>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {(['audiencia', 'prazo', 'reuniao'] as const).map((type) => {
+                    const source = summaryPeriod === 'today' ? todayEvents : summaryEvents
+                    return (
+                      <div key={type} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className={cn('w-2 h-2 rounded-full', getEventTypeColor(type))} />
+                          <span className="text-muted-foreground">{getEventTypeLabel(type)}</span>
+                        </div>
+                        <span className="font-medium text-foreground">
+                          {source.filter((e) => e.event_type === type).length}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -807,6 +898,16 @@ export default function CalendarioPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Floating Action Button — apenas mobile */}
+      <div className="fixed bottom-22 right-4 z-50 sm:hidden">
+        <button
+          onClick={handleNewEvent}
+          className="flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
 
       {/* Event Form Dialog */}
       <CalendarEventFormDialog

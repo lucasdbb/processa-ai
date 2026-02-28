@@ -63,6 +63,13 @@ export function ServiceCard({ service, isDragging }: ServiceCardProps) {
         {categoryLabel}
       </p>
 
+      {/* Badge de parceria */}
+      {service.is_partnership && (
+        <p className="text-xs font-medium text-purple-600 dark:text-purple-400 pl-3.5">
+          Parceria · {service.partner_percentage}% escritório
+        </p>
+      )}
+
       {/* Divisor */}
       <div className="border-t border-border" />
 

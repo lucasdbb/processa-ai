@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Plus, Mail, Phone, MapPin, User } from 'lucide-react'
+import { Search, Plus, Mail, Phone, MapPin, User, SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { phoneMask } from '@/lib/masks'
+import { phoneMask, cpfMask, cnpjMask, removeDocumentMask } from '@/lib/masks'
 import { clientsService, type Client } from '@/services/clients-service'
 import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -11,7 +11,8 @@ import { ClientFormDialog } from '@/components/forms/client-form-dialog'
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'archived'>('all')
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [showClientDialog, setShowClientDialog] = useState(false)
 
   const [clients, setClients] = useState<Client[]>([])
@@ -25,14 +26,14 @@ export default function ClientesPage() {
         limit: number
         offset: number
         search?: string
-        status?: 'active' | 'inactive' | 'archived'
+        status?: 'active' | 'inactive'
       } = {
         limit: 50,
         offset: 0,
       }
-      
+
       if (searchQuery.trim()) params.search = searchQuery.trim()
-      if (statusFilter !== 'all') params.status = statusFilter as 'active' | 'inactive' | 'archived'
+      if (statusFilter !== 'all') params.status = statusFilter as 'active' | 'inactive'
 
       const data = await clientsService.list(params)
       setClients(data.clients)
@@ -76,7 +77,7 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -86,7 +87,7 @@ export default function ClientesPage() {
         <button
           onClick={() => setShowClientDialog(true)}
           data-tour="new-client-btn"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
         >
           <Plus className="h-4 w-4" />
           Novo Cliente
@@ -94,38 +95,64 @@ export default function ClientesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div data-tour="search-clients" className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome, CPF ou email..."
-            className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-          />
-        </div>
+      <div className="space-y-2">
+        {/* Busca + botão Filtros */}
         <div className="flex items-center gap-2">
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {(['all', 'active', 'inactive', 'archived'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  'px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  filter === f
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-background text-muted-foreground hover:bg-muted'
-                )}
-              >
-                {f === 'all' ? 'Todos' : f === 'active' ? 'Ativos' : f === 'inactive' ? 'Inativos' : 'Arquivados'}
-              </button>
-            ))}
+          <div data-tour="search-clients" className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome, CPF ou email..."
+              className="w-full pl-9 pr-3 py-2 bg-muted/50 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            />
+          </div>
+          <button
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-2 rounded-md border text-sm font-medium transition-colors shrink-0',
+              filtersOpen
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-background text-muted-foreground border-border hover:bg-muted'
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtros
+          </button>
+        </div>
+
+        {/* Filtros secundários — painel colapsável */}
+        <div
+          className={cn(
+            'rounded-lg border border-border bg-card p-3',
+            filtersOpen ? 'block' : 'hidden'
+          )}
+        >
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground font-medium">Status</span>
+            <div className="flex rounded-md border border-border overflow-hidden w-full">
+              {(['all', 'active', 'inactive'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    'flex-1 px-2.5 py-1.5 text-xs font-medium transition-colors',
+                    filter === f
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  {f === 'all' ? 'Todos' : f === 'active' ? 'Ativos' : 'Inativos'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Client List */}
+      <div>
       {isLoading ? (
         <ClientListSkeleton />
       ) : clients.length === 0 ? (
@@ -140,9 +167,9 @@ export default function ClientesPage() {
           action={!search ? { label: 'Novo Cliente', onClick: () => setShowClientDialog(true) } : undefined}
         />
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-2">
           {clients.map((client) => (
-            <Link key={client.id} to={`/app/clientes/${client.id}`}>
+            <Link key={client.id} to={`/app/clientes/${client.id}`} className="block">
               <div className="group p-4 bg-card border border-border rounded-lg hover:shadow-md hover:border-primary/50 transition-all duration-200">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm font-semibold shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
@@ -177,34 +204,37 @@ export default function ClientesPage() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      {(client.phone || client.email) ? (
-                        <div className="flex items-center gap-3 truncate">
-                          {client.phone && (
-                            <span className="flex items-center gap-1.5">
-                              <Phone className="h-3 w-3" />
-                              {phoneMask(client.phone)}
-                            </span>
-                          )}
-                          {client.email && (
-                            <span className="flex items-center gap-1.5 truncate">
-                              <Mail className="h-3 w-3" />
-                              {client.email}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="italic opacity-50">Sem contato cadastrado</span>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                      {/* Telefone — visível em mobile */}
+                      {client.phone && (
+                        <span className="flex items-center gap-1.5">
+                          <Phone className="h-3 w-3" />
+                          {phoneMask(client.phone)}
+                        </span>
                       )}
-                      
+                      {/* CPF/CNPJ — visível em mobile */}
+                      {client.cpf_cnpj && (
+                        <span className="flex items-center gap-1.5">
+                          CPF/CNPJ: {removeDocumentMask(client.cpf_cnpj).length <= 11 ? cpfMask(client.cpf_cnpj) : cnpjMask(client.cpf_cnpj)}
+                        </span>
+                      )}
+                      {/* Email — só em sm+ */}
+                      {client.email && (
+                        <span className="hidden sm:flex items-center gap-1.5 truncate">
+                          <Mail className="h-3 w-3" />
+                          {client.email}
+                        </span>
+                      )}
+                      {/* Cidade — só em sm+ */}
                       {client.city && (
-                        <>
-                          <span className="w-1 h-1 rounded-full bg-border shrink-0" />
-                          <span className="flex items-center gap-1.5 truncate">
-                            <MapPin className="h-3 w-3" />
-                            {client.city}{client.state ? `, ${client.state}` : ''}
-                          </span>
-                        </>
+                        <span className="hidden sm:flex items-center gap-1.5 truncate">
+                          <MapPin className="h-3 w-3" />
+                          {client.city}{client.state ? `, ${client.state}` : ''}
+                        </span>
+                      )}
+                      {/* Fallback se não tiver nenhum contato */}
+                      {!client.phone && !client.cpf_cnpj && !client.email && (
+                        <span className="italic opacity-50">Sem contato cadastrado</span>
                       )}
                     </div>
                   </div>
@@ -216,8 +246,19 @@ export default function ClientesPage() {
       )}
 
       {/* Pagination placeholder */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
         <span>Mostrando {clients.length} de {total} clientes</span>
+      </div>
+      </div>
+
+      {/* Floating Action Button — apenas mobile */}
+      <div className="fixed bottom-22 right-4 z-50 sm:hidden">
+        <button
+          onClick={() => setShowClientDialog(true)}
+          className="flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
       </div>
 
       {/* Client Form Dialog */}

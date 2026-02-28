@@ -21,9 +21,12 @@ export interface ProcessFormData {
   defendant: string
   client_role: ClientRole
   value: number
-  status: 'active' | 'pending' | 'suspended' | 'archived' | 'concluded' | 'cancelled'
+  status: 'active' | 'concluded' | 'cancelled'
   start_date?: string
   notes?: string
+  is_partnership: boolean
+  partner_lawyer?: string
+  partner_percentage?: number
 }
 
 interface ProcessFormDialogProps {
@@ -76,6 +79,9 @@ const getInitialFormData = (process?: ProcessFormData, preselectedClient?: Clien
   status: process?.status ?? ('active' as ProcessFormData['status']),
   start_date: process?.start_date ?? '',
   notes: process?.notes ?? '',
+  is_partnership: process?.is_partnership ?? false,
+  partner_lawyer: process?.partner_lawyer ?? '',
+  partner_percentage: process?.partner_percentage?.toString() ?? '',
 })
 
 function ProcessFormDialogBody({
@@ -130,6 +136,16 @@ function ProcessFormDialogBody({
       newErrors.defendant = 'Parte contrária é obrigatória'
     }
 
+    if (formData.is_partnership) {
+      if (!formData.partner_lawyer.trim()) {
+        newErrors.partner_lawyer = 'Advogado(a) parceiro(a) é obrigatório'
+      }
+      const pct = parseFloat(formData.partner_percentage)
+      if (!formData.partner_percentage || isNaN(pct) || pct < 0 || pct > 100) {
+        newErrors.partner_percentage = 'Informe um percentual válido entre 0 e 100'
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -159,6 +175,11 @@ function ProcessFormDialogBody({
           notes: formData.notes || undefined,
           start_date: formData.start_date || undefined,
           status: formData.status,
+          is_partnership: formData.is_partnership,
+          partner_lawyer: formData.is_partnership ? formData.partner_lawyer || undefined : undefined,
+          partner_percentage: formData.is_partnership && formData.partner_percentage
+            ? parseFloat(formData.partner_percentage)
+            : undefined,
         }
 
         const updated = await processesService.update(process.id, payload)
@@ -176,6 +197,9 @@ function ProcessFormDialogBody({
           value: updated.value || 0,
           start_date: updated.start_date || undefined,
           notes: updated.notes || undefined,
+          is_partnership: updated.is_partnership ?? false,
+          partner_lawyer: updated.partner_lawyer ?? undefined,
+          partner_percentage: updated.partner_percentage ?? undefined,
         }
         
         toast.success('Processo atualizado com sucesso!')
@@ -196,6 +220,11 @@ function ProcessFormDialogBody({
           value: formData.value ? parseCurrencyToNumber(formData.value) : undefined,
           notes: formData.notes || undefined,
           start_date: formData.start_date || undefined,
+          is_partnership: formData.is_partnership,
+          partner_lawyer: formData.is_partnership ? formData.partner_lawyer || undefined : undefined,
+          partner_percentage: formData.is_partnership && formData.partner_percentage
+            ? parseFloat(formData.partner_percentage)
+            : undefined,
         }
 
         const created = await processesService.create(payload)
@@ -216,6 +245,9 @@ function ProcessFormDialogBody({
           status: created.status as ProcessFormData['status'],
           start_date: created.start_date || undefined,
           notes: created.notes || undefined,
+          is_partnership: created.is_partnership ?? false,
+          partner_lawyer: created.partner_lawyer ?? undefined,
+          partner_percentage: created.partner_percentage ?? undefined,
         }
 
         toast.success('Processo criado com sucesso!')
@@ -498,19 +530,18 @@ function ProcessFormDialogBody({
               </div>
             </div>
 
-            {isEditing && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleChange('status', e.target.value as ProcessFormData['status'])}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  <option value="active">Ativo</option>
-                  <option value="archived">Arquivado</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleChange('status', e.target.value as ProcessFormData['status'])}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="active">Ativo</option>
+                <option value="concluded">Concluído</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
+            </div>
           </div>
 
           {/* Partes */}
@@ -563,6 +594,83 @@ function ProcessFormDialogBody({
                 <p className="mt-1 text-xs text-destructive">{errors.defendant}</p>
               )}
             </div>
+          </div>
+
+          {/* Parceria */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Parceria</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Este processo é conduzido em parceria com outro advogado(a)?</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formData.is_partnership}
+                onClick={() => {
+                  setFormData((prev) => ({ ...prev, is_partnership: !prev.is_partnership }))
+                  if (errors.partner_lawyer || errors.partner_percentage) {
+                    setErrors((prev) => ({ ...prev, partner_lawyer: '', partner_percentage: '' }))
+                  }
+                }}
+                className={cn(
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                  formData.is_partnership ? 'bg-primary' : 'bg-muted-foreground/30'
+                )}
+              >
+                <span
+                  className={cn(
+                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                    formData.is_partnership ? 'translate-x-6' : 'translate-x-1'
+                  )}
+                />
+              </button>
+            </div>
+
+            {formData.is_partnership && (
+              <div className="space-y-4 pl-0 border-l-2 border-purple-500/30 pl-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Advogado(a) Parceiro(a) <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.partner_lawyer}
+                    onChange={(e) => handleChange('partner_lawyer', e.target.value)}
+                    className={cn(
+                      'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                      errors.partner_lawyer ? 'border-destructive' : 'border-border'
+                    )}
+                    placeholder="Nome ou OAB do advogado(a) parceiro(a)"
+                  />
+                  {errors.partner_lawyer && <p className="mt-1 text-xs text-destructive">{errors.partner_lawyer}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                    % do Ganho do Escritório <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={formData.partner_percentage}
+                      onChange={(e) => handleChange('partner_percentage', e.target.value)}
+                      className={cn(
+                        'w-full pr-10 px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                        errors.partner_percentage ? 'border-destructive' : 'border-border'
+                      )}
+                      placeholder="Ex: 70"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Percentual dos honorários que fica com o escritório</p>
+                  {errors.partner_percentage && <p className="mt-1 text-xs text-destructive">{errors.partner_percentage}</p>}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Descricao */}

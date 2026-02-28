@@ -59,6 +59,10 @@ class ProcessesService:
             where_conditions.append("p.process_category = %s")
             query_params.append(params.process_category)
 
+        if params.is_partnership is not None:
+            where_conditions.append("p.is_partnership = %s")
+            query_params.append(params.is_partnership)
+
         where_clause = " AND ".join(where_conditions)
 
         async with pool.connection() as conn:
@@ -124,9 +128,10 @@ class ProcessesService:
                     """
                     INSERT INTO office_api.processes (
                         user_id, client_id, process_number, process_category, court, tribunal,
-                        defendant, client_role, type, area, subject, value, status, notes, start_date
+                        defendant, client_role, type, area, subject, value, status, notes, start_date,
+                        is_partnership, partner_lawyer, partner_percentage
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s, %s, %s, %s)
                     RETURNING *
                     """,
                     (
@@ -144,6 +149,9 @@ class ProcessesService:
                         data.value,
                         data.notes,
                         data.start_date,
+                        data.is_partnership,
+                        data.partner_lawyer,
+                        data.partner_percentage,
                     ),
                 )
                 row = await cur.fetchone()
@@ -155,7 +163,7 @@ class ProcessesService:
         """Update an existing process."""
         pool = await get_pool()
 
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None or k == "is_partnership"}
         if not update_data:
             return await self.get_process(user_id, process_id)
 

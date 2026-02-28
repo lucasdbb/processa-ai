@@ -25,6 +25,9 @@ export interface Service {
   value: number | null;
   paid_amount: number;
   notes: string | null;
+  is_partnership: boolean;
+  partner_lawyer: string | null;
+  partner_percentage: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +38,9 @@ export interface ServiceCreate {
   category: ServiceCategory;
   value?: number | null;
   notes?: string | null;
+  is_partnership?: boolean;
+  partner_lawyer?: string | null;
+  partner_percentage?: number | null;
 }
 
 export interface ServiceUpdate {
@@ -43,6 +49,9 @@ export interface ServiceUpdate {
   status?: ServiceStatus;
   value?: number | null;
   notes?: string | null;
+  is_partnership?: boolean;
+  partner_lawyer?: string | null;
+  partner_percentage?: number | null;
 }
 
 export interface ServiceSummary {
@@ -88,12 +97,14 @@ export const servicesService = {
     category?: ServiceCategory,
     status?: ServiceStatus,
     search?: string,
+    isPartnership?: boolean,
   ): Promise<ServicesListResponse> {
     const params = new URLSearchParams();
     if (clientId) params.append("client_id", clientId);
     if (category) params.append("category", category);
     if (status) params.append("status", status);
     if (search) params.append("search", search);
+    if (isPartnership !== undefined) params.append("is_partnership", isPartnership.toString());
 
     const url = `${API_URL}/office/services${params.toString() ? `?${params.toString()}` : ""}`;
     const response = await fetchWithCredentials(url, {

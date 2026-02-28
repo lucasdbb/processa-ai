@@ -49,6 +49,10 @@ class ServicesService:
             where_conditions.append("s.status = %s")
             query_params.append(params.status)
 
+        if params.is_partnership is not None:
+            where_conditions.append("s.is_partnership = %s")
+            query_params.append(params.is_partnership)
+
         where_clause = " AND ".join(where_conditions)
 
         async with pool.connection() as conn:
@@ -178,9 +182,10 @@ class ServicesService:
                     """
                     INSERT INTO office_api.services (
                         user_id, client_id, name, category, status,
-                        value, paid_amount, notes
+                        value, paid_amount, notes,
+                        is_partnership, partner_lawyer, partner_percentage
                     )
-                    VALUES (%s, %s, %s, %s, 'active', %s, 0, %s)
+                    VALUES (%s, %s, %s, %s, 'active', %s, 0, %s, %s, %s, %s)
                     RETURNING *
                     """,
                     (
@@ -190,6 +195,9 @@ class ServicesService:
                         data.category,
                         data.value,
                         data.notes,
+                        data.is_partnership,
+                        data.partner_lawyer,
+                        data.partner_percentage,
                     ),
                 )
                 row = await cur.fetchone()
@@ -201,7 +209,7 @@ class ServicesService:
         """Update an existing service."""
         pool = await get_pool()
 
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None or k == "is_partnership"}
         if not update_data:
             return await self.get_service(user_id, service_id)
 

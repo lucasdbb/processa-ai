@@ -71,7 +71,9 @@ export default function ClienteDetalhePage() {
   const [isInviting, setIsInviting] = useState(false)
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [showFabMenu, setShowFabMenu] = useState(false)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
+  const fabMenuRef = useRef<HTMLDivElement>(null)
 
   const [client, setClient] = useState<ClientDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -146,6 +148,9 @@ export default function ClienteDetalhePage() {
     const handleClickOutside = (e: MouseEvent) => {
       if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
         setShowActionsMenu(false)
+      }
+      if (fabMenuRef.current && !fabMenuRef.current.contains(e.target as Node)) {
+        setShowFabMenu(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -594,19 +599,22 @@ export default function ClienteDetalhePage() {
   return (
     <div className="space-y-4">
       {/* Client Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 p-4 rounded-lg border border-border bg-card">
-        <div className="flex items-start gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarFallback className="bg-slate-900 text-white text-lg">
+      <div className="p-4 rounded-lg border border-border bg-card">
+        {/* Top row: avatar + nome/status + botão 3 pontos (sempre na mesma linha) */}
+        <div className="flex items-start gap-3 mb-3">
+          {/* Avatar — visível em todos os tamanhos, ao lado do título */}
+          <Avatar className="h-12 w-12 shrink-0">
+            <AvatarFallback className="bg-slate-900 text-white text-base">
               {getInitials(client.name)}
             </AvatarFallback>
           </Avatar>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-foreground truncate">{client.name}</h1>
               <span
                 className={cn(
-                  'px-2.5 py-1 rounded-full text-xs font-semibold uppercase',
+                  'shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase',
                   client.status === 'active'
                     ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                     : 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
@@ -617,7 +625,7 @@ export default function ClienteDetalhePage() {
               {portalStatus && portalStatus !== 'not_invited' && (
                 <span
                   className={cn(
-                    'px-2.5 py-1 rounded-full text-xs font-semibold uppercase flex items-center gap-1',
+                    'shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase flex items-center gap-1',
                     portalStatus === 'active'  && 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
                     portalStatus === 'invited' && 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
                     portalStatus === 'revoked' && 'bg-red-500/10 text-red-600 dark:text-red-400',
@@ -630,117 +638,164 @@ export default function ClienteDetalhePage() {
                 </span>
               )}
             </div>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              {/* Linha 1: CPF, Telefone, Email */}
-              <div className="flex flex-wrap items-center gap-3">
-                {client.cpf_cnpj && <span>CPF/CNPJ: {formatCPFOrCNPJ(client.cpf_cnpj)}</span>}
-                {client.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
-                    {formatPhone(client.phone)}
-                  </span>
-                )}
-                {client.email && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
-                    {client.email}
-                  </span>
-                )}
-              </div>
+          </div>
 
-              {/* Linha 2: Endereço */}
-              {fullAddress && (
-                <div className="flex items-start gap-1">
-                  <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                  <span>{fullAddress}</span>
+          {/* Botão Adicionar — apenas desktop */}
+          <div className="relative shrink-0 hidden sm:block" ref={fabMenuRef}>
+            <button
+              onClick={() => setShowFabMenu((v) => !v)}
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </button>
+            {showFabMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => { setShowFabMenu(false); setShowProcessDialog(true) }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <FolderKanban className="h-4 w-4" />
+                    Novo Processo
+                  </button>
+                  <button
+                    onClick={() => { setShowFabMenu(false); setEditingService(null); setShowServiceDialog(true) }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <Briefcase className="h-4 w-4" />
+                    Novo Serviço
+                  </button>
+                  <button
+                    onClick={() => { setShowFabMenu(false); setEditingFee(null); setShowFeeDialog(true) }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    Novo Honorário
+                  </button>
+                  <button
+                    onClick={() => { setShowFabMenu(false); setEditingNote(null); setShowNoteDialog(true) }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <StickyNote className="h-4 w-4" />
+                    Nova Nota
+                  </button>
                 </div>
-              )}
-
-              {/* Linha 3: Data de cadastro */}
-              <div className="flex items-center gap-1 text-xs">
-                <Calendar className="h-3 w-3" />
-                <span>Cliente desde {formatDate(client.created_at)}</span>
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Actions menu — sempre à direita, no topo */}
+          <div className="relative shrink-0" ref={actionsMenuRef}>
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Mais ações"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+
+            {showActionsMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-popover shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowEditDialog(true)
+                      setShowActionsMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Editar Cliente
+                  </button>
+                  <button
+                    onClick={handleArchiveClient}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <Archive className="h-4 w-4" />
+                    Arquivar Cliente
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(true)
+                      setShowActionsMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir Cliente
+                  </button>
+                  <div className="border-t border-border my-1" />
+                  {(!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
+                    <button
+                      onClick={handleInvitePortal}
+                      disabled={isInviting}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
+                    >
+                      <Send className="h-4 w-4" />
+                      {isInviting ? 'Enviando...' : 'Convidar para o Portal'}
+                    </button>
+                  )}
+                  {portalStatus === 'invited' && (
+                    <button
+                      onClick={handleInvitePortal}
+                      disabled={isInviting}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
+                    >
+                      <Send className="h-4 w-4" />
+                      {isInviting ? 'Enviando...' : 'Reenviar Convite'}
+                    </button>
+                  )}
+                  {(portalStatus === 'invited' || portalStatus === 'active') && (
+                    <button
+                      onClick={handleRevokePortal}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
+                    >
+                      <ShieldOff className="h-4 w-4" />
+                      Revogar Acesso ao Portal
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Actions menu */}
-        <div className="relative" ref={actionsMenuRef}>
-          <button
-            onClick={() => setShowActionsMenu(!showActionsMenu)}
-            className="p-2 rounded-lg hover:bg-accent transition-colors"
-          >
-            <MoreVertical className="h-5 w-5 text-muted-foreground" />
-          </button>
-
-          {showActionsMenu && (
-            <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-popover shadow-lg z-10">
-              <button
-                onClick={() => {
-                  setShowEditDialog(true)
-                  setShowActionsMenu(false)
-                }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                Editar Cliente
-              </button>
-              <button
-                onClick={handleArchiveClient}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
-              >
-                <Archive className="h-4 w-4" />
-                Arquivar Cliente
-              </button>
-              <button
-                onClick={() => {
-                  setShowDeleteModal(true)
-                  setShowActionsMenu(false)
-                }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                Excluir Cliente
-              </button>
-              <div className="border-t border-border my-1" />
-              {(!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
-                <button
-                  onClick={handleInvitePortal}
-                  disabled={isInviting}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" />
-                  {isInviting ? 'Enviando...' : 'Convidar para o Portal'}
-                </button>
-              )}
-              {portalStatus === 'invited' && (
-                <button
-                  onClick={handleInvitePortal}
-                  disabled={isInviting}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" />
-                  {isInviting ? 'Enviando...' : 'Reenviar Convite'}
-                </button>
-              )}
-              {(portalStatus === 'invited' || portalStatus === 'active') && (
-                <button
-                  onClick={handleRevokePortal}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
-                >
-                  <ShieldOff className="h-4 w-4" />
-                  Revogar Acesso ao Portal
-                </button>
-              )}
+        {/* Informações de contato e endereço — cada item em sua própria linha */}
+        <div className="space-y-1.5 text-sm text-muted-foreground">
+          {client.cpf_cnpj && (
+            <div className="flex items-center gap-1.5">
+              <span>CPF/CNPJ: {formatCPFOrCNPJ(client.cpf_cnpj)}</span>
             </div>
           )}
+          {client.phone && (
+            <div className="flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5 shrink-0" />
+              <span>{formatPhone(client.phone)}</span>
+            </div>
+          )}
+          {client.email && (
+            <div className="flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5 shrink-0" />
+              <span>{client.email}</span>
+            </div>
+          )}
+          {fullAddress && (
+            <div className="flex items-start gap-1.5">
+              <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>{fullAddress}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 text-xs">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span>Cliente desde {formatDate(client.created_at)}</span>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-border pb-1">
-        <div className="flex gap-2 overflow-x-auto p-1">
+        <div className="flex gap-2 overflow-x-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -1272,54 +1327,48 @@ export default function ClienteDetalhePage() {
         )}
       </div>
 
-      {/* Floating Action Button (Adicionar) */}
-      <div className="fixed bottom-6 right-6 z-50 group">
-        <div className="absolute bottom-full right-0 mb-4 w-48 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-          <div className="py-1">
-            <button
-              onClick={() => setShowProcessDialog(true)}
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-            >
-              <FolderKanban className="h-4 w-4" />
-              Novo Processo
-            </button>
-            <button
-              onClick={() => {
-                setEditingService(null)
-                setShowServiceDialog(true)
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-            >
-              <Briefcase className="h-4 w-4" />
-              Novo Serviço
-            </button>
-            <button
-              onClick={() => {
-                setEditingFee(null)
-                setShowFeeDialog(true)
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-            >
-              <DollarSign className="h-4 w-4" />
-              Novo Honorário
-            </button>
-            <button
-              onClick={() => {
-                setEditingNote(null)
-                setShowNoteDialog(true)
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-            >
-              <StickyNote className="h-4 w-4" />
-              Nova Nota
-            </button>
-          </div>
-        </div>
+      {/* Floating Action Button (Adicionar) — apenas mobile */}
+      <div className="fixed bottom-22 right-4 z-50 sm:hidden">
         <button
+          onClick={() => setShowFabMenu((v) => !v)}
           className="flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
         >
           <Plus className="h-6 w-6" />
         </button>
+        {showFabMenu && (
+          <div className="absolute bottom-full right-0 mb-3 w-48 bg-popover border border-border rounded-lg shadow-lg">
+            <div className="py-1">
+              <button
+                onClick={() => { setShowFabMenu(false); setShowProcessDialog(true) }}
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <FolderKanban className="h-4 w-4" />
+                Novo Processo
+              </button>
+              <button
+                onClick={() => { setShowFabMenu(false); setEditingService(null); setShowServiceDialog(true) }}
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <Briefcase className="h-4 w-4" />
+                Novo Serviço
+              </button>
+              <button
+                onClick={() => { setShowFabMenu(false); setEditingFee(null); setShowFeeDialog(true) }}
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                Novo Honorário
+              </button>
+              <button
+                onClick={() => { setShowFabMenu(false); setEditingNote(null); setShowNoteDialog(true) }}
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <StickyNote className="h-4 w-4" />
+                Nova Nota
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Dialog para adicionar processo */}
@@ -1422,6 +1471,7 @@ export default function ClienteDetalhePage() {
             setEditingService(null)
           }}
           service={editingService || undefined}
+          clientId={client.id}
           onSave={handleSaveService}
         />
       )}

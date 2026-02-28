@@ -14,9 +14,10 @@ import {
   TrendingUp,
   Download,
   MoreVertical,
-  Archive,
+  CheckCircle,
   AlertTriangle,
   Scale,
+  Handshake,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -60,6 +61,8 @@ export default function ProcessoDetalhePage() {
   const [deleteTimelineDocuments, setDeleteTimelineDocuments] = useState(false)
   const [isDeletingTimeline, setIsDeletingTimeline] = useState(false)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
+  const [showFabMenu, setShowFabMenu] = useState(false)
+  const fabMenuRef = useRef<HTMLDivElement>(null)
 
   const [process, setProcess] = useState<ProcessDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -89,6 +92,9 @@ export default function ProcessoDetalhePage() {
       if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
         setShowActionsMenu(false)
       }
+      if (fabMenuRef.current && !fabMenuRef.current.contains(e.target as Node)) {
+        setShowFabMenu(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -111,6 +117,9 @@ export default function ProcessoDetalhePage() {
         status: process.status,
         notes: process.notes || undefined,
         start_date: process.start_date || undefined,
+        is_partnership: process.is_partnership ?? false,
+        partner_lawyer: process.partner_lawyer ?? undefined,
+        partner_percentage: process.partner_percentage ?? undefined,
       }
     : undefined
 
@@ -165,16 +174,16 @@ export default function ProcessoDetalhePage() {
     return colors[eventType] || 'bg-gray-500'
   }
 
-  const handleArchiveProcess = async () => {
+  const handleConcludeProcess = async () => {
     if (!id) return
     try {
-      await processesService.update(id, { status: 'archived' })
-      toast.success('Processo arquivado com sucesso')
+      await processesService.update(id, { status: 'concluded' })
+      toast.success('Processo concluído com sucesso')
       await fetchProcess()
       setShowActionsMenu(false)
     } catch (error) {
-      console.error('Error archiving process:', error)
-      toast.error('Erro ao arquivar processo')
+      console.error('Error concluding process:', error)
+      toast.error('Erro ao concluir processo')
     }
   }
 
@@ -267,225 +276,228 @@ export default function ProcessoDetalhePage() {
     <div className="space-y-4">
       {/* Process Header */}
       <div className="p-4 rounded-lg border border-border bg-card">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          {/* Left: Title + Info */}
-          <div className="flex-1 space-y-3">
-            {/* Title + Status */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-bold text-foreground">{process.process_number}</h1>
-              <span className={cn('px-2.5 py-1 rounded-full text-xs font-semibold uppercase', 
+        {/* Top row: title + status + actions (sempre na mesma linha) */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-foreground truncate">{process.process_number}</h1>
+              <span className={cn('shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase',
                 process.status === 'active' ? 'bg-green-500/10 text-green-500' :
-                process.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                process.status === 'suspended' ? 'bg-orange-500/10 text-orange-500' :
-                process.status === 'archived' ? 'bg-gray-500/10 text-gray-500' :
                 process.status === 'concluded' ? 'bg-blue-500/10 text-blue-500' :
                 'bg-red-500/10 text-red-500'
               )}>
                 {process.status === 'active' ? 'Ativo' :
-                 process.status === 'pending' ? 'Pendente' :
-                 process.status === 'suspended' ? 'Suspenso' :
-                 process.status === 'archived' ? 'Arquivado' :
                  process.status === 'concluded' ? 'Concluído' :
                  'Cancelado'}
               </span>
             </div>
-            
-            {/* Metadata Chips */}
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary font-medium">
-                {process.type}
-              </span>
-              {/* Badge de categoria */}
-              {process.process_category === 'administrative' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium">
-                  <Building2 className="h-3 w-3" />
-                  Administrativo
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">
-                  <Scale className="h-3 w-3" />
-                  Judicial
-                </span>
-              )}
-              {process.area && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-muted text-muted-foreground font-medium">
-                  {process.area}
-                </span>
-              )}
-              {process.value && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-500/10 text-green-600 dark:text-green-500 font-medium">
-                  <DollarSign className="h-3 w-3" />
-                  {formatCurrency(process.value)}
-                </span>
-              )}
-              {(process.court || process.tribunal) && (
-                <span className="text-muted-foreground">
-                  {[process.tribunal, process.court].filter(Boolean).join(' • ')}
-                </span>
-              )}
-            </div>
+          </div>
 
-            {/* Client + Defendant inline */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              {process.client_role === 'defendant' ? (
-                <>
-                  {process.defendant && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Building2 className="h-4 w-4" />
-                      <span>{process.defendant}</span>
-                    </div>
-                  )}
-                  {process.defendant && <span className="text-muted-foreground">vs</span>}
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{process.client.name}</span>
-                    <Link
-                      to={`/app/clientes/${process.client.id}`}
-                      className="text-xs text-primary hover:underline"
-                      title="Ver cliente"
-                    >
-                      (ver perfil)
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{process.client.name}</span>
-                    <Link
-                      to={`/app/clientes/${process.client.id}`}
-                      className="text-xs text-primary hover:underline"
-                      title="Ver cliente"
-                    >
-                      (ver perfil)
-                    </Link>
-                  </div>
-                  {process.defendant && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <span>vs</span>
-                      <Building2 className="h-4 w-4" />
-                      <span>{process.defendant}</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Dates */}
-            {(process.start_date || process.end_date) && (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                {process.start_date && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>Distrib: {formatShortDate(process.start_date)}</span>
-                  </div>
-                )}
-                {process.end_date && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>Encerr: {formatShortDate(process.end_date)}</span>
-                  </div>
-                )}
+          {/* Botão Adicionar — apenas desktop */}
+          <div className="relative shrink-0 hidden sm:block" ref={fabMenuRef}>
+            <button
+              onClick={() => setShowFabMenu((v) => !v)}
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </button>
+            {showFabMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => { setShowFabMenu(false); setEditingEvent(undefined); setShowEventDialog(true) }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Novo Prazo
+                  </button>
+                  <button
+                    onClick={() => { setShowFabMenu(false); setShowTimelineDialog(true) }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    Novo Andamento
+                  </button>
+                  <button
+                    onClick={() => { setShowFabMenu(false); setEditingDocument(null); setShowDocumentDialog(true) }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Novo Documento
+                  </button>
+                </div>
               </div>
             )}
           </div>
-          
-          {/* Right: Actions */}
-          <div className="flex items-center gap-2">
-            {/* Actions Menu */}
-            <div className="relative" ref={actionsMenuRef}>
-              <button
-                onClick={() => setShowActionsMenu(!showActionsMenu)}
-                className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                aria-label="Mais ações"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-              {showActionsMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setShowEditDialog(true)
-                        setShowActionsMenu(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                    >
-                      <Edit className="h-4 w-4" />
-                      Editar Processo
-                    </button>
-                    <button
-                      onClick={handleArchiveProcess}
-                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                    >
-                      <Archive className="h-4 w-4" />
-                      Arquivar
-                    </button>
-                    <div className="border-t border-border my-1" />
-                    <button
-                      onClick={() => {
-                        setShowDeleteModal(true)
-                        setShowActionsMenu(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Excluir Processo
-                    </button>
-                  </div>
+
+          {/* Actions Menu — sempre à direita, no topo */}
+          <div className="relative shrink-0" ref={actionsMenuRef}>
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Mais ações"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+            {showActionsMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowEditDialog(true)
+                      setShowActionsMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Editar Processo
+                  </button>
+                  <button
+                    onClick={handleConcludeProcess}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Concluir
+                  </button>
+                  <div className="border-t border-border my-1" />
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(true)
+                      setShowActionsMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir Processo
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Client + Defendant */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:text-base mb-3">
+          {process.client_role === 'defendant' ? (
+            <>
+              {process.defendant && (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{process.defendant}</span>
                 </div>
               )}
-            </div>
-          </div>
+              {process.defendant && <span className="text-muted-foreground text-xs">vs</span>}
+              <div className="flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="font-medium text-foreground">{process.client.name}</span>
+                <Link to={`/app/clientes/${process.client.id}`} className="text-xs text-primary hover:underline">(ver perfil)</Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="font-medium text-foreground">{process.client.name}</span>
+                <Link to={`/app/clientes/${process.client.id}`} className="text-xs text-primary hover:underline">(ver perfil)</Link>
+              </div>
+              {process.defendant && (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <span className="text-xs">vs</span>
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{process.defendant}</span>
+                </div>
+              )}
+            </>
+          )}
         </div>
+
+        {/* Linha 1: tipo · área · natureza · [tribunal] · órgão */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground mb-1">
+          {/* Tipo do processo */}
+          <span className="font-medium text-foreground">{process.type}</span>
+          {/* Área do direito */}
+          {process.area && <><span>·</span><span>{process.area}</span></>}
+          {/* Natureza: Judicial ou Administrativo */}
+          {process.process_category === 'administrative' ? (
+            <><span>·</span><span className="flex items-center gap-1"><Building2 className="h-3 w-3" />Administrativo</span></>
+          ) : (
+            <><span>·</span><span className="flex items-center gap-1"><Scale className="h-3 w-3" />Judicial</span></>
+          )}
+          {/* Tribunal — somente para processos judiciais */}
+          {process.process_category !== 'administrative' && process.tribunal && (
+            <><span>·</span><span>{process.tribunal}</span></>
+          )}
+          {/* Órgão/Vara */}
+          {process.court && <><span>·</span><span>{process.court}</span></>}
+        </div>
+
+        {/* Linha 2: valor · data de distribuição · data de encerramento */}
+        {(process.value || process.start_date || process.end_date) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground mb-2">
+            {process.value && (
+              <span className="flex items-center gap-1 text-green-600 dark:text-green-500 font-medium">
+                <DollarSign className="h-3 w-3" />{formatCurrency(process.value)}
+              </span>
+            )}
+            {process.start_date && (
+              <><span>·</span><span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Distrib: {formatShortDate(process.start_date)}</span></>
+            )}
+            {process.end_date && (
+              <><span>·</span><span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Encerr: {formatShortDate(process.end_date)}</span></>
+            )}
+          </div>
+        )}
+
+        {/* Parceria — linha separada se existir */}
+        {process.is_partnership && (
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-purple-600 dark:text-purple-400 font-medium">
+            <Handshake className="h-3.5 w-3.5 shrink-0" />
+            <span>Parceria · {process.partner_percentage}% escritório{process.partner_lawyer ? ` · ${process.partner_lawyer}` : ''}</span>
+          </div>
+        )}
       </div>
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-6 z-50 group">
-        <div className="absolute bottom-full right-0 mb-4 w-48 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-          <div className="py-1">
-            <button
-              onClick={() => {
-                setEditingEvent(undefined)
-                setShowEventDialog(true)
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-            >
-              <Clock className="h-4 w-4" />
-              Novo Prazo
-            </button>
-            <button
-              onClick={() => {
-                setShowTimelineDialog(true)
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Novo Andamento
-            </button>
-            <button
-              onClick={() => {
-                setEditingDocument(null)
-                setShowDocumentDialog(true)
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              Novo Documento
-            </button>
-          </div>
-        </div>
+      {/* Floating Action Button — apenas mobile */}
+      <div className="fixed bottom-22 right-4 z-50 sm:hidden">
         <button
+          onClick={() => setShowFabMenu((v) => !v)}
           className="flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
         >
           <Plus className="h-6 w-6" />
         </button>
+        {showFabMenu && (
+          <div className="absolute bottom-full right-0 mb-3 w-48 bg-popover border border-border rounded-lg shadow-lg">
+            <div className="py-1">
+              <button
+                onClick={() => { setShowFabMenu(false); setEditingEvent(undefined); setShowEventDialog(true) }}
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <Clock className="h-4 w-4" />
+                Novo Prazo
+              </button>
+              <button
+                onClick={() => { setShowFabMenu(false); setShowTimelineDialog(true) }}
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Novo Andamento
+              </button>
+              <button
+                onClick={() => { setShowFabMenu(false); setEditingDocument(null); setShowDocumentDialog(true) }}
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Novo Documento
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
       <div className="border-b border-border pb-1">
-        <div className="flex gap-2 overflow-x-auto p-1">
+        <div className="flex gap-2 overflow-x-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {tabs.map((tab) => (
             <button
               key={tab.id}

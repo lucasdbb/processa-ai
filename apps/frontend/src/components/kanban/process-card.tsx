@@ -10,10 +10,7 @@ interface ProcessCardProps {
 
 const STATUS_DOT: Record<string, string> = {
   active: 'bg-green-500',
-  pending: 'bg-amber-500',
-  suspended: 'bg-orange-500',
   concluded: 'bg-blue-500',
-  archived: 'bg-muted-foreground',
   cancelled: 'bg-red-500',
 }
 
@@ -48,6 +45,13 @@ export function ProcessCard({ process, isDragging }: ProcessCardProps) {
       <p className="text-xs text-muted-foreground truncate pl-3.5" title={process.type}>
         {process.type}
       </p>
+
+      {/* Badge de parceria */}
+      {process.is_partnership && (
+        <p className="text-xs font-medium text-purple-600 dark:text-purple-400 pl-3.5">
+          Parceria · {process.partner_percentage}% escritório
+        </p>
+      )}
 
       {/* Divisor */}
       <div className="border-t border-border" />

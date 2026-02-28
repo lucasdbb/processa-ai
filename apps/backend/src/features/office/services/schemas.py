@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 ServiceCategory = Literal[
     "previdenciario",
@@ -35,6 +35,18 @@ class ServiceCreate(BaseModel):
     category: ServiceCategory = "outro"
     value: Decimal | None = Field(None, ge=0)
     notes: str | None = None
+    is_partnership: bool = False
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = Field(None, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validate_partnership_fields(self) -> "ServiceCreate":
+        if self.is_partnership:
+            if not self.partner_lawyer:
+                raise ValueError("Advogado(a) parceiro(a) é obrigatório quando é uma parceria")
+            if self.partner_percentage is None:
+                raise ValueError("Percentual do ganho é obrigatório quando é uma parceria")
+        return self
 
 
 class ServiceUpdate(BaseModel):
@@ -46,6 +58,9 @@ class ServiceUpdate(BaseModel):
     value: Decimal | None = Field(None, ge=0)
     paid_amount: Decimal | None = Field(None, ge=0)
     notes: str | None = None
+    is_partnership: bool | None = None
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = Field(None, ge=0, le=100)
 
 
 class ServiceResponse(BaseModel):
@@ -61,6 +76,9 @@ class ServiceResponse(BaseModel):
     value: Decimal | None
     paid_amount: Decimal
     notes: str | None
+    is_partnership: bool = False
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -81,6 +99,7 @@ class ServiceListParams(BaseModel):
     client_id: UUID | None = None
     category: ServiceCategory | None = None
     status: ServiceStatus | None = None
+    is_partnership: bool | None = None
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
 
@@ -130,6 +149,9 @@ class ServiceDetailResponse(BaseModel):
     value: Decimal | None
     paid_amount: Decimal
     notes: str | None
+    is_partnership: bool = False
+    partner_lawyer: str | None = None
+    partner_percentage: Decimal | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, CheckCircle2, DollarSign, Edit, FileText, MoreVertical, Plus, Trash2, Wallet } from 'lucide-react'
+import { AlertCircle, CheckCircle2, DollarSign, Edit, FileText, MoreVertical, Plus, Trash2, Wallet, Handshake } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -256,97 +256,95 @@ export default function ServicoDetalhePage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="p-4 rounded-lg border border-border bg-card">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          {/* Left: Title + Info */}
-          <div className="flex-1 space-y-3">
-            {/* Title + Status */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-bold text-foreground">{service.name}</h1>
+        {/* Top row: título + status + botão de ações (sempre na mesma linha) */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-foreground truncate">{service.name}</h1>
               <span
                 className={cn(
-                  'px-2.5 py-1 rounded-full text-xs font-semibold uppercase',
+                  'shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase',
                   getServiceStatusColor(service.status)
                 )}
               >
                 {getServiceStatusLabel(service.status)}
               </span>
             </div>
-
-            {/* Metadata Chips */}
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary font-medium">
-                {getServiceCategoryLabel(service.category)}
-              </span>
-              {service.value && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-500/10 text-green-600 dark:text-green-500 font-medium">
-                  <DollarSign className="h-3 w-3" />
-                  {formatCurrency(service.value)}
-                </span>
-              )}
-              <span className="text-muted-foreground">
-                Criado em {formatShortDate(service.created_at)}
-              </span>
-            </div>
-
-            {/* Client */}
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Cliente:</span>
-              <Link
-                to={`/app/clientes/${service.client.id}`}
-                className="font-medium text-foreground hover:text-primary"
-              >
-                {service.client.name}
-              </Link>
-              <Link
-                to={`/app/clientes/${service.client.id}`}
-                className="text-xs text-primary hover:underline"
-                title="Ver cliente"
-              >
-                (ver perfil)
-              </Link>
-            </div>
           </div>
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-2">
-            {/* Actions Menu */}
-            <div className="relative" ref={actionsMenuRef}>
-              <button
-                onClick={() => setShowActionsMenu(!showActionsMenu)}
-                className="flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                aria-label="Mais ações"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-              {showActionsMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setShowEditDialog(true)
-                        setShowActionsMenu(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
-                    >
-                      <Edit className="h-4 w-4" />
-                      Editar Serviço
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowDeleteModal(true)
-                        setShowActionsMenu(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Excluir Serviço
-                    </button>
-                  </div>
+          {/* Actions Menu — sempre à direita, no topo */}
+          <div className="relative shrink-0" ref={actionsMenuRef}>
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Mais ações"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+            {showActionsMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowEditDialog(true)
+                      setShowActionsMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Editar Serviço
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(true)
+                      setShowActionsMenu(false)
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir Serviço
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Cliente */}
+        <div className="flex items-center gap-1.5 text-sm sm:text-base mb-3">
+          <span className="text-muted-foreground">Cliente:</span>
+          <Link
+            to={`/app/clientes/${service.client.id}`}
+            className="font-medium text-foreground hover:text-primary"
+          >
+            {service.client.name}
+          </Link>
+          <Link
+            to={`/app/clientes/${service.client.id}`}
+            className="text-xs text-primary hover:underline"
+            title="Ver cliente"
+          >
+            (ver perfil)
+          </Link>
+        </div>
+
+        {/* Metadata inline: categoria · valor · data */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground mb-2">
+          <span className="font-medium text-foreground">{getServiceCategoryLabel(service.category)}</span>
+          {service.value ? (
+            <><span>·</span><span className="flex items-center gap-1 text-green-600 dark:text-green-500 font-medium"><DollarSign className="h-3 w-3" />{formatCurrency(service.value)}</span></>
+          ) : null}
+          <span>·</span>
+          <span>Criado em {formatShortDate(service.created_at)}</span>
+        </div>
+
+        {/* Parceria — linha separada se existir */}
+        {service.is_partnership && (
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm text-purple-600 dark:text-purple-400 font-medium">
+            <Handshake className="h-3.5 w-3.5 shrink-0" />
+            <span>Parceria · {service.partner_percentage}% escritório{service.partner_lawyer ? ` · ${service.partner_lawyer}` : ''}</span>
+          </div>
+        )}
       </div>
 
       {/* Floating Action Button */}
@@ -355,7 +353,7 @@ export default function ServicoDetalhePage() {
           setShowDocumentDialog(true)
           setEditingDocument(null)
         }}
-        className="fixed bottom-6 right-6 z-50 flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
+        className="fixed bottom-18 right-6 lg:bottom-6 z-50 flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105"
         title="Novo Documento"
       >
         <Plus className="h-6 w-6" />
@@ -363,7 +361,7 @@ export default function ServicoDetalhePage() {
 
       {/* Tabs */}
       <div className="border-b border-border pb-1">
-        <div className="flex gap-2 overflow-x-auto p-1">
+        <div className="flex gap-2 overflow-x-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {tabs.map((tab) => (
             <button
               key={tab.id}
