@@ -499,7 +499,7 @@ export default function ConfiguracoesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/app/planos')}
+                      onClick={() => navigate('/app/assinatura')}
                       className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-muted transition-colors"
                     >
                       Ver planos
@@ -515,7 +515,7 @@ export default function ConfiguracoesPage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => navigate('/app/planos')}
+                      onClick={() => navigate('/app/assinatura')}
                       className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
                     >
                       Ver planos de assinatura
@@ -555,7 +555,7 @@ export default function ConfiguracoesPage() {
 
               <button
                 type="button"
-                onClick={() => navigate('/app/creditos')}
+                onClick={() => navigate('/app/assinatura')}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors"
               >
                 <CreditCard className="w-4 h-4" />

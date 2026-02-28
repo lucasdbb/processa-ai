@@ -15,18 +15,15 @@ import {
   ChevronRight,
   ChevronDown,
   X,
-  LogOut,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
-import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useTheme } from 'next-themes'
 import { useAiTools } from '@/features/ai/context'
 import { useCalculators } from '@/features/calculators/context'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 
 interface NavItem {
@@ -121,8 +118,6 @@ export function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const { tools: aiTools } = useAiTools()
   const { calculators } = useCalculators()
-  const { logout } = useAuthStore()
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
@@ -142,13 +137,7 @@ export function Sidebar() {
     )
   }
 
-  const handleLogout = () => {
-    setShowLogoutConfirm(false)
-    logout()
-    window.location.href = '/'
-  }
-
-  const renderNavItem = (item: NavItem) => {
+const renderNavItem = (item: NavItem) => {
     const active = isActive(item.href)
     const hasChildren = item.children && item.children.length > 0
     const isItemExpanded = expandedItems.includes(item.name)
@@ -289,17 +278,6 @@ export function Sidebar() {
       {/* Navegacao Inferior */}
       <div className="border-t border-border px-3 py-4 space-y-1">
         {bottomNavigation.map((item) => renderNavItem(item))}
-        <button
-          onClick={() => setShowLogoutConfirm(true)}
-          className={cn(
-            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors',
-            !isExpanded && 'justify-center'
-          )}
-          title={!isExpanded ? 'Sair' : undefined}
-        >
-          <LogOut className="h-5 w-5 shrink-0" />
-          {isExpanded && <span>Sair</span>}
-        </button>
       </div>
     </>
   )
@@ -338,16 +316,6 @@ export function Sidebar() {
         {sidebarContent}
       </aside>
 
-      {/* Logout Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showLogoutConfirm}
-        onClose={() => setShowLogoutConfirm(false)}
-        onConfirm={handleLogout}
-        title="Sair da plataforma?"
-        description="Você será desconectado e precisará fazer login novamente para acessar sua conta."
-        confirmText="Sair"
-        variant="warning"
-      />
     </>
   )
 }

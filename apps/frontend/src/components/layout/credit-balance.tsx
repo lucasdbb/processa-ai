@@ -18,7 +18,7 @@ export function CreditBalance() {
   return (
     <div className={cn("px-3 mb-2", !isExpanded && "px-2")}>
       <Link 
-        to="/app/creditos" 
+        to="/app/assinatura"
         className={cn(
           "flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/60 transition-colors group",
           !isExpanded && "justify-center p-2"

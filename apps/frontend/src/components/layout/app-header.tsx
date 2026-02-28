@@ -281,7 +281,7 @@ export function AppHeader() {
 
               <div className="px-4 pb-4">
                 <Link
-                  to="/app/creditos"
+                  to="/app/assinatura"
                   className="flex items-center justify-center gap-2 rounded-lg bg-foreground text-background text-sm font-semibold py-2.5 hover:opacity-90 transition-opacity"
                 >
                   Adquirir mais créditos
