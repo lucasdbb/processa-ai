@@ -139,8 +139,8 @@ export default function PlanosPage() {
       const buttonText = isComingSoon
         ? 'Em breve'
         : amountCents === 0
-          ? 'Começar Grátis'
-          : `Assinar ${p.name}`
+          ? 'Começar a usar agora'
+          : `Quero o ${p.name}`
 
       return {
         slug: p.slug,
@@ -217,10 +217,10 @@ export default function PlanosPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-4">
-              Escolha o Plano Ideal
+              Invista no seu escritório.
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed">
-              Ferramentas jurídicas inteligentes para impulsionar sua prática profissional
+              Menos retrabalho. Mais advocacia. Escolha como quer crescer.
             </p>
           </div>
         </div>
@@ -335,9 +335,9 @@ export default function PlanosPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-card rounded-[2rem] shadow-xl border border-border p-8 md:p-12">
             <div className="text-center max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Perguntas frequentes</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-3 tracking-tight">Tem dúvidas antes de decidir?</h2>
               <p className="text-base text-muted-foreground leading-relaxed">
-                Dúvidas comuns sobre cobrança, cancelamento e elegibilidade.
+                Respondem as perguntas que a maioria faz antes de assinar.
               </p>
             </div>
 
