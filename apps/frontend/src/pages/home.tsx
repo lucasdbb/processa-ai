@@ -61,23 +61,23 @@ export default function HomePage() {
 
   const screenshots = [
     {
-      title: 'Dashboard - Visão Geral',
-      description: 'Métricas de clientes, processos e prazos em tempo real',
+      title: 'Gestão do Escritório',
+      description: 'Clientes, processos e prazos organizados em um só painel',
       image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop',
     },
     {
       title: 'Gestão de Clientes',
-      description: 'Busca avançada, filtros e organização completa',
+      description: 'Busca avançada, filtros e organização completa da carteira',
       image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop',
     },
     {
-      title: 'IA - Petição Inicial',
-      description: 'Editor markdown com geração automática de peças',
+      title: 'IA Jurídica',
+      description: 'Análise de CNIS, resumo de processos e extração de documentos',
       image: 'https://images.unsplash.com/photo-1555421689-d68471e189f2?q=80&w=2070&auto=format&fit=crop',
     },
     {
-      title: 'Calendário de Prazos',
-      description: 'Alertas coloridos e dashboard de urgências',
+      title: 'Calculadoras',
+      description: 'Cálculos trabalhistas e previdenciários com índices atualizados',
       image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=2068&auto=format&fit=crop',
     },
   ]
@@ -172,12 +172,12 @@ export default function HomePage() {
             .
           </h1>
 
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
-            A plataforma completa para advogados modernos: CRM jurídico + Calculadoras automatizadas
-            + IA especializada em direito brasileiro.
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            Processos sob controle. Cálculos automáticos. IA treinada para o direito brasileiro.
+            Tudo no mesmo lugar.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
             <button
               onClick={openRegisterModal}
               className={`group relative px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 shadow-xl hover:-translate-y-1 overflow-hidden ${
@@ -191,12 +191,39 @@ export default function HomePage() {
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
             </button>
-            <button
-              onClick={scrollToDemo}
-              className="px-8 py-4 bg-card text-card-foreground border border-border rounded-2xl font-semibold text-lg hover:bg-accent hover:border-border transition-all duration-200"
-            >
-              Ver Demonstração
-            </button>
+            <div className="flex flex-col items-center gap-1">
+              <button
+                onClick={scrollToDemo}
+                className="px-8 py-4 bg-card text-card-foreground border border-border rounded-2xl font-semibold text-lg hover:bg-accent hover:border-border transition-all duration-200 flex items-center gap-2"
+              >
+                Ver como funciona
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <span className="text-xs text-muted-foreground">Demonstração de 60 segundos, sem cadastro</span>
+            </div>
+          </div>
+
+          {/* Prova social */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex -space-x-2">
+              {[
+                { initials: 'AM', color: isDark ? 'bg-blue-800 text-blue-200' : 'bg-blue-100 text-blue-700' },
+                { initials: 'RS', color: isDark ? 'bg-violet-800 text-violet-200' : 'bg-violet-100 text-violet-700' },
+                { initials: 'CT', color: isDark ? 'bg-emerald-800 text-emerald-200' : 'bg-emerald-100 text-emerald-700' },
+                { initials: 'JP', color: isDark ? 'bg-amber-800 text-amber-200' : 'bg-amber-100 text-amber-700' },
+                { initials: 'LF', color: isDark ? 'bg-rose-800 text-rose-200' : 'bg-rose-100 text-rose-700' },
+              ].map((avatar) => (
+                <div
+                  key={avatar.initials}
+                  className={`w-8 h-8 rounded-full border-2 ${isDark ? 'border-background' : 'border-white'} flex items-center justify-center text-[10px] font-bold ${avatar.color}`}
+                >
+                  {avatar.initials}
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Mais de <span className="font-semibold text-foreground">2.000 advogados</span> já usam a Processa AI
+            </p>
           </div>
         </div>
 
@@ -684,10 +711,11 @@ export default function HomePage() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Veja em ação.</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Em 4 telas, você entende como funciona.
+            </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Descubra como nossa plataforma transforma a rotina do seu escritório em poucos
-              cliques.
+              Cada módulo resolve um problema real do seu dia a dia na advocacia.
             </p>
           </div>
 
@@ -728,19 +756,21 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Dots Indicators */}
+            {/* Slide Indicators */}
             <div className="flex justify-center gap-2 mt-6">
-              {screenshots.map((_, index) => (
+              {screenshots.map((slide, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}
-                  className={`h-2 rounded-full transition-all ${
+                  aria-label={`Ir para: ${slide.title}`}
+                  className={`h-8 rounded-full px-3 text-xs font-semibold transition-all duration-300 whitespace-nowrap ${
                     index === currentSlide
-                      ? 'w-8 bg-foreground'
-                      : 'w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
                   }`}
-                  aria-label={`Ir para slide ${index + 1}`}
-                />
+                >
+                  {slide.title}
+                </button>
               ))}
             </div>
           </div>
@@ -774,22 +804,21 @@ export default function HomePage() {
 
             <div className="relative z-10 max-w-3xl mx-auto">
               <h2
-                className={`text-3xl md:text-5xl font-bold mb-6 tracking-tight ${
+                className={`text-3xl md:text-5xl font-bold mb-4 tracking-tight ${
                   isDark ? 'text-foreground' : 'text-white'
                 }`}
               >
-                Pronto para o próximo nível?
+                O escritório que você imaginou quando entrou na advocacia.
               </h2>
               <p
                 className={`text-lg mb-10 leading-relaxed font-light ${
                   isDark ? 'text-muted-foreground' : 'text-slate-300'
                 }`}
               >
-                Junte-se a milhares de advogados que já estão economizando tempo e aumentando sua
-                produtividade com a Processa AI.
+                Comece hoje. Organize tudo ainda esta semana.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
                 <button
                   onClick={openRegisterModal}
                   className={`px-8 py-4 rounded-xl font-bold text-lg transition-all transform hover:-translate-y-1 shadow-lg ${
@@ -798,7 +827,7 @@ export default function HomePage() {
                       : 'bg-white text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  Criar Conta Gratuita
+                  Começar a organizar meu escritório
                 </button>
                 <Link
                   to="/planos"
@@ -812,7 +841,7 @@ export default function HomePage() {
                 </Link>
               </div>
 
-              <p className={`mt-8 text-sm ${isDark ? 'text-muted-foreground' : 'text-slate-500'}`}>
+              <p className={`text-sm font-medium ${isDark ? 'text-muted-foreground' : 'text-slate-400'}`}>
                 Sem cartão de crédito • Cancelamento a qualquer momento
               </p>
             </div>
