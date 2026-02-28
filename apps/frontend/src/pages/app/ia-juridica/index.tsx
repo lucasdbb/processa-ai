@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Brain, Lock, ArrowRight, Loader2 } from 'lucide-react'
+import { Brain, Lock, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAiTools } from '@/features/ai/context'
 
@@ -80,24 +80,18 @@ export default function IAJuridicaHubPage() {
           <p className="text-muted-foreground">Não foi possível carregar as ferramentas. Tente novamente mais tarde.</p>
         </div>
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {filteredTools.map((tool) => {
           const Icon = tool.icon
-          return (
-            <Link
-              key={tool.id}
-              to={tool.available ? tool.href : '#'}
+          const inner = (
+            <div
               className={cn(
-                'group relative bg-card border border-border rounded-xl p-4 transition-all duration-200',
+                'group relative bg-card border border-border rounded-xl p-5 transition-all duration-200 h-full',
                 tool.available
-                  ? 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5'
-                  : 'opacity-60 cursor-not-allowed'
+                  ? 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 cursor-pointer'
+                  : 'opacity-60 cursor-default'
               )}
-              onClick={(e) => {
-                if (!tool.available) e.preventDefault()
-              }}
             >
-              {/* Badge de bloqueio */}
               {tool.locked && (
                 <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[11px] font-semibold rounded-full border border-amber-500/20">
                   <Lock className="h-2.5 w-2.5" />
@@ -106,33 +100,29 @@ export default function IAJuridicaHubPage() {
               )}
 
               <div className="flex items-start gap-3">
-                {/* Ícone */}
                 <div
                   className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                    'w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
                     tool.available
-                      ? 'bg-slate-900 text-white group-hover:bg-slate-800'
+                      ? 'bg-muted group-hover:bg-primary group-hover:text-primary-foreground'
                       : 'bg-muted text-muted-foreground'
                   )}
                 >
                   <Icon className="h-4.5 w-4.5" />
                 </div>
 
-                {/* Conteúdo */}
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-foreground mb-0.5">{tool.name}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{tool.description}</p>
+                  <h3 className="text-sm font-bold text-foreground mb-1">{tool.name}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-3">{tool.description}</p>
                 </div>
               </div>
+            </div>
+          )
 
-              {/* Call to action */}
-              {tool.available && (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-900 dark:text-slate-100 mt-3 pt-3 border-t border-border group-hover:gap-2.5 transition-all">
-                  Usar ferramenta
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </div>
-              )}
-            </Link>
+          return tool.available ? (
+            <Link key={tool.id} to={tool.href}>{inner}</Link>
+          ) : (
+            <div key={tool.id}>{inner}</div>
           )
         })}
 

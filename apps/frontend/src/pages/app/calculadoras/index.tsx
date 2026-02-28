@@ -1,7 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Calculator, ArrowRight, Loader2, Coins, ChevronDown, Info } from 'lucide-react'
+import { Calculator, Loader2, Coins, ChevronDown, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCalculators } from '@/features/calculators/context'
 import { useCreditsStore } from '@/stores/credits-store'
@@ -259,18 +259,16 @@ export default function CalculadorasHubPage() {
           <p className="text-muted-foreground">Não foi possível carregar as calculadoras. Tente novamente mais tarde.</p>
         </div>
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {calculators.filter((calc) => selectedCategory === 'all' || calc.category === selectedCategory).map((calc) => {
           const Icon = calc.icon
-
-          return (
+          const inner = (
             <div
-              key={calc.id}
               className={cn(
-                'group relative bg-card border border-border rounded-xl p-4 transition-all duration-200',
+                'group relative bg-card border border-border rounded-xl p-5 transition-all duration-200 h-full',
                 calc.available
                   ? 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 hover:-translate-y-0.5 cursor-pointer'
-                  : 'opacity-60'
+                  : 'opacity-60 cursor-default'
               )}
             >
               {!calc.available && (
@@ -278,11 +276,10 @@ export default function CalculadorasHubPage() {
                   Em breve
                 </div>
               )}
-
               <div className="flex items-start gap-3">
                 <div
                   className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                    'w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
                     calc.available
                       ? 'bg-muted group-hover:bg-primary group-hover:text-primary-foreground'
                       : 'bg-muted text-muted-foreground'
@@ -291,40 +288,22 @@ export default function CalculadorasHubPage() {
                   <Icon className="h-4.5 w-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-foreground mb-0.5">{calc.name}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {calc.description}
-                  </p>
+                  <h3 className="text-sm font-bold text-foreground mb-1">{calc.name}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-3">{calc.description}</p>
                 </div>
               </div>
-
-              {calc.available && (
-                <Link
-                  to={calc.href}
-                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground group-hover:text-foreground mt-3 pt-3 border-t border-border transition-colors"
-                >
-                  Acessar
-                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              )}
             </div>
+          )
+
+          return calc.available ? (
+            <Link key={calc.id} to={calc.href}>{inner}</Link>
+          ) : (
+            <div key={calc.id}>{inner}</div>
           )
         })}
       </div>
       )}
 
-      {/* Recent Calculations */}
-      <div className="bg-card border border-border rounded-xl">
-        <div className="px-5 py-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">Cálculos Recentes</h2>
-        </div>
-        <div className="p-5">
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            <Calculator className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>Seus cálculos recentes aparecerão aqui.</p>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
