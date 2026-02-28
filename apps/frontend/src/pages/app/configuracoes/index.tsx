@@ -25,9 +25,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
 type Tab = 'perfil' | 'seguranca' | 'assinatura'
+
+const AREAS = [
+  'Trabalhista', 'Cível', 'Previdenciário', 'Criminal', 'Empresarial',
+  'Tributário', 'Família e Sucessões', 'Imobiliário', 'Ambiental', 'Outro',
+]
 
 export default function ConfiguracoesPage() {
   const navigate = useNavigate()
@@ -46,6 +52,8 @@ export default function ConfiguracoesPage() {
     name: user?.name || '',
     phone: user?.phone ? phoneMask(user.phone) : '',
     cpf: user?.cpf ? cpfMask(user.cpf) : '',
+    company: user?.company || '',
+    bio: user?.bio || '',
     newsletter: user?.newsletter_opt_in || false,
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -94,6 +102,8 @@ export default function ConfiguracoesPage() {
         name: user.name || '',
         phone: user.phone ? phoneMask(user.phone) : '',
         cpf: user.cpf ? cpfMask(user.cpf) : '',
+        company: user.company || '',
+        bio: user.bio || '',
         newsletter: user.newsletter_opt_in || false,
       })
       setAvatarPreview(null)
@@ -154,6 +164,8 @@ export default function ConfiguracoesPage() {
         name: formData.name,
         phone: cleanPhone.trim() === '' ? undefined : cleanPhone,
         cpf: cleanCpf,
+        company: formData.company.trim() || undefined,
+        bio: formData.bio.trim() || undefined,
         newsletter_opt_in: formData.newsletter,
         avatar_url: avatarPreview || undefined,
       })
@@ -329,6 +341,8 @@ export default function ConfiguracoesPage() {
           <div className="space-y-1">
             <div className="bg-card border border-border rounded-xl divide-y divide-border">
               <DataRow label="Nome completo" value={user?.name || 'Nao informado'} />
+              <DataRow label="Escritório" value={user?.company || 'Nao informado'} />
+              <DataRow label="Principal área de atuação" value={user?.bio || 'Nao informado'} />
               <DataRow
                 label="Telefone"
                 value={user?.phone ? phoneMask(user.phone) : 'Nao informado'}
@@ -616,6 +630,39 @@ export default function ConfiguracoesPage() {
                 required
                 className="w-full px-3 py-2.5 border border-input rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
+            </div>
+
+            {/* Escritório + Área */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="modal-company" className="block text-sm font-medium text-foreground mb-1.5">
+                  Nome do escritório
+                </label>
+                <input
+                  type="text"
+                  id="modal-company"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleInputChange}
+                  placeholder="Ex: Silva & Associados"
+                  className="w-full px-3 py-2.5 border border-input rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label htmlFor="modal-bio" className="block text-sm font-medium text-foreground mb-1.5">
+                  Principal área de atuação
+                </label>
+                <Select value={formData.bio} onValueChange={(v) => setFormData((prev) => ({ ...prev, bio: v }))} disabled={isLoading}>
+                  <SelectTrigger id="modal-bio" className="h-[42px]">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AREAS.map((a) => (
+                      <SelectItem key={a} value={a}>{a}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

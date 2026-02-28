@@ -42,7 +42,7 @@ function RouteLoadingBar() {
   )
 }
 
-import { WelcomeCreditsModal } from '@/components/onboarding/WelcomeCreditsModal'
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
 import { SubscriptionSuccessModal } from '@/components/billing/SubscriptionSuccessModal'
 
 export function AppLayout() {
@@ -115,7 +115,7 @@ export function AppLayout() {
 
           <BottomNav />
           <CommandPalette />
-          <WelcomeCreditsModal />
+          <WelcomeModal />
           <SubscriptionSuccessModal />
         </div>
       </CalculatorsProvider>

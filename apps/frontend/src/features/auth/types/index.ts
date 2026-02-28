@@ -7,6 +7,8 @@ export interface User {
   avatar_url?: string;
   phone?: string;
   cpf?: string;
+  company?: string;
+  bio?: string;
   welcome_credits_claimed?: boolean;
   newsletter_opt_in?: boolean;
   role: UserRole;
@@ -33,6 +35,8 @@ export interface UpdateProfileData {
   avatar_url?: string;
   phone?: string;
   cpf?: string;
+  company?: string;
+  bio?: string;
   newsletter_opt_in?: boolean;
 }
 

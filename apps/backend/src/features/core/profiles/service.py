@@ -104,6 +104,10 @@ class ProfilesService:
                 db_update["phone"] = update_data["phone"]
             if "cpf" in update_data:
                 db_update["cpf"] = update_data["cpf"]
+            if "company" in update_data:
+                db_update["company"] = update_data["company"]
+            if "bio" in update_data:
+                db_update["bio"] = update_data["bio"]
 
             if db_update:
                 response = (
@@ -136,6 +140,8 @@ class ProfilesService:
                 "avatar_url": profile.get("avatar_url"),
                 "phone": profile.get("phone"),
                 "cpf": profile.get("cpf"),
+                "company": profile.get("company"),
+                "bio": profile.get("bio"),
                 "newsletter_opt_in": current_newsletter_opt_in,
                 "created_at": profile["created_at"],
             }
