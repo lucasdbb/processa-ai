@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Calculator,
   Bot,
-  FileText,
   BookOpen,
   Settings,
   HelpCircle,

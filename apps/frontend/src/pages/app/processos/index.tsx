@@ -338,7 +338,7 @@ export default function ProcessosPage() {
                             {formatCurrency(process.value || 0)}
                           </span>
                         )}
-                        {process.nature && <span>{process.nature}</span>}
+                        {process.process_category && <span>{process.process_category}</span>}
                         {process.area && <span>{process.area}</span>}
                         {process.is_partnership && (
                           <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">

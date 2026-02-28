@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { servicesService, type Service, type ServiceStatus, type ServiceCategory } from '@/services/services-service'
 import { ServiceFormDialog } from '@/components/forms/service-form-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
-import { InfoTooltip } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,

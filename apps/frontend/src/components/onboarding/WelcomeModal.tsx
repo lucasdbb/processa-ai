@@ -67,7 +67,7 @@ export function WelcomeModal() {
 
   // Step 2 — calendario
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
-  const [googleConnected, setGoogleConnected] = useState(false)
+  const [googleConnected] = useState(false)
 
   // Initial check
   const [isCheckingStatus, setIsCheckingStatus] = useState(true)
