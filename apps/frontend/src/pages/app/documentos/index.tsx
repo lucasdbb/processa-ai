@@ -261,12 +261,11 @@ export default function DocumentosPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="divide-y divide-border">
+        <div className="flex flex-col gap-2">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="p-4 sm:p-5 hover:bg-accent/50 transition-all duration-200 border-l-2 border-transparent hover:border-primary"
+                className="bg-card border border-border rounded-xl p-4 sm:p-5 hover:bg-accent/50 transition-all duration-200 border-l-2 hover:border-l-primary"
               >
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-muted rounded-lg shrink-0">
@@ -329,7 +328,6 @@ export default function DocumentosPage() {
                 </div>
               </div>
             ))}
-          </div>
         </div>
       )}
 

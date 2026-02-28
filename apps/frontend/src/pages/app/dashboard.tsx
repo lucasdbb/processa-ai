@@ -4,7 +4,6 @@ import {
   Users,
   FolderKanban,
   CalendarClock,
-  Calculator,
   AlertTriangle,
   ArrowRight,
   TrendingUp,
@@ -13,7 +12,6 @@ import {
   Clock,
   Banknote,
   Briefcase,
-  Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/features/auth/hooks/use-user'
@@ -26,7 +24,6 @@ import {
   type ActivityItem,
 } from '@/services/dashboard-service'
 import { servicesService } from '@/services/services-service'
-import { useCreditsStore } from '@/stores/credits-store'
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
 import { TourButton } from '@/features/onboarding/tour-button'
 import { RevenueChart } from '@/components/charts/revenue-chart'
@@ -68,7 +65,6 @@ export default function DashboardPage() {
   const [processesSummary, setProcessesSummary] = useState<ProcessesSummary | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [servicesCount, setServicesCount] = useState<number>(0)
-  const { credits } = useCreditsStore()
   const { openWelcomeModal } = useOnboardingStore()
   const [loading, setLoading] = useState(true)
 
@@ -145,30 +141,6 @@ export default function DashboardPage() {
           changeType: stats.urgent_deadlines_today > 0 ? 'negative' : 'neutral',
           icon: CalendarClock,
           href: '/app/calendario',
-        },
-        {
-          name: 'Cálculos Neste Mês',
-          value: stats.calculations_this_month.toString(),
-          change:
-            stats.calculations_change_percent !== 0
-              ? `${stats.calculations_change_percent > 0 ? '+' : ''}${stats.calculations_change_percent}% vs anterior`
-              : undefined,
-          changeType:
-            stats.calculations_change_percent > 0
-              ? 'positive'
-              : stats.calculations_change_percent < 0
-                ? 'negative'
-                : 'neutral',
-          icon: Calculator,
-          href: '/app/calculadoras',
-        },
-        {
-          name: 'Créditos Disponíveis',
-          value: credits ? credits.total_available.toString() : '0',
-          change: credits ? `Assinatura: ${credits.subscription_credits} | Comprados: ${credits.purchased_credits}` : undefined,
-          changeType: 'neutral',
-          icon: Bot,
-          href: '/app/ia',
         },
       ]
     : []

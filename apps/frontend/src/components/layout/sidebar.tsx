@@ -102,7 +102,7 @@ const getNavigationGroups = (
     {
       label: 'Recursos',
       items: [
-        { name: 'Documentos', href: '/app/documentos', icon: FileText, dataTour: 'menu-documentos' },
+        // { name: 'Documentos', href: '/app/documentos', icon: FileText, dataTour: 'menu-documentos' },
         { name: 'Materiais', href: '/app/materiais', icon: BookOpen, dataTour: 'menu-materiais' },
       ],
     },
