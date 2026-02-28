@@ -132,11 +132,10 @@ export default function BlogPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-4">
-              Blog Jurídico
+              Fique um passo à frente da legislação.
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed">
-              Mantenha-se atualizado com as últimas notícias, análises e insights do mundo
-              jurídico brasileiro.
+              Análises diretas ao ponto sobre o que muda no direito brasileiro e como isso afeta seus casos.
             </p>
           </div>
         </div>
@@ -241,7 +240,7 @@ export default function BlogPage() {
                       to={`/blog/${featuredPost.slug}`}
                       className="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 transform hover:-translate-y-0.5"
                     >
-                      Ler Artigo
+                      Ler artigo completo
                     </Link>
                   </div>
                 </div>
@@ -253,10 +252,7 @@ export default function BlogPage() {
         <div>
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-foreground tracking-tight">
-              Últimas Publicações{' '}
-              <span className="text-muted-foreground font-normal ml-2 text-lg">
-                ({filteredPosts.length})
-              </span>
+              Últimas Publicações
             </h2>
           </div>
 
@@ -328,7 +324,7 @@ export default function BlogPage() {
                         to={`/blog/${post.slug}`}
                         className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
                       >
-                        Ler mais
+                        Continuar lendo
                       </Link>
                     </div>
                   </div>
@@ -346,12 +342,11 @@ export default function BlogPage() {
             </div>
 
             <div className="relative z-10 max-w-2xl mx-auto">
-              <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-6 tracking-tight">
-                Receba as últimas notícias jurídicas
+              <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight">
+                Direito muda todo dia. Não fique para trás.
               </h3>
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed font-light">
-                Assine nossa newsletter e seja o primeiro a saber sobre mudanças na legislação,
-                novos precedentes e análises jurídicas relevantes.
+                Uma vez por semana, o que importa no direito brasileiro direto no seu e-mail.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 max-w-1.5xl mx-auto">
@@ -361,7 +356,7 @@ export default function BlogPage() {
                   className="flex-[2] px-6 py-4 rounded-xl bg-background/50 border border-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background transition-all"
                 />
                 <button className="bg-slate-900 text-white hover:bg-slate-800 font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap">
-                  Inscrever-se
+                  Quero receber
                 </button>
               </div>
             </div>
