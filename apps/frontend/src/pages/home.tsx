@@ -24,6 +24,7 @@ export default function HomePage() {
   const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [aiTools, setAiTools] = useState<AiTool[]>([])
+  const [latestPost, setLatestPost] = useState<{ title: string; slug: string; category?: string } | null>(null)
 
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -31,6 +32,26 @@ export default function HomePage() {
   // Fetch AI tools from backend on mount
   useEffect(() => {
     fetchAiTools().then((tools) => setAiTools(tools))
+  }, [])
+
+  // Fetch latest blog post for social proof on Blog card
+  useEffect(() => {
+    fetchWithCredentials(`${API_URL}/blog/posts?published=true&limit=1`)
+      .then((r) => r.json())
+      .then((payload: unknown) => {
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray((payload as Record<string, unknown>)?.posts)
+            ? ((payload as Record<string, unknown>).posts as unknown[])
+            : Array.isArray((payload as Record<string, unknown>)?.items)
+              ? ((payload as Record<string, unknown>).items as unknown[])
+              : []
+        const first = list[0] as { title?: string; slug?: string; category?: string } | undefined
+        if (first?.title && first?.slug) {
+          setLatestPost({ title: first.title, slug: first.slug, category: first.category })
+        }
+      })
+      .catch(() => null)
   }, [])
 
   const availableAITools = useMemo(() => aiTools.filter((t) => !t.locked).length, [aiTools])
@@ -194,10 +215,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="text-center mb-6">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              Poder concentrado.
+              Tudo que o seu escritório precisa.<br className="hidden md:block" /> Num só lugar.
             </h2>
             <p className="text-base text-muted-foreground max-w-2xl mx-auto">
-              Todas as ferramentas que você precisa para elevar o nível da sua advocacia.
+              Menos abas abertas. Menos sistemas. Mais tempo para advogar.
             </p>
           </div>
 
@@ -255,19 +276,65 @@ export default function HomePage() {
                         : 'text-white group-hover:text-slate-50'
                     }`}
                   >
-                    CRM Jurídico Completo
+                    Gestão do Escritório
                   </h3>
                 </div>
                 <p
-                  className={`text-sm leading-relaxed font-light transition-colors duration-300 ${
+                  className={`text-base leading-relaxed font-light transition-colors duration-300 ${
                     isDark
                       ? 'text-slate-600 group-hover:text-slate-700'
                       : 'text-[#94a3b8] group-hover:text-[#cbd5e1]'
                   }`}
                 >
-                  Cadastre clientes, acompanhe processos com número CNJ, gerencie prazos com
-                  alertas automáticos de urgência e mantenha tudo organizado.
+                  Chega de post-it e planilha. Cada cliente, processo e prazo em um só lugar,
+                  sem deixar nada cair.
                 </p>
+
+                {/* Momento de imaginação — aparece no hover */}
+                <div className="mt-5 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {[
+                      { label: 'Clientes ativos', value: '47' },
+                      { label: 'Processos', value: '128' },
+                      { label: 'Prazos hoje', value: '3', urgent: true },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className={`rounded-xl p-3 border ${
+                          isDark ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
+                        }`}
+                      >
+                        <p className={`text-xl font-bold tracking-tight ${stat.urgent ? 'text-red-500' : isDark ? 'text-slate-900' : 'text-white'}`}>
+                          {stat.value}
+                        </p>
+                        <p className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          {stat.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Honorários a receber', value: 'R$ 18.400' },
+                      { label: 'Recebido este mês', value: 'R$ 9.200' },
+                      { label: 'Audiências na semana', value: '6' },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className={`rounded-xl p-3 border ${
+                          isDark ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
+                        }`}
+                      >
+                        <p className={`text-sm font-bold tracking-tight ${isDark ? 'text-slate-900' : 'text-white'}`}>
+                          {stat.value}
+                        </p>
+                        <p className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          {stat.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <Link
@@ -278,7 +345,7 @@ export default function HomePage() {
                     : 'text-[#cbd5e1] border-[#1e293b] group-hover:text-white'
                 }`}
               >
-                <span className="transition-colors">Explorar CRM</span>{' '}
+                <span className="transition-colors">Organizar meu escritório</span>{' '}
                 <ArrowRight
                   className={`w-4 h-4 transition-colors ${
                     isDark
@@ -315,7 +382,7 @@ export default function HomePage() {
                       />
                     </div>
                     <h3
-                      className={`text-base font-bold tracking-tight ${
+                      className={`text-lg font-bold tracking-tight ${
                         isDark ? 'text-slate-100' : 'text-slate-900'
                       }`}
                     >
@@ -323,21 +390,22 @@ export default function HomePage() {
                     </h3>
                   </div>
                   <span
-                    className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border flex-shrink-0 ${
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border flex-shrink-0 ${
                       isDark
                         ? 'bg-green-500/10 text-green-400 border-green-500/20'
                         : 'bg-green-50 text-green-700 border-green-200'
                     }`}
                   >
-                    {availableAITools} Ferramentas
+                    <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isDark ? 'bg-green-400' : 'bg-green-500'}`} />
+                    {availableAITools} ferramentas ativas
                   </span>
                 </div>
                 <p
-                  className={`text-sm leading-relaxed ${
+                  className={`text-base leading-relaxed ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  IA treinada para direito brasileiro. Elabore peças e analise documentos.
+                  Analise CNIS, resuma processos e extraia o essencial de documentos. IA treinada para o direito brasileiro.
                 </p>
               </div>
               <div
@@ -353,7 +421,7 @@ export default function HomePage() {
                       : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
-                  Explorar IA <ArrowRight className="w-4 h-4" />
+                  Analisar meu primeiro documento <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             </div>
@@ -383,7 +451,7 @@ export default function HomePage() {
                     />
                   </div>
                   <h3
-                    className={`text-base font-bold tracking-tight ${
+                    className={`text-lg font-bold tracking-tight ${
                       isDark ? 'text-slate-100' : 'text-slate-900'
                     }`}
                   >
@@ -391,11 +459,11 @@ export default function HomePage() {
                   </h3>
                 </div>
                 <p
-                  className={`text-sm leading-relaxed ${
+                  className={`text-base leading-relaxed ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  Trabalhista e previdenciário com atualização automática de índices e legislação.
+                  Números certos na hora certa. Trabalhista e previdenciário com índices sempre atualizados.
                 </p>
               </div>
               <div
@@ -411,7 +479,7 @@ export default function HomePage() {
                       : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
-                  Acessar <ArrowRight className="w-4 h-4" />
+                  Fazer meu primeiro cálculo <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             </div>
@@ -420,13 +488,14 @@ export default function HomePage() {
             
             {/* Blog + Newsletter */}
             <div
-              className={`md:col-span-2 md:row-span-1 group relative overflow-hidden rounded-3xl p-5 flex flex-col transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.01] border ${
+              className={`md:col-span-2 md:row-span-1 group relative overflow-hidden rounded-3xl p-5 flex flex-col md:flex-row gap-4 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.01] border ${
                 isDark
                   ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
                   : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
-              <div>
+              {/* Esquerda — Blog */}
+              <div className="flex-1 flex flex-col min-w-0">
                 <div className="flex items-center gap-3 mb-2">
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
@@ -443,41 +512,74 @@ export default function HomePage() {
                     />
                   </div>
                   <h3
-                    className={`text-base font-bold tracking-tight ${
+                    className={`text-lg font-bold tracking-tight ${
                       isDark ? 'text-slate-100' : 'text-slate-900'
                     }`}
                   >
-                    Blog + Newsletter
+                    Blog Jurídico
                   </h3>
                 </div>
-                <p
-                  className={`text-xs leading-relaxed mb-2 ${
-                    isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}
-                >
-                  Notícias, análises e atualizações sobre legislação.
+
+                <p className={`text-sm leading-relaxed mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Fique à frente. Análises e atualizações do direito direto na sua caixa de entrada.
                 </p>
+
+                {latestPost && (
+                  <Link
+                    to={`/blog/${latestPost.slug}`}
+                    className={`flex-1 flex flex-col justify-between p-3 rounded-xl border transition-colors group/post ${
+                      isDark
+                        ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                      <div className="min-w-0">
+                        {latestPost.category && (
+                          <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                            {latestPost.category}
+                          </p>
+                        )}
+                        <p className={`text-sm font-semibold leading-snug line-clamp-2 group-hover/post:underline ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                          {latestPost.title}
+                        </p>
+                      </div>
+                    </div>
+                    <p className={`text-xs mt-2 flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Ler artigo <ArrowRight className="w-3 h-3" />
+                    </p>
+                  </Link>
+                )}
               </div>
 
-              <div
-                className={`mt-auto pt-2 w-full border-t ${
-                  isDark ? 'border-slate-700' : 'border-slate-200'
-                }`}
-              >
+              {/* Divisor vertical */}
+              <div className={`hidden md:block w-px self-stretch ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+
+              {/* Direita — Newsletter */}
+              <div className="flex-1 flex flex-col justify-between min-w-0">
+                <div className="mb-3">
+                  <h4 className={`text-base font-bold tracking-tight mb-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                    Newsletter
+                  </h4>
+                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Atualizações do direito direto no seu e-mail.
+                  </p>
+                </div>
                 <form onSubmit={handleNewsletterSubscribe} className="w-full">
                   <label htmlFor="home-newsletter-email" className="sr-only">
                     Seu melhor e-mail
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <input
                       id="home-newsletter-email"
                       type="email"
                       inputMode="email"
                       autoComplete="email"
-                      placeholder="Seu e-mail"
+                      placeholder="seu@email.com"
                       value={newsletterEmail}
                       onChange={(e) => setNewsletterEmail(e.target.value)}
-                      className={`flex-1 px-3 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+                      className={`flex-1 px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
                         isDark
                           ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400 focus:bg-slate-600'
                           : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-500 focus:bg-white'
@@ -488,7 +590,7 @@ export default function HomePage() {
                     <button
                       type="submit"
                       disabled={isNewsletterSubmitting}
-                      className={`font-semibold py-1.5 px-3 rounded-lg transition-all duration-200 shadow-sm whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed text-xs ${
+                      className={`font-semibold py-2 px-3 rounded-lg transition-all duration-200 shadow-sm whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed text-sm ${
                         isDark
                           ? 'bg-white text-slate-900 hover:bg-slate-100'
                           : 'bg-slate-900 text-white hover:bg-slate-800'
@@ -497,12 +599,8 @@ export default function HomePage() {
                       {isNewsletterSubmitting ? 'Inscrevendo…' : 'Inscrever'}
                     </button>
                   </div>
-                  <p
-                    className={`mt-1 text-[9px] ${
-                      isDark ? 'text-slate-500' : 'text-slate-500'
-                    }`}
-                  >
-                    Ao se inscrever, você concorda em receber e-mails.
+                  <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Sem spam. Cancele quando quiser.
                   </p>
                 </form>
               </div>
@@ -517,35 +615,46 @@ export default function HomePage() {
               }`}
             >
               <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
-                      isDark
-                        ? 'bg-slate-700 border-slate-600'
-                        : 'bg-slate-100 border-slate-200'
-                    }`}
-                  >
-                    <BookOpen
-                      className={`w-4 h-4 ${
-                        isDark ? 'text-slate-300' : 'text-slate-700'
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
+                        isDark
+                          ? 'bg-slate-700 border-slate-600'
+                          : 'bg-slate-100 border-slate-200'
                       }`}
-                      strokeWidth={1.5}
-                    />
+                    >
+                      <BookOpen
+                        className={`w-4 h-4 ${
+                          isDark ? 'text-slate-300' : 'text-slate-700'
+                        }`}
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                    <h3
+                      className={`text-lg font-bold tracking-tight ${
+                        isDark ? 'text-slate-100' : 'text-slate-900'
+                      }`}
+                    >
+                      Biblioteca Jurídica
+                    </h3>
                   </div>
-                  <h3
-                    className={`text-base font-bold tracking-tight ${
-                      isDark ? 'text-slate-100' : 'text-slate-900'
+                  <span
+                    className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border flex-shrink-0 ${
+                      isDark
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
                     }`}
                   >
-                    Biblioteca Jurídica
-                  </h3>
+                    Só assinantes
+                  </span>
                 </div>
                 <p
-                  className={`text-sm leading-relaxed ${
+                  className={`text-base leading-relaxed ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  Modelos de petições, guias práticos e ebooks exclusivos para assinantes.
+                  Não comece do zero. Modelos prontos, guias práticos e ebooks para quem assina.
                 </p>
               </div>
               <div
@@ -561,7 +670,7 @@ export default function HomePage() {
                       : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
-                  Acessar <ArrowRight className="w-4 h-4" />
+                  Ver materiais disponíveis <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             </div>
