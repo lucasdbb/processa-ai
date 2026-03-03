@@ -3,10 +3,13 @@ Scheduler configuration for background jobs
 Uses APScheduler with optional Redis for distributed locking
 """
 
+from datetime import datetime
+
 from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from src.core.email import send_email
 from src.core.logging import logger
 
 # Import job functions
@@ -52,6 +55,14 @@ async def check_deadlines_job():
     """Job to check upcoming deadlines and create notifications"""
     try:
         logger.info("Running scheduled job: check_deadlines")
+
+        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        await send_email(
+            to_email="admin@processai.app.br",
+            subject="[Processa AI] Job check_deadlines iniciado",
+            body=f"O job agendado check_deadlines foi iniciado em {now} (America/Sao_Paulo).",
+        )
+
         service = DeadlineNotificationService()
         await service.check_upcoming_deadlines()
         logger.info("Completed scheduled job: check_deadlines")
