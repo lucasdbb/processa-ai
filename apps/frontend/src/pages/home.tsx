@@ -361,6 +361,35 @@ export default function HomePage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Mini gráfico de barras — novos processos por mês */}
+                  <div className="mt-3">
+                    <p className={`text-[10px] mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Novos processos (últimos 6 meses)
+                    </p>
+                    <div className="flex items-end gap-1 h-10">
+                      {[
+                        { mes: 'Out', v: 55 },
+                        { mes: 'Nov', v: 70 },
+                        { mes: 'Dez', v: 48 },
+                        { mes: 'Jan', v: 80 },
+                        { mes: 'Fev', v: 65 },
+                        { mes: 'Mar', v: 100 },
+                      ].map((d, i, arr) => (
+                        <div key={d.mes} className="flex flex-col items-center gap-0.5 flex-1">
+                          <div
+                            className={`w-full rounded-sm transition-all duration-300 ${
+                              i === arr.length - 1
+                                ? 'bg-blue-500'
+                                : isDark ? 'bg-slate-300' : 'bg-white/20'
+                            }`}
+                            style={{ height: `${(d.v / 100) * 32}px` }}
+                          />
+                          <span className={`text-[9px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{d.mes}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
