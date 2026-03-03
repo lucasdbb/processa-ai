@@ -3,7 +3,7 @@ Scheduler configuration for background jobs
 Uses APScheduler with optional Redis for distributed locking
 """
 
-from apscheduler.executors.pool import ThreadPoolExecutor
+from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -30,7 +30,7 @@ def create_scheduler() -> AsyncIOScheduler:
         # )
     }
 
-    executors = {"default": ThreadPoolExecutor(max_workers=1)}
+    executors = {"default": AsyncIOExecutor()}
 
     job_defaults = {
         "coalesce": True,  # If missed, run only once (not multiple times)
