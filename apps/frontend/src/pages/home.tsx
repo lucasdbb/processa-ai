@@ -177,21 +177,21 @@ export default function HomePage() {
             Tudo no mesmo lugar.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
-            <button
-              onClick={openRegisterModal}
-              className={`group relative px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 shadow-xl hover:-translate-y-1 overflow-hidden ${
-                isDark
-                  ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-black/10'
-                  : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/10'
-              }`}
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                Começar Gratuitamente
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </span>
-            </button>
-            <div className="flex flex-col items-center gap-1">
+          <div className="flex flex-col items-center gap-3 mb-10">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button
+                onClick={openRegisterModal}
+                className={`group relative px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 shadow-xl hover:-translate-y-1 overflow-hidden ${
+                  isDark
+                    ? 'bg-white text-gray-900 hover:bg-gray-100 shadow-black/10'
+                    : 'bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/10'
+                }`}
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  Começar Gratuitamente
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </button>
               <button
                 onClick={scrollToDemo}
                 className="px-8 py-4 bg-card text-card-foreground border border-border rounded-2xl font-semibold text-lg hover:bg-accent hover:border-border transition-all duration-200 flex items-center gap-2"
@@ -199,8 +199,8 @@ export default function HomePage() {
                 Ver como funciona
                 <ArrowRight className="w-5 h-5" />
               </button>
-              <span className="text-xs text-muted-foreground">Demonstração de 60 segundos, sem cadastro</span>
             </div>
+            <span className="text-xs text-muted-foreground">Demonstração de 60 segundos, sem cadastro</span>
           </div>
 
           {/* Prova social */}
