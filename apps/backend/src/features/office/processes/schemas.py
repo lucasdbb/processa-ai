@@ -114,6 +114,14 @@ class ProcessDeadlineSummary(BaseModel):
     days_until: int
 
 
+class TimelineDocumentSummary(BaseModel):
+    """Minimal document info for timeline events."""
+
+    id: UUID
+    name: str
+    file_url: str | None
+
+
 class ProcessTimelineEvent(BaseModel):
     """Timeline event for process detail view."""
 
@@ -122,6 +130,7 @@ class ProcessTimelineEvent(BaseModel):
     title: str
     description: str | None
     event_date: datetime
+    documents: list[TimelineDocumentSummary] = []
     created_at: datetime
 
 

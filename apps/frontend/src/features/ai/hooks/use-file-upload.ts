@@ -58,7 +58,7 @@ export function useFileUpload() {
       // 2. Upload to Supabase
       const uploadRes = await fetch(uploadData.upload_url, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/pdf' },
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
         body: file,
       })
 

@@ -359,11 +359,9 @@ class PortalService:
             return PortalDocumentDownloadResponse(url=file_url, expires_in=expires_in)
 
         # Generate signed URL via Supabase Storage
-        from src.core.config import settings
-
         supabase = get_supabase()
         try:
-            signed = supabase.storage.from_(settings.SUPABASE_OFFICE_BUCKET).create_signed_url(
+            signed = supabase.storage.from_("documents").create_signed_url(
                 file_url, expires_in
             )
             return PortalDocumentDownloadResponse(url=signed["signedURL"], expires_in=expires_in)

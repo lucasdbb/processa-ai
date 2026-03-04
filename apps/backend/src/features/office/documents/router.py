@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.documents.schemas import (
+    DocumentConfirmUpload,
     DocumentCreate,
     DocumentListParams,
     DocumentListResponse,
@@ -82,43 +83,13 @@ async def update_document(
     return document
 
 
-@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-async def upload_document(
-    file: UploadFile = File(...),
-    name: str = Form(...),
-    type: DocumentType = Form("other"),
-    document_status: DocumentStatus = Form("draft"),
-    process_id: str | None = Form(None),
-    client_id: str | None = Form(None),
-    description: str | None = Form(None),
+@router.post("/confirm-upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def confirm_upload(
+    data: DocumentConfirmUpload,
     user_id: str = Depends(get_user_id),
 ):
-    """Create a document with file upload to Supabase Storage."""
-    if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File name is required",
-        )
-
-    max_size = 50 * 1024 * 1024  # 50MB
-    content = await file.read()
-    if len(content) > max_size:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File size exceeds 50MB limit",
-        )
-
-    data = DocumentCreate(
-        name=name,
-        type=type,
-        status=document_status,
-        process_id=process_id if process_id else None,
-        client_id=client_id if client_id else None,
-        description=description if description else None,
-    )
-    return await documents_service.create_document_with_file(
-        user_id, data, content, file.filename, file.content_type or "application/octet-stream"
-    )
+    """Create document record after file was uploaded via signed URL."""
+    return await documents_service.create_document_from_upload(user_id, data)
 
 
 @router.get("/{document_id}/download")

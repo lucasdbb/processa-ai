@@ -14,6 +14,7 @@ from src.features.office.processes.schemas import (
     ProcessResponse,
     ProcessTimelineEvent,
     ProcessUpdate,
+    TimelineDocumentSummary,
 )
 
 
@@ -287,7 +288,39 @@ class ProcessesService:
                     (str(user_id), str(process_id)),
                 )
                 timeline_rows = await cur.fetchall()
-                timeline = [ProcessTimelineEvent(**row) for row in timeline_rows]
+
+                # Fetch linked documents for all timeline events in one query
+                timeline_event_ids = [str(row["id"]) for row in timeline_rows]
+                docs_by_event: dict[str, list[TimelineDocumentSummary]] = {}
+                if timeline_event_ids:
+                    await cur.execute(
+                        """
+                        SELECT ted.timeline_event_id, d.id, d.name, d.file_url
+                        FROM office_api.timeline_event_documents ted
+                        INNER JOIN office_api.documents d ON d.id = ted.document_id
+                        WHERE ted.timeline_event_id = ANY(%s::uuid[])
+                        ORDER BY ted.created_at ASC
+                        """,
+                        (timeline_event_ids,),
+                    )
+                    doc_rows = await cur.fetchall()
+                    for doc_row in doc_rows:
+                        eid = str(doc_row["timeline_event_id"])
+                        docs_by_event.setdefault(eid, []).append(
+                            TimelineDocumentSummary(
+                                id=doc_row["id"],
+                                name=doc_row["name"],
+                                file_url=doc_row["file_url"],
+                            )
+                        )
+
+                timeline = [
+                    ProcessTimelineEvent(
+                        **row,
+                        documents=docs_by_event.get(str(row["id"]), []),
+                    )
+                    for row in timeline_rows
+                ]
 
                 # Get timeline count
                 await cur.execute(

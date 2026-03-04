@@ -10,7 +10,6 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
-    SUPABASE_AI_BUCKET: str = "supabase-outputs"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

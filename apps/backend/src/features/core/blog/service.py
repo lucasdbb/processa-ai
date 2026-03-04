@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 
-from src.core.config import settings
 from src.core.email import send_new_blog_post_notification_bulk
 from src.core.logging import logger
 from src.core.supabase import get_supabase
@@ -55,7 +54,7 @@ class BlogService:
             filename = f"{post_slug}/{uuid.uuid4().hex}.{extension}"
 
             # Upload to Supabase Storage
-            bucket = settings.SUPABASE_BLOG_BUCKET
+            bucket = "blog-images"
             self.supabase.storage.from_(bucket).upload(
                 filename,
                 image_bytes,

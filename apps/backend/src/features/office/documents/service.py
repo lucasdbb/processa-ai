@@ -1,5 +1,3 @@
-import re
-import unicodedata
 from uuid import UUID, uuid4
 
 import httpx
@@ -10,53 +8,19 @@ from src.core.db import get_pool
 from src.core.logging import logger
 from src.core.supabase import get_supabase
 from src.features.office.documents.schemas import (
+    DocumentConfirmUpload,
     DocumentCreate,
     DocumentListParams,
     DocumentResponse,
     DocumentUpdate,
 )
 
-# Mock data - lista vazia por enquanto (como no frontend)
-MOCK_DOCUMENTS: list[dict] = []
+STORAGE_BUCKET = "documents"
 
 
 def _convert_uuids_to_str(row: dict) -> dict:
     """Convert UUID objects to strings in a row dict."""
     return {k: str(v) if isinstance(v, UUID) else v for k, v in row.items()}
-
-
-def _sanitize_filename(filename: str) -> str:
-    """
-    Sanitize filename to be safe for Supabase Storage.
-    - Removes accents/diacritics
-    - Replaces spaces and special chars with underscores
-    - Keeps only alphanumeric, dots, dashes, and underscores
-    - Preserves file extension
-    """
-    if not filename:
-        return "document"
-
-    # Split extension if present
-    parts = filename.rsplit(".", 1)
-    name = parts[0]
-    ext = f".{parts[1]}" if len(parts) > 1 else ""
-
-    # Normalize unicode characters (NFD = decompose accents)
-    nfd = unicodedata.normalize("NFD", name)
-    # Remove diacritics/accents (category Mn = non-spacing marks)
-    without_accents = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
-    # Replace spaces and non-alphanumeric chars with underscores
-    sanitized = re.sub(r"[^a-zA-Z0-9._-]+", "_", without_accents)
-    # Remove leading/trailing underscores and dashes
-    sanitized = sanitized.strip("_-")
-    # Collapse multiple consecutive underscores/dashes
-    sanitized = re.sub(r"[_-]{2,}", "_", sanitized)
-
-    # Fallback if nothing left
-    if not sanitized:
-        sanitized = "document"
-
-    return sanitized + ext
 
 
 class DocumentsService:
@@ -220,30 +184,14 @@ class DocumentsService:
                 row = await cur.fetchone()
                 return DocumentResponse(**_convert_uuids_to_str(row)) if row else None
 
-    async def create_document_with_file(
+    async def create_document_from_upload(
         self,
         user_id: str,
-        data: DocumentCreate,
-        file_content: bytes,
-        filename: str,
-        content_type: str,
+        data: DocumentConfirmUpload,
     ) -> DocumentResponse:
-        """Create a document and upload file to Supabase Storage."""
+        """Create a document record after file was uploaded via signed URL."""
         doc_id = str(uuid4())
-        # Sanitize filename to avoid Supabase Storage InvalidKey errors
-        safe_filename = _sanitize_filename(filename)
-        storage_path = f"{user_id}/{doc_id}/{safe_filename}"
-        bucket = settings.SUPABASE_OFFICE_BUCKET
-
-        supabase = get_supabase()
-        supabase.storage.from_(bucket).upload(
-            path=storage_path,
-            file=file_content,
-            file_options={"content-type": content_type},
-        )
-
-        # Store the storage path (not a public URL) — signed URLs are generated on demand
-        file_url = storage_path
+        file_url = data.storage_path
 
         pool = await get_pool()
         async with pool.connection() as conn:
@@ -264,8 +212,8 @@ class DocumentsService:
                         data.type,
                         data.status,
                         file_url,
-                        len(file_content),
-                        content_type,
+                        data.file_size,
+                        data.mime_type,
                         data.process_id,
                         data.client_id,
                         data.description,
@@ -280,16 +228,15 @@ class DocumentsService:
         """Generate a signed URL for downloading a document (same pattern as AI service)."""
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        bucket = settings.SUPABASE_OFFICE_BUCKET
 
         # Handle legacy entries that stored full public URL instead of storage path
         if file_url.startswith("http"):
-            marker = f"/object/public/{bucket}/"
+            marker = f"/object/public/{STORAGE_BUCKET}/"
             idx = file_url.find(marker)
             if idx != -1:
                 file_url = file_url[idx + len(marker) :]
 
-        sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{file_url}"
+        sign_url = f"{base_url}/storage/v1/object/sign/{STORAGE_BUCKET}/{file_url}"
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 sign_url,
@@ -341,13 +288,8 @@ class DocumentsService:
 
         if deleted and doc and doc.file_url:
             try:
-                bucket = settings.SUPABASE_OFFICE_BUCKET
-                storage_path = f"{user_id}/{document_id}/"
                 supabase = get_supabase()
-                files = supabase.storage.from_(bucket).list(storage_path)
-                if files:
-                    paths = [f"{storage_path}{f['name']}" for f in files]
-                    supabase.storage.from_(bucket).remove(paths)
+                supabase.storage.from_(STORAGE_BUCKET).remove([doc.file_url])
             except Exception as e:
                 logger.warning(f"Failed to delete file from storage: {e}")
 

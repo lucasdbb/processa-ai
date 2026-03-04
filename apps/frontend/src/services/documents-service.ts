@@ -1,4 +1,5 @@
 import { API_URL, fetchWithCredentials } from "@/lib/fetch";
+import { createClient } from "@/lib/supabase/client";
 
 export interface Document {
   id: string;
@@ -96,25 +97,65 @@ export const documentsService = {
   },
 
   async createWithFile(data: DocumentCreate, file: File): Promise<Document> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("name", data.name);
-    if (data.type) formData.append("type", data.type);
-    if (data.status) formData.append("document_status", data.status);
-    if (data.process_id) formData.append("process_id", data.process_id);
-    if (data.service_id) formData.append("service_id", data.service_id);
-    if (data.client_id) formData.append("client_id", data.client_id);
-    if (data.description) formData.append("description", data.description);
+    // Get user_id from Supabase session
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user?.id) throw new Error("User not authenticated");
 
-    const res = await fetchWithCredentials(
-      `${API_URL}/office/documents/upload`,
+    // 1. Request signed URL for direct upload
+    const uploadUrlRes = await fetchWithCredentials(
+      `${API_URL}/storage/upload-url`,
       {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          user_id: session.user.id,
+          functionality: "office",
+        }),
       },
     );
-    if (!res.ok) throw new Error("Failed to upload document");
-    return res.json();
+    if (!uploadUrlRes.ok) throw new Error("Failed to get upload URL");
+
+    const uploadData = (await uploadUrlRes.json()) as {
+      upload_url: string;
+      storage_path: string;
+      bucket: string;
+    };
+
+    // 2. Upload file directly to Supabase Storage
+    const uploadRes = await fetch(uploadData.upload_url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!uploadRes.ok) throw new Error("Failed to upload file");
+
+    // 3. Confirm upload and create document record
+    const confirmRes = await fetchWithCredentials(
+      `${API_URL}/office/documents/confirm-upload`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          type: data.type || "other",
+          status: data.status || "draft",
+          storage_path: uploadData.storage_path,
+          bucket: uploadData.bucket,
+          file_size: file.size,
+          mime_type: file.type || "application/octet-stream",
+          process_id: data.process_id || null,
+          service_id: data.service_id || null,
+          client_id: data.client_id || null,
+          description: data.description || null,
+        }),
+      },
+    );
+    if (!confirmRes.ok) throw new Error("Failed to confirm document upload");
+    return confirmRes.json();
   },
 
   async getDownloadUrl(id: string): Promise<string> {

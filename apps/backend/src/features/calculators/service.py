@@ -330,8 +330,8 @@ class CalculatorsService:
     ) -> dict:
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-        bucket = (settings.SUPABASE_AI_BUCKET or "").strip()
-        if not base_url or not api_key or not bucket:
+        bucket = "documents"
+        if not base_url or not api_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Supabase Storage não configurado",

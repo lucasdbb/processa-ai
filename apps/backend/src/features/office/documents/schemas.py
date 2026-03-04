@@ -59,6 +59,22 @@ class DocumentListResponse(BaseModel):
     total: int
 
 
+class DocumentConfirmUpload(BaseModel):
+    """Schema for confirming a document uploaded via signed URL."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    type: DocumentType = "other"
+    status: DocumentStatus = "draft"
+    storage_path: str
+    bucket: str
+    file_size: int = Field(..., ge=0)
+    mime_type: str = "application/octet-stream"
+    process_id: str | None = None
+    service_id: str | None = None
+    client_id: str | None = None
+    description: str | None = None
+
+
 class DocumentListParams(BaseModel):
     search: str | None = None
     type: DocumentType | None = None
