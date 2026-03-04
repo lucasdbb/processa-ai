@@ -20,16 +20,16 @@ import { X, Upload, FileText } from 'lucide-react'
 import { analytics } from '@/lib/analytics'
 
 const EVENT_TYPE_OPTIONS: { value: TimelineEventType; label: string }[] = [
-  { value: 'hearing', label: 'Audiencia' },
-  { value: 'petition', label: 'Peticao' },
-  { value: 'decision', label: 'Decisao Judicial' },
-  { value: 'citation', label: 'Citacao' },
-  { value: 'status_change', label: 'Mudanca de Status' },
+  { value: 'hearing', label: 'Audiência' },
+  { value: 'petition', label: 'Petição' },
+  { value: 'decision', label: 'Decisão Judicial' },
+  { value: 'citation', label: 'Citação' },
+  { value: 'status_change', label: 'Mudança de Status' },
   { value: 'deadline', label: 'Prazo' },
   { value: 'document', label: 'Documento' },
-  { value: 'note', label: 'Anotacao' },
-  { value: 'update', label: 'Atualizacao' },
-  { value: 'creation', label: 'Criacao' },
+  { value: 'note', label: 'Anotação' },
+  { value: 'update', label: 'Atualização' },
+  { value: 'creation', label: 'Criação' },
   { value: 'other', label: 'Outro' },
 ]
 
@@ -137,8 +137,8 @@ export function TimelineFormDialog({
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!title.trim()) newErrors.title = 'Titulo e obrigatorio'
-    if (!eventDate) newErrors.eventDate = 'Data e obrigatoria'
+    if (!title.trim()) newErrors.title = 'ítulo é obrigatório'
+    if (!eventDate) newErrors.eventDate = 'Data é obrigatória'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -260,13 +260,13 @@ export function TimelineFormDialog({
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Titulo *
+              Título *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Audiencia de conciliacao realizada"
+              placeholder="Ex: Audiência de conciliação realizada"
               className={cn(
                 'w-full px-3 py-2 bg-background border rounded-lg text-sm',
                 'focus:outline-none focus:ring-2 focus:ring-primary',
@@ -301,7 +301,7 @@ export function TimelineFormDialog({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Descricao
+              Descrição
             </label>
             <textarea
               value={description}

@@ -107,11 +107,11 @@ export function CalendarEventFormDialog({
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!title.trim()) newErrors.title = 'Titulo e obrigatorio'
-    if (!startAt) newErrors.startAt = 'Data de inicio e obrigatoria'
-    if (!endAt) newErrors.endAt = 'Data de termino e obrigatoria'
+    if (!title.trim()) newErrors.title = 'Título é obrigatório'
+    if (!startAt) newErrors.startAt = 'Data de início é obrigatória'
+    if (!endAt) newErrors.endAt = 'Data de término é obrigatória'
     if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
-      newErrors.endAt = 'Termino deve ser apos o inicio'
+      newErrors.endAt = 'Data de término deve ser após a data de início'
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -188,7 +188,7 @@ export function CalendarEventFormDialog({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Audiencia de instrucao"
+              placeholder="Ex: Audiência de instrução"
               className={cn(
                 'w-full px-3 py-2 bg-background border rounded-lg text-sm',
                 'focus:outline-none focus:ring-2 focus:ring-primary',
@@ -316,7 +316,7 @@ export function CalendarEventFormDialog({
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ex: Vara do Trabalho de Sao Paulo"
+              placeholder="Ex: Vara do Trabalho de São Paulo"
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -351,7 +351,7 @@ export function CalendarEventFormDialog({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Descricao
+              Descrição
             </label>
             <textarea
               value={description}

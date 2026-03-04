@@ -156,10 +156,10 @@ function DocumentFormDialogBody({
 
   const documentTypes = [
     { value: 'other', label: 'Outro' },
-    { value: 'petition', label: 'Peticao' },
+    { value: 'petition', label: 'Petição' },
     { value: 'contract', label: 'Contrato' },
-    { value: 'ai_analysis', label: 'Analise IA' },
-    { value: 'calculation', label: 'Calculo' },
+    { value: 'ai_analysis', label: 'Análise IA' },
+    { value: 'calculation', label: 'Cálculo' },
   ]
 
   const statusOptions = [
@@ -308,7 +308,7 @@ function DocumentFormDialogBody({
                 'w-full px-3 py-2 bg-background border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                 errors.name ? 'border-destructive' : 'border-border'
               )}
-              placeholder="Ex: Contrato de prestacao de servicos"
+              placeholder="Ex: Contrato de prestação de serviços"
             />
             {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}
           </div>
@@ -374,7 +374,7 @@ function DocumentFormDialogBody({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Descricao
+              Descrição
             </label>
             <textarea
               value={formData.description}
