@@ -3,14 +3,14 @@ import { Eye, Heart, Mail, Target } from 'lucide-react'
 
 const team = [
   {
-    name: 'Dra. Alexia Machado',
+    name: 'Alexia Machado',
     role: 'Fundadora & Head de Conteúdo',
     description: 'Advogada autônoma especializada em Direito Trabalhista, Previdenciário e do Consumidor.',
     image: '/images/founder_alexia.jpg',
   },
   {
     name: 'Marcelo Cardozo',
-    role: 'Fundador & CTO',
+    role: 'Fundador & Head de Tecnologia',
     description: 'Engenheiro de software especialista em Inteligência Artificial e Tecnologia Jurídica.',
     image: '/images/founder_marcelo.jpg',
   },
@@ -43,9 +43,6 @@ export default function SobrePage() {
             <div>
               <h2 className="text-3xl font-bold text-foreground mb-6 tracking-tight">Nossa História</h2>
               <div className="space-y-6 text-muted-foreground text-lg leading-relaxed">
-                <p className="text-foreground font-medium italic border-l-4 border-border pl-4">
-                  "Alexia perdeu um prazo por não ter as ferramentas certas. Marcelo decidiu construí-las."
-                </p>
                 <p>
                   A Processa AI nasceu em 2025 da experiência real de quem advocacia na prática. A Dra. Alexia Machado,
                   advogada especializada em Direito Trabalhista e Previdenciário, vivia de perto a sobrecarga

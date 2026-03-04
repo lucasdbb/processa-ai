@@ -188,7 +188,7 @@ export default function HomePage() {
                 }`}
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  Começar Gratuitamente
+                  Começar a organizar meu escritório
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
