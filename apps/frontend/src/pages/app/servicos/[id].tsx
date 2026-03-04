@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { analytics } from '@/lib/analytics'
 import { servicesService, type ServiceDetail } from '@/services/services-service'
 import { documentsService, type Document } from '@/services/documents-service'
 import { ServiceFormDialog } from '@/components/forms/service-form-dialog'
@@ -211,6 +212,7 @@ export default function ServicoDetalhePage() {
     if (!confirm('Tem certeza que deseja excluir este documento?')) return
     try {
       await documentsService.delete(docId)
+      analytics.track('office_action', { entity: 'document', action: 'deleted' })
       toast.success('Documento excluído')
       fetchDocuments()
       if (service) {
@@ -228,6 +230,7 @@ export default function ServicoDetalhePage() {
     if (!service) return
     try {
       await servicesService.delete(id!)
+      analytics.track('office_action', { entity: 'service', action: 'deleted' })
       toast.success('Serviço excluído')
       navigate('/app/clientes/' + service.client_id)
     } catch (error) {

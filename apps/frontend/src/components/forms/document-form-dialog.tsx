@@ -5,6 +5,7 @@ import { ClientSelect } from '@/components/ui/client-select'
 import { ProcessSelect } from '@/components/ui/process-select'
 import { toast } from 'sonner'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
+import { analytics } from '@/lib/analytics'
 
 interface Document {
   id: string
@@ -99,8 +100,10 @@ function DocumentFormDialogBody({
     try {
       if (isEditing && currentDocument) {
         await onSave({ ...formData, id: currentDocument.id, file_url: currentDocument.file_url || undefined }, selectedFile || undefined)
+        analytics.track('office_action', { entity: 'document', action: 'updated', type: formData.type })
       } else {
         await onSave(formData, selectedFile || undefined)
+        analytics.track('office_action', { entity: 'document', action: 'created', type: formData.type, has_file: !!selectedFile })
       }
       onClose()
     } catch (error) {

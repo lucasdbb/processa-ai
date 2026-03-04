@@ -7,6 +7,7 @@ import { PROCESS_AREAS, PROCESS_TYPES, TRIBUNALS } from '@/lib/constants'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import type { Client } from '@/services/clients-service'
+import { analytics } from '@/lib/analytics'
 
 export interface ProcessFormData {
   id: string
@@ -202,6 +203,7 @@ function ProcessFormDialogBody({
           partner_percentage: updated.partner_percentage ?? undefined,
         }
         
+        analytics.track('office_action', { entity: 'process', action: 'updated', category: formData.process_category, area: formData.area })
         toast.success('Processo atualizado com sucesso!')
         onSave(updatedProcess)
         onClose()
@@ -250,6 +252,7 @@ function ProcessFormDialogBody({
           partner_percentage: created.partner_percentage ?? undefined,
         }
 
+        analytics.track('office_action', { entity: 'process', action: 'created', category: formData.process_category, area: formData.area })
         toast.success('Processo criado com sucesso!')
         onSave(savedProcess)
         onClose()

@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { Loader2, Building2, User } from 'lucide-react'
 import { clientsService, type Client, type ClientCreate, type ClientUpdate } from '@/services/clients-service'
 import { toast } from 'sonner'
+import { analytics } from '@/lib/analytics'
 
 interface ClientFormDialogProps {
   isOpen: boolean
@@ -172,9 +173,11 @@ function ClientFormDialogBody({
 
       if (isEditing && client) {
         await clientsService.update(client.id, dataToSend as ClientUpdate)
+        analytics.track('office_action', { entity: 'client', action: 'updated' })
         toast.success('Cliente atualizado com sucesso!')
       } else {
         await clientsService.create(dataToSend as ClientCreate)
+        analytics.track('office_action', { entity: 'client', action: 'created', person_type: personType })
         toast.success('Cliente criado com sucesso!')
       }
 

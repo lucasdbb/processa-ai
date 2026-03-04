@@ -25,6 +25,15 @@ export class ConsoleAnalyticsService implements AnalyticsService {
   reset() {
     console.log('[Analytics] Reset (user logged out)');
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  register(properties: Record<string, any>) {
+    console.log('[Analytics] Register super properties:', properties);
+  }
+
+  unregister(property: string) {
+    console.log(`[Analytics] Unregister property: ${property}`);
+  }
 }
 
 // Implementação Real do PostHog
@@ -46,8 +55,8 @@ export class PostHogAnalyticsService implements AnalyticsService {
       posthog.init(this.apiKey, {
         api_host: this.apiHost,
         person_profiles: 'identified_only', // Otimização de custos: só cria perfil se identificar
-        capture_pageview: false, // Vamos controlar manualmente para evitar duplicatas em SPA
-        autocapture: false, // Desativado por padrão para reduzir ruído. Ative se quiser rastrear tudo.
+        capture_pageview: false, // Controlado manualmente via usePageTracking() para evitar duplicatas em SPA
+        autocapture: true, // Captura automática de cliques em botões, links e submissões de formulários
       });
     }
   }
@@ -70,5 +79,14 @@ export class PostHogAnalyticsService implements AnalyticsService {
 
   reset() {
     posthog.reset();
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  register(properties: Record<string, any>) {
+    posthog.register(properties);
+  }
+
+  unregister(property: string) {
+    posthog.unregister(property);
   }
 }

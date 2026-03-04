@@ -17,6 +17,7 @@ import {
   type Document,
 } from '@/services/documents-service'
 import { X, Upload, FileText } from 'lucide-react'
+import { analytics } from '@/lib/analytics'
 
 const EVENT_TYPE_OPTIONS: { value: TimelineEventType; label: string }[] = [
   { value: 'hearing', label: 'Audiencia' },
@@ -182,6 +183,7 @@ export function TimelineFormDialog({
           event_date: new Date(eventDate + 'T12:00:00').toISOString(),
           document_ids: allDocumentIds,
         })
+        analytics.track('office_action', { entity: 'timeline', action: 'updated' })
         toast.success('Andamento atualizado com sucesso')
       } else {
         await timelineService.create({
@@ -192,6 +194,7 @@ export function TimelineFormDialog({
           event_date: new Date(eventDate + 'T12:00:00').toISOString(),
           document_ids: allDocumentIds,
         })
+        analytics.track('office_action', { entity: 'timeline', action: 'created', event_type: eventType, files_count: newFiles.length })
         toast.success('Andamento registrado com sucesso')
       }
       resetForm()

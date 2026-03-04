@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { billingService, type SubscriptionStatus } from '@/services/billing-service'
+import { analytics } from '@/lib/analytics'
 
 interface BillingState {
   subscription: SubscriptionStatus | null
@@ -23,6 +24,12 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     try {
       const subscription = await billingService.getSubscription()
       set({ subscription, isLoading: false })
+
+      // Registrar super properties de subscription em todos os eventos
+      analytics.register({
+        subscription_plan: subscription.plan_id,
+        subscription_status: subscription.status,
+      })
     } catch (error) {
       console.error('Failed to fetch subscription:', error)
       set({ error: (error as Error).message, isLoading: false })

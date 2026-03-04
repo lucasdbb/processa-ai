@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 import type { Service, ServiceCategory, ServiceCreate, ServiceUpdate } from '@/services/services-service'
 import { ClientSelect } from '@/components/ui/client-select'
+import { analytics } from '@/lib/analytics'
 
 interface ServiceFormDialogProps {
   isOpen: boolean
@@ -131,8 +132,10 @@ function ServiceFormDialogBody({
 
       if (isEditing && service) {
         await onSave({ ...payload, id: service.id })
+        analytics.track('office_action', { entity: 'service', action: 'updated', category: formData.category })
       } else {
         await onSave({ ...payload, client_id: clientId ?? selectedClientId ?? undefined })
+        analytics.track('office_action', { entity: 'service', action: 'created', category: formData.category })
       }
       onClose()
     } catch (error) {

@@ -17,6 +17,7 @@ import {
   type CalendarEvent,
   type DeadlinePriority,
 } from '@/services/calendar-service'
+import { analytics } from '@/lib/analytics'
 
 const EVENT_TYPE_OPTIONS: { value: EventType; label: string; color: string }[] = [
   { value: 'audiencia', label: 'Audiência', color: '#ef4444' },
@@ -137,9 +138,11 @@ export function CalendarEventFormDialog({
 
       if (isEditing && event) {
         await calendarService.updateEvent(event.id, data)
+        analytics.track('office_action', { entity: 'calendar_event', action: 'updated', event_type: eventType })
         toast.success('Evento atualizado com sucesso')
       } else {
         await calendarService.createEvent(data)
+        analytics.track('office_action', { entity: 'calendar_event', action: 'created', event_type: eventType })
         toast.success('Evento criado com sucesso')
       }
       onSave()
@@ -155,6 +158,7 @@ export function CalendarEventFormDialog({
     setIsDeleting(true)
     try {
       await calendarService.deleteEvent(event.id)
+      analytics.track('office_action', { entity: 'calendar_event', action: 'deleted' })
       toast.success('Evento excluído com sucesso')
       onSave()
     } catch {

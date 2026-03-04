@@ -45,6 +45,15 @@ class Analytics {
   public reset() {
     this.service.reset();
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public register(properties: Record<string, any>) {
+    this.service.register(properties);
+  }
+
+  public unregister(property: string) {
+    this.service.unregister(property);
+  }
 }
 
 export const analytics = Analytics.getInstance();

@@ -19,4 +19,7 @@ export interface AnalyticsService {
   identify(userId: string, traits?: Record<string, any>): void;
   pageView(path: string): void;
   reset(): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  register(properties: Record<string, any>): void;
+  unregister(property: string): void;
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
+import { analytics } from '@/lib/analytics'
 
 interface Note {
   id: string
@@ -73,8 +74,10 @@ function NoteFormDialogBody({
     try {
       if (isEditing && note) {
         await onSave({ ...formData, id: note.id })
+        analytics.track('office_action', { entity: 'note', action: 'updated', note_type: formData.note_type })
       } else {
         await onSave(formData)
+        analytics.track('office_action', { entity: 'note', action: 'created', note_type: formData.note_type })
       }
       onClose()
     } catch (error) {

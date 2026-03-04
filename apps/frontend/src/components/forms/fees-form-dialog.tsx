@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 import type { Fee, FeeType } from '@/services/fees-service'
+import { analytics } from '@/lib/analytics'
 
 interface FeesFormDialogProps {
   isOpen: boolean
@@ -134,6 +135,7 @@ function FeesFormDialogBody({
 
       if (isEditing && fee) {
         await onSave({ ...basePayload, id: fee.id })
+        analytics.track('office_action', { entity: 'fee', action: 'updated', fee_type: formData.fee_type })
       } else if (isInstallment && onSaveBatch) {
         const installments = Array.from({ length: installmentCount }, (_, i) => {
           const date = new Date(firstDueDate + 'T12:00:00')
@@ -147,8 +149,10 @@ function FeesFormDialogBody({
           }
         })
         await onSaveBatch(installments)
+        analytics.track('office_action', { entity: 'fee', action: 'created', fee_type: formData.fee_type, is_installment: true, installment_count: installmentCount })
       } else {
         await onSave(basePayload)
+        analytics.track('office_action', { entity: 'fee', action: 'created', fee_type: formData.fee_type })
       }
       onClose()
     } catch (error) {

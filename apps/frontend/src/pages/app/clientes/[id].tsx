@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { analytics } from '@/lib/analytics'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
@@ -327,6 +328,7 @@ export default function ClienteDetalhePage() {
 
     try {
       await feesService.delete(feeId)
+      analytics.track('office_action', { entity: 'fee', action: 'deleted' })
       toast.success('Honorário excluído com sucesso')
       await Promise.all([fetchClient(), fetchFees()])
     } catch (error) {
@@ -394,6 +396,7 @@ export default function ClienteDetalhePage() {
     setIsDeleting(true)
     try {
       await clientsService.delete(id)
+      analytics.track('office_action', { entity: 'client', action: 'deleted' })
       toast.success('Cliente excluído com sucesso')
       navigate('/app/clientes')
     } catch (error) {

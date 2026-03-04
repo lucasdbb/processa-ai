@@ -43,6 +43,12 @@ export function useAuth() {
                 return;
               }
 
+              // Registrar super properties para todos os eventos futuros
+              analytics.register({
+                user_role: profile.role,
+                user_status: profile.status,
+              });
+
               setUser({
                 id: session.user.id,
                 email: session.user.email!,
@@ -118,6 +124,10 @@ export function useAuth() {
         name: profile.name,
         role: profile.role,
         status: profile.status,
+      });
+      analytics.register({
+        user_role: profile.role,
+        user_status: profile.status,
       });
       analytics.track('user_logged_in', { method: 'email' });
 

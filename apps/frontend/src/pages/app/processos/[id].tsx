@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { analytics } from '@/lib/analytics'
 import { CalendarEventFormDialog } from '@/components/forms/calendar-event-form-dialog'
 import { ProcessFormDialog, type ProcessFormData } from '@/components/forms/process-form-dialog'
 import { DocumentFormDialog } from '@/components/forms/document-form-dialog'
@@ -192,6 +193,7 @@ export default function ProcessoDetalhePage() {
     setIsDeleting(true)
     try {
       await processesService.delete(id)
+      analytics.track('office_action', { entity: 'process', action: 'deleted' })
       toast.success('Processo excluído com sucesso')
       navigate('/app/processos')
     } catch (error) {
@@ -221,6 +223,7 @@ export default function ProcessoDetalhePage() {
     try {
       // Delete timeline event
       await timelineService.delete(timelineToDelete.id)
+      analytics.track('office_action', { entity: 'timeline', action: 'deleted' })
       
       // If user chose to delete documents, delete them
       if (deleteTimelineDocuments && timelineToDelete.documents?.length) {
