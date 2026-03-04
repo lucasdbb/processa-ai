@@ -17,6 +17,7 @@ interface Document {
   service_id: string | null
   client_id: string | null
   description: string | null
+  visible_to_client: boolean
 }
 
 interface DocumentFormDialogProps {
@@ -37,6 +38,7 @@ const getInitialFormData = (document?: Document, preselectedProcessId?: string, 
   service_id: document?.service_id ?? preselectedServiceId ?? '',
   client_id: document?.client_id ?? preselectedClientId ?? '',
   description: document?.description ?? '',
+  visible_to_client: document?.visible_to_client ?? false,
 })
 
 const formatFileSize = (bytes: number) => {
@@ -383,6 +385,33 @@ function DocumentFormDialogBody({
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               placeholder="Adicione detalhes sobre o documento..."
             />
+          </div>
+
+          {/* Portal visibility toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Visível no Portal do Cliente</p>
+              <p className="text-xs text-muted-foreground mt-0.5">O cliente poderá visualizar e baixar este documento pelo portal</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.visible_to_client}
+              onClick={() => {
+                setFormData((prev) => ({ ...prev, visible_to_client: !prev.visible_to_client }))
+              }}
+              className={cn(
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                formData.visible_to_client ? 'bg-primary' : 'bg-muted-foreground/30'
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                  formData.visible_to_client ? 'translate-x-6' : 'translate-x-1'
+                )}
+              />
+            </button>
           </div>
         </div>
 

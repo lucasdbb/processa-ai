@@ -142,6 +142,7 @@ class ProcessDocumentSummary(BaseModel):
     mime_type: str | None
     file_size: int | None
     file_url: str | None
+    visible_to_client: bool
     created_at: datetime
 
 

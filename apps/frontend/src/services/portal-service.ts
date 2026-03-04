@@ -10,12 +10,20 @@ export interface PortalProcessStatus {
   color: string
 }
 
+export interface PortalEventDocument {
+  id: string
+  name: string
+  file_size: number | null
+  mime_type: string | null
+}
+
 export interface PortalTimelineEvent {
   id: string
   title: string
   description: string | null
   event_date: string
   event_type: string
+  documents: PortalEventDocument[]
 }
 
 export interface PortalProcess {

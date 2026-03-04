@@ -14,6 +14,7 @@ export interface Document {
   service_id: string | null;
   client_id: string | null;
   description: string | null;
+  visible_to_client: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,7 @@ export interface DocumentCreate {
   service_id?: string;
   client_id?: string;
   description?: string;
+  visible_to_client?: boolean;
 }
 
 export type DocumentUpdate = Partial<DocumentCreate>;
@@ -151,6 +153,7 @@ export const documentsService = {
           service_id: data.service_id || null,
           client_id: data.client_id || null,
           description: data.description || null,
+          visible_to_client: data.visible_to_client ?? false,
         }),
       },
     );

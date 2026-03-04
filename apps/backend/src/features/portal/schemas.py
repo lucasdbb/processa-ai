@@ -33,12 +33,20 @@ class PortalProcessStatus(BaseModel):
     color: str  # tailwind color token for the badge
 
 
+class PortalEventDocument(BaseModel):
+    id: UUID
+    name: str
+    file_size: int | None
+    mime_type: str | None
+
+
 class PortalTimelineEvent(BaseModel):
     id: UUID
     title: str
     description: str | None
     event_date: datetime
     event_type: str
+    documents: list[PortalEventDocument] = []
 
 
 class PortalProcessSummary(BaseModel):

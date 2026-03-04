@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Scale,
   Handshake,
+  Eye,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -840,7 +841,15 @@ export default function ProcessoDetalhePage() {
                       <div className="flex items-center gap-3 flex-1">
                         <FileText className="h-5 w-5 text-muted-foreground" />
                         <div className="flex-1">
-                          <h3 className="font-medium text-foreground">{doc.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-foreground">{doc.name}</h3>
+                            {doc.visible_to_client && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400" title="Visível no portal do cliente">
+                                <Eye className="h-3 w-3" />
+                                Portal
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {doc.mime_type || 'Documento'} · {formatShortDate(doc.created_at)} ·{' '}
                             {formatFileSize(doc.file_size)}
@@ -974,6 +983,7 @@ export default function ProcessoDetalhePage() {
               service_id: editingDocument.service_id,
               client_id: editingDocument.client_id,
               description: editingDocument.description,
+              visible_to_client: editingDocument.visible_to_client,
             } : undefined}
             onSave={async (docData, file) => {
               try {
@@ -985,6 +995,7 @@ export default function ProcessoDetalhePage() {
                     process_id: docData.process_id || undefined,
                     client_id: docData.client_id || undefined,
                     description: docData.description || undefined,
+                    visible_to_client: docData.visible_to_client,
                   })
                   toast.success('Documento atualizado com sucesso!')
                 } else if (file) {
@@ -995,6 +1006,7 @@ export default function ProcessoDetalhePage() {
                     process_id: id,
                     client_id: docData.client_id || undefined,
                     description: docData.description || undefined,
+                    visible_to_client: docData.visible_to_client,
                   }, file)
                   toast.success('Documento enviado com sucesso!')
                 } else {
@@ -1005,6 +1017,7 @@ export default function ProcessoDetalhePage() {
                     process_id: id,
                     client_id: docData.client_id || undefined,
                     description: docData.description || undefined,
+                    visible_to_client: docData.visible_to_client,
                   })
                   toast.success('Documento criado com sucesso!')
                 }

@@ -106,9 +106,9 @@ class DocumentsService:
                     """
                     INSERT INTO office_api.documents (
                         id, user_id, name, type, status, file_url, file_size,
-                        mime_type, process_id, client_id, description
+                        mime_type, process_id, client_id, description, visible_to_client
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING *
                     """,
                     (
@@ -123,6 +123,7 @@ class DocumentsService:
                         data.process_id,
                         data.client_id,
                         data.description,
+                        data.visible_to_client,
                     ),
                 )
                 row = await cur.fetchone()
@@ -165,6 +166,9 @@ class DocumentsService:
         if data.description is not None:
             set_clauses.append("description = %s")
             params.append(data.description)
+        if data.visible_to_client is not None:
+            set_clauses.append("visible_to_client = %s")
+            params.append(data.visible_to_client)
 
         if not set_clauses:
             # Nothing to update, return current document
@@ -200,9 +204,9 @@ class DocumentsService:
                     """
                     INSERT INTO office_api.documents (
                         id, user_id, name, type, status, file_url, file_size,
-                        mime_type, process_id, client_id, description
+                        mime_type, process_id, client_id, description, visible_to_client
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING *
                     """,
                     (
@@ -217,6 +221,7 @@ class DocumentsService:
                         data.process_id,
                         data.client_id,
                         data.description,
+                        data.visible_to_client,
                     ),
                 )
                 row = await cur.fetchone()

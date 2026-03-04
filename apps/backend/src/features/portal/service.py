@@ -14,6 +14,7 @@ from src.features.portal.schemas import (
     PortalDocumentDownloadResponse,
     PortalDocumentsResponse,
     PortalEvent,
+    PortalEventDocument,
     PortalEventsResponse,
     PortalFee,
     PortalFinancesResponse,
@@ -179,16 +180,44 @@ class PortalService:
                         (process_id,),
                     )
                     event_rows = await cur.fetchall()
-                    recent_events = [
-                        PortalTimelineEvent(
-                            id=e["id"],
-                            title=e["title"],
-                            description=e["description"],
-                            event_date=e["event_date"],
-                            event_type=e["event_type"],
+
+                    recent_events: list[PortalTimelineEvent] = []
+                    for e in event_rows:
+                        # Fetch visible documents linked to this event
+                        await cur.execute(
+                            """
+                            SELECT d.id, d.name, d.file_size, d.mime_type
+                            FROM office_api.documents d
+                            INNER JOIN office_api.timeline_event_documents ted
+                                ON d.id = ted.document_id
+                            WHERE ted.timeline_event_id = %s
+                              AND d.visible_to_client = true
+                              AND d.status != 'archived'
+                            ORDER BY ted.created_at ASC
+                            """,
+                            (str(e["id"]),),
                         )
-                        for e in event_rows
-                    ]
+                        doc_rows = await cur.fetchall()
+                        event_docs = [
+                            PortalEventDocument(
+                                id=d["id"],
+                                name=d["name"],
+                                file_size=d["file_size"],
+                                mime_type=d["mime_type"],
+                            )
+                            for d in doc_rows
+                        ]
+
+                        recent_events.append(
+                            PortalTimelineEvent(
+                                id=e["id"],
+                                title=e["title"],
+                                description=e["description"],
+                                event_date=e["event_date"],
+                                event_type=e["event_type"],
+                                documents=event_docs,
+                            )
+                        )
 
                     processes.append(
                         PortalProcessSummary(
@@ -299,12 +328,12 @@ class PortalService:
                     LEFT JOIN office_api.processes p
                         ON p.id = d.process_id AND p.user_id = %s
                     WHERE d.user_id = %s
-                      AND d.client_id = %s
+                      AND (d.client_id = %s OR (d.process_id IS NOT NULL AND p.client_id = %s))
                       AND d.visible_to_client = true
                       AND d.status != 'archived'
                     ORDER BY d.created_at DESC
                     """,
-                    (lawyer_id, lawyer_id, client_id),
+                    (lawyer_id, lawyer_id, client_id, client_id),
                 )
                 rows = await cur.fetchall()
 
@@ -334,14 +363,16 @@ class PortalService:
             async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute(
                     """
-                    SELECT file_url
-                    FROM office_api.documents
-                    WHERE id = %s
-                      AND user_id = %s
-                      AND client_id = %s
-                      AND visible_to_client = true
+                    SELECT d.file_url
+                    FROM office_api.documents d
+                    LEFT JOIN office_api.processes p
+                        ON p.id = d.process_id AND p.user_id = %s
+                    WHERE d.id = %s
+                      AND d.user_id = %s
+                      AND (d.client_id = %s OR (d.process_id IS NOT NULL AND p.client_id = %s))
+                      AND d.visible_to_client = true
                     """,
-                    (document_id, lawyer_id, client_id),
+                    (lawyer_id, document_id, lawyer_id, client_id, client_id),
                 )
                 row = await cur.fetchone()
 

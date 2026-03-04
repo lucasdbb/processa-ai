@@ -337,7 +337,7 @@ class ProcessesService:
                 # Get documents
                 await cur.execute(
                     """
-                    SELECT id, name, mime_type, file_size, file_url, created_at
+                    SELECT id, name, mime_type, file_size, file_url, visible_to_client, created_at
                     FROM office_api.documents
                     WHERE user_id = %s AND process_id = %s
                     ORDER BY created_at DESC

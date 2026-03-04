@@ -20,6 +20,7 @@ class DocumentCreate(BaseModel):
     service_id: str | None = None
     client_id: str | None = None
     description: str | None = None
+    visible_to_client: bool = False
 
 
 class DocumentUpdate(BaseModel):
@@ -35,6 +36,7 @@ class DocumentUpdate(BaseModel):
     service_id: str | None = None
     client_id: str | None = None
     description: str | None = None
+    visible_to_client: bool | None = None
 
 
 class DocumentResponse(BaseModel):
@@ -50,6 +52,7 @@ class DocumentResponse(BaseModel):
     service_id: str | None
     client_id: str | None
     description: str | None
+    visible_to_client: bool
     created_at: datetime
     updated_at: datetime
 
@@ -73,6 +76,7 @@ class DocumentConfirmUpload(BaseModel):
     service_id: str | None = None
     client_id: str | None = None
     description: str | None = None
+    visible_to_client: bool = False
 
 
 class DocumentListParams(BaseModel):

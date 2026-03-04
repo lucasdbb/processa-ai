@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FileText, Search, Filter, Download, X } from 'lucide-react'
+import { FileText, Search, Filter, Download, X, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -19,6 +19,7 @@ type Document = {
   process_id: string | null
   client_id: string | null
   description: string | null
+  visible_to_client: boolean
   created_at: string
   updated_at: string
 }
@@ -283,6 +284,12 @@ export default function DocumentosPage() {
                       <span className="px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground rounded">
                         {TYPE_LABELS[doc.type]}
                       </span>
+                      {doc.visible_to_client && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400" title="Visível no portal do cliente">
+                          <Eye className="h-3 w-3" />
+                          Portal
+                        </span>
+                      )}
                     </div>
                     {doc.description && (
                       <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">

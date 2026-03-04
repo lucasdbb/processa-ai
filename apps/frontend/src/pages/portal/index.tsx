@@ -90,6 +90,48 @@ function formatFileSize(bytes: number | null): string {
 
 // --- PROCESSES TAB ---
 
+function ProcessDocumentItem({ doc }: { doc: { id: string; name: string; file_size: number | null; created_at?: string } }) {
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    setIsDownloading(true)
+    try {
+      const { url } = await portalService.getDocumentDownloadUrl(doc.id)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
+      toast.error('Não foi possível baixar o documento.')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  return (
+    <li className="flex items-center gap-2.5 py-1.5">
+      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm truncate">{doc.name}</p>
+        {(doc.created_at || doc.file_size) && (
+          <p className="text-xs text-muted-foreground">
+            {doc.created_at ? formatDate(doc.created_at) : ''}
+            {doc.file_size ? `${doc.created_at ? ' · ' : ''}${formatFileSize(doc.file_size)}` : ''}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={handleDownload}
+        disabled={isDownloading}
+        className="shrink-0 p-1 rounded hover:bg-muted transition-colors"
+        title="Baixar documento"
+      >
+        {isDownloading
+          ? <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          : <Download className="h-3.5 w-3.5 text-muted-foreground" />
+        }
+      </button>
+    </li>
+  )
+}
+
 function ProcessCard({ process }: { process: PortalProcess }) {
   const [expanded, setExpanded] = useState(false)
   const colorClass = PROCESS_COLOR_MAP[process.status.color] ?? PROCESS_COLOR_MAP.gray
@@ -150,7 +192,7 @@ function ProcessCard({ process }: { process: PortalProcess }) {
                 {process.recent_events.map((evt) => (
                   <li key={evt.id} className="flex gap-2.5">
                     <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm">{evt.title}</p>
                       {evt.description && (
                         <p className="text-xs text-muted-foreground mt-0.5">{evt.description}</p>
@@ -158,6 +200,13 @@ function ProcessCard({ process }: { process: PortalProcess }) {
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {formatDate(evt.event_date, true)}
                       </p>
+                      {evt.documents.length > 0 && (
+                        <ul className="mt-1.5 space-y-1 pl-0.5">
+                          {evt.documents.map((doc) => (
+                            <ProcessDocumentItem key={doc.id} doc={doc} />
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -600,8 +649,9 @@ export default function PortalPage() {
         <h1 className="text-xl font-semibold">
           Olá, {me?.client_name?.split(' ')[0] ?? 'bem-vindo'} 👋
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Aqui você acompanha tudo sobre o seu caso.
+        <br></br>
+        <p className="text-lg text-muted-foreground mt-0.5">
+          Aqui você acompanha tudo sobre o seu caso.<br></br>
           {me?.lawyer_name && (
             <> Seu advogado: <span className="font-medium text-foreground">{me.lawyer_name}</span>.</>
           )}
