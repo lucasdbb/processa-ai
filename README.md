@@ -1,66 +1,86 @@
-# Processa AI - Monorepo
+# Processa AI
 
-Uma plataforma completa de tecnologia jurídica para cálculos trabalhistas, assistência com IA e blog especializado, desenvolvida com Vite + React 19 (frontend) e Python 3.13 + FastAPI (backend), utilizando Supabase.
+Plataforma de tecnologia jurídica com gestão de escritório, assistência com IA, calculadoras trabalhistas e blog especializado. Desenvolvida com **Vite 7 + React 19** (frontend) e **Python 3.13 + FastAPI** (backend), utilizando **Supabase** como banco de dados e autenticação.
 
-## 🏗️ Estrutura do Monorepo
+## Estrutura do Monorepo
 
 ```
 processa-ai/
 ├── apps/
-│   ├── frontend/           # Frontend Vite 7 + React 19 + TypeScript
-│   │   ├── src/            # Código fonte
-│   │   ├── Dockerfile      # Container Vite
+│   ├── frontend/           # Vite 7 + React 19 + TypeScript (SPA)
+│   │   ├── src/
+│   │   ├── Dockerfile
 │   │   └── package.json
-│   └── backend/            # Backend Python 3.13 + FastAPI
-│       ├── src/            # Código fonte
-│       ├── Dockerfile      # Container FastAPI
+│   └── backend/            # Python 3.13 + FastAPI
+│       ├── src/
+│       ├── Dockerfile
+│       └── pyproject.toml
+├── services/
+│   └── worker/             # Worker assíncrono (processamento de jobs IA)
+│       ├── src/
+│       ├── Dockerfile
 │       └── pyproject.toml
 ├── docker-compose.yml      # Orquestração de serviços (dev)
 ├── docker-compose.prod.yml # Override para produção
-├── .env.example            # Exemplo de variáveis de ambiente
-├── .dockerignore           # Arquivos ignorados no build Docker
 └── package.json            # Workspace raiz (npm)
 ```
 
-## 🚀 Funcionalidades
+## Funcionalidades
 
-### Implementadas ✅
-- **Blog Jurídico**: Sistema completo de blog com editor Markdown, categorias e admin dashboard
-- **Autenticação Segura**: Login, registro e recuperação de senha via Supabase Auth
-- **Newsletter**: Sistema de inscrição e gerenciamento de newsletter
-- **Suporte**: Formulário de contato integrado
-- **Interface Moderna**: Design responsivo com Next.js, Server Components e shadcn/ui
-- **API Documentada**: FastAPI com documentação automática (Swagger/ReDoc)
+- **Gestão de Escritório (Office)**: Clientes, processos, serviços, documentos, honorários, prazos, andamentos (timeline) e calendário
+- **Portal do Cliente**: Área de acesso para clientes do escritório acompanharem seus processos
+- **Assistente IA**: Ferramentas de IA jurídica com upload de documentos, OCR e processamento assíncrono via worker
+- **Calculadoras Trabalhistas**: Cálculos de rescisão e simulações previdenciárias
+- **Blog Jurídico**: Sistema completo com editor Markdown, categorias e admin dashboard
+- **Billing**: Assinaturas via Stripe com sistema de créditos
+- **Autenticação**: Login, registro e recuperação de senha via Supabase Auth
+- **Newsletter e Suporte**: Inscrição em newsletter e formulário de contato
+- **Notificações**: Sistema de notificações in-app
+- **Materiais**: Biblioteca de materiais jurídicos para download
 
-### Em Desenvolvimento 🚧
-- **Calculadoras Trabalhistas**: Cálculos precisos de rescisão e aposentadoria
-- **Assistente IA**: Geração de textos jurídicos e análises com inteligência artificial
+## Tecnologias
 
-## 🛠️ Tecnologias
+### Frontend (`apps/frontend`)
+| Tecnologia | Versão |
+|---|---|
+| Vite | 7 |
+| React | 19 |
+| TypeScript | 5.9 |
+| React Router | 7 (SPA, sem SSR) |
+| Tailwind CSS | 4 |
+| shadcn/ui | Radix UI primitives |
+| Zustand | 5 |
+| react-hook-form + Zod | Validação de formulários |
+| Supabase JS | `@supabase/supabase-js` (client-side) |
+| lucide-react | Ícones |
+| Sonner | Toasts |
+| PostHog | Analytics |
 
-### Frontend (apps/frontend)
-- **Framework**: Vite 7
-- **UI Library**: React 19 + TypeScript 5.9
-- **Routing**: React Router 7
-- **Styling**: Tailwind CSS 4
-- **Components**: shadcn/ui (Radix UI primitives)
-- **State**: Zustand 5.0
-- **Forms**: react-hook-form + Zod
-- **Auth**: Supabase JS (@supabase/supabase-js)
-- **Icons**: lucide-react
-- **Markdown**: @uiw/react-md-editor
+### Backend (`apps/backend`)
+| Tecnologia | Versão |
+|---|---|
+| Python | 3.13 |
+| FastAPI | Framework ASGI |
+| Uvicorn | Servidor ASGI |
+| Pydantic | 2.10 (validação) |
+| psycopg | 3 (PostgreSQL async) |
+| Supabase | Database + Auth + Storage |
+| Stripe | Pagamentos e assinaturas |
+| SendGrid | Envio de e-mails |
+| Redis | Fila de jobs (via `redis-py`) |
+| uv | Package manager |
+| Ruff | Linter e formatter |
 
-### Backend (apps/backend)
-- **Language**: Python 3.13
-- **Framework**: FastAPI
-- **Package Manager**: uv (ultra-fast)
-- **Server**: Uvicorn (ASGI)
-- **Database**: Supabase (PostgreSQL)
-- **Auth**: Supabase Auth
-- **Validation**: Pydantic 2.10
-- **Linter**: Ruff
+### Worker (`services/worker`)
+| Tecnologia | Uso |
+|---|---|
+| Python 3.13 | Runtime |
+| Redis (BLPOP) | Consumo da fila de jobs |
+| OpenAI / Mistral | Providers de LLM |
+| Supabase Storage | Acesso a documentos |
+| OCR (Tesseract/pdf) | Extração de texto de documentos |
 
-## 📦 Instalação
+## Instalação
 
 ### 1. Clone o repositório
 ```bash
@@ -70,398 +90,304 @@ cd processa-ai
 
 ### 2. Instale as dependências
 
-**Frontend (Vite + React):**
+**Frontend:**
 ```bash
 cd apps/frontend
 npm install
 ```
 
-**Backend (Python):**
+**Backend:**
 ```bash
 cd apps/backend
-# Instalar uv (se não tiver)
-pip install uv
-# Sincronizar dependências
+pip install uv   # se não tiver
 uv sync
 ```
 
 ### 3. Configure as variáveis de ambiente
 
-**Frontend (.env.local):**
+**Frontend** (`apps/frontend/.env`):
 ```env
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-anon
+VITE_BACKEND_URL=http://localhost:8000
+VITE_INTERNAL_TOKEN=seu-token-interno
 ```
 
-**Backend (.env):**
+**Backend** (`apps/backend/.env`):
 ```env
+DATABASE_URL=postgresql://postgres:SENHA@db.PROJETO.supabase.co:5432/postgres
 SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_ANON_KEY=sua-chave-anon
 SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
-FRONTEND_URL=http://localhost:3000
-ALLOWED_ORIGINS=http://localhost:3000
+INTERNAL_TOKEN=seu-token-interno
+REDIS_URL=redis://localhost:6379/0
+FRONTEND_URL=http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+STRIPE_SECRET_KEY=sk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+ENCRYPTION_KEY=chave-fernet-base64
+SENDGRID_API_KEY=SG....
+SENDGRID_FROM=email@dominio.com
 ```
 
 ### 4. Inicie o desenvolvimento
 
-#### Opção A: Docker Compose (Recomendado) 🐳
-
-**1. Configure as variáveis de ambiente:**
+#### Opção A: Docker Compose
 ```bash
 cp .env.example .env
-# Edite o arquivo .env com suas credenciais do Supabase
+# Edite .env com suas credenciais
+docker-compose up --build
 ```
 
-**2. Inicie todos os serviços:**
-```bash
-docker-compose up
-```
-
-**3. Acesse a aplicação:**
-- Frontend: http://localhost:3000
+Serviços:
+- Frontend: http://localhost:5173
 - Backend: http://localhost:8000
 - API Docs: http://localhost:8000/docs
-
-**Comandos úteis:**
-```bash
-docker-compose up --build      # Rebuild e iniciar (necessário após mudanças no código)
-docker-compose up -d           # Rodar em background
-docker-compose down            # Parar todos os serviços
-docker-compose logs -f         # Ver logs em tempo real
-docker-compose logs frontend   # Ver logs do frontend
-docker-compose logs backend    # Ver logs do backend
-```
-
-**⚠️ Observação:** Como não usamos volumes, você precisará fazer **rebuild** (`docker-compose up --build`) sempre que modificar o código.
+- Worker: processamento em background
+- Redis: fila de jobs
 
 #### Opção B: Desenvolvimento Local
 
-**Frontend (porta 3000):**
+**Frontend (porta 5173):**
 ```bash
-cd apps/frontend
-npm run dev
+cd apps/frontend && npm run dev
 ```
 
 **Backend (porta 8000):**
 ```bash
-cd apps/backend
-uv run uvicorn src.main:app --reload
+cd apps/backend && uv run uvicorn src.main:app --reload
 ```
 
-## 🔧 Comandos de Desenvolvimento
+## Comandos de Desenvolvimento
 
 ### Frontend
 ```bash
 cd apps/frontend
-npm run dev              # Servidor de desenvolvimento (porta 5173)
-npm run build           # Build de produção
-npm run preview         # Preview do build
-npm run lint            # ESLint
+npm run dev          # Servidor de desenvolvimento (porta 5173)
+npm run build        # Build de produção
+npm run preview      # Preview do build
+npm run lint         # ESLint
 ```
 
 ### Backend
 ```bash
 cd apps/backend
-uv run uvicorn src.main:app --reload  # Servidor de desenvolvimento (porta 8000)
-uv run pytest                         # Executar testes
-uv run ruff check src/                # Verificar linting
-uv run ruff format src/               # Formatar código
+uv run uvicorn src.main:app --reload   # Servidor (porta 8000)
+uv run pytest                          # Testes
+uv run ruff check src/                 # Linting
+uv run ruff format src/                # Formatação
 ```
 
-## 🌐 Ambientes de Desenvolvimento
+## Rotas da Aplicação
 
-### Frontend - Vite
-- **URL**: http://localhost:5173
-- **Hot Reload**: Automático (HMR ultrarrrápido)
-- **Build Tool**: Vite com esbuild
+### Frontend (React Router v7)
 
-### Backend - FastAPI
-- **URL**: http://localhost:8000
-- **Documentação Interativa**: http://localhost:8000/docs (Swagger UI)
-- **Documentação Alternativa**: http://localhost:8000/redoc (ReDoc)
-- **Hot Reload**: Automático com `--reload`
+**Públicas:**
+| Rota | Descrição |
+|---|---|
+| `/` | Landing page |
+| `/blog` | Lista de posts |
+| `/blog/:id` | Post individual |
+| `/planos` | Planos e preços |
+| `/sobre` | Sobre a plataforma |
+| `/materiais` | Biblioteca de materiais |
+| `/termos` | Termos de uso |
+| `/privacidade` | Política de privacidade |
 
-## 📱 Rotas da Aplicação
+**App (requer autenticação):**
+| Rota | Descrição |
+|---|---|
+| `/app` | Dashboard |
+| `/app/clientes` | Gestão de clientes |
+| `/app/clientes/:id` | Detalhe do cliente |
+| `/app/processos` | Gestão de processos |
+| `/app/processos/:id` | Detalhe do processo (documentos, andamentos, honorários) |
+| `/app/servicos` | Gestão de serviços |
+| `/app/servicos/:id` | Detalhe do serviço |
+| `/app/calendario` | Calendário de prazos e compromissos |
+| `/app/documentos` | Biblioteca de documentos |
+| `/app/ia` | Hub de ferramentas de IA |
+| `/app/ia/:toolId` | Ferramenta de IA específica |
+| `/app/calculadoras` | Calculadoras trabalhistas |
+| `/app/assinatura` | Gerenciar assinatura |
+| `/app/notificacoes` | Central de notificações |
+| `/app/configuracoes` | Configurações do usuário |
+| `/app/ajuda` | Central de ajuda |
 
-### Frontend (React Router)
-- **`/`** - Landing page (público)
-- **`/blog`** - Lista de posts do blog (público)
-- **`/blog/:id`** - Post individual (público)
-- **`/app/ia`** - Ferramentas de IA (requer autenticação)
-- **`/app/calculadoras`** - Calculadoras trabalhistas (requer autenticação)
-- **`/planos`** - Planos e preços (público)
-- **`/sobre`** - Sobre a plataforma (público)
-- **`/admin`** - Dashboard administrativo (requer role admin)
+**Portal do Cliente:**
+| Rota | Descrição |
+|---|---|
+| `/portal/ativar` | Ativação de conta do portal (via link de convite) |
+| `/portal` | Dashboard do cliente |
 
-### Backend API (FastAPI)
+**Admin (requer role admin/author):**
+| Rota | Descrição |
+|---|---|
+| `/admin` | Dashboard administrativo |
+| `/admin/posts/novo` | Criar novo post |
+| `/admin/posts/:id` | Editar post |
 
-**Autenticação (`/api/auth`)**
-- `POST /api/auth/register` - Registrar novo usuário
-- `POST /api/auth/login` - Login
-- `POST /api/auth/refresh` - Refresh token
-- `POST /api/auth/forgot-password` - Recuperar senha
-- `POST /api/auth/reset-password` - Redefinir senha
-- `POST /api/auth/logout` - Logout
+### Backend API
 
-**Usuários (`/api/users`)**
-- `GET /api/users/profile` - Ver perfil do usuário
-- `PUT /api/users/profile` - Atualizar perfil
-- `GET /api/users` - Listar usuários (admin)
+Todas as rotas sob o prefixo `/api`.
 
-**Blog (`/api/blog`)**
-- `GET /api/blog/posts` - Listar posts publicados
-- `GET /api/blog/posts/{slug}` - Buscar post por slug
-- `POST /api/blog/posts` - Criar novo post (admin)
-- `PUT /api/blog/posts/{post_id}` - Atualizar post (admin)
-- `DELETE /api/blog/posts/{post_id}` - Deletar post (admin)
-- `GET /api/blog/categories` - Listar categorias
+**Core:**
+| Prefixo | Módulo |
+|---|---|
+| `/api/profiles` (alias `/api/users`) | Perfis de usuário |
+| `/api/dashboard` | Dashboard analytics |
+| `/api/blog` | Posts, categorias |
+| `/api/newsletter` | Inscrição/cancelamento |
+| `/api/support` | Formulário de contato |
+| `/api/feedback` | Feedback de usuários |
+| `/api/materials` | Materiais para download |
+| `/api/plans` | Planos disponíveis |
+| `/api/notifications` | Notificações |
+| `/api/storage` | Upload via signed URL |
 
-**Newsletter (`/api/newsletter`)**
-- `POST /api/newsletter/subscribe` - Inscrever email
-- `POST /api/newsletter/unsubscribe` - Cancelar inscrição
+**Billing:**
+| Prefixo | Módulo |
+|---|---|
+| `/api/billing/subscriptions` | Assinaturas Stripe |
+| `/api/billing/webhooks` | Webhooks Stripe |
+| `/api/credits` | Sistema de créditos |
 
-**Suporte (`/api/support`)**
-- `POST /api/support/contact` - Enviar mensagem de contato
+**Office (Gestão de Escritório):**
+| Prefixo | Módulo |
+|---|---|
+| `/api/office/clients` | Clientes |
+| `/api/office/processes` | Processos |
+| `/api/office/documents` | Documentos |
+| `/api/office/timeline` | Andamentos |
+| `/api/office/deadlines` | Prazos |
+| `/api/office/fees` | Honorários |
+| `/api/office/fee-payments` | Pagamentos de honorários |
+| `/api/office/notes` | Anotações |
+| `/api/office/services` | Serviços |
+| `/api/office/calendar` | Calendário |
 
-**Documentação completa:** http://localhost:8000/docs
+**Outros:**
+| Prefixo | Módulo |
+|---|---|
+| `/api/ai` | Ferramentas de IA |
+| `/api/calculators` | Calculadoras trabalhistas |
+| `/api/portal` | Portal do cliente (read-only) |
 
-## 🔐 Autenticação
+Documentação interativa: http://localhost:8000/docs
 
-Sistema robusto de autenticação com Supabase:
+## Arquitetura
 
-### Frontend (Direct Supabase JS)
-- **Cliente Supabase JS** (`@supabase/supabase-js`)
-- **Sessões via localStorage** com JWT
-- **Route guards** (AuthGuard, AdminGuard) para proteção de rotas
-- **Refresh automático** de sessão
-- **Role-based access control** (client, author, admin)
+### Frontend (Vite + React SPA)
 
-### Backend (FastAPI + Supabase)
-- **Endpoints de autenticação** disponíveis via API
-- **JWT validation** com Supabase Auth
-- **Protected routes** usando FastAPI dependencies
-- **Pydantic schemas** para validação de dados
+- **SPA puro** (sem SSR) com Vite 7 como bundler
+- **React Router v7** para roteamento client-side
+- **Feature-first architecture**: código organizado por domínio
+- **Zustand** para estado global (auth, billing, créditos)
+- **Supabase JS** para autenticação client-side (sessão via localStorage + JWT)
+- **Route guards** (AuthGuard, AdminGuard, PortalGuard, RequirePlan) para proteção de rotas
+- **Lazy loading** para páginas menos acessadas (admin, calculadoras, IA)
 
-## 🐳 Docker
-
-### Desenvolvimento com Docker Compose
-
-O projeto inclui configuração Docker Compose para facilitar o desenvolvimento:
-
-**Estrutura:**
-- `docker-compose.yml` - Orquestração dos serviços
-- `apps/frontend/Dockerfile` - Container Vite
-- `apps/backend/Dockerfile` - Container FastAPI
-
-**Benefícios:**
-- ✅ Ambiente consistente entre desenvolvedores
-- ✅ Isolamento de dependências
-- ✅ Setup rápido com um único comando
-- ✅ Fácil integração com CI/CD
-
-**Requisitos:**
-- Docker 20.10+
-- Docker Compose 2.0+
-
-**Produção:**
-```bash
-# Build das imagens
-docker-compose build
-
-# Rodar em modo produção
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+```
+apps/frontend/src/
+├── components/       # Componentes reutilizáveis
+│   ├── ui/           # shadcn/ui
+│   ├── layout/       # Header, Footer, AppLayout, RootLayout, Sidebar
+│   ├── auth/         # AuthGuard, AdminGuard, PortalGuard
+│   └── forms/        # Formulários compartilhados
+├── features/         # Módulos por domínio
+│   ├── auth/         # Autenticação (store, hooks)
+│   ├── ai/           # IA (hooks, componentes)
+│   ├── blog/         # Blog
+│   └── ...
+├── pages/            # Páginas (componentes de rota)
+│   ├── app/          # Páginas autenticadas
+│   ├── admin/        # Tabs do admin
+│   └── portal/       # Páginas do portal
+├── services/         # Serviços de API
+├── stores/           # Zustand stores
+├── hooks/            # Custom hooks compartilhados
+├── lib/              # Bibliotecas e utils (supabase, analytics, fetch)
+└── router.tsx        # Definição de rotas
 ```
 
-## 🚀 Deploy
+### Backend (FastAPI)
 
-### Frontend (Vercel - Recomendado)
+- **Feature-based modules**: cada feature com `router.py`, `schemas.py`, `service.py`
+- **Async-first**: todas as operações de I/O são assíncronas
+- **Pydantic** para validação de request/response
+- **psycopg 3** para queries PostgreSQL diretas (connection pool)
+- **Supabase Storage** para arquivos (upload via signed URL)
+- **Redis** como fila de jobs para o worker
+
+```
+apps/backend/src/
+├── main.py           # Entry point FastAPI
+├── core/             # Config, DB pool, logging, Supabase client
+├── api/              # Router principal (agrega todos os routers)
+├── features/
+│   ├── core/         # Blog, profiles, storage, newsletter, support, etc.
+│   ├── office/       # Clients, processes, documents, timeline, fees, etc.
+│   ├── billing/      # Subscriptions, webhooks, credits
+│   ├── ai/           # Ferramentas de IA (enqueue jobs)
+│   ├── calculators/  # Calculadoras trabalhistas
+│   └── portal/       # Portal do cliente (read-only)
+└── shared/           # Database, auth dependencies
+```
+
+### Worker (Processamento Assíncrono)
+
+- Serviço independente que consome jobs da fila Redis
+- Pipeline: download do documento → OCR → envio ao LLM → salvar resultado
+- Suporta múltiplos providers (OpenAI, Mistral)
+- Escalável horizontalmente (múltiplas réplicas)
+
+```
+services/worker/src/
+├── main.py           # Loop principal (BLPOP Redis)
+├── core/             # Config, DB, queue, LLM, OCR, storage
+└── handlers/         # Pipeline de processamento + prompts por tipo de job
+```
+
+## Docker
+
+O projeto inclui Docker Compose com 4 serviços:
+
+| Serviço | Porta | Descrição |
+|---|---|---|
+| `frontend` | 5173 | Vite/React (nginx em produção) |
+| `backend` | 8000 | FastAPI (Uvicorn) |
+| `worker` | — | Processamento assíncrono de jobs IA |
+| `redis` | 6379 | Fila de jobs e cache |
+
 ```bash
-cd apps/frontend
-npm run build
-# Conectar ao Vercel via CLI ou Dashboard
+docker-compose up --build       # Build e iniciar
+docker-compose up -d            # Rodar em background
+docker-compose down             # Parar serviços
+docker-compose logs -f backend  # Ver logs de um serviço
+```
+
+## Deploy
+
+### Frontend (Vercel)
+```bash
+cd apps/frontend && npm run build
 vercel --prod
 ```
 
-**Variáveis de ambiente (Vercel):**
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+Variáveis de ambiente:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_BACKEND_URL`
+- `VITE_INTERNAL_TOKEN`
 
 ### Backend (Railway/Render)
 
-**Build Command:**
-```bash
-pip install uv && uv sync
-```
-
-**Start Command:**
+Start command:
 ```bash
 uv run uvicorn src.main:app --host 0.0.0.0 --port $PORT
 ```
 
-**Variáveis de ambiente:**
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `FRONTEND_URL`
-- `ALLOWED_ORIGINS`
-
-## 📊 Features em Desenvolvimento
-
-### Calculadoras Trabalhistas 🚧
-- **Rescisão Trabalhista**: Cálculo de verbas rescisórias com diferentes tipos de rescisão
-- **Aposentadoria**: Cálculo de tempo de contribuição e projeções futuras
-- **Relatórios**: Geração de relatórios detalhados em PDF
-
-### Assistente IA 🚧
-- **Geração de textos jurídicos** com IA (OpenAI/Anthropic)
-- **Análise de documentos** e extração de informações
-- **Sugestões personalizadas** baseadas em contexto
-- **Interface conversacional** com histórico de chat
-
-## 🏗️ Arquitetura
-
-### Frontend (Next.js)
-
-**Princípios:**
-- **Server Components por padrão**: Melhor performance e SEO
-- **Feature-first architecture**: Código organizado por domínio
-- **TypeScript strict**: Tipagem rigorosa em todo o código
-- **Mobile-first**: Design responsivo desde o início
-- **Accessibility-first**: WCAG 2.1 compliance
-
-**Estrutura:**
-```
-apps/frontend/src/
-├── app/              # Next.js App Router (file-based routing)
-│   ├── blog/         # Rotas do blog
-│   ├── admin/        # Dashboard admin
-│   └── ...
-├── components/       # Componentes reutilizáveis
-│   ├── ui/           # shadcn/ui components
-│   └── layout/       # Header, Footer
-├── features/         # Módulos por domínio
-│   ├── auth/         # Autenticação
-│   ├── blog/         # Blog
-│   └── ...
-└── lib/             # Bibliotecas e utils
-```
-
-### Backend (FastAPI)
-
-**Princípios:**
-- **Feature-based modules**: Cada feature é um módulo independente
-- **Async-first**: APIs assíncronas para melhor performance
-- **Type-safe**: Pydantic para validação runtime
-- **Auto-documented**: Swagger/ReDoc gerado automaticamente
-
-**Estrutura:**
-```
-apps/backend/src/
-├── main.py          # Entry point
-├── core/            # Settings, logging, dependencies
-├── features/        # Feature modules
-│   ├── auth/        # router.py, schemas.py, service.py
-│   ├── blog/
-│   └── ...
-└── shared/          # Código compartilhado (database, utils)
-```
-
-## 🎨 Design System
-
-### Componentes UI (shadcn/ui)
-- **Acessíveis**: Construídos sobre Radix UI com WAI-ARIA
-- **Customizáveis**: Código próprio, não dependência NPM
-- **Consistentes**: Design system unificado
-- **Dark mode**: Suporte nativo via next-themes
-
-### Estilização (Tailwind CSS 4)
-- **Utility-first**: Classes utilitárias para rapidez
-- **CSS Variables**: Temas customizáveis
-- **Responsive**: Mobile-first breakpoints
-- **Performance**: JIT compiler para builds otimizadas
-
-## 🔒 Segurança
-
-### Frontend
-- **CSRF Protection**: Nativo no Next.js
-- **XSS Prevention**: Sanitização com DOMPurify
-- **Secure Cookies**: httpOnly, secure, sameSite
-- **Environment Variables**: Variáveis sensíveis protegidas
-
-### Backend
-- **Input Validation**: Pydantic schemas em todas as rotas
-- **SQL Injection**: Protegido via Supabase (PostgreSQL)
-- **JWT Validation**: Tokens validados em rotas protegidas
-- **CORS**: Configurado apenas para origens permitidas
-- **Rate Limiting**: (planejado)
-
-## ⚡ Performance
-
-### Frontend (Next.js)
-- **Server Components**: Renderização no servidor reduz JavaScript no cliente
-- **Code Splitting**: Automático por rota
-- **Image Optimization**: Next.js Image com formatos modernos (WebP, AVIF)
-- **Font Optimization**: Subset automático de fontes
-- **Route Prefetching**: Navegação instantânea
-
-### Backend (FastAPI)
-- **Async I/O**: Todas as operações de I/O são assíncronas
-- **Connection Pooling**: Supabase gerencia pool de conexões
-- **Response Compression**: Gzip habilitado
-- **Caching**: (planejado com Redis)
-
-## 🧪 Testes
-
-### Backend
-```bash
-cd apps/backend
-uv run pytest                    # Executar testes
-uv run pytest --cov=src          # Com coverage
-uv run pytest -v                 # Verbose
-```
-
-### Frontend
-```bash
-cd apps/frontend
-npm run lint                     # ESLint
-npm run type-check               # TypeScript check
-# Testes unitários (planejado)
-```
-
-## 🤝 Contribuição
-
-### Padrões de Código
-
-**Frontend:**
-- TypeScript strict mode
-- ESLint com config Next.js
-- Conventional Commits
-- Components: Server Components por padrão
-
-**Backend:**
-- Python 3.13+
-- Ruff para linting e formatting
-- Type hints obrigatórios
-- Docstrings em funções públicas
-
-### Processo
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'feat: adicionar nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
-## 📚 Documentação Adicional
-
-- [Frontend README](apps/frontend/README.md) - Documentação detalhada do frontend
-- [Backend README](apps/backend/README.md) - Documentação detalhada do backend
-- [Docker Guide](DOCKER.md) - Guia completo de Docker e Docker Compose
-- [CLAUDE.md](CLAUDE.md) - Guia para Claude Code (AI assistant)
-
-## 📄 Licença
+## Licença
 
 Este projeto está sob a licença MIT.
-
-## 📞 Suporte
-
-Para questões e suporte, utilize o formulário de contato na aplicação ou abra uma issue no GitHub.
