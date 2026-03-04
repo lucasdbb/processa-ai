@@ -108,6 +108,7 @@ export interface ProcessDocumentSummary {
   mime_type: string | null;
   file_size: number | null;
   file_url: string | null;
+  visible_to_client: boolean;
   created_at: string;
 }
 
