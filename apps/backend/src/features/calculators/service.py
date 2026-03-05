@@ -341,7 +341,7 @@ class CalculatorsService:
         slug = self._slugify_filename(filename)
         storage_filename = f"{sha}_{slug}.pdf"
         uid = self._sanitize_path_segment(user_id, default="unknown-user")
-        cid = self._sanitize_path_segment(client_id, default="no_client")
+        cid = self._sanitize_path_segment(client_id, default="no-client")
         ep = self._sanitize_path_segment(endpoint, default="unknown")
         storage_path = f"{uid}/{cid}/{ep}/{storage_filename}"
 
