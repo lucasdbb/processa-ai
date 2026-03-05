@@ -1,4 +1,4 @@
-from src.handlers.prompts import AnalysisPromptConfig
+from src.prompts import AnalysisPromptConfig
 
 LABOR_CLAIM_PROMPT = AnalysisPromptConfig(
     prompt_id="pmpt_6995ff6571b88193b648deac5efe58dd02868f7056980737",

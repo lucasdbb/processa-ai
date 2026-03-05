@@ -1,4 +1,4 @@
-from src.handlers.prompts import AnalysisPromptConfig
+from src.prompts import AnalysisPromptConfig
 
 PROCESS_SUMMARY_PROMPT = AnalysisPromptConfig(
     prompt_id="pmpt_6994ff17e4188190a681e4d5ed86d48509d86cf0f78fad15",

@@ -1,4 +1,4 @@
-from src.handlers.prompts import AnalysisPromptConfig
+from src.prompts import AnalysisPromptConfig
 
 BRIEF_SCANNER_PROMPT = AnalysisPromptConfig(
     prompt_id="pmpt_69960043b9d08193a20d0cd00bcd4e600b83927def6faecb",
