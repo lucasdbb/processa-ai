@@ -1,5 +1,7 @@
+import json
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -36,9 +38,6 @@ class GoogleCalendarSync:
             Dict with auth_url and state
         """
         try:
-            # Encrypt user_id to use as state
-            encrypted_state = encrypt_token(user_id)
-
             # Create OAuth2 flow
             flow = Flow.from_client_config(
                 {
@@ -54,11 +53,25 @@ class GoogleCalendarSync:
                 redirect_uri=self.redirect_uri,
             )
 
-            auth_url, state = flow.authorization_url(
+            auth_url, _ = flow.authorization_url(
                 access_type="offline",
-                state=encrypted_state,
                 prompt="consent",  # Force consent screen to get refresh token
             )
+
+            # Encrypt user_id + code_verifier together in state so the callback
+            # can reconstruct the PKCE verifier that Google expects.
+            state_payload = json.dumps({
+                "user_id": user_id,
+                "code_verifier": flow.code_verifier,
+            })
+            encrypted_state = encrypt_token(state_payload)
+
+            # Replace the auto-generated state in the URL with our encrypted one
+            parsed = urlparse(auth_url)
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            params["state"] = [encrypted_state]
+            new_query = urlencode({k: v[0] for k, v in params.items()})
+            auth_url = urlunparse(parsed._replace(query=new_query))
 
             logger.info(f"Generated auth URL for user {user_id}")
             return {"auth_url": auth_url, "state": encrypted_state}
@@ -72,14 +85,23 @@ class GoogleCalendarSync:
 
         Args:
             code: Authorization code from Google
-            state: Encrypted user_id
+            state: Encrypted state containing user_id and code_verifier
 
         Returns:
             Dict with success status and user info
         """
         try:
-            # Decrypt state to get user_id
-            user_id = decrypt_token(state)
+            # Decrypt state to get user_id and code_verifier
+            state_raw = decrypt_token(state)
+            try:
+                state_data = json.loads(state_raw)
+                user_id = state_data["user_id"]
+                code_verifier = state_data.get("code_verifier")
+            except (json.JSONDecodeError, KeyError):
+                # Fallback for legacy state format (plain user_id)
+                user_id = state_raw
+                code_verifier = None
+
             logger.info(f"Processing OAuth callback for user {user_id}")
 
             # Exchange code for tokens
@@ -96,6 +118,9 @@ class GoogleCalendarSync:
                 scopes=self.SCOPES,
                 redirect_uri=self.redirect_uri,
             )
+
+            # Restore the PKCE code_verifier so the token exchange succeeds
+            flow.code_verifier = code_verifier
 
             flow.fetch_token(code=code)
             credentials = flow.credentials
