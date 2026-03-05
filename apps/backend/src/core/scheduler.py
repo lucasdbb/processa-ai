@@ -4,6 +4,7 @@ Uses APScheduler with optional Redis for distributed locking
 """
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
@@ -45,7 +46,7 @@ def create_scheduler() -> AsyncIOScheduler:
         jobstores=jobstores,
         executors=executors,
         job_defaults=job_defaults,
-        timezone="America/Sao_Paulo",  # Brazil timezone
+        timezone=ZoneInfo("America/Sao_Paulo"),
     )
 
     return scheduler
@@ -56,7 +57,7 @@ async def check_deadlines_job():
     try:
         logger.info("Running scheduled job: check_deadlines")
 
-        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        now = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y %H:%M:%S")
         await send_email(
             to_email="admin@processai.app.br",
             subject="[Processa AI] Job check_deadlines iniciado",
@@ -82,7 +83,7 @@ def setup_jobs(scheduler: AsyncIOScheduler):
         "cron",
         hour=8,
         minute=0,
-        timezone="America/Sao_Paulo",
+        timezone=ZoneInfo("America/Sao_Paulo"),
         id="check_deadlines_daily",
         replace_existing=True,
         name="Check upcoming deadlines (8AM Brazil time)",
