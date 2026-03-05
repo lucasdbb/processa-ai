@@ -19,12 +19,14 @@ dependencies = [
     # AI Providers (replaces n8n)
     "openai>=1.60.0",
     "mistralai>=1.5.0",
+    "google-genai>=1.66.0",
     # Google Integration (for office jobs)
     "google-auth>=2.38.0",
     "google-auth-oauthlib>=1.2.1",
     "cryptography>=44.0.0",
-    # PDF Generation
+    # PDF / Document Generation
     "markdown-pdf==1.10",
+    "docxtpl>=0.19.0",
     # Utils
     "python-dotenv>=1.0.0",
     "stripe>=14.3.0",
@@ -63,3 +65,4 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["."]
+

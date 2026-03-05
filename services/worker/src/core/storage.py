@@ -123,7 +123,7 @@ class StorageService:
         slug = self.slugify_filename(filename)
         storage_filename = f"{sha}_{slug}.pdf"
         uid = self.sanitize_path_segment(user_id, default="unknown-user")
-        cid = self.sanitize_path_segment(client_id, default="no_client")
+        cid = self.sanitize_path_segment(client_id, default="no-client")
         ep = self.sanitize_path_segment(endpoint, default="unknown")
 
         storage_path = f"{uid}/{cid}/{ep}/input/{storage_filename}"
@@ -215,7 +215,7 @@ class StorageService:
 
         uid = self.sanitize_path_segment(user_id, default="unknown-user")
         func = self.sanitize_path_segment(functionality, default="ai")
-        cid = self.sanitize_path_segment(client_id, default="no_client")
+        cid = self.sanitize_path_segment(client_id, default="no-client")
         jid = self.sanitize_path_segment(job_uuid, default="unknown-job")
 
         storage_path = f"{uid}/{func}/{cid}/{jid}/{folder}/{storage_filename}"

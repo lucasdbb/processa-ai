@@ -8,11 +8,16 @@ from src.core.config import settings
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
 from src.core.storage import StorageService
-from src.handlers.pipeline import run_document_analysis, run_multi_document_analysis
-from src.handlers.prompts.brief_scanner import BRIEF_SCANNER_PROMPT
-from src.handlers.prompts.cnis import CNIS_PROMPT
-from src.handlers.prompts.labor_claim import LABOR_CLAIM_PROMPT
-from src.handlers.prompts.process_summary import PROCESS_SUMMARY_PROMPT
+from src.handlers.pipeline import (
+    run_document_analysis,
+    run_gemini_pdf_analysis,
+    run_multi_document_analysis,
+)
+from src.handlers.reports.cnis import generate_cnis_pdf_from_template
+from src.prompts.brief_scanner import BRIEF_SCANNER_PROMPT
+from src.prompts.cnis import CNIS_GEMINI_PROMPT
+from src.prompts.labor_claim import LABOR_CLAIM_PROMPT
+from src.prompts.process_summary import PROCESS_SUMMARY_PROMPT
 
 
 class WorkerException(Exception):
@@ -290,19 +295,92 @@ class AiService:
         progress: ProgressReporter | None = None,
         functionality: str = "ai",
     ) -> dict:
-        return await self._run_analysis_pipeline(
-            file_url=file_url,
-            endpoint_key="cnis_analysis",
-            prompt_config=CNIS_PROMPT,
-            user_id=user_id,
-            client_id=client_id,
-            store_pdf=store_pdf,
-            store_input_pdf=store_input_pdf,
-            signed_url_expires_in=signed_url_expires_in,
-            job_id=job_id,
+        """Analyze CNIS document using Gemini (PDF bytes sent inline, no OCR).
+
+        Pipeline:
+            1. Download PDF
+            2. Store input PDF if requested
+            3. Send PDF bytes directly to Gemini for analysis (returns JSON)
+            4. Generate DOCX from JSON, convert to PDF via LibreOffice
+            5. Store output PDF if requested
+        """
+        pdf_bytes = await self.storage.download_pdf_bytes(file_url)
+        inferred_filename = self.storage.infer_pdf_filename_from_url(file_url)
+
+        # Store input PDF for history
+        input_storage = None
+        if store_input_pdf and job_id:
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            input_storage = await self.storage.upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes,
+                user_id=user_id,
+                client_id=client_id,
+                functionality=functionality,
+                job_uuid=job_uuid_str,
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+                output=False,
+            )
+            if "signed_url" in input_storage:
+                input_storage["download_url"] = input_storage["signed_url"]
+
+        # Run Gemini pipeline (PDF bytes -> Gemini -> JSON)
+        pipeline_result = await run_gemini_pdf_analysis(
+            pdf_bytes=pdf_bytes,
+            prompt=CNIS_GEMINI_PROMPT,
             progress=progress,
-            functionality=functionality,
         )
+
+        raw_text = pipeline_result.markdown
+        structured_data = pipeline_result.structured_data
+
+        if not raw_text:
+            raise WorkerException(status_code=502, detail="Pipeline retornou resposta vazia")
+
+        if not structured_data:
+            raise WorkerException(
+                status_code=502,
+                detail="Gemini não retornou JSON válido para o relatório CNIS",
+            )
+
+        response: dict = {
+            "markdown": raw_text,
+            "structured_data": structured_data,
+        }
+
+        if input_storage:
+            response["input_storage"] = input_storage
+
+        # Generate PDF once from structured JSON (DOCX -> PDF)
+        pdf_bytes = generate_cnis_pdf_from_template(structured_data)
+
+        if not pdf_bytes or not pdf_bytes.lstrip().startswith(b"%PDF"):
+            raise WorkerException(status_code=502, detail="Falha ao gerar PDF do relatório CNIS")
+
+        response["content"] = pdf_bytes
+
+        # Upload to Supabase if requested
+        if store_pdf and job_id:
+            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
+                raise WorkerException(
+                    status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
+                )
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            uploaded = await self.storage.upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes,
+                user_id=user_id,
+                client_id=client_id,
+                functionality=functionality,
+                job_uuid=job_uuid_str,
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+                output=True,
+            )
+            if "signed_url" in uploaded:
+                uploaded["download_url"] = uploaded["signed_url"]
+            response.update(uploaded)
+
+        return response
 
     async def analyze_process_summary(
         self,

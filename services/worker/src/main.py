@@ -322,6 +322,11 @@ async def _save_results(
         }
         result_payload["structured_summary"] = structured_summary
 
+    # Persist Gemini structured JSON (used by CNIS analysis cache)
+    structured_data = result.get("structured_data")
+    if structured_data is not None and isinstance(structured_data, dict):
+        result_payload["structured_data"] = structured_data
+
     # Note: Input document must be created by frontend and passed via input_document_id
     input_doc_id = input_document_id
 

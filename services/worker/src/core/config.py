@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     # AI Providers
     OPENAI_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.1-pro-preview"
 
     # Google Integration (for office jobs)
     GOOGLE_CLIENT_ID: str = ""
