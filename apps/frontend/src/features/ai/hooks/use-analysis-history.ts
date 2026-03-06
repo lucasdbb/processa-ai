@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 
@@ -22,11 +22,14 @@ export interface AnalysisJob {
   }
 }
 
+const POLL_INTERVAL = 5000 // 5s when there are processing jobs
+
 export function useAnalysisHistory(functionality?: string, clientId?: string | null, refreshKey?: number) {
   const { user } = useUser()
   const [jobs, setJobs] = useState<AnalysisJob[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchJobs = useCallback(async () => {
     if (!user) return
@@ -60,9 +63,37 @@ export function useAnalysisHistory(functionality?: string, clientId?: string | n
     }
   }, [user, functionality, clientId])
 
+  // Initial fetch + refresh on key change
   useEffect(() => {
     fetchJobs()
   }, [fetchJobs, refreshKey])
+
+  // Auto-poll when there are processing jobs
+  useEffect(() => {
+    const hasProcessing = jobs.some((j) => j.status === 'processing')
+
+    if (hasProcessing) {
+      // Start polling if not already
+      if (!pollRef.current) {
+        pollRef.current = setInterval(() => {
+          fetchJobs()
+        }, POLL_INTERVAL)
+      }
+    } else {
+      // Stop polling
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+  }, [jobs, fetchJobs])
 
   return { jobs, isLoading, error, refetch: fetchJobs }
 }

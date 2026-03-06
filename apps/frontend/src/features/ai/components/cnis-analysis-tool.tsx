@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Sparkles, Trash2, Upload, FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
@@ -37,6 +37,14 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+
+  // Abort controller for polling cleanup on unmount
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
 
   // Ref para URL do PDF para revogar quando mudar
   const cnisPdfUrlRef = useRef<string | null>(null)
@@ -186,8 +194,14 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
       const maxAttempts = 120 // 2 minutes max
       const pollInterval = 2000 // 2 seconds
 
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (controller.signal.aborted) return
         await new Promise((resolve) => setTimeout(resolve, pollInterval))
+        if (controller.signal.aborted) return
 
         const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
 

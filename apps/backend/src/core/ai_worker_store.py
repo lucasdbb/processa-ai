@@ -412,7 +412,7 @@ async def get_all_user_jobs(
         FROM public.ai_jobs j
         LEFT JOIN office_api.clients c ON j.client_id::text = c.id::text
         LEFT JOIN public.generated_documents d ON d.job_id = j.id AND d.document_type = 'output'
-        WHERE j.status = 'completed' AND j.user_id = %s
+        WHERE j.status IN ('completed', 'processing') AND j.user_id = %s
     """
     params = [user_id]
 

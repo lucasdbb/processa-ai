@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { FileText, Plus, ScanSearch, Trash2, Upload } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
@@ -41,6 +41,14 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+
+  // Abort controller for polling cleanup on unmount
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
 
   const markdownToRender = normalizeMarkdown(generatedText)
   const previewHtml = useMemo(() => {
@@ -198,8 +206,14 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
       const maxAttempts = 120
       const pollInterval = 2000
 
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (controller.signal.aborted) return
         await new Promise((resolve) => setTimeout(resolve, pollInterval))
+        if (controller.signal.aborted) return
 
         const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
         if (!statusResponse.ok) continue

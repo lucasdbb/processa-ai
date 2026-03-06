@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -43,6 +43,18 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
+    }
+  }, [])
 
   const previewHtml = useMemo(() => {
     if (!generatedText) return ''
@@ -160,21 +172,22 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
       const { job_id } = await response.json()
       
       // 3. Poll for results
-      const pollInterval = setInterval(async () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = setInterval(async () => {
         try {
           const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${job_id}`)
           if (!statusRes.ok) return
 
           const statusData = await statusRes.json()
-          
+
           // Processing phase: 50% to 90%
           const backendProgress = statusData.progress || 0
           setProgress(50 + Math.floor((backendProgress * 40) / 100))
 
           if (statusData.status === 'completed') {
-            clearInterval(pollInterval)
+            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
             setProgress(100)
-            
+
             if (statusData.result) {
               setGeneratedText(statusData.result.text || '')
               if (statusData.result.pdf_url || statusData.result.download_url) {
@@ -182,7 +195,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
               }
               setIsResultModalOpen(true)
             }
-            
+
             toast.success('Resumo gerado com sucesso!')
             setHistoryRefreshKey((k) => k + 1)
             void fetchCredits() // Refresh credits
@@ -193,11 +206,11 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
               success: true
             })
           } else if (statusData.status === 'failed') {
-            clearInterval(pollInterval)
+            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
             setIsGenerating(false)
             const errorMessage = statusData.error || 'Falha na análise'
             toast.error(errorMessage)
-            
+
             analytics.track('feature_used', {
               feature: 'process_summary',
               action: 'failed',

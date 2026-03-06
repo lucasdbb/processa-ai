@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
+import { useState, useRef, useCallback, useMemo, useLayoutEffect, useEffect } from 'react'
 import { FileText, Gavel, Trash2, Upload, Plus } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
@@ -43,7 +43,18 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
 
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
+    }
+  }, [])
 
   const resizePromptTextarea = useCallback(() => {
     const el = promptTextareaRef.current
@@ -178,20 +189,21 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
       const { job_id } = await response.json()
       
       // 3. Poll for results
-      const pollInterval = setInterval(async () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = setInterval(async () => {
         try {
           const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${job_id}`)
           if (!statusRes.ok) return
 
           const statusData = await statusRes.json()
-          
+
           const backendProgress = statusData.progress || 0
           setProgress(40 + Math.floor((backendProgress * 60) / 100))
 
           if (statusData.status === 'completed') {
-            clearInterval(pollInterval)
+            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
             setProgress(100)
-            
+
             if (statusData.result) {
               setGeneratedText(statusData.result.text || '')
               if (statusData.result.pdf_url || statusData.result.download_url) {
@@ -199,7 +211,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
               }
               setIsResultModalOpen(true)
             }
-            
+
             toast.success('Reclamação trabalhista gerada com sucesso!')
             setHistoryRefreshKey((k) => k + 1)
             setIsGenerating(false)
@@ -209,11 +221,11 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
               success: true
             })
           } else if (statusData.status === 'failed') {
-            clearInterval(pollInterval)
+            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
             setIsGenerating(false)
             const errorMessage = statusData.error || 'Falha na geração'
             toast.error(errorMessage)
-            
+
             analytics.track('feature_used', {
               feature: 'labor_claim',
               action: 'failed',
