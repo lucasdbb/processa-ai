@@ -578,4 +578,167 @@ class DashboardService:
             return f"há {years} ano{'s' if years != 1 else ''}"
 
 
+    async def get_ai_cost_stats(self) -> dict:
+        """Get AI token usage and cost statistics (admin only)."""
+        try:
+            pool = await get_pool()
+
+            now = datetime.now(timezone.utc)
+            thirty_days_ago = now - timedelta(days=30)
+
+            async with pool.connection() as conn:
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    # Totals (all time)
+                    await cur.execute(
+                        """
+                        SELECT
+                            COUNT(*) as total_jobs,
+                            COALESCE(SUM((result_payload->'token_usage'->>'prompt_tokens')::int), 0) as total_prompt,
+                            COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as total_completion,
+                            COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
+                        FROM public.ai_jobs
+                        WHERE status = 'completed'
+                          AND result_payload->'token_usage' IS NOT NULL
+                        """
+                    )
+                    all_time = await cur.fetchone()
+
+                    # Totals (last 30 days)
+                    await cur.execute(
+                        """
+                        SELECT
+                            COUNT(*) as total_jobs,
+                            COALESCE(SUM((result_payload->'token_usage'->>'prompt_tokens')::int), 0) as total_prompt,
+                            COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as total_completion,
+                            COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
+                        FROM public.ai_jobs
+                        WHERE status = 'completed'
+                          AND result_payload->'token_usage' IS NOT NULL
+                          AND finished_at >= %s
+                        """,
+                        (thirty_days_ago,),
+                    )
+                    last_30d = await cur.fetchone()
+
+                    # Breakdown by model
+                    await cur.execute(
+                        """
+                        SELECT
+                            result_payload->'token_usage'->>'model' as model,
+                            result_payload->'token_usage'->>'provider' as provider,
+                            COUNT(*) as job_count,
+                            COALESCE(SUM((result_payload->'token_usage'->>'prompt_tokens')::int), 0) as prompt_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as completion_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
+                        FROM public.ai_jobs
+                        WHERE status = 'completed'
+                          AND result_payload->'token_usage' IS NOT NULL
+                        GROUP BY
+                            result_payload->'token_usage'->>'model',
+                            result_payload->'token_usage'->>'provider'
+                        ORDER BY total_cost DESC
+                        """
+                    )
+                    by_model = [dict(row) for row in await cur.fetchall()]
+
+                    # Breakdown by endpoint (tool)
+                    await cur.execute(
+                        """
+                        SELECT
+                            endpoint_key,
+                            COUNT(*) as job_count,
+                            COALESCE(SUM((result_payload->'token_usage'->>'prompt_tokens')::int), 0) as prompt_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as completion_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
+                            COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
+                        FROM public.ai_jobs
+                        WHERE status = 'completed'
+                          AND result_payload->'token_usage' IS NOT NULL
+                        GROUP BY endpoint_key
+                        ORDER BY total_cost DESC
+                        """
+                    )
+                    by_endpoint = [dict(row) for row in await cur.fetchall()]
+
+                    # Daily cost trend (last 30 days)
+                    await cur.execute(
+                        """
+                        SELECT
+                            finished_at::date as day,
+                            COUNT(*) as job_count,
+                            COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as daily_cost
+                        FROM public.ai_jobs
+                        WHERE status = 'completed'
+                          AND result_payload->'token_usage' IS NOT NULL
+                          AND finished_at >= %s
+                        GROUP BY finished_at::date
+                        ORDER BY day ASC
+                        """,
+                        (thirty_days_ago,),
+                    )
+                    daily_rows = await cur.fetchall()
+                    daily_trend = [
+                        {
+                            "day": row["day"].isoformat(),
+                            "job_count": row["job_count"],
+                            "cost_usd": float(row["daily_cost"]),
+                        }
+                        for row in daily_rows
+                    ]
+
+            return {
+                "all_time": {
+                    "total_jobs": all_time["total_jobs"] if all_time else 0,
+                    "prompt_tokens": all_time["total_prompt"] if all_time else 0,
+                    "completion_tokens": all_time["total_completion"] if all_time else 0,
+                    "total_tokens": all_time["total_tokens"] if all_time else 0,
+                    "cost_usd": float(all_time["total_cost"]) if all_time else 0.0,
+                },
+                "last_30d": {
+                    "total_jobs": last_30d["total_jobs"] if last_30d else 0,
+                    "prompt_tokens": last_30d["total_prompt"] if last_30d else 0,
+                    "completion_tokens": last_30d["total_completion"] if last_30d else 0,
+                    "total_tokens": last_30d["total_tokens"] if last_30d else 0,
+                    "cost_usd": float(last_30d["total_cost"]) if last_30d else 0.0,
+                },
+                "by_model": [
+                    {
+                        "model": row["model"] or "unknown",
+                        "provider": row["provider"] or "unknown",
+                        "job_count": row["job_count"],
+                        "prompt_tokens": row["prompt_tokens"],
+                        "completion_tokens": row["completion_tokens"],
+                        "total_tokens": row["total_tokens"],
+                        "cost_usd": float(row["total_cost"]),
+                    }
+                    for row in by_model
+                ],
+                "by_endpoint": [
+                    {
+                        "endpoint_key": row["endpoint_key"],
+                        "job_count": row["job_count"],
+                        "prompt_tokens": row["prompt_tokens"],
+                        "completion_tokens": row["completion_tokens"],
+                        "total_tokens": row["total_tokens"],
+                        "cost_usd": float(row["total_cost"]),
+                    }
+                    for row in by_endpoint
+                ],
+                "daily_trend": daily_trend,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get AI cost stats: {e}")
+            return {
+                "all_time": {"total_jobs": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost_usd": 0.0},
+                "last_30d": {"total_jobs": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost_usd": 0.0},
+                "by_model": [],
+                "by_endpoint": [],
+                "daily_trend": [],
+            }
+
+
 dashboard_service = DashboardService()

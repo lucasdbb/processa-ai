@@ -333,6 +333,7 @@ class AiService:
 
         raw_text = pipeline_result.markdown
         structured_data = pipeline_result.structured_data
+        token_usage = pipeline_result.token_usage
 
         if not raw_text:
             raise WorkerException(status_code=502, detail="Pipeline retornou resposta vazia")
@@ -347,6 +348,9 @@ class AiService:
             "markdown": raw_text,
             "structured_data": structured_data,
         }
+
+        if token_usage:
+            response["token_usage"] = token_usage.to_dict()
 
         if input_storage:
             response["input_storage"] = input_storage

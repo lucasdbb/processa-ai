@@ -327,6 +327,11 @@ async def _save_results(
     if structured_data is not None and isinstance(structured_data, dict):
         result_payload["structured_data"] = structured_data
 
+    # Persist token usage and cost
+    token_usage = result.get("token_usage")
+    if token_usage and isinstance(token_usage, dict):
+        result_payload["token_usage"] = token_usage
+
     # Note: Input document must be created by frontend and passed via input_document_id
     input_doc_id = input_document_id
 

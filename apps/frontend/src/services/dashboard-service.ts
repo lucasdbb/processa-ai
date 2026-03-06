@@ -71,6 +71,47 @@ export interface ActivityItem {
   time_relative: string;
 }
 
+export interface AiCostTotals {
+  total_jobs: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+}
+
+export interface AiCostByModel {
+  model: string;
+  provider: string;
+  job_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+}
+
+export interface AiCostByEndpoint {
+  endpoint_key: string;
+  job_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+}
+
+export interface AiCostDailyTrend {
+  day: string;
+  job_count: number;
+  cost_usd: number;
+}
+
+export interface AiCostStats {
+  all_time: AiCostTotals;
+  last_30d: AiCostTotals;
+  by_model: AiCostByModel[];
+  by_endpoint: AiCostByEndpoint[];
+  daily_trend: AiCostDailyTrend[];
+}
+
 export const dashboardService = {
   async getStats(): Promise<DashboardStats> {
     const res = await fetchWithCredentials(`${API_URL}/dashboard/stats`);
@@ -105,6 +146,12 @@ export const dashboardService = {
       `${API_URL}/dashboard/activity?limit=${limit}`,
     );
     if (!res.ok) throw new Error("Failed to get recent activity");
+    return res.json();
+  },
+
+  async getAiCostStats(): Promise<AiCostStats> {
+    const res = await fetchWithCredentials(`${API_URL}/dashboard/ai-costs`);
+    if (!res.ok) throw new Error("Failed to get AI cost stats");
     return res.json();
   },
 };

@@ -1,4 +1,12 @@
+import json
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Default LLM pricing (USD per 1M tokens)
+DEFAULT_LLM_PRICING: dict[str, dict[str, float]] = {
+    "gemini-3.1-pro-preview": {"input": 2.0, "output": 12.0},
+    "gemini-3.1-flash-lite-preview": {"input": 0.25, "output": 1.50},
+}
 
 
 class Settings(BaseSettings):
@@ -22,6 +30,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.1-pro-preview"
 
+    # LLM Pricing overrides (JSON string, e.g. '{"gemini-3.0-pro": {"input": 2.0, "output": 15.0}}')
+    LLM_PRICING_OVERRIDES: str = ""
+
     # Google Integration (for office jobs)
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
@@ -31,3 +42,16 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def get_model_pricing(model: str) -> dict[str, float]:
+    """Get pricing for a model (USD per 1M tokens). Returns {"input": X, "output": Y}."""
+    pricing = {**DEFAULT_LLM_PRICING}
+    if settings.LLM_PRICING_OVERRIDES:
+        try:
+            overrides = json.loads(settings.LLM_PRICING_OVERRIDES)
+            if isinstance(overrides, dict):
+                pricing.update(overrides)
+        except json.JSONDecodeError:
+            pass
+    return pricing.get(model, {"input": 0.0, "output": 0.0})

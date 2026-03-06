@@ -1,5 +1,7 @@
 """Google Gemini client for PDF analysis."""
 
+from __future__ import annotations
+
 import asyncio
 
 from google import genai
@@ -8,6 +10,7 @@ from google.genai.types import Part
 
 from src.core.config import settings
 from src.core.logging import logger
+from src.core.token_usage import TokenUsage, token_usage_from_gemini
 
 _client: genai.Client | None = None
 
@@ -27,7 +30,7 @@ async def analyze_pdf(
     pdf_bytes: bytes,
     system_instruction: str,
     user_prompt: str = "Analise este documento.",
-) -> str:
+) -> tuple[str, TokenUsage | None]:
     """Send PDF bytes directly to Gemini for analysis.
 
     No OCR step needed — Gemini reads the PDF natively.
@@ -38,7 +41,7 @@ async def analyze_pdf(
         user_prompt: User-facing instruction for the analysis.
 
     Returns:
-        The model's text response.
+        Tuple of (text response, token usage or None).
 
     Raises:
         RuntimeError: If the call fails after all retries.
@@ -67,13 +70,24 @@ async def analyze_pdf(
             if not text:
                 raise ValueError("Resposta vazia do Gemini")
 
+            token_usage: TokenUsage | None = None
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                token_usage = token_usage_from_gemini(response.usage_metadata)
+                logger.info(
+                    "Gemini token usage: prompt=%d, completion=%d, total=%d, cost=$%.4f",
+                    token_usage.prompt_tokens,
+                    token_usage.completion_tokens,
+                    token_usage.total_tokens,
+                    token_usage.cost_usd,
+                )
+
             logger.info(
                 "Gemini analysis complete: %d characters (model=%s, attempt=%d)",
                 len(text),
                 model,
                 attempt,
             )
-            return text
+            return text, token_usage
 
         except Exception as e:
             last_error = e

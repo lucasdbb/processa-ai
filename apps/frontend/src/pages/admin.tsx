@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Newspaper,
   Bell,
+  Cpu,
 } from 'lucide-react'
 import OverviewTab from './admin/overview-tab'
 import UsersTab from './admin/users-tab'
@@ -16,18 +17,19 @@ import PostsTab from './admin/posts-tab'
 import MaterialsTab from './admin/materials-tab'
 import FeedbacksTab from './admin/feedbacks-tab'
 import NotificationsTab from './admin/notifications-tab'
+import AiCostsTab from './admin/ai-costs-tab'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUser } from '@/features/auth/hooks/use-user'
 
-type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks' | 'notifications'
+type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks' | 'notifications' | 'ai-costs'
 
-const TABS_ADMIN: Tab[] = ['overview', 'users', 'posts', 'materials', 'feedbacks', 'notifications']
+const TABS_ADMIN: Tab[] = ['overview', 'users', 'posts', 'materials', 'feedbacks', 'notifications', 'ai-costs']
 const TABS_AUTHOR: Tab[] = ['overview', 'posts']
 
 const isTab = (value: string | null | undefined): value is Tab =>
-  value === 'overview' || value === 'users' || value === 'posts' || value === 'materials' || value === 'feedbacks' || value === 'notifications'
+  value === 'overview' || value === 'users' || value === 'posts' || value === 'materials' || value === 'feedbacks' || value === 'notifications' || value === 'ai-costs'
 
 
 export default function AdminPage() {
@@ -168,6 +170,21 @@ export default function AdminPage() {
               Notificações
             </button>
           ) : null}
+
+          {isAdmin ? (
+            <button
+              onClick={() => setTab('ai-costs')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'ai-costs'
+                  ? 'bg-slate-900 text-white'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+              type="button"
+            >
+              <Cpu className="w-5 h-5" />
+              Custos IA
+            </button>
+          ) : null}
         </nav>
 
         <div className="p-4 border-t border-border">
@@ -232,6 +249,12 @@ export default function AdminPage() {
                 Notificações
               </Button>
             ) : null}
+            {isAdmin ? (
+              <Button variant={activeTab === 'ai-costs' ? 'default' : 'outline'} onClick={() => setTab('ai-costs')}>
+                <Cpu className="h-4 w-4" />
+                Custos IA
+              </Button>
+            ) : null}
           </div>
 
           {activeTab === 'overview' ? <OverviewTab isAdmin={isAdmin} /> : null}
@@ -247,6 +270,9 @@ export default function AdminPage() {
           ) : null}
           {isAdmin && activeTab === 'notifications' ? (
             <NotificationsTab />
+          ) : null}
+          {isAdmin && activeTab === 'ai-costs' ? (
+            <AiCostsTab />
           ) : null}
 
         </div>

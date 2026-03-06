@@ -17,6 +17,7 @@ from src.core.llm import response_create
 from src.core.logging import logger
 from src.core.ocr import extract_text_from_url
 from src.core.progress import ProgressReporter
+from src.core.token_usage import TokenUsage
 from src.prompts import AnalysisPromptConfig, GeminiPromptConfig
 
 
@@ -26,6 +27,7 @@ class PipelineResult:
 
     markdown: str
     structured_data: dict | None = field(default=None)
+    token_usage: TokenUsage | None = field(default=None)
 
 
 async def run_document_analysis(
@@ -189,7 +191,7 @@ async def run_gemini_pdf_analysis(
     if progress:
         await progress.report(10, prompt.progress_analysis_start)
 
-    raw_text = await analyze_pdf(
+    raw_text, token_usage = await analyze_pdf(
         pdf_bytes=pdf_bytes,
         system_instruction=prompt.system_instruction,
         user_prompt=prompt.user_prompt,
@@ -202,7 +204,7 @@ async def run_gemini_pdf_analysis(
     if progress:
         await progress.report(95, prompt.progress_analysis_done)
 
-    return PipelineResult(markdown=raw_text, structured_data=structured_data)
+    return PipelineResult(markdown=raw_text, structured_data=structured_data, token_usage=token_usage)
 
 
 def _parse_json_response(text: str) -> dict | None:

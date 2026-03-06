@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from src.core.auth import get_user_id, verify_internal_token
+from src.core.auth import get_current_admin, get_user_id, verify_internal_token
 from src.features.core.dashboard.service import dashboard_service
 
 router = APIRouter(dependencies=[Depends(verify_internal_token)])
@@ -40,3 +40,9 @@ async def get_recent_activity(
 ):
     """Get recent activity."""
     return await dashboard_service.get_recent_activity(user_id, limit)
+
+
+@router.get("/ai-costs")
+async def get_ai_cost_stats(_admin=Depends(get_current_admin)):
+    """Get AI token usage and cost statistics (admin only)."""
+    return await dashboard_service.get_ai_cost_stats()
