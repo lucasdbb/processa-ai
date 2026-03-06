@@ -1,12 +1,10 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { cn, normalizeMarkdown } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCreditsStore } from '@/stores/credits-store'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
@@ -15,11 +13,10 @@ import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 import { analytics } from '@/lib/analytics'
 
-
-const MAX_FILES = 5
-
 import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
+
+const MAX_FILES = 5
 
 interface ProcessSummaryToolProps {
   selectedClientId?: string | null
@@ -38,29 +35,29 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
   const [files, setFiles] = useState<File[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string>('')
-  const [generatedText, setGeneratedText] = useState('')
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
 
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // Cleanup polling on unmount
+  // Abort controller for polling cleanup on unmount
+  const abortRef = useRef<AbortController | null>(null)
   useEffect(() => {
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-        pollIntervalRef.current = null
-      }
+      abortRef.current?.abort()
     }
   }, [])
 
-  const previewHtml = useMemo(() => {
-    if (!generatedText) return ''
-    const normalized = normalizeMarkdown(generatedText)
-    return DOMPurify.sanitize(marked.parse(normalized) as string)
-  }, [generatedText])
+  // Ref para URL do PDF para revogar quando mudar
+  const pdfUrlRef = useRef<string | null>(null)
+
+  const setPdfUrl = useCallback((next: string) => {
+    if (pdfUrlRef.current && pdfUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(pdfUrlRef.current)
+    }
+    pdfUrlRef.current = next || null
+    setGeneratedPdfUrl(next)
+  }, [])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -84,8 +81,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
     const allowed = droppedFiles.slice(0, MAX_FILES - files.length)
     if (allowed.length > 0) {
       setFiles((prev) => [...prev, ...allowed])
-      setGeneratedPdfUrl('')
-      setGeneratedText('')
+      setPdfUrl('')
     }
   }
 
@@ -94,8 +90,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
     const allowed = selected.slice(0, MAX_FILES - files.length)
     if (allowed.length > 0) {
       setFiles((prev) => [...prev, ...allowed])
-      setGeneratedPdfUrl('')
-      setGeneratedText('')
+      setPdfUrl('')
     }
     e.target.value = ''
   }
@@ -117,26 +112,24 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
 
     setIsGenerating(true)
     setProgress(0)
-    setGeneratedPdfUrl('')
-    setGeneratedText('')
+    setPdfUrl('')
 
     analytics.track('feature_used', {
       feature: 'process_summary',
       action: 'started',
-      file_count: files.length
+      file_count: files.length,
     })
 
     try {
-      // 1. Upload files
-      setProgress(10)
+      // 1. Upload files (0–20%)
+      const UPLOAD_PROGRESS_MAX = 20
       const { uploadMetadata, jobUuid } = await uploadFiles(
         files,
         user.id,
         selectedClientId,
         FunctionalityType.AI,
         (p) => {
-          // Upload phase: 10% to 50%
-          setProgress(10 + Math.floor((p * 40) / 100))
+          setProgress(Math.round((p / 100) * UPLOAD_PROGRESS_MAX))
         }
       )
 
@@ -144,13 +137,12 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
         throw new Error('Falha no upload dos arquivos')
       }
 
+      setProgress(UPLOAD_PROGRESS_MAX)
+
       // 2. Call Analysis API
-      setProgress(50)
       const response = await fetchWithCredentials(`${API_URL}/ai/analyses/process-summary`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           files: uploadMetadata,
           job_uuid: jobUuid,
@@ -166,75 +158,96 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
           toast.error('Créditos insuficientes')
           return
         }
-        throw new Error('Erro ao iniciar análise')
+        let message = 'Erro ao iniciar análise. Tente novamente.'
+        try {
+          const data = (await response.json()) as { detail?: string }
+          if (data?.detail) message = data.detail
+        } catch { void 0 }
+        throw new Error(message)
       }
 
-      const { job_id } = await response.json()
-      
-      // 3. Poll for results
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${job_id}`)
-          if (!statusRes.ok) return
+      const { job_id } = (await response.json()) as { job_id: string }
+      if (!job_id) throw new Error('Resposta inválida do servidor')
 
-          const statusData = await statusRes.json()
+      // 3. Poll for results (20–100%)
+      const maxAttempts = 120
+      const pollInterval = 2000
 
-          // Processing phase: 50% to 90%
-          const backendProgress = statusData.progress || 0
-          setProgress(50 + Math.floor((backendProgress * 40) / 100))
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
 
-          if (statusData.status === 'completed') {
-            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
-            setProgress(100)
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (controller.signal.aborted) return
+        await new Promise((resolve) => setTimeout(resolve, pollInterval))
+        if (controller.signal.aborted) return
 
-            if (statusData.result) {
-              setGeneratedText(statusData.result.text || '')
-              if (statusData.result.pdf_url || statusData.result.download_url) {
-                setGeneratedPdfUrl(statusData.result.pdf_url || statusData.result.download_url)
-              }
-              setIsResultModalOpen(true)
-            }
+        const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(job_id)}`)
+        if (!statusRes.ok) continue
 
-            toast.success('Resumo gerado com sucesso!')
-            setHistoryRefreshKey((k) => k + 1)
-            void fetchCredits() // Refresh credits
-            setIsGenerating(false)
-            analytics.track('feature_used', {
-              feature: 'process_summary',
-              action: 'completed',
-              success: true
-            })
-          } else if (statusData.status === 'failed') {
-            if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null }
-            setIsGenerating(false)
-            const errorMessage = statusData.error || 'Falha na análise'
-            toast.error(errorMessage)
-
-            analytics.track('feature_used', {
-              feature: 'process_summary',
-              action: 'failed',
-              error: errorMessage,
-              success: false
-            })
-          }
-        } catch (error) {
-          console.error('Polling error:', error)
+        const statusData = (await statusRes.json()) as {
+          status: string
+          progress: number
+          result?: { download_url?: string; content?: string; document_id?: string }
+          error?: string
         }
-      }, 2000)
 
+        // Map backend progress (0–100) to UI (20–100%)
+        const backendProgress = statusData.progress || 0
+        setProgress(UPLOAD_PROGRESS_MAX + Math.round((backendProgress / 100) * (100 - UPLOAD_PROGRESS_MAX)))
+
+        if (statusData.status === 'failed') {
+          throw new Error(statusData.error || 'Falha na análise')
+        }
+
+        if (statusData.status === 'completed') {
+          setProgress(100)
+
+          if (statusData.result?.download_url) {
+            setPdfUrl(statusData.result.download_url)
+            setIsResultModalOpen(true)
+          } else if (statusData.result?.content) {
+            const binary = atob(statusData.result.content)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            const blob = new Blob([bytes], { type: 'application/pdf' })
+            setPdfUrl(URL.createObjectURL(blob))
+            setIsResultModalOpen(true)
+          } else if (statusData.result?.document_id) {
+            toast.success('Resumo gerado! O documento foi salvo em "Meus Documentos".')
+            setHistoryRefreshKey((k) => k + 1)
+            void fetchCredits()
+            return
+          } else {
+            throw new Error('Resultado inválido do servidor')
+          }
+
+          toast.success('Resumo gerado com sucesso!')
+          setHistoryRefreshKey((k) => k + 1)
+          void fetchCredits()
+          analytics.track('feature_used', {
+            feature: 'process_summary',
+            action: 'completed',
+            success: true,
+          })
+          return
+        }
+      }
+
+      throw new Error('Tempo esgotado. Tente novamente.')
     } catch (error) {
-      console.error(error)
       analytics.track('feature_used', {
         feature: 'process_summary',
         action: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',
-        success: false
+        success: false,
       })
       toast.error(error instanceof Error ? error.message : 'Erro ao processar resumo')
+      setProgress(0)
+    } finally {
       setIsGenerating(false)
     }
-  }, [isAuthenticated, files, openRegisterModal, uploadFiles, selectedClientId, fetchCredits])
+  }, [isAuthenticated, user, files, openRegisterModal, uploadFiles, selectedClientId, setPdfUrl, fetchCredits])
 
   const handleDownload = useCallback(async () => {
     if (!generatedPdfUrl) return
@@ -245,17 +258,16 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
       const response = await fetch(generatedPdfUrl)
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
-      
+
       const element = document.createElement('a')
       element.href = url
       element.download = `resumo_processo_${Date.now()}.pdf`
       document.body.appendChild(element)
       element.click()
-      
+
       window.URL.revokeObjectURL(url)
       document.body.removeChild(element)
-    } catch (error) {
-      console.error('Download failed:', error)
+    } catch {
       window.open(generatedPdfUrl, '_blank')
     }
   }, [generatedPdfUrl])
@@ -275,7 +287,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
                   Documentos do Processo <span className="text-destructive">*</span>
                 </label>
                 <p className="text-sm text-muted-foreground">
-                  Envie as peças processuais (PDF).
+                  Envie as peças processuais (PDF). A IA identificará partes, pedidos, decisões e pontos de atenção.
                 </p>
               </div>
             </div>
@@ -293,9 +305,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
                           <FileText className="h-4 w-4 text-red-600 dark:text-red-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {file.name}
-                          </p>
+                          <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
@@ -332,7 +342,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
                   className="hidden"
                   id="file-upload"
                 />
-                
+
                 {files.length > 0 ? (
                   <label
                     htmlFor="file-upload"
@@ -371,16 +381,18 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
             </div>
 
             {isGenerating && (
-              <div className="space-y-2 flex-shrink-0">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Processando...</span>
-                  <span className="font-medium text-foreground">{progress}%</span>
+              <div className="flex-shrink-0 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-foreground">
+                    {progress < 20 ? 'Salvando arquivos...' : 'Processando análise...'}
+                  </span>
+                  <span className="text-muted-foreground font-mono">{progress}%</span>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <Progress value={progress} className="h-3" />
               </div>
             )}
 
-            <div className="pt-4 border-t border-border flex-shrink-0">
+            <div className="flex-shrink-0 pt-4 border-t border-border">
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || files.length === 0}
@@ -421,7 +433,6 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
         onClose={() => setIsResultModalOpen(false)}
         title="Resumo do Processo"
         pdfUrl={generatedPdfUrl}
-        htmlContent={generatedText ? previewHtml : undefined}
         onDownload={handleDownload}
       />
     </div>

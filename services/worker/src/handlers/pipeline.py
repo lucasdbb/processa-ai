@@ -186,13 +186,42 @@ async def run_gemini_pdf_analysis(
     Raises:
         RuntimeError: If the Gemini call fails after retries.
     """
-    from src.core.gemini import analyze_pdf
+    return await run_gemini_multi_pdf_analysis(
+        pdf_bytes_list=[pdf_bytes],
+        prompt=prompt,
+        progress=progress,
+    )
+
+
+async def run_gemini_multi_pdf_analysis(
+    *,
+    pdf_bytes_list: list[bytes],
+    prompt: GeminiPromptConfig,
+    progress: ProgressReporter | None = None,
+) -> PipelineResult:
+    """Execute document analysis via Gemini sending multiple PDF bytes directly.
+
+    No OCR step — Gemini reads the PDFs natively in a single request.
+    The response is expected to be JSON (possibly wrapped in markdown code fences).
+
+    Args:
+        pdf_bytes_list: List of raw PDF file contents.
+        prompt: Gemini prompt configuration with system instruction.
+        progress: Optional progress reporter for real-time updates.
+
+    Returns:
+        PipelineResult with raw text and parsed structured_data.
+
+    Raises:
+        RuntimeError: If the Gemini call fails after retries.
+    """
+    from src.core.gemini import analyze_multiple_pdfs
 
     if progress:
         await progress.report(10, prompt.progress_analysis_start)
 
-    raw_text, token_usage = await analyze_pdf(
-        pdf_bytes=pdf_bytes,
+    raw_text, token_usage = await analyze_multiple_pdfs(
+        pdf_bytes_list=pdf_bytes_list,
         system_instruction=prompt.system_instruction,
         user_prompt=prompt.user_prompt,
     )

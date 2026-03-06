@@ -103,7 +103,7 @@ async def _prepare_files(
     job_id: str, job_uuid: uuid.UUID | None, job_type: str, payload: dict
 ) -> tuple[str, list[str], str | None, str | None] | None:
     """Handle file URLs and signed URL generation."""
-    is_multi_file = job_type in ("labor_claim", "brief_scanner")
+    is_multi_file = job_type in ("labor_claim", "brief_scanner", "process_summary")
     file_url = ""
     file_urls = []
     bucket = None
@@ -113,8 +113,8 @@ async def _prepare_files(
         files_list = payload.get("files") or []
         file_urls = [str(f.get("file_url") or "") for f in files_list if f.get("file_url")]
 
-        # labor_claim may have no files (text-only), but brief_scanner requires at least one
-        if job_type == "brief_scanner" and not file_urls:
+        # process_summary and brief_scanner require at least one file
+        if job_type in ("brief_scanner", "process_summary") and not file_urls:
             await _safe_set_job_status(
                 job_id,
                 {"job_id": job_id, "status": "failed", "error": "Nenhum arquivo enviado"},
@@ -210,7 +210,7 @@ async def _execute_ai_service(
         )
     elif job_type == "process_summary":
         return await ai_service.analyze_process_summary(
-            file_url=file_url,
+            file_urls=file_urls,
             user_id=user_id,
             client_id=str(client_id) if client_id is not None else None,
             store_pdf=store_pdf,
@@ -257,7 +257,7 @@ async def _handle_failure(
             await add_job_event(job_uuid=job_uuid, event_type="failed", message=err)
 
             input_document_id = payload.get("input_document_id")
-            is_multi_file = job_type in ("labor_claim", "brief_scanner")
+            is_multi_file = job_type in ("labor_claim", "brief_scanner", "process_summary")
             files_list = payload.get("files") or []
 
             # 2. Cleanup file from bucket if not saved in DB (input_document_id check?)
@@ -450,7 +450,7 @@ async def _handle_ai_job(job: dict) -> None:
     file_url, file_urls, bucket, storage_path = files_result
 
     # Additional validation logic from original code
-    is_multi_file = job_type in ("labor_claim", "brief_scanner")
+    is_multi_file = job_type in ("labor_claim", "brief_scanner", "process_summary")
     if not is_multi_file and (not file_url or not user_id):
         logger.info("is_multi_file: %s", is_multi_file)
         logger.info("file_url: %s", file_url)

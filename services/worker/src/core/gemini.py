@@ -46,9 +46,45 @@ async def analyze_pdf(
     Raises:
         RuntimeError: If the call fails after all retries.
     """
+    return await analyze_multiple_pdfs(
+        pdf_bytes_list=[pdf_bytes],
+        system_instruction=system_instruction,
+        user_prompt=user_prompt,
+    )
+
+
+async def analyze_multiple_pdfs(
+    *,
+    pdf_bytes_list: list[bytes],
+    system_instruction: str,
+    user_prompt: str = "Analise estes documentos.",
+) -> tuple[str, TokenUsage | None]:
+    """Send multiple PDF bytes directly to Gemini for analysis.
+
+    No OCR step needed — Gemini reads the PDFs natively.
+    All PDFs are sent in a single request as separate Parts.
+
+    Args:
+        pdf_bytes_list: List of raw PDF file contents.
+        system_instruction: System prompt defining the analysis behavior.
+        user_prompt: User-facing instruction for the analysis.
+
+    Returns:
+        Tuple of (text response, token usage or None).
+
+    Raises:
+        RuntimeError: If the call fails after all retries.
+    """
     client = get_gemini_client()
     model = settings.GEMINI_MODEL
     last_error: Exception | None = None
+
+    # Build contents: one Part per PDF, then the user prompt text
+    contents = [
+        Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
+        for pdf_bytes in pdf_bytes_list
+    ]
+    contents.append(user_prompt)
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -57,13 +93,7 @@ async def analyze_pdf(
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                 ),
-                contents=[
-                    Part.from_bytes(
-                        data=pdf_bytes,
-                        mime_type="application/pdf",
-                    ),
-                    user_prompt,
-                ],
+                contents=contents,
             )
 
             text = (response.text or "").strip()

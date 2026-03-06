@@ -10,14 +10,16 @@ from src.core.progress import ProgressReporter
 from src.core.storage import StorageService
 from src.handlers.pipeline import (
     run_document_analysis,
+    run_gemini_multi_pdf_analysis,
     run_gemini_pdf_analysis,
     run_multi_document_analysis,
 )
 from src.handlers.reports.cnis import generate_cnis_pdf_from_template
+from src.handlers.reports.process_summary import generate_process_summary_pdf_from_template
 from src.prompts.brief_scanner import BRIEF_SCANNER_PROMPT
 from src.prompts.cnis import CNIS_GEMINI_PROMPT
 from src.prompts.labor_claim import LABOR_CLAIM_PROMPT
-from src.prompts.process_summary import PROCESS_SUMMARY_PROMPT
+from src.prompts.process_summary import PROCESS_SUMMARY_GEMINI_PROMPT
 
 
 class WorkerException(Exception):
@@ -389,7 +391,7 @@ class AiService:
     async def analyze_process_summary(
         self,
         *,
-        file_url: str,
+        file_urls: list[str],
         user_id: str,
         client_id: str | None,
         store_pdf: bool = False,
@@ -399,19 +401,108 @@ class AiService:
         progress: ProgressReporter | None = None,
         functionality: str = "ai",
     ) -> dict:
-        return await self._run_analysis_pipeline(
-            file_url=file_url,
-            endpoint_key="process_summary",
-            prompt_config=PROCESS_SUMMARY_PROMPT,
-            user_id=user_id,
-            client_id=client_id,
-            store_pdf=store_pdf,
-            store_input_pdf=store_input_pdf,
-            signed_url_expires_in=signed_url_expires_in,
-            job_id=job_id,
+        """Analyze process documents using Gemini (PDF bytes sent inline, no OCR).
+
+        Accepts multiple PDF files — all are sent to Gemini in a single request.
+
+        Pipeline:
+            1. Download all PDFs
+            2. Store input PDFs if requested
+            3. Send PDF bytes directly to Gemini for analysis (returns JSON)
+            4. Generate DOCX from JSON, convert to PDF via LibreOffice
+            5. Store output PDF if requested
+        """
+        if not file_urls:
+            raise WorkerException(status_code=400, detail="Nenhum arquivo enviado")
+
+        # Download all PDFs
+        pdf_bytes_list: list[bytes] = []
+        for url in file_urls:
+            pdf_bytes = await self.storage.download_pdf_bytes(url)
+            pdf_bytes_list.append(pdf_bytes)
+
+        inferred_filename = self.storage.infer_pdf_filename_from_url(file_urls[0])
+
+        # Store input PDFs for history (first file only, as representative)
+        input_storage = None
+        if store_input_pdf and job_id:
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            input_storage = await self.storage.upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes_list[0],
+                user_id=user_id,
+                client_id=client_id,
+                functionality=functionality,
+                job_uuid=job_uuid_str,
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+                output=False,
+            )
+            if "signed_url" in input_storage:
+                input_storage["download_url"] = input_storage["signed_url"]
+
+        # Run Gemini pipeline (PDF bytes -> Gemini -> JSON)
+        pipeline_result = await run_gemini_multi_pdf_analysis(
+            pdf_bytes_list=pdf_bytes_list,
+            prompt=PROCESS_SUMMARY_GEMINI_PROMPT,
             progress=progress,
-            functionality=functionality,
         )
+
+        raw_text = pipeline_result.markdown
+        structured_data = pipeline_result.structured_data
+        token_usage = pipeline_result.token_usage
+
+        if not raw_text:
+            raise WorkerException(status_code=502, detail="Pipeline retornou resposta vazia")
+
+        if not structured_data:
+            raise WorkerException(
+                status_code=502,
+                detail="Gemini não retornou JSON válido para o relatório de processo",
+            )
+
+        response: dict = {
+            "markdown": raw_text,
+            "structured_data": structured_data,
+        }
+
+        if token_usage:
+            response["token_usage"] = token_usage.to_dict()
+
+        if input_storage:
+            response["input_storage"] = input_storage
+
+        # Generate PDF once from structured JSON (DOCX -> PDF)
+        pdf_bytes_out = generate_process_summary_pdf_from_template(structured_data)
+
+        if not pdf_bytes_out or not pdf_bytes_out.lstrip().startswith(b"%PDF"):
+            raise WorkerException(
+                status_code=502, detail="Falha ao gerar PDF do relatório de processo"
+            )
+
+        response["content"] = pdf_bytes_out
+
+        # Upload to Supabase if requested
+        if store_pdf and job_id:
+            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
+                raise WorkerException(
+                    status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
+                )
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            uploaded = await self.storage.upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes_out,
+                user_id=user_id,
+                client_id=client_id,
+                functionality=functionality,
+                job_uuid=job_uuid_str,
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+                output=True,
+            )
+            if "signed_url" in uploaded:
+                uploaded["download_url"] = uploaded["signed_url"]
+            response.update(uploaded)
+
+        return response
 
     async def _run_multi_file_pipeline(
         self,
