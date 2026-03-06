@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from src.core.ai_worker_store import (
+    delete_job,
     get_all_user_jobs,
     get_document_by_id,
     get_job_status_from_db,
@@ -360,6 +361,39 @@ async def get_ai_job(
         result=result,
         error=(str(current.get("error")) if current.get("error") else None),
     )
+
+
+@router.delete(
+    "/jobs/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_ai_job(
+    job_id: str,
+    user_id: str = Depends(get_user_id),
+    _internal=Depends(require_internal_auth),
+):
+    """Remove um job de IA e seus documentos associados."""
+    jid = (job_id or "").strip()
+    if not jid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="job_id obrigatório")
+
+    job_uuid = parse_job_uuid(jid)
+    if not job_uuid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="job_id inválido")
+
+    try:
+        deleted = await delete_job(job_uuid=job_uuid, user_id=user_id)
+    except Exception:
+        logger.exception("Erro ao deletar job %s", jid)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao deletar análise",
+        )
+
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado")
+
+    return None
 
 
 @router.post(

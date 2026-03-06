@@ -40,6 +40,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
 
   const markdownToRender = normalizeMarkdown(generatedText)
   const previewHtml = useMemo(() => {
@@ -236,6 +237,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
           }
 
           toast.success('Análise da peça concluída com sucesso!')
+          setHistoryRefreshKey((k) => k + 1)
           analytics.track('feature_used', {
             feature: 'brief_scanner',
             action: 'completed',
@@ -458,10 +460,11 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
 
         {/* Right Column: History */}
         <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
-          <AnalysisHistoryList 
+          <AnalysisHistoryList
             functionality="brief_scanner"
-            clientId={selectedClientId} 
+            clientId={selectedClientId}
             title="Histórico de Análises de Peças"
+            refreshKey={historyRefreshKey}
           />
         </div>
       </div>

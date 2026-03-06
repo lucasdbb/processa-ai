@@ -450,3 +450,31 @@ async def get_all_user_jobs(
                     }
                 )
             return results
+
+
+async def delete_job(*, job_uuid, user_id: str) -> bool:
+    """Delete an AI job and its associated documents. Returns True if deleted."""
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            # Verify ownership
+            await cur.execute(
+                "SELECT id FROM public.ai_jobs WHERE id = %s AND user_id = %s",
+                (job_uuid, user_id),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return False
+
+            # Delete associated documents first (FK)
+            await cur.execute(
+                "DELETE FROM public.generated_documents WHERE job_id = %s",
+                (job_uuid,),
+            )
+
+            # Delete the job
+            await cur.execute(
+                "DELETE FROM public.ai_jobs WHERE id = %s AND user_id = %s",
+                (job_uuid, user_id),
+            )
+            return True

@@ -22,7 +22,7 @@ export interface AnalysisJob {
   }
 }
 
-export function useAnalysisHistory(functionality?: string, clientId?: string | null) {
+export function useAnalysisHistory(functionality?: string, clientId?: string | null, refreshKey?: number) {
   const { user } = useUser()
   const [jobs, setJobs] = useState<AnalysisJob[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -34,17 +34,17 @@ export function useAnalysisHistory(functionality?: string, clientId?: string | n
     try {
       setIsLoading(true)
       let url = `${API_URL}/ai/jobs?user_id=${user.id}`
-      
+
       if (functionality) {
         url += `&functionality=${functionality}`
       }
-      
+
       if (clientId) {
         url += `&client_id=${clientId}`
       }
 
       const response = await fetchWithCredentials(url)
-      
+
       if (!response.ok) {
         throw new Error('Falha ao carregar histórico')
       }
@@ -62,7 +62,7 @@ export function useAnalysisHistory(functionality?: string, clientId?: string | n
 
   useEffect(() => {
     fetchJobs()
-  }, [fetchJobs])
+  }, [fetchJobs, refreshKey])
 
   return { jobs, isLoading, error, refetch: fetchJobs }
 }

@@ -36,7 +36,8 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
-  
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+
   // Ref para URL do PDF para revogar quando mudar
   const cnisPdfUrlRef = useRef<string | null>(null)
 
@@ -230,16 +231,18 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
              // Idealmente o worker deve retornar download_url.
              // Se cair aqui, vamos considerar sucesso mas avisar que o PDF está salvo em Documentos.
              toast.success('Análise concluída! O documento foi salvo em "Meus Documentos".')
+             setHistoryRefreshKey((k) => k + 1)
              return
           } else {
             throw new Error('Resultado inválido do servidor')
           }
 
           toast.success('CNIS analisado com sucesso!')
-          analytics.track('feature_used', { 
-            feature: 'cnis_analysis', 
+          setHistoryRefreshKey((k) => k + 1)
+          analytics.track('feature_used', {
+            feature: 'cnis_analysis',
             action: 'completed',
-            success: true 
+            success: true
           })
           return
         }
@@ -422,10 +425,11 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
 
         {/* Right Column: History */}
         <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
-          <AnalysisHistoryList 
+          <AnalysisHistoryList
             functionality="cnis_analysis"
-            clientId={selectedClientId} 
+            clientId={selectedClientId}
             title="Histórico de Análises CNIS"
+            refreshKey={historyRefreshKey}
           />
         </div>
       </div>

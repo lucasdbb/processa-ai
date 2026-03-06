@@ -42,6 +42,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
 
   const previewHtml = useMemo(() => {
     if (!generatedText) return ''
@@ -183,6 +184,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
             }
             
             toast.success('Resumo gerado com sucesso!')
+            setHistoryRefreshKey((k) => k + 1)
             void fetchCredits() // Refresh credits
             setIsGenerating(false)
             analytics.track('feature_used', {
@@ -392,10 +394,11 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
 
         {/* Right Column: History */}
         <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
-          <AnalysisHistoryList 
+          <AnalysisHistoryList
             functionality="process_summary"
-            clientId={selectedClientId} 
+            clientId={selectedClientId}
             title="Histórico de Resumos"
+            refreshKey={historyRefreshKey}
           />
         </div>
       </div>

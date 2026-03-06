@@ -41,7 +41,8 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
-  
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const resizePromptTextarea = useCallback(() => {
@@ -200,6 +201,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
             }
             
             toast.success('Reclamação trabalhista gerada com sucesso!')
+            setHistoryRefreshKey((k) => k + 1)
             setIsGenerating(false)
             analytics.track('feature_used', {
               feature: 'labor_claim',
@@ -421,10 +423,11 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
 
         {/* Right Column: History */}
         <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
-          <AnalysisHistoryList 
+          <AnalysisHistoryList
             functionality="labor_claim"
-            clientId={selectedClientId} 
+            clientId={selectedClientId}
             title="Histórico de Reclamações"
+            refreshKey={historyRefreshKey}
           />
         </div>
       </div>
