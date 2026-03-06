@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import {
   RefreshCw,
   Cpu,
@@ -160,8 +160,8 @@ export default function AiCostsTab() {
                     width={60}
                   />
                   <Tooltip
-                    formatter={(value: number) => [formatUsd(value), 'Custo']}
-                    labelFormatter={(label: string) => formatDay(label)}
+                    formatter={(value: number | undefined) => [formatUsd(value ?? 0), 'Custo']}
+                    labelFormatter={(label: ReactNode) => formatDay(String(label))}
                     contentStyle={{
                       borderRadius: '8px',
                       border: '1px solid hsl(var(--border))',
