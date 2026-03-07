@@ -27,6 +27,7 @@ from src.features.billing.credits.schemas import (
     FeatureCostItem,
     PurchaseCheckoutResponse,
 )
+from src.features.billing.subscriptions.service import SubscriptionsService
 
 
 class CreditsService:
@@ -196,18 +197,9 @@ class CreditsService:
             "price_cents": package_def.price_cents,
         }
 
-        # 2. Buscar customer_id do usuário
-        user_result = (
-            self.supabase.table("profiles")
-            .select("stripe_customer_id, email")
-            .eq("id", user_id)
-            .single()
-            .execute()
-        )
-        if not user_result.data or not user_result.data.get("stripe_customer_id"):
-            raise HTTPException(status_code=400, detail="Usuário sem customer ID do Stripe")
-
-        customer_id = user_result.data["stripe_customer_id"]
+        # 2. Buscar ou criar customer_id do usuário no Stripe
+        subscription_service = SubscriptionsService()
+        customer_id = await subscription_service.get_or_create_customer(user_id)
 
         # 3. Criar checkout session
         # Preço em centavos. Criar line item ad-hoc

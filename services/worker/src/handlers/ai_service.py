@@ -4,7 +4,7 @@ import io
 import httpx
 from markdown_pdf import MarkdownPdf, Section
 
-from src.core.config import settings
+from src.core.config import get_gemini_model, settings
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
 from src.core.storage import StorageService
@@ -331,6 +331,7 @@ class AiService:
             pdf_bytes=pdf_bytes,
             prompt=CNIS_GEMINI_PROMPT,
             progress=progress,
+            model=get_gemini_model("cnis_analysis"),
         )
 
         raw_text = pipeline_result.markdown
@@ -445,6 +446,7 @@ class AiService:
             pdf_bytes_list=pdf_bytes_list,
             prompt=PROCESS_SUMMARY_GEMINI_PROMPT,
             progress=progress,
+            model=get_gemini_model("process_summary"),
         )
 
         raw_text = pipeline_result.markdown

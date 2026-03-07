@@ -169,6 +169,7 @@ async def run_gemini_pdf_analysis(
     pdf_bytes: bytes,
     prompt: GeminiPromptConfig,
     progress: ProgressReporter | None = None,
+    model: str | None = None,
 ) -> PipelineResult:
     """Execute document analysis via Gemini sending PDF bytes directly.
 
@@ -179,6 +180,7 @@ async def run_gemini_pdf_analysis(
         pdf_bytes: Raw PDF file content.
         prompt: Gemini prompt configuration with system instruction.
         progress: Optional progress reporter for real-time updates.
+        model: Optional Gemini model override.
 
     Returns:
         PipelineResult with raw text and parsed structured_data.
@@ -190,6 +192,7 @@ async def run_gemini_pdf_analysis(
         pdf_bytes_list=[pdf_bytes],
         prompt=prompt,
         progress=progress,
+        model=model,
     )
 
 
@@ -198,6 +201,7 @@ async def run_gemini_multi_pdf_analysis(
     pdf_bytes_list: list[bytes],
     prompt: GeminiPromptConfig,
     progress: ProgressReporter | None = None,
+    model: str | None = None,
 ) -> PipelineResult:
     """Execute document analysis via Gemini sending multiple PDF bytes directly.
 
@@ -208,6 +212,7 @@ async def run_gemini_multi_pdf_analysis(
         pdf_bytes_list: List of raw PDF file contents.
         prompt: Gemini prompt configuration with system instruction.
         progress: Optional progress reporter for real-time updates.
+        model: Optional Gemini model override.
 
     Returns:
         PipelineResult with raw text and parsed structured_data.
@@ -224,6 +229,7 @@ async def run_gemini_multi_pdf_analysis(
         pdf_bytes_list=pdf_bytes_list,
         system_instruction=prompt.system_instruction,
         user_prompt=prompt.user_prompt,
+        model=model,
     )
     logger.info("Gemini analysis complete: %d characters generated", len(raw_text))
 

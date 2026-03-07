@@ -29,13 +29,14 @@ class TokenUsage:
         }
 
 
-def token_usage_from_gemini(usage_metadata: object) -> TokenUsage:
+def token_usage_from_gemini(usage_metadata: object, model: str | None = None) -> TokenUsage:
     """Build TokenUsage from a Gemini response's usage_metadata."""
+    model = model or settings.GEMINI_MODEL
     prompt_tokens = getattr(usage_metadata, "prompt_token_count", 0) or 0
     completion_tokens = getattr(usage_metadata, "candidates_token_count", 0) or 0
     total_tokens = getattr(usage_metadata, "total_token_count", 0) or 0
 
-    pricing = get_model_pricing(settings.GEMINI_MODEL)
+    pricing = get_model_pricing(model, prompt_tokens)
     cost_usd = (
         (prompt_tokens / 1_000_000) * pricing["input"]
         + (completion_tokens / 1_000_000) * pricing["output"]
@@ -43,7 +44,7 @@ def token_usage_from_gemini(usage_metadata: object) -> TokenUsage:
 
     return TokenUsage(
         provider="gemini",
-        model=settings.GEMINI_MODEL,
+        model=model,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,

@@ -30,6 +30,7 @@ async def analyze_pdf(
     pdf_bytes: bytes,
     system_instruction: str,
     user_prompt: str = "Analise este documento.",
+    model: str | None = None,
 ) -> tuple[str, TokenUsage | None]:
     """Send PDF bytes directly to Gemini for analysis.
 
@@ -39,6 +40,7 @@ async def analyze_pdf(
         pdf_bytes: Raw PDF file content.
         system_instruction: System prompt defining the analysis behavior.
         user_prompt: User-facing instruction for the analysis.
+        model: Optional model override. Falls back to settings.GEMINI_MODEL.
 
     Returns:
         Tuple of (text response, token usage or None).
@@ -50,6 +52,7 @@ async def analyze_pdf(
         pdf_bytes_list=[pdf_bytes],
         system_instruction=system_instruction,
         user_prompt=user_prompt,
+        model=model,
     )
 
 
@@ -58,6 +61,7 @@ async def analyze_multiple_pdfs(
     pdf_bytes_list: list[bytes],
     system_instruction: str,
     user_prompt: str = "Analise estes documentos.",
+    model: str | None = None,
 ) -> tuple[str, TokenUsage | None]:
     """Send multiple PDF bytes directly to Gemini for analysis.
 
@@ -68,6 +72,7 @@ async def analyze_multiple_pdfs(
         pdf_bytes_list: List of raw PDF file contents.
         system_instruction: System prompt defining the analysis behavior.
         user_prompt: User-facing instruction for the analysis.
+        model: Optional model override. Falls back to settings.GEMINI_MODEL.
 
     Returns:
         Tuple of (text response, token usage or None).
@@ -76,7 +81,7 @@ async def analyze_multiple_pdfs(
         RuntimeError: If the call fails after all retries.
     """
     client = get_gemini_client()
-    model = settings.GEMINI_MODEL
+    model = model or settings.GEMINI_MODEL
     last_error: Exception | None = None
 
     # Build contents: one Part per PDF, then the user prompt text
@@ -102,7 +107,7 @@ async def analyze_multiple_pdfs(
 
             token_usage: TokenUsage | None = None
             if hasattr(response, "usage_metadata") and response.usage_metadata:
-                token_usage = token_usage_from_gemini(response.usage_metadata)
+                token_usage = token_usage_from_gemini(response.usage_metadata, model=model)
                 logger.info(
                     "Gemini token usage: prompt=%d, completion=%d, total=%d, cost=$%.4f",
                     token_usage.prompt_tokens,

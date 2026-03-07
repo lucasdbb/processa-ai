@@ -54,9 +54,10 @@ FEATURE_COSTS: dict[str, FeatureCost] = {
 CREDIT_PACKAGES: dict[str, CreditPackageDef] = {
     pkg.id: pkg
     for pkg in [
-        CreditPackageDef("pkg_10", "Pacote Inicial", 10, 990, 1),
-        CreditPackageDef("pkg_30", "Pacote Intermediário", 30, 2490, 2),
-        CreditPackageDef("pkg_100", "Pacote Profissional", 100, 7490, 3),
+        CreditPackageDef("pkg_20", "Pacote Inicial", 20, 1990, 1),  # 1,00/crédito
+        CreditPackageDef("pkg_55", "Pacote Essencial", 55, 4990, 2),  # ~0,91/crédito
+        CreditPackageDef("pkg_120", "Pacote Profissional", 120, 9990, 3),  # ~0,83/crédito
+        CreditPackageDef("pkg_300", "Pacote Master", 300, 22990, 4),  # ~0,77/crédito
     ]
 }
 
