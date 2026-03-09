@@ -65,12 +65,7 @@ export default function HomePage() {
       description: 'Clientes, processos e prazos organizados em um só painel',
       image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop',
     },
-    {
-      title: 'Gestão de Clientes',
-      description: 'Busca avançada, filtros e organização completa da carteira',
-      image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop',
-    },
-    {
+{
       title: 'IA Jurídica',
       description: 'Análise de CNIS, resumo de processos e extração de documentos',
       image: 'https://images.unsplash.com/photo-1555421689-d68471e189f2?q=80&w=2070&auto=format&fit=crop',
@@ -203,28 +198,6 @@ export default function HomePage() {
             <span className="text-xs text-muted-foreground">Demonstração de 60 segundos, sem cadastro</span>
           </div>
 
-          {/* Prova social */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex -space-x-2">
-              {[
-                { initials: 'AM', color: isDark ? 'bg-blue-800 text-blue-200' : 'bg-blue-100 text-blue-700' },
-                { initials: 'RS', color: isDark ? 'bg-violet-800 text-violet-200' : 'bg-violet-100 text-violet-700' },
-                { initials: 'CT', color: isDark ? 'bg-emerald-800 text-emerald-200' : 'bg-emerald-100 text-emerald-700' },
-                { initials: 'JP', color: isDark ? 'bg-amber-800 text-amber-200' : 'bg-amber-100 text-amber-700' },
-                { initials: 'LF', color: isDark ? 'bg-rose-800 text-rose-200' : 'bg-rose-100 text-rose-700' },
-              ].map((avatar) => (
-                <div
-                  key={avatar.initials}
-                  className={`w-8 h-8 rounded-full border-2 ${isDark ? 'border-background' : 'border-white'} flex items-center justify-center text-[10px] font-bold ${avatar.color}`}
-                >
-                  {avatar.initials}
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Mais de <span className="font-semibold text-foreground">2.000 advogados</span> já usam a Processa AI
-            </p>
-          </div>
         </div>
 
         <div
@@ -307,7 +280,7 @@ export default function HomePage() {
                   </h3>
                 </div>
                 <p
-                  className={`text-base leading-relaxed font-light transition-colors duration-300 ${
+                  className={`text-sm leading-relaxed font-light transition-colors duration-300 ${
                     isDark
                       ? 'text-slate-600 group-hover:text-slate-700'
                       : 'text-[#94a3b8] group-hover:text-[#cbd5e1]'
@@ -457,7 +430,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <p
-                  className={`text-base leading-relaxed ${
+                  className={`text-sm leading-relaxed ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
@@ -515,7 +488,7 @@ export default function HomePage() {
                   </h3>
                 </div>
                 <p
-                  className={`text-base leading-relaxed ${
+                  className={`text-sm leading-relaxed ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
@@ -706,7 +679,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <p
-                  className={`text-base leading-relaxed ${
+                  className={`text-sm leading-relaxed ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >

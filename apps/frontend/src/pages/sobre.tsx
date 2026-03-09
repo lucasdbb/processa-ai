@@ -44,7 +44,7 @@ export default function SobrePage() {
               <h2 className="text-3xl font-bold text-foreground mb-6 tracking-tight">Nossa História</h2>
               <div className="space-y-6 text-muted-foreground text-lg leading-relaxed">
                 <p>
-                  A Processa AI nasceu em 2025 da experiência real de quem advocacia na prática. A Dra. Alexia Machado,
+                  A Processa AI nasceu em 2026 da experiência real de quem advocacia na prática. A Dra. Alexia Machado,
                   advogada especializada em Direito Trabalhista e Previdenciário, vivia de perto a sobrecarga
                   de tarefas repetitivas que tomavam o tempo que deveria ser dedicado aos clientes.
                 </p>
@@ -69,7 +69,7 @@ export default function SobrePage() {
                 loading="lazy"
               />
               <div className="absolute -bottom-6 -left-6 bg-slate-900 text-white p-8 rounded-[1.5rem] shadow-xl transform transition-transform duration-300 group-hover:scale-105">
-                <p className="text-4xl font-bold mb-1">2025</p>
+                <p className="text-4xl font-bold mb-1">2026</p>
                 <p className="text-sm text-white/80 font-medium tracking-wide uppercase">Ano de Fundação</p>
               </div>
             </div>
@@ -86,7 +86,8 @@ export default function SobrePage() {
                 <h3 className="text-xl font-bold text-foreground">Missão</h3>
               </div>
               <p className="text-muted-foreground leading-relaxed">
-                Que nenhum advogado perca um prazo por falta de ferramenta.
+                Eliminar o trabalho mecânico da advocacia para que advogados dediquem
+                seu tempo ao que realmente importa: estratégia e clientes.
               </p>
             </div>
 
