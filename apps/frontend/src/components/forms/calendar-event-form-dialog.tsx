@@ -82,6 +82,7 @@ export function CalendarEventFormDialog({
   const [processoId, setProcessoId] = useState(event?.processo_id || defaultProcessId || '')
   const [clienteId, setClienteId] = useState(event?.cliente_id || defaultClientId || '')
   const [priority, setPriority] = useState<DeadlinePriority>(event?.priority || 'medium')
+  const [reminderDaysBefore, setReminderDaysBefore] = useState(event?.reminder_days_before ?? 3)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -99,6 +100,7 @@ export function CalendarEventFormDialog({
       setProcessoId(event?.processo_id || defaultProcessId || '')
       setClienteId(event?.cliente_id || defaultClientId || '')
       setPriority(event?.priority || 'medium')
+      setReminderDaysBefore(event?.reminder_days_before ?? 3)
       setShowDeleteConfirm(false)
       setErrors({})
     }
@@ -134,6 +136,7 @@ export function CalendarEventFormDialog({
         color: EVENT_TYPE_OPTIONS.find((o) => o.value === eventType)?.color,
         priority: eventType === 'prazo' ? priority : undefined,
         deadline_status: eventType === 'prazo' && !isEditing ? 'pending' as const : undefined,
+        reminder_days_before: eventType === 'prazo' ? reminderDaysBefore : undefined,
       }
 
       if (isEditing && event) {
@@ -249,6 +252,29 @@ export function CalendarEventFormDialog({
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Reminder Days Before (only for prazo) */}
+          {eventType === 'prazo' && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                Lembrete (dias antes)
+              </label>
+              <select
+                value={reminderDaysBefore}
+                onChange={(e) => setReminderDaysBefore(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value={0}>Sem lembrete</option>
+                <option value={1}>1 dia antes</option>
+                <option value={2}>2 dias antes</option>
+                <option value={3}>3 dias antes</option>
+                <option value={5}>5 dias antes</option>
+                <option value={7}>7 dias antes</option>
+                <option value={14}>14 dias antes</option>
+                <option value={30}>30 dias antes</option>
+              </select>
             </div>
           )}
 
