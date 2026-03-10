@@ -7,6 +7,7 @@ export type RescisaoDetalhes = {
   feriasProporcionais: number
   decimoTerceiro: number
   fgts: number
+  fgtsRescisorio: number
   multaFgts: number
   total: number
 }

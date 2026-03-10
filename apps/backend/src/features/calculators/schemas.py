@@ -40,6 +40,7 @@ class RescisaoTrabalhistaDetalhes(BaseModel):
     ferias_proporcionais: float
     decimo_terceiro: float
     fgts: float
+    fgts_rescisorio: float = 0.0
     multa_fgts: float
     total: float
 

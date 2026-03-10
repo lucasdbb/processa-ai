@@ -114,6 +114,7 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
           ferias_proporcionais: number
           decimo_terceiro: number
           fgts: number
+          fgts_rescisorio: number
           multa_fgts: number
           total: number
         }
@@ -129,6 +130,7 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
           feriasProporcionais: data.detalhes.ferias_proporcionais,
           decimoTerceiro: data.detalhes.decimo_terceiro,
           fgts: data.detalhes.fgts,
+          fgtsRescisorio: data.detalhes.fgts_rescisorio,
           multaFgts: data.detalhes.multa_fgts,
           total: data.detalhes.total,
         },
@@ -491,13 +493,14 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
                       {[
                         { label: 'Saldo de Salário', value: resultado.detalhes.saldoSalario },
                         { label: 'Aviso Prévio', value: resultado.detalhes.avisoPrevio },
-                        { label: 'Férias Vencidas', value: resultado.detalhes.feriasVencidas },
-                        { label: 'Férias Proporcionais', value: resultado.detalhes.feriasProporcionais },
+                        { label: 'Férias Vencidas + 1/3', value: resultado.detalhes.feriasVencidas },
+                        { label: 'Férias Proporcionais + 1/3', value: resultado.detalhes.feriasProporcionais },
                         { label: '13º Proporcional', value: resultado.detalhes.decimoTerceiro },
-                        { label: 'FGTS (8%)', value: resultado.detalhes.fgts },
-                        { label: 'Multa FGTS (40%)', value: resultado.detalhes.multaFgts },
+                        { label: 'FGTS Acumulado (estimativa)', value: resultado.detalhes.fgts, muted: true },
+                        { label: 'FGTS Rescisório (8%)', value: resultado.detalhes.fgtsRescisorio },
+                        { label: `Multa FGTS (${formData.tipoRescisao === 'acordo' ? '20' : '40'}%)`, value: resultado.detalhes.multaFgts },
                       ].map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm">
+                        <div key={idx} className={cn("flex justify-between items-center text-sm", 'muted' in item && item.muted && "opacity-50 border-t border-dashed border-border/30 pt-2")}>
                           <span className="text-muted-foreground">{item.label}</span>
                           <span className={cn("font-medium", item.value > 0 ? "text-foreground" : "text-muted-foreground/50")}>
                             R$ {item.value.toFixed(2)}
@@ -507,7 +510,7 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
                    </div>
                    
                    <div className="pt-4 border-t-2 border-dashed border-border/50 flex justify-between items-center">
-                     <span className="font-bold text-foreground text-sm uppercase tracking-wide">Total Líquido</span>
+                     <span className="font-bold text-foreground text-sm uppercase tracking-wide">Total Estimado</span>
                      <span className="text-xl font-extrabold text-primary">R$ {resultado.detalhes.total.toFixed(2)}</span>
                    </div>
                 </div>
