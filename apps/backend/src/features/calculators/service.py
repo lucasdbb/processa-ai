@@ -552,19 +552,45 @@ class CalculatorsService:
         calculation_id: str,
         expires_in: int,
     ) -> dict:
-        md = self._render_rescisao_markdown(
-            input_payload=input_payload,
-            output_payload=output_payload,
-        )
+        from src.features.calculators.reports import generate_rescisao_pdf
+
+        try:
+            pdf_bytes = generate_rescisao_pdf(
+                input_payload=input_payload,
+                output_payload=output_payload,
+            )
+        except (FileNotFoundError, RuntimeError) as exc:
+            logger.warning(
+                "Falha ao gerar PDF via template DOCX, usando fallback markdown: %s", exc
+            )
+            md = self._render_rescisao_markdown(
+                input_payload=input_payload,
+                output_payload=output_payload,
+            )
+            filename = f"rescisao-trabalhista_{calculation_id}.pdf"
+            return await self.markdown_to_pdf_and_store(
+                markdown=md,
+                filename=filename,
+                user_id=user_id,
+                client_id=client_id,
+                endpoint="trabalhista/rescisao-trabalhista",
+                expires_in=expires_in,
+            )
+
         filename = f"rescisao-trabalhista_{calculation_id}.pdf"
-        return await self.markdown_to_pdf_and_store(
-            markdown=md,
-            filename=filename,
+        uploaded = await self._upload_pdf_to_supabase(
+            pdf_bytes=pdf_bytes,
             user_id=user_id,
             client_id=client_id,
             endpoint="trabalhista/rescisao-trabalhista",
+            filename=filename,
             expires_in=expires_in,
         )
+
+        return {
+            "content": pdf_bytes,
+            **uploaded,
+        }
 
     def calculate_aposentadoria(
         self,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -108,3 +108,30 @@ class CalculatorsListResponse(BaseModel):
     """Lista de calculadoras disponíveis."""
 
     calculators: list[CalculatorResponse]
+
+
+class CalculationHistoryItem(BaseModel):
+    """Item do histórico de cálculos."""
+
+    id: str
+    calculator_key: str
+    status: str
+    client_id: str | None = None
+    input_payload: dict | None = None
+    output_payload: dict | None = None
+    error: str | None = None
+    created_at: str
+    finished_at: str | None = None
+
+
+class CalculationHistoryResponse(BaseModel):
+    """Resposta do histórico de cálculos."""
+
+    calculations: list[CalculationHistoryItem]
+
+
+class CalculationDownloadResponse(BaseModel):
+    """URL de download do PDF de um cálculo."""
+
+    download_url: str
+    filename: str

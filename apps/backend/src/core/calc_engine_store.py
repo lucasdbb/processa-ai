@@ -82,6 +82,140 @@ async def mark_calculation_failed(
             )
 
 
+async def list_calculations(
+    *,
+    user_id: str,
+    calculator_key: str | None = None,
+    client_id: str | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    pool = await get_pool()
+    row_factory = _get_dict_row()
+
+    clauses = ["user_id = %s"]
+    params: list[Any] = [user_id]
+
+    if calculator_key:
+        clauses.append("calculator_key = %s")
+        params.append(calculator_key)
+    if client_id:
+        clauses.append("client_id = %s")
+        params.append(client_id)
+
+    where = " AND ".join(clauses)
+    params.append(limit)
+
+    async with pool.connection() as conn:
+        kw = {"row_factory": row_factory} if row_factory else {}
+        async with conn.cursor(**kw) as cur:
+            await cur.execute(
+                f"SELECT id, calculator_key, status, user_id, client_id, "
+                f"input_payload, output_payload, error, created_at, finished_at "
+                f"FROM public.calculations "
+                f"WHERE {where} "
+                f"ORDER BY created_at DESC LIMIT %s",
+                params,
+            )
+            rows = await cur.fetchall()
+
+    if not rows:
+        return []
+
+    result = []
+    for row in rows:
+        if isinstance(row, dict):
+            item = dict(row)
+        else:
+            item = {
+                "id": row[0],
+                "calculator_key": row[1],
+                "status": row[2],
+                "user_id": row[3],
+                "client_id": row[4],
+                "input_payload": row[5],
+                "output_payload": row[6],
+                "error": row[7],
+                "created_at": row[8],
+                "finished_at": row[9],
+            }
+        # Serialize UUID and datetime
+        if isinstance(item.get("id"), uuid.UUID):
+            item["id"] = str(item["id"])
+        for dt_key in ("created_at", "finished_at"):
+            v = item.get(dt_key)
+            if v is not None and hasattr(v, "isoformat"):
+                item[dt_key] = v.isoformat()
+        result.append(item)
+
+    return result
+
+
+async def get_calculation_document(
+    *,
+    calculation_id: uuid.UUID,
+    user_id: str,
+) -> dict | None:
+    pool = await get_pool()
+    row_factory = _get_dict_row()
+
+    async with pool.connection() as conn:
+        kw = {"row_factory": row_factory} if row_factory else {}
+        async with conn.cursor(**kw) as cur:
+            await cur.execute(
+                "SELECT id, bucket, storage_path, filename, mime_type "
+                "FROM public.generated_documents "
+                "WHERE calculation_id = %s AND user_id = %s "
+                "ORDER BY created_at DESC LIMIT 1",
+                (calculation_id, user_id),
+            )
+            row = await cur.fetchone()
+
+    if not row:
+        return None
+
+    if isinstance(row, dict):
+        item = dict(row)
+    else:
+        item = {
+            "id": row[0],
+            "bucket": row[1],
+            "storage_path": row[2],
+            "filename": row[3],
+            "mime_type": row[4],
+        }
+    if isinstance(item.get("id"), uuid.UUID):
+        item["id"] = str(item["id"])
+    return item
+
+
+async def delete_calculation(*, calculation_id: uuid.UUID, user_id: str) -> bool:
+    """Delete a calculation and its associated documents. Returns True if deleted."""
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            # Verify ownership
+            await cur.execute(
+                "SELECT id FROM public.calculations WHERE id = %s AND user_id = %s",
+                (calculation_id, user_id),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return False
+
+            # Delete associated documents first (FK)
+            await cur.execute(
+                "DELETE FROM public.generated_documents WHERE calculation_id = %s",
+                (calculation_id,),
+            )
+
+            # Delete the calculation
+            await cur.execute(
+                "DELETE FROM public.calculations WHERE id = %s AND user_id = %s",
+                (calculation_id, user_id),
+            )
+            return True
+
+
 async def create_document(
     *,
     calculation_id: uuid.UUID,
