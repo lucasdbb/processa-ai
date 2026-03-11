@@ -1,6 +1,6 @@
 """CNIS Report Generator via docxtpl template: JSON -> DOCX -> PDF.
 
-Uses a Word template (src/assets/templates/cnis_report.docx) with Jinja2 placeholders.
+Uses a Word template (src/assets/templates/ia/cnis_report.docx) with Jinja2 placeholders.
 The template controls all formatting — fonts, colors, logo, layout.
 Python only injects the data.
 
@@ -38,7 +38,7 @@ from docxtpl import DocxTemplate
 from src.core.logging import logger
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
-TEMPLATE_PATH = ASSETS_DIR / "templates" / "cnis_report.docx"
+TEMPLATE_PATH = ASSETS_DIR / "templates" / "ia" / "cnis_report.docx"
 
 
 def _build_context(dados_analise: dict) -> dict:
@@ -119,7 +119,7 @@ def generate_cnis_docx_from_template(dados_analise: dict) -> bytes:
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(
             f"Template não encontrado: {TEMPLATE_PATH}\n"
-            "Coloque o arquivo cnis_report.docx em services/worker/src/assets/templates/"
+            "Coloque o arquivo cnis_report.docx em services/worker/src/assets/templates/ia/"
         )
 
     tpl = DocxTemplate(str(TEMPLATE_PATH))

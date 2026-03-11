@@ -1,6 +1,6 @@
 """Brief Scanner Report Generator via docxtpl template: JSON -> DOCX -> PDF.
 
-Uses a Word template (src/assets/templates/brief_scanner_report.docx) with Jinja2 placeholders.
+Uses a Word template (src/assets/templates/ia/brief_scanner_report.docx) with Jinja2 placeholders.
 The template controls all formatting — fonts, colors, logo, layout.
 Python only injects the data.
 
@@ -75,7 +75,7 @@ from src.core.logging import logger
 from src.handlers.reports.cnis import docx_bytes_to_pdf_bytes
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
-TEMPLATE_PATH = ASSETS_DIR / "templates" / "brief_scanner_report.docx"
+TEMPLATE_PATH = ASSETS_DIR / "templates" / "ia" / "brief_scanner_report.docx"
 
 RISCO_LABEL = {
     "alto": "🔴 Alto",
@@ -266,7 +266,7 @@ def generate_brief_scanner_docx_from_template(dados_analise: dict) -> bytes:
         raise FileNotFoundError(
             f"Template não encontrado: {TEMPLATE_PATH}\n"
             "Coloque o arquivo brief_scanner_report.docx em "
-            "services/worker/src/assets/templates/"
+            "services/worker/src/assets/templates/ia/"
         )
 
     tpl = DocxTemplate(str(TEMPLATE_PATH))

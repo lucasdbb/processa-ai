@@ -1,6 +1,6 @@
 """Process Summary Report Generator via docxtpl template: JSON -> DOCX -> PDF.
 
-Uses a Word template (src/assets/templates/process_summary_report.docx) with Jinja2 placeholders.
+Uses a Word template (src/assets/templates/ia/process_summary_report.docx) with Jinja2 placeholders.
 The template controls all formatting — fonts, colors, logo, layout.
 Python only injects the data.
 
@@ -46,7 +46,7 @@ from docxtpl import DocxTemplate
 from src.core.logging import logger
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
-TEMPLATE_PATH = ASSETS_DIR / "templates" / "process_summary_report.docx"
+TEMPLATE_PATH = ASSETS_DIR / "templates" / "ia" / "process_summary_report.docx"
 
 
 def _build_context(dados_analise: dict) -> dict:
@@ -114,14 +114,14 @@ def generate_process_summary_docx_from_template(dados_analise: dict) -> bytes:
         DOCX file as bytes.
 
     Raises:
-        FileNotFoundError: If process_summary_report.docx is not found in assets/templates/.
+        FileNotFoundError: If process_summary_report.docx is not found in assets/templates/ia/.
         RuntimeError: If template rendering fails.
     """
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(
             f"Template não encontrado: {TEMPLATE_PATH}\n"
             "Coloque o arquivo process_summary_report.docx em "
-            "services/worker/src/assets/templates/"
+            "services/worker/src/assets/templates/ia/"
         )
 
     tpl = DocxTemplate(str(TEMPLATE_PATH))
