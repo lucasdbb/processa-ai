@@ -12,12 +12,19 @@ import uuid
 
 from src.core.ai_worker_store import (
     add_job_event,
-    create_calculator_document,
     create_document,
     mark_job_completed,
     mark_job_failed,
     mark_job_processing,
     parse_job_uuid,
+)
+from src.core.worker_store import (
+    add_worker_job_event,
+    create_calculator_document,
+    mark_worker_job_completed,
+    mark_worker_job_failed,
+    mark_worker_job_processing,
+    update_worker_job_progress,
 )
 from src.core.db import init_db
 from src.core.logging import logger
@@ -547,7 +554,7 @@ async def _handle_calculator_job(job: dict) -> None:
         )
         if job_uuid:
             try:
-                await mark_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
+                await mark_worker_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
             except Exception:
                 pass
         return
@@ -556,8 +563,8 @@ async def _handle_calculator_job(job: dict) -> None:
     await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 10})
     if job_uuid:
         try:
-            await mark_job_processing(job_uuid=job_uuid, progress=10)
-            await add_job_event(
+            await mark_worker_job_processing(job_uuid=job_uuid, progress=10)
+            await add_worker_job_event(
                 job_uuid=job_uuid, event_type="processing", payload={"progress": 10}
             )
         except Exception:
@@ -625,7 +632,7 @@ async def _handle_calculator_job(job: dict) -> None:
             try:
                 if calc_uuid:
                     doc_id = await create_calculator_document(
-                        job_uuid=job_uuid,
+                        worker_job_id=job_uuid,
                         calculation_id=calc_uuid,
                         user_id=user_id,
                         client_id=str(client_id) if client_id else None,
@@ -638,11 +645,11 @@ async def _handle_calculator_job(job: dict) -> None:
                         metadata={"calculator_key": calculator_key},
                     )
                 else:
-                    doc_id = await create_document(
-                        job_uuid=job_uuid,
+                    doc_id = await create_calculator_document(
+                        worker_job_id=job_uuid,
                         user_id=user_id,
                         client_id=str(client_id) if client_id else None,
-                        document_type="output",
+                        document_type=f"{job_type}_pdf",
                         bucket=bucket,
                         storage_path=storage_path,
                         filename=filename,
@@ -674,8 +681,8 @@ async def _handle_calculator_job(job: dict) -> None:
         )
         if job_uuid:
             try:
-                await mark_job_completed(job_uuid=job_uuid, result_payload=result_payload)
-                await add_job_event(
+                await mark_worker_job_completed(job_uuid=job_uuid, result_payload=result_payload)
+                await add_worker_job_event(
                     job_uuid=job_uuid, event_type="completed", payload={"progress": 100}
                 )
             except Exception:
@@ -689,8 +696,8 @@ async def _handle_calculator_job(job: dict) -> None:
         )
         if job_uuid:
             try:
-                await mark_job_failed(job_uuid=job_uuid, error=err)
-                await add_job_event(job_uuid=job_uuid, event_type="failed", message=err)
+                await mark_worker_job_failed(job_uuid=job_uuid, error=err)
+                await add_worker_job_event(job_uuid=job_uuid, event_type="failed", message=err)
             except Exception:
                 logger.exception("Failed to persist calculator job failure")
 

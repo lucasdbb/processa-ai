@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.core.ai_worker_store import add_job_event, create_job
+from src.core.worker_store import add_worker_job_event, create_worker_job
 from src.core.auth import require_internal_auth
 from src.core.calc_engine_store import (
     create_calculation,
@@ -55,9 +55,9 @@ async def _enqueue_calculator_pdf(
 
     # Create job record in DB (reuse ai_jobs table)
     try:
-        await create_job(
+        await create_worker_job(
             job_uuid=job_uuid,
-            endpoint_key=job_type,
+            job_type=job_type,
             user_id=user_id,
             client_id=client_id,
             request_payload={
@@ -66,7 +66,7 @@ async def _enqueue_calculator_pdf(
                 "calculation_id": str(calculation_id),
             },
         )
-        await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
+        await add_worker_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
     except Exception:
         logger.exception("Failed to create calculator job in database")
         raise HTTPException(

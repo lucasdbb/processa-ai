@@ -13,6 +13,7 @@ from src.core.ai_worker_store import (
 from src.core.auth import get_user_id, require_internal_auth
 from src.core.logging import logger
 from src.core.queue import get_job_status
+from src.core.worker_store import get_worker_job_status
 from src.features.ai.schemas import (
     AiToolResponse,
     AiToolsListResponse,
@@ -321,10 +322,14 @@ async def get_ai_job(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="job_id obrigatório")
 
     current = None
+    is_worker_job = jid.startswith("calc:")
     job_uuid = parse_job_uuid(jid)
     if job_uuid:
         try:
-            db_status = await get_job_status_from_db(job_uuid=job_uuid)
+            if is_worker_job:
+                db_status = await get_worker_job_status(job_uuid=job_uuid)
+            else:
+                db_status = await get_job_status_from_db(job_uuid=job_uuid)
             if db_status:
                 current = {
                     "job_id": jid,
