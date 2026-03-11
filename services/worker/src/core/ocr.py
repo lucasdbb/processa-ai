@@ -2,8 +2,8 @@
 
 import asyncio
 
-from mistralai import Mistral
-from mistralai.models import DocumentURLChunk
+from mistralai.client import Mistral
+from mistralai.client.models import DocumentURLChunk
 
 from src.core.config import settings
 from src.core.logging import logger
