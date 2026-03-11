@@ -122,15 +122,22 @@ class LaborClaimUploadRequest(BaseModel):
     signed_url_expires_in: int = 600
 
 
-class BriefScannerUploadRequest(BaseModel):
-    """Metadata for brief scanner upload (files sent via multipart)."""
+class BriefScannerRequest(BaseModel):
+    """Request para análise de peça processual (scanner de peça)."""
 
     model_config = ConfigDict(extra="forbid")
+
+    file_url: str | None = None
+    storage_path: str | None = None
+    bucket: str | None = None
+    job_uuid: str | None = None
+    files: list[dict] | None = None  # [{bucket, storage_path, filename}]
 
     user_id: str
     client_id: str | None = None
     functionality: str = "ai"
     store_pdf: bool = True
+    store_input_pdf: bool = True
     signed_url_expires_in: int = 600
 
 

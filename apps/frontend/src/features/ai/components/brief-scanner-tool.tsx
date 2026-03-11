@@ -1,12 +1,9 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import { FileText, Plus, ScanSearch, Trash2, Upload } from 'lucide-react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { ScanSearch, Trash2, Upload, FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
-import { normalizeMarkdown } from '@/lib/utils'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useOutletContext } from 'react-router-dom'
@@ -14,7 +11,6 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 import { analytics } from '@/lib/analytics'
-
 
 import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
@@ -33,11 +29,11 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const openRegisterModal = propOpenRegisterModal || outletContext?.openRegisterModal || (() => {})
   const { uploadFiles } = useFileUpload()
 
-  const [files, setFiles] = useState<File[]>([])
+  const [file, setFile] = useState<File | null>(null)
+  const [fileInputKey, setFileInputKey] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
-  const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
@@ -50,11 +46,16 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
     }
   }, [])
 
-  const markdownToRender = normalizeMarkdown(generatedText)
-  const previewHtml = useMemo(() => {
-    if (!markdownToRender) return ''
-    return DOMPurify.sanitize(marked.parse(markdownToRender) as string)
-  }, [markdownToRender])
+  // Ref para URL do PDF para revogar quando mudar
+  const pdfUrlRef = useRef<string | null>(null)
+
+  const setPdfUrl = useCallback((next: string) => {
+    if (pdfUrlRef.current) {
+      URL.revokeObjectURL(pdfUrlRef.current)
+    }
+    pdfUrlRef.current = next || null
+    setGeneratedPdfUrl(next)
+  }, [])
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -66,53 +67,44 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
     setIsDragging(false)
   }
 
-  const handleFilesChange = useCallback((newFiles: File[]) => {
-    const valid = newFiles.filter((f) => {
-      const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
-      if (!isPdf) {
-        toast.error(`${f.name}: apenas arquivos PDF são permitidos`)
-        return false
-      }
-      if (f.size > 10 * 1024 * 1024) {
-        toast.error(`${f.name}: o arquivo deve ter no máximo 10MB`)
-        return false
-      }
-      return true
-    })
-    setFiles(valid)
-  }, [])
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (!selectedFile) return
+
+    const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      toast.error('Envie um arquivo PDF')
+      return
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 10MB')
+      return
+    }
+
+    setFile(selectedFile)
+    setPdfUrl('')
+  }, [setPdfUrl])
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
 
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(
-      (f) => f.type === 'application/pdf'
-    )
-    if (droppedFiles.length === 0) return
-
-    const maxFiles = 5
-    const currentCount = files.length
-    const allowed = droppedFiles.slice(0, maxFiles - currentCount)
-    if (allowed.length > 0) {
-      handleFilesChange([...files, ...allowed])
+    const files = e.dataTransfer.files
+    if (files.length > 0 && files[0].type === 'application/pdf') {
+      const mockEvent = {
+        target: { files }
+      } as unknown as React.ChangeEvent<HTMLInputElement>
+      handleFileChange(mockEvent)
     }
   }
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files || [])
-    const maxFiles = 5
-    const currentCount = files.length
-    const allowed = selected.slice(0, maxFiles - currentCount)
-    if (allowed.length > 0) {
-      handleFilesChange([...files, ...allowed])
-    }
-    e.target.value = ''
-  }
-
-  const handleRemoveFile = useCallback((index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index))
-  }, [])
+  const clearFile = useCallback(() => {
+    setFile(null)
+    setFileInputKey((k) => k + 1)
+    setPdfUrl('')
+    setProgress(0)
+  }, [setPdfUrl])
 
   const handleGenerate = useCallback(async () => {
     if (!isAuthenticated) {
@@ -120,20 +112,19 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
       return
     }
 
-    if (files.length === 0) {
-      toast.error('Por favor, envie ao menos uma peça processual em PDF')
+    if (!file) {
+      toast.error('Por favor, envie a peça processual em PDF')
       return
     }
 
     setIsGenerating(true)
     setProgress(0)
-    setGeneratedText('')
-    setGeneratedPdfUrl('')
+    setPdfUrl('')
 
     analytics.track('feature_used', {
       feature: 'brief_scanner',
       action: 'started',
-      file_count: files.length
+      file_size: file.size
     })
 
     try {
@@ -144,40 +135,38 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         return
       }
 
-      // 1. Upload files with progress
-      const UPLOAD_PROGRESS_MAX = 20 // 20% reserved for uploads
-      
+      // 1. Upload file with progress
+      const UPLOAD_PROGRESS_MAX = 20
+
       const { uploadMetadata, jobUuid: commonJobUuid } = await uploadFiles(
-        files, 
-        user.id, 
+        [file],
+        user.id,
         selectedClientId,
         FunctionalityType.AI,
         (uploadProgress) => {
-          // Map 0-100 upload progress to 0-20 UI progress
           const uiProgress = Math.round((uploadProgress / 100) * UPLOAD_PROGRESS_MAX)
           setProgress(uiProgress)
         }
       )
-      
-      // Ensure we are at least at UPLOAD_PROGRESS_MAX
+
       setProgress(UPLOAD_PROGRESS_MAX)
 
-      // 3. Start analysis job
-      const endpoint = `${API_URL}/ai/analyses/brief-scanner`
+      const fileMetadata = uploadMetadata[0]
 
-      const payload: Record<string, unknown> = {
-        user_id: user.id,
-        client_id: selectedClientId || undefined,
-        store_pdf: true,
-        job_uuid: commonJobUuid || undefined,
-        files: uploadMetadata,
-        functionality: FunctionalityType.AI,
-      }
-
-      const submitResponse = await fetchWithCredentials(endpoint, {
+      // 2. Start analysis job
+      const submitResponse = await fetchWithCredentials(`${API_URL}/ai/analyses/brief-scanner`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          storage_path: fileMetadata.storage_path,
+          bucket: fileMetadata.bucket,
+          files: uploadMetadata,
+          job_uuid: commonJobUuid,
+          user_id: user.id,
+          client_id: selectedClientId || undefined,
+          functionality: FunctionalityType.AI,
+          store_pdf: true,
+        }),
       })
 
       if (!submitResponse.ok) {
@@ -186,7 +175,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
           return
         }
 
-        let message = 'Erro ao enviar. Tente novamente.'
+        let message = 'Erro ao iniciar análise. Tente novamente.'
         try {
           const data = (await submitResponse.json()) as { detail?: string }
           if (data?.detail) message = data.detail
@@ -201,7 +190,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         throw new Error('Resposta inválida do servidor')
       }
 
-      // Poll for job completion
+      // 3. Poll for job completion
       const jobId = submitData.job_id
       const maxAttempts = 120
       const pollInterval = 2000
@@ -221,31 +210,34 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         const statusData = (await statusResponse.json()) as {
           status: string
           progress: number
-          result?: { download_url?: string; content?: string }
+          result?: { download_url?: string; content?: string; document_id?: string }
           error?: string
         }
 
         // Map backend progress (0-100) to UI progress (20-100)
-        // because 0-20 is reserved for upload
         const backendProgress = statusData.progress || 0
-        const uiProgress = 20 + Math.round((backendProgress / 100) * 80)
+        const uiProgress = UPLOAD_PROGRESS_MAX + Math.round((backendProgress / 100) * (100 - UPLOAD_PROGRESS_MAX))
         setProgress(uiProgress)
 
         if (statusData.status === 'failed') {
-          throw new Error(statusData.error || 'Erro ao processar. Tente novamente.')
+          throw new Error(statusData.error || 'Erro ao processar peça. Tente novamente.')
         }
 
         if (statusData.status === 'completed') {
           if (statusData.result?.download_url) {
-            setGeneratedPdfUrl(statusData.result.download_url)
+            setPdfUrl(statusData.result.download_url)
             setIsResultModalOpen(true)
           } else if (statusData.result?.content) {
             const binary = atob(statusData.result.content)
             const bytes = new Uint8Array(binary.length)
             for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
             const blob = new Blob([bytes], { type: 'application/pdf' })
-            setGeneratedPdfUrl(URL.createObjectURL(blob))
+            setPdfUrl(URL.createObjectURL(blob))
             setIsResultModalOpen(true)
+          } else if (statusData.result?.document_id) {
+            toast.success('Análise concluída! O documento foi salvo em "Meus Documentos".')
+            setHistoryRefreshKey((k) => k + 1)
+            return
           } else {
             throw new Error('Resultado inválido do servidor')
           }
@@ -270,10 +262,11 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         success: false
       })
       toast.error(error instanceof Error ? error.message : 'Erro ao analisar peça')
+      setProgress(0)
     } finally {
       setIsGenerating(false)
     }
-  }, [files, isAuthenticated, openRegisterModal])
+  }, [file, isAuthenticated, openRegisterModal, setPdfUrl, selectedClientId, uploadFiles])
 
   const handleDownload = useCallback(async () => {
     if (!isAuthenticated) {
@@ -281,38 +274,31 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
       return
     }
 
-    if (generatedPdfUrl) {
-      try {
-        analytics.track('feature_used', {
-          feature: 'brief_scanner',
-          action: 'downloaded_pdf',
-        })
-        
-        // Fetch blob to force download
-        const response = await fetch(generatedPdfUrl)
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
+    if (!generatedPdfUrl) return
 
-        const element = document.createElement('a')
-        element.href = url
-        element.download = `analise_scanner_${Date.now()}.pdf`
-        document.body.appendChild(element)
-        element.click()
-        
-        // Cleanup
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(element)
-      } catch (error) {
-        console.error('Download failed:', error)
-        // Fallback to direct link
-        window.open(generatedPdfUrl, '_blank')
-      }
-      return
+    try {
+      analytics.track('feature_used', {
+        feature: 'brief_scanner',
+        action: 'downloaded_pdf',
+      })
+
+      const response = await fetch(generatedPdfUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      const element = document.createElement('a')
+      element.href = url
+      element.download = `analise_scanner_${Date.now()}.pdf`
+      document.body.appendChild(element)
+      element.click()
+
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(element)
+    } catch (error) {
+      console.error('Download failed:', error)
+      window.open(generatedPdfUrl, '_blank')
     }
   }, [generatedPdfUrl, isAuthenticated, openRegisterModal])
-
-  const canGenerate = files.length > 0 && !isGenerating
-  const hasResult = !!generatedPdfUrl || !!generatedText
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -324,51 +310,43 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         <div className="flex flex-col h-full min-h-0">
           <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl p-4 gap-4">
             <div className="flex-shrink-0">
-              <div className="flex items-start justify-between mb-4 flex-wrap gap-4">
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-sm font-bold text-foreground mb-1">
-                    Envie a(s) peça(s) processual(is) <span className="text-destructive">*</span>
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    Anexe petições, contestações, recursos ou outras peças que deseja analisar. A IA identificará teses frágeis,
-                    pedidos faltantes, riscos e oportunidades de melhoria.
-                  </p>
-                </div>
+              <div className="mb-4">
+                <label htmlFor="scanner-file" className="block text-sm font-bold text-foreground mb-1">
+                  Envie a peça processual (PDF) <span className="text-destructive">*</span>
+                </label>
+                <p className="text-sm text-muted-foreground">
+                  Anexe a petição, contestação, recurso ou outra peça que deseja analisar. A IA identificará teses frágeis,
+                  pedidos faltantes, riscos e oportunidades de melhoria.
+                </p>
               </div>
             </div>
 
-            {/* Lista de arquivos e Dropzone */}
-            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
-              {files.length > 0 && (
-                <div className="space-y-2 mb-3">
-                  {files.map((file, index) => (
-                    <div key={`${file.name}-${file.size}`} className="border border-border rounded-xl bg-card p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-foreground truncate">{file.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {(file.size / (1024 * 1024)).toFixed(2)} MB
-                            </div>
-                          </div>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {file ? (
+                <div className="border-2 border-border rounded-xl bg-card p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-foreground truncate">{file.name}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(file.size / (1024 * 1024)).toFixed(2)} MB • PDF
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile(index)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
                       </div>
                     </div>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-sm font-medium"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remover
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              {files.length < 5 && (
+              ) : (
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -377,68 +355,42 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
                     'border-2 border-dashed rounded-xl transition-all cursor-pointer group',
                     isDragging
                       ? 'border-primary bg-primary/5 scale-[1.01]'
-                      : 'border-border bg-muted/10 hover:bg-muted/30 hover:border-primary/50',
-                    files.length > 0 ? 'py-4' : ''
+                      : 'border-border bg-muted/10 hover:bg-muted/30 hover:border-primary/50'
                   )}
                 >
                   <input
-                    id="scanner-files"
+                    key={fileInputKey}
+                    id="scanner-file"
                     type="file"
                     accept="application/pdf"
-                    multiple
-                    onChange={handleFileInput}
+                    onChange={handleFileChange}
                     className="hidden"
                   />
                   <label
-                    htmlFor="scanner-files"
-                    className={cn(
-                      "flex flex-col items-center justify-center cursor-pointer",
-                      files.length > 0 ? "py-4 px-4 flex-row gap-4" : "py-10 px-6"
-                    )}
+                    htmlFor="scanner-file"
+                    className="flex flex-col items-center justify-center py-10 px-6 cursor-pointer"
                   >
-                    <div className={cn(
-                      "rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-200",
-                      files.length > 0 ? "w-10 h-10" : "w-12 h-12 mb-4"
-                    )}>
-                      {files.length > 0 ? (
-                        <Plus className={cn("text-primary", files.length > 0 ? "h-5 w-5" : "h-6 w-6")} />
-                      ) : (
-                        <Upload className="h-6 w-6 text-primary" />
-                      )}
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200">
+                      <Upload className="h-6 w-6 text-primary" />
                     </div>
-                    <div className={cn("text-center", files.length > 0 && "text-left")}>
+                    <div className="text-center space-y-1">
                       <p className="text-sm font-semibold text-foreground">
-                        {files.length > 0 ? (
-                          <span className="text-primary">Adicionar mais arquivos</span>
-                        ) : (
-                          <>
-                            <span className="text-primary">Clique para escolher</span> ou arraste
-                          </>
-                        )}
+                        <span className="text-primary">Clique para escolher</span> ou arraste o arquivo
                       </p>
-                      {!files.length && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          PDF (até 10MB) • Máx {5 - files.length} arqs
-                        </p>
-                      )}
+                      <p className="text-xs text-muted-foreground">
+                        PDF até 10MB
+                      </p>
                     </div>
                   </label>
                 </div>
               )}
             </div>
 
-            {/* Barra de progresso */}
             {isGenerating && (
               <div className="flex-shrink-0 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-foreground">
-                    {progress < 20
-                      ? 'Salvando arquivo(s)...'
-                      : progress < 40
-                        ? 'Extraindo texto das pecas...'
-                        : progress < 95
-                          ? 'Analisando argumentos e identificando fragilidades...'
-                          : 'Finalizando relatorio...'}
+                    {progress < 20 ? 'Salvando arquivo...' : 'Analisando peça processual...'}
                   </span>
                   <span className="text-muted-foreground font-mono">{progress}%</span>
                 </div>
@@ -446,11 +398,10 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
               </div>
             )}
 
-            {/* Botao analisar */}
             <div className="flex-shrink-0 pt-4 border-t border-border">
               <button
                 onClick={handleGenerate}
-                disabled={!canGenerate}
+                disabled={!file || isGenerating}
                 className={cn(
                   "flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 w-full disabled:opacity-50 disabled:cursor-not-allowed border border-border",
                   isDark ? "bg-slate-100 text-slate-900 hover:bg-slate-200" : "!bg-[#0d1c34] !text-white hover:!bg-[#0d1c34]/90"
@@ -459,12 +410,12 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
                 {isGenerating ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2" />
-                    <span>Analisando Peça{files.length > 1 ? 's' : ''}...</span>
+                    <span>Analisando Peça...</span>
                   </>
                 ) : (
                   <>
                     <ScanSearch className="h-5 w-5 mr-2" />
-                    <span>Analisar Peça{files.length > 1 ? 's' : ''}</span>
+                    <span>Analisar Peça</span>
                   </>
                 )}
               </button>
@@ -488,7 +439,6 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         onClose={() => setIsResultModalOpen(false)}
         title="Análise da Peça"
         pdfUrl={generatedPdfUrl}
-        htmlContent={hasResult && !generatedPdfUrl ? previewHtml : undefined}
         onDownload={handleDownload}
       />
     </div>

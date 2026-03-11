@@ -18,6 +18,7 @@ from src.features.ai.schemas import (
     AiToolsListResponse,
     AnalysisHistoryItem,
     AnalysisHistoryResponse,
+    BriefScannerRequest,
     ChatRequest,
     ChatResponse,
     CnisAnalysisRequest,
@@ -256,38 +257,32 @@ async def labor_claim_analysis(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def brief_scanner_analysis(
-    data: dict = Body(...),
+    data: BriefScannerRequest,
     _internal=Depends(require_internal_auth),
 ):
-    """
-    Analisa peça(s) processual(is) para identificar fragilidades (upload direto).
-    """
-    files = data.get("files", [])
-    if not files or len(files) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Envie ao menos uma peça processual",
-        )
-
-    if len(files) > 5:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Máximo de 5 arquivos permitidos",
-        )
-
-    user_id = (data.get("user_id") or "").strip()
+    """Analisa peça processual para identificar fragilidades."""
+    user_id = (data.user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
-    client_id = data.get("client_id")
-    store_pdf = bool(data.get("store_pdf", True))
-    signed_url_expires_in = int(data.get("signed_url_expires_in", 600))
+    # Handle single file (like CNIS)
+    files_list = data.files or []
+    file_url = (data.file_url or "").strip()
+    storage_path = (data.storage_path or "").strip()
+
+    if not files_list:
+        if not file_url and not storage_path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="É necessário fornecer a peça processual para análise",
+            )
+        files_list = [{"bucket": data.bucket, "storage_path": storage_path, "file_url": file_url}]
 
     # Se vier job_uuid do upload, usar. Senão gerar novo.
     job_uuid = None
-    if data.get("job_uuid"):
+    if data.job_uuid:
         try:
-            job_uuid = uuid.UUID(data.get("job_uuid"))
+            job_uuid = uuid.UUID(data.job_uuid)
         except ValueError:
             raise HTTPException(status_code=400, detail="job_uuid inválido")
 
@@ -296,12 +291,17 @@ async def brief_scanner_analysis(
         user_id=user_id,
         feature_key="brief_scanner",
         endpoint_key="brief_scanner",
-        initial_payload={},
-        files=files,
-        client_id=client_id.strip() if client_id else None,
+        initial_payload={
+            "functionality": data.functionality,
+            "file_url": file_url,
+            "storage_path": storage_path,
+            "bucket": data.bucket,
+        },
+        files=files_list,
+        client_id=(data.client_id or "").strip() or None,
         job_uuid=job_uuid,
-        signed_url_expires_in=int(signed_url_expires_in),
-        store_pdf=bool(store_pdf),
+        signed_url_expires_in=int(data.signed_url_expires_in),
+        store_pdf=bool(data.store_pdf),
     )
 
     return EnqueueJobResponse(job_id=job_id)
