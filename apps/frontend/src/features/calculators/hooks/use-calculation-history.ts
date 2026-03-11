@@ -12,6 +12,7 @@ export interface CalculationItem {
   error: string | null
   created_at: string
   finished_at: string | null
+  document_id: string | null
 }
 
 export function useCalculationHistory(

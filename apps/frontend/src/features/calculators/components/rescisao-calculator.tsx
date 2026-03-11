@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Calculator, Loader2, Calendar, DollarSign, Percent, AlertTriangle, Moon, ChevronDown, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,15 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
   // Modal state for freshly generated result
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | undefined>()
+
+  // Polling ref for PDF job
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
+  }, [])
 
   const [formData, setFormData] = useState({
     salarioBase: '',
@@ -105,27 +114,101 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
       }
 
       const data = (await res.json()) as {
-        pdf?: { download_url?: string }
+        pdf?: { job_id?: string; status?: string }
       }
 
-      // Refresh history
+      // Refresh history and credits
       setHistoryRefreshKey((k) => k + 1)
       fetchCredits()
 
-      // Open PDF in modal if available
-      if (data.pdf?.download_url) {
-        setGeneratedPdfUrl(data.pdf.download_url)
-        setIsResultModalOpen(true)
-      } else {
-        toast.success('Cálculo realizado com sucesso')
-      }
+      // Poll for PDF job completion if a job was enqueued
+      if (data.pdf?.job_id) {
+        const jobId = data.pdf.job_id
+        let attempts = 0
+        const maxAttempts = 60 // 2 minutes max
 
-      analytics.track('feature_used', {
-        feature: 'rescisao_calculator',
-        action: 'completed',
-        success: true,
-      })
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+
+        pollIntervalRef.current = setInterval(async () => {
+          attempts++
+          try {
+            const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+            if (!statusRes.ok) {
+              if (attempts >= maxAttempts) {
+                clearInterval(pollIntervalRef.current!)
+                pollIntervalRef.current = null
+                setIsCalculating(false)
+                toast.error('Tempo esgotado ao gerar PDF')
+              }
+              return
+            }
+
+            const statusData = (await statusRes.json()) as {
+              status: string
+              result?: { document_id?: string; download_url?: string }
+              error?: string
+            }
+
+            if (statusData.status === 'completed') {
+              clearInterval(pollIntervalRef.current!)
+              pollIntervalRef.current = null
+              setIsCalculating(false)
+              setHistoryRefreshKey((k) => k + 1)
+
+              // Get download URL from result or fetch via unified endpoint
+              const downloadUrl = statusData.result?.download_url
+              const documentId = statusData.result?.document_id
+
+              if (downloadUrl) {
+                setGeneratedPdfUrl(downloadUrl)
+                setIsResultModalOpen(true)
+              } else if (documentId) {
+                const dlRes = await fetchWithCredentials(`${API_URL}/documents/${documentId}/download`)
+                if (dlRes.ok) {
+                  const dlData = (await dlRes.json()) as { download_url: string }
+                  setGeneratedPdfUrl(dlData.download_url)
+                  setIsResultModalOpen(true)
+                } else {
+                  toast.success('PDF gerado! Acesse pelo histórico.')
+                }
+              } else {
+                toast.success('Cálculo realizado com sucesso')
+              }
+
+              analytics.track('feature_used', {
+                feature: 'rescisao_calculator',
+                action: 'completed',
+                success: true,
+              })
+            } else if (statusData.status === 'failed') {
+              clearInterval(pollIntervalRef.current!)
+              pollIntervalRef.current = null
+              setIsCalculating(false)
+              toast.error(statusData.error || 'Erro ao gerar PDF')
+            }
+          } catch {
+            // Silently continue polling on network errors
+          }
+
+          if (attempts >= maxAttempts) {
+            clearInterval(pollIntervalRef.current!)
+            pollIntervalRef.current = null
+            setIsCalculating(false)
+            toast.error('Tempo esgotado ao gerar PDF')
+          }
+        }, 2000)
+      } else {
+        setIsCalculating(false)
+        toast.success('Cálculo realizado com sucesso')
+
+        analytics.track('feature_used', {
+          feature: 'rescisao_calculator',
+          action: 'completed',
+          success: true,
+        })
+      }
     } catch (err) {
+      setIsCalculating(false)
       analytics.track('feature_used', {
         feature: 'rescisao_calculator',
         action: 'failed',
@@ -133,8 +216,6 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
         error: err instanceof Error ? err.message : 'Unknown error',
       })
       toast.error(err instanceof Error ? err.message : 'Erro ao calcular rescisão')
-    } finally {
-      setIsCalculating(false)
     }
   }, [formData, selectedClientId, user, credits, fetchCredits])
 

@@ -1,25 +1,22 @@
 import uuid
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from src.core.ai_worker_store import add_job_event, create_job
 from src.core.auth import require_internal_auth
 from src.core.calc_engine_store import (
     create_calculation,
-    create_document,
     delete_calculation,
-    get_calculation_document,
     list_calculations,
     mark_calculation_completed,
     mark_calculation_failed,
 )
-from src.core.config import settings
 from src.core.logging import logger
+from src.core.queue import enqueue_job, set_job_status
 from src.features.billing.credits.service import credits_service
 from src.features.calculators.schemas import (
     AposentadoriaRequest,
     AposentadoriaResponse,
-    CalculationDownloadResponse,
     CalculationHistoryResponse,
     CalculatorResponse,
     CalculatorsListResponse,
@@ -31,6 +28,70 @@ from src.features.calculators.service import CalculatorsService
 router = APIRouter()
 
 service = CalculatorsService()
+
+
+async def _enqueue_calculator_pdf(
+    *,
+    job_type: str,
+    user_id: str,
+    client_id: str | None,
+    calculation_id: uuid.UUID,
+    calculator_key: str,
+    input_payload: dict,
+    output_payload: dict,
+) -> str:
+    """Create an ai_jobs record and enqueue a calculator PDF job to Redis.
+
+    Returns the job_id string (e.g. "calc:<uuid>").
+    """
+    job_uuid = uuid.uuid4()
+    job_id = f"calc:{job_uuid}"
+
+    # Set initial status in Redis
+    try:
+        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
+    except Exception:
+        logger.exception("Failed to persist queued status in Redis for calculator job")
+
+    # Create job record in DB (reuse ai_jobs table)
+    try:
+        await create_job(
+            job_uuid=job_uuid,
+            endpoint_key=job_type,
+            user_id=user_id,
+            client_id=client_id,
+            request_payload={
+                "job_type": job_type,
+                "calculator_key": calculator_key,
+                "calculation_id": str(calculation_id),
+            },
+        )
+        await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
+    except Exception:
+        logger.exception("Failed to create calculator job in database")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao criar job de geração de PDF",
+        )
+
+    # Enqueue to Redis for worker consumption
+    await enqueue_job(
+        {
+            "job_id": job_id,
+            "job_uuid": str(job_uuid),
+            "type": job_type,
+            "payload": {
+                "user_id": user_id,
+                "client_id": client_id,
+                "calculation_id": str(calculation_id),
+                "calculator_key": calculator_key,
+                "input_payload": input_payload,
+                "output_payload": output_payload,
+            },
+        }
+    )
+
+    return job_id
 
 
 @router.get("/list", response_model=CalculatorsListResponse)
@@ -124,37 +185,16 @@ async def rescisao_trabalhista(
 
         pdf = None
         if bool(data.export_pdf):
-            stored = await service.export_rescisao_pdf(
-                input_payload=input_payload,
-                output_payload=output_payload,
+            job_id = await _enqueue_calculator_pdf(
+                job_type="calculator_rescisao",
                 user_id=user_id,
                 client_id=client_id,
-                calculation_id=str(calculation_id),
-                expires_in=int(data.signed_url_expires_in),
+                calculation_id=calculation_id,
+                calculator_key=calculator_key,
+                input_payload=input_payload,
+                output_payload=output_payload,
             )
-
-            try:
-                doc_id = await create_document(
-                    calculation_id=calculation_id,
-                    user_id=user_id,
-                    client_id=client_id,
-                    document_type="rescisao_trabalhista_pdf",
-                    bucket=str(stored.get("bucket")),
-                    storage_path=str(stored.get("storage_path")),
-                    filename=f"rescisao-trabalhista_{calculation_id}.pdf",
-                    content_bytes=bytes(stored.get("content") or b""),
-                    metadata={"calculator_key": calculator_key},
-                )
-            except Exception:
-                doc_id = None
-
-            pdf = {
-                "download_url": stored.get("download_url"),
-                "bucket": stored.get("bucket"),
-                "storage_path": stored.get("storage_path"),
-                "document_id": (str(doc_id) if doc_id else None),
-                "expires_in": int(data.signed_url_expires_in),
-            }
+            pdf = {"job_id": job_id, "status": "queued"}
 
         try:
             await mark_calculation_completed(
@@ -242,41 +282,17 @@ async def calcular_aposentadoria(
         )
 
         pdf = None
-        # PDF é opcional por enquanto,
-        # mas se o usuário pedir (ou se for padrão da feature paga), geramos
-        # Vamos assumir que sempre gera se export_pdf=True, assim como na rescisão
         if bool(data.export_pdf):
-            stored = await service.export_aposentadoria_pdf(
-                input_payload=input_payload,
-                output_payload=output_payload,
+            job_id = await _enqueue_calculator_pdf(
+                job_type="calculator_aposentadoria",
                 user_id=user_id,
                 client_id=client_id,
-                calculation_id=str(calculation_id),
-                expires_in=int(data.signed_url_expires_in),
+                calculation_id=calculation_id,
+                calculator_key=calculator_key,
+                input_payload=input_payload,
+                output_payload=output_payload,
             )
-
-            try:
-                doc_id = await create_document(
-                    calculation_id=calculation_id,
-                    user_id=user_id,
-                    client_id=client_id,
-                    document_type="simulacao_aposentadoria_pdf",
-                    bucket=str(stored.get("bucket")),
-                    storage_path=str(stored.get("storage_path")),
-                    filename=f"simulacao-aposentadoria_{calculation_id}.pdf",
-                    content_bytes=bytes(stored.get("content") or b""),
-                    metadata={"calculator_key": calculator_key},
-                )
-            except Exception:
-                doc_id = None
-
-            pdf = {
-                "download_url": stored.get("download_url"),
-                "bucket": stored.get("bucket"),
-                "storage_path": stored.get("storage_path"),
-                "document_id": (str(doc_id) if doc_id else None),
-                "expires_in": int(data.signed_url_expires_in),
-            }
+            pdf = {"job_id": job_id, "status": "queued"}
 
         try:
             await mark_calculation_completed(
@@ -338,90 +354,6 @@ async def get_calculation_history(
         limit=limit,
     )
     return CalculationHistoryResponse(calculations=calculations)
-
-
-@router.get(
-    "/{calculation_id}/download",
-    response_model=CalculationDownloadResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def download_calculation_pdf(
-    calculation_id: str,
-    user_id: str = Query(..., min_length=1, description="ID do usuário"),
-    _internal=Depends(require_internal_auth),
-):
-    """Gera URL assinada para download do PDF de um cálculo."""
-    try:
-        calc_uuid = uuid.UUID(calculation_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="ID de cálculo inválido"
-        )
-
-    doc = await get_calculation_document(calculation_id=calc_uuid, user_id=user_id)
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Documento não encontrado para este cálculo",
-        )
-
-    base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
-    api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-    if not base_url or not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Supabase Storage não configurado",
-        )
-
-    bucket = doc["bucket"]
-    storage_path = doc["storage_path"]
-    sign_url = f"{base_url}/storage/v1/object/sign/{bucket}/{storage_path}"
-
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            signed = await client.post(
-                sign_url,
-                headers={
-                    "apikey": api_key,
-                    "Authorization": f"Bearer {api_key}",
-                },
-                json={"expiresIn": 3600},
-            )
-    except (httpx.TimeoutException, httpx.RequestError):
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Erro ao gerar URL de download",
-        )
-
-    if signed.status_code >= 400:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Falha ao gerar URL de download",
-        )
-
-    try:
-        data = signed.json()
-    except Exception:
-        data = None
-
-    signed_url = None
-    if isinstance(data, dict):
-        signed_url = data.get("signedURL") or data.get("signedUrl")
-    if not signed_url or not isinstance(signed_url, str):
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Resposta inválida ao gerar URL de download",
-        )
-
-    if signed_url.startswith("http"):
-        download_url = signed_url
-    else:
-        download_url = f"{base_url}/storage/v1{signed_url}"
-
-    return CalculationDownloadResponse(
-        download_url=download_url,
-        filename=doc.get("filename") or f"calculo-{calculation_id}.pdf",
-    )
 
 
 @router.delete(

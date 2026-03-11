@@ -267,6 +267,78 @@ async def create_document(
                 return None
 
 
+async def create_calculator_document(
+    *,
+    job_uuid: uuid.UUID,
+    calculation_id: uuid.UUID,
+    user_id: str,
+    client_id: str | None,
+    document_type: str,
+    bucket: str,
+    storage_path: str,
+    filename: str,
+    checksum_sha256: str | None,
+    size_bytes: int | None,
+    mime_type: str = "application/pdf",
+    metadata: dict | None = None,
+) -> uuid.UUID | None:
+    """Create a generated_documents row linked to both a job and a calculation."""
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        row_factory = _get_dict_row()
+        if row_factory:
+            cur_cm = conn.cursor(row_factory=row_factory)
+        else:
+            cur_cm = conn.cursor()
+
+        async with cur_cm as cur:
+            await cur.execute(
+                (
+                    "insert into public.generated_documents "
+                    "(source, job_id, calculation_id, user_id, client_id, document_type, "
+                    "bucket, storage_path, filename, checksum_sha256, size_bytes, "
+                    "mime_type, metadata) "
+                    "values ('calculator', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "on conflict (bucket, storage_path) do update set "
+                    "job_id = excluded.job_id, "
+                    "calculation_id = excluded.calculation_id, "
+                    "user_id = excluded.user_id, "
+                    "client_id = excluded.client_id, "
+                    "document_type = excluded.document_type, "
+                    "filename = excluded.filename, "
+                    "checksum_sha256 = excluded.checksum_sha256, "
+                    "size_bytes = excluded.size_bytes, "
+                    "mime_type = excluded.mime_type, "
+                    "metadata = excluded.metadata "
+                    "returning id"
+                ),
+                (
+                    job_uuid,
+                    calculation_id,
+                    user_id,
+                    client_id,
+                    document_type,
+                    bucket,
+                    storage_path,
+                    filename,
+                    checksum_sha256,
+                    size_bytes,
+                    mime_type,
+                    _to_jsonb(metadata) if metadata is not None else None,
+                ),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return None
+            doc_id = row.get("id")
+            if isinstance(doc_id, uuid.UUID):
+                return doc_id
+            try:
+                return uuid.UUID(str(doc_id))
+            except Exception:
+                return None
+
+
 async def get_job_status_from_db(*, job_uuid: uuid.UUID) -> dict | None:
     pool = await get_pool()
     async with pool.connection() as conn:

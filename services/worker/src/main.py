@@ -12,6 +12,7 @@ import uuid
 
 from src.core.ai_worker_store import (
     add_job_event,
+    create_calculator_document,
     create_document,
     mark_job_completed,
     mark_job_failed,
@@ -508,6 +509,252 @@ async def _handle_ai_job(job: dict) -> None:
     await _save_results(result, job_id, job_uuid, job_type, payload)
 
 
+async def _handle_calculator_job(job: dict) -> None:
+    """Handle calculator PDF generation jobs (rescisao, aposentadoria).
+
+    Unlike AI jobs, calculator jobs don't need file download, OCR, or LLM.
+    The input/output payloads are already computed and included in the job payload.
+    """
+    job_id = str(job.get("job_id") or "").strip()
+    job_type = str(job.get("type") or "").strip()
+    payload = job.get("payload")
+    if not isinstance(payload, dict):
+        await _safe_set_job_status(
+            job_id, {"job_id": job_id, "status": "failed", "error": "Payload inválido"}
+        )
+        return
+
+    job_uuid: uuid.UUID | None = None
+    raw_uuid = (job.get("job_uuid") or "").strip() if isinstance(job.get("job_uuid"), str) else None
+    if raw_uuid:
+        try:
+            job_uuid = uuid.UUID(raw_uuid)
+        except Exception:
+            pass
+    if job_uuid is None:
+        job_uuid = parse_job_uuid(job_id)
+
+    user_id = str(payload.get("user_id") or "").strip()
+    client_id = payload.get("client_id")
+    calculation_id_str = str(payload.get("calculation_id") or "").strip()
+    input_payload = payload.get("input_payload") or {}
+    output_payload = payload.get("output_payload") or {}
+    calculator_key = str(payload.get("calculator_key") or "").strip()
+
+    if not user_id:
+        await _safe_set_job_status(
+            job_id, {"job_id": job_id, "status": "failed", "error": "user_id obrigatório"}
+        )
+        if job_uuid:
+            try:
+                await mark_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
+            except Exception:
+                pass
+        return
+
+    # Mark as processing
+    await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 10})
+    if job_uuid:
+        try:
+            await mark_job_processing(job_uuid=job_uuid, progress=10)
+            await add_job_event(
+                job_uuid=job_uuid, event_type="processing", payload={"progress": 10}
+            )
+        except Exception:
+            logger.exception("Failed to persist job processing in database")
+
+    try:
+        # Generate PDF
+        if job_type == "calculator_rescisao":
+            from src.handlers.reports.rescisao import generate_rescisao_pdf_from_template
+
+            pdf_bytes = generate_rescisao_pdf_from_template(
+                input_payload=input_payload, output_payload=output_payload
+            )
+        elif job_type == "calculator_aposentadoria":
+            # Aposentadoria uses markdown-to-PDF (no docx template yet)
+            md = _render_aposentadoria_markdown(
+                input_payload=input_payload, output_payload=output_payload
+            )
+            pdf_bytes = ai_service._markdown_to_pdf_bytes(md, title="Simulação de Aposentadoria")
+        else:
+            raise RuntimeError(f"Tipo de calculadora desconhecido: {job_type}")
+
+        if not pdf_bytes or not pdf_bytes.lstrip().startswith(b"%PDF"):
+            raise RuntimeError("Falha ao gerar PDF do relatório")
+
+        # Update progress
+        await _safe_set_job_status(
+            job_id, {"job_id": job_id, "status": "processing", "progress": 60}
+        )
+
+        # Upload to Supabase Storage
+        from src.core.storage import StorageService
+
+        storage = StorageService()
+        job_uuid_str = str(job_uuid) if job_uuid else job_id
+        filename = f"{job_type}_{calculation_id_str or job_uuid_str}.pdf"
+        uploaded = await storage.upload_pdf_to_supabase(
+            pdf_bytes=pdf_bytes,
+            user_id=user_id,
+            client_id=str(client_id) if client_id else None,
+            functionality="calculators",
+            job_uuid=job_uuid_str,
+            filename=filename,
+            expires_in=3600,
+            output=True,
+        )
+
+        bucket = uploaded.get("bucket", "documents")
+        storage_path = uploaded.get("storage_path", "")
+        download_url = uploaded.get("signed_url") or uploaded.get("download_url") or ""
+
+        # Create document record
+        doc_id = None
+        if job_uuid and bucket and storage_path:
+            checksum = hashlib.sha256(pdf_bytes).hexdigest()
+            size_bytes = len(pdf_bytes)
+
+            calc_uuid = None
+            if calculation_id_str:
+                try:
+                    calc_uuid = uuid.UUID(calculation_id_str)
+                except Exception:
+                    pass
+
+            try:
+                if calc_uuid:
+                    doc_id = await create_calculator_document(
+                        job_uuid=job_uuid,
+                        calculation_id=calc_uuid,
+                        user_id=user_id,
+                        client_id=str(client_id) if client_id else None,
+                        document_type=f"{job_type}_pdf",
+                        bucket=bucket,
+                        storage_path=storage_path,
+                        filename=filename,
+                        checksum_sha256=checksum,
+                        size_bytes=size_bytes,
+                        metadata={"calculator_key": calculator_key},
+                    )
+                else:
+                    doc_id = await create_document(
+                        job_uuid=job_uuid,
+                        user_id=user_id,
+                        client_id=str(client_id) if client_id else None,
+                        document_type="output",
+                        bucket=bucket,
+                        storage_path=storage_path,
+                        filename=filename,
+                        checksum_sha256=checksum,
+                        size_bytes=size_bytes,
+                        metadata={"calculator_key": calculator_key},
+                    )
+            except Exception:
+                logger.exception("Failed to persist calculator document in database")
+
+        # Mark completed
+        result_payload: dict = {}
+        status_result: dict = {}
+        if doc_id:
+            result_payload["document_id"] = str(doc_id)
+            status_result["document_id"] = str(doc_id)
+        if download_url:
+            result_payload["download_url"] = download_url
+            status_result["download_url"] = download_url
+
+        await _safe_set_job_status(
+            job_id,
+            {
+                "job_id": job_id,
+                "status": "completed",
+                "progress": 100,
+                "result": status_result,
+            },
+        )
+        if job_uuid:
+            try:
+                await mark_job_completed(job_uuid=job_uuid, result_payload=result_payload)
+                await add_job_event(
+                    job_uuid=job_uuid, event_type="completed", payload={"progress": 100}
+                )
+            except Exception:
+                logger.exception("Failed to persist calculator job completion")
+
+    except Exception as e:
+        err = str(getattr(e, "detail", None) or str(e) or "Erro ao gerar PDF")
+        logger.exception("Calculator job failed: %s", err)
+        await _safe_set_job_status(
+            job_id, {"job_id": job_id, "status": "failed", "progress": 100, "error": err}
+        )
+        if job_uuid:
+            try:
+                await mark_job_failed(job_uuid=job_uuid, error=err)
+                await add_job_event(job_uuid=job_uuid, event_type="failed", message=err)
+            except Exception:
+                logger.exception("Failed to persist calculator job failure")
+
+
+def _render_aposentadoria_markdown(*, input_payload: dict, output_payload: dict) -> str:
+    """Render aposentadoria result as markdown for PDF generation."""
+    detalhes = (output_payload.get("detalhes") if isinstance(output_payload, dict) else None) or {}
+
+    def money(v: object) -> str:
+        try:
+            return f"R$ {float(v):.2f}"
+        except Exception:
+            return "-"
+
+    lines: list[str] = []
+    lines.append("# Simulação de Aposentadoria")
+    lines.append("")
+    lines.append("## Parâmetros")
+    lines.append("")
+    lines.append(f"- Sexo: {input_payload.get('sexo', '').capitalize()}")
+    lines.append(f"- Idade atual: {input_payload.get('idade')} anos")
+    lines.append(f"- Tempo de contribuição: {input_payload.get('tempo_contribuicao')} anos")
+    lines.append(
+        f"- Salário de contribuição: {money(input_payload.get('salario_contribuicao'))}"
+    )
+    lines.append("")
+    lines.append("## Resultado")
+    lines.append("")
+
+    pode = detalhes.get("pode_aposentar")
+    status_text = (
+        "APROVADO - Requisitos atendidos" if pode else "PENDENTE - Requisitos não atendidos"
+    )
+
+    lines.append(f"**Status: {status_text}**")
+    lines.append("")
+
+    if pode:
+        lines.append(f"### Valor Estimado do Benefício: {money(detalhes.get('beneficio'))}")
+        lines.append("")
+        lines.append("> Nota: Este valor é uma estimativa baseada nas regras gerais.")
+        lines.append(
+            "> O valor real depende do cálculo da média de todos os salários de contribuição."
+        )
+    else:
+        lines.append("### O que falta:")
+        lines.append("")
+        lines.append(
+            f"- Idade mínima exigida: {detalhes.get('idade_minima')} anos "
+            f"(Faltam {detalhes.get('anos_restantes')} anos)"
+        )
+        lines.append(
+            f"- Tempo de contribuição mínimo: {detalhes.get('tempo_minimo_contrib')} anos "
+            f"(Faltam {detalhes.get('tempo_restante')} anos)"
+        )
+
+    lines.append("")
+    lines.append("---")
+    lines.append("Este relatório é uma simulação e não possui valor legal.")
+    lines.append("Consulte um advogado previdenciário.")
+
+    return "\n".join(lines)
+
+
 async def _handle_office_job(job: dict) -> None:
     """Handle Office-related jobs (Google Calendar sync, etc.)."""
     job_id = str(job.get("job_id") or "").strip()
@@ -531,6 +778,10 @@ async def _handle_job(job: dict) -> None:
 
     if job_type in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner"):
         await _handle_ai_job(job)
+        return
+
+    if job_type in ("calculator_rescisao", "calculator_aposentadoria"):
+        await _handle_calculator_job(job)
         return
 
     if job_type.startswith("calendar_") or job_type.startswith("office_"):

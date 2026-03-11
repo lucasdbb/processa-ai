@@ -69,9 +69,14 @@ export function CalculationHistoryList({
   const handleCalcClick = async (calc: CalculationItem) => {
     if (calc.status !== 'completed' || !user) return
 
+    if (!calc.document_id) {
+      toast.error('PDF não disponível para este cálculo')
+      return
+    }
+
     try {
       const res = await fetchWithCredentials(
-        `${API_URL}/calculators/${encodeURIComponent(calc.id)}/download?user_id=${user.id}`
+        `${API_URL}/documents/${encodeURIComponent(calc.document_id)}/download`
       )
 
       if (res.ok) {

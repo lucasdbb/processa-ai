@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 
 from pydantic import BaseModel, Field
 
@@ -46,11 +46,8 @@ class RescisaoTrabalhistaDetalhes(BaseModel):
 
 
 class PdfExport(BaseModel):
-    download_url: str
-    bucket: str
-    storage_path: str
-    document_id: str | None = None
-    expires_in: int
+    job_id: str
+    status: str = "queued"
 
 
 class RescisaoTrabalhistaResponse(BaseModel):
@@ -122,6 +119,7 @@ class CalculationHistoryItem(BaseModel):
     error: str | None = None
     created_at: str
     finished_at: str | None = None
+    document_id: str | None = None
 
 
 class CalculationHistoryResponse(BaseModel):
@@ -130,8 +128,3 @@ class CalculationHistoryResponse(BaseModel):
     calculations: list[CalculationHistoryItem]
 
 
-class CalculationDownloadResponse(BaseModel):
-    """URL de download do PDF de um cálculo."""
-
-    download_url: str
-    filename: str

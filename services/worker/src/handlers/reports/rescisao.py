@@ -1,6 +1,6 @@
 """Rescisão Trabalhista Report Generator via docxtpl template: JSON -> DOCX -> PDF.
 
-Uses a Word template (templates/rescisao_trabalhista_report.docx) with Jinja2 placeholders.
+Uses a Word template (src/assets/templates/calculadoras/rescisao_trabalhista_report.docx).
 The template controls all formatting — fonts, colors, layout.
 Python only injects the data.
 
@@ -10,16 +10,16 @@ Pipeline: calculation output -> build context -> DOCX (docxtpl) -> PDF (LibreOff
 from __future__ import annotations
 
 import io
-import subprocess
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
 from docxtpl import DocxTemplate
 
 from src.core.logging import logger
+from src.handlers.reports.cnis import docx_bytes_to_pdf_bytes
 
-TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "rescisao_trabalhista_report.docx"
+ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
+TEMPLATE_PATH = ASSETS_DIR / "templates" / "calculadoras" / "rescisao_trabalhista_report.docx"
 
 TIPO_RESCISAO_LABELS = {
     "sem_justa_causa": "Sem Justa Causa",
@@ -183,52 +183,15 @@ def _build_context(*, input_payload: dict, output_payload: dict) -> dict:
     }
 
 
-def _docx_bytes_to_pdf_bytes(docx_bytes: bytes) -> bytes:
-    """Convert DOCX bytes to PDF bytes using LibreOffice headless."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        docx_path = Path(tmpdir) / "report.docx"
-        docx_path.write_bytes(docx_bytes)
-
-        try:
-            result = subprocess.run(
-                [
-                    "soffice",
-                    "--headless",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    tmpdir,
-                    str(docx_path),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-        except FileNotFoundError:
-            raise RuntimeError(
-                "LibreOffice nao encontrado. Instale com: apt-get install libreoffice-writer"
-            )
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("Tempo limite ao converter DOCX para PDF")
-
-        if result.returncode != 0:
-            logger.error("LibreOffice stderr: %s", result.stderr)
-            raise RuntimeError(f"Falha ao converter DOCX para PDF: {result.stderr}")
-
-        pdf_path = Path(tmpdir) / "report.pdf"
-        if not pdf_path.exists():
-            raise RuntimeError("PDF nao foi gerado pelo LibreOffice")
-
-        return pdf_path.read_bytes()
-
-
-def generate_rescisao_docx(*, input_payload: dict, output_payload: dict) -> bytes:
+def generate_rescisao_docx_from_template(
+    *, input_payload: dict, output_payload: dict
+) -> bytes:
     """Render the Word template with rescisao data and return DOCX bytes."""
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(
-            f"Template nao encontrado: {TEMPLATE_PATH}\n"
+            f"Template não encontrado: {TEMPLATE_PATH}\n"
             "Coloque o arquivo rescisao_trabalhista_report.docx em "
-            "apps/backend/src/features/calculators/templates/"
+            "services/worker/src/assets/templates/calculadoras/"
         )
 
     tpl = DocxTemplate(str(TEMPLATE_PATH))
@@ -241,7 +204,9 @@ def generate_rescisao_docx(*, input_payload: dict, output_payload: dict) -> byte
     return buf.getvalue()
 
 
-def generate_rescisao_pdf(*, input_payload: dict, output_payload: dict) -> bytes:
+def generate_rescisao_pdf_from_template(
+    *, input_payload: dict, output_payload: dict
+) -> bytes:
     """Generate a PDF report from the rescisao calculation data using the Word template.
 
     Pipeline: calculation data -> DOCX (docxtpl template) -> PDF (LibreOffice headless).
@@ -249,12 +214,12 @@ def generate_rescisao_pdf(*, input_payload: dict, output_payload: dict) -> bytes
     Returns:
         PDF file as bytes.
     """
-    docx_bytes = generate_rescisao_docx(
+    docx_bytes = generate_rescisao_docx_from_template(
         input_payload=input_payload, output_payload=output_payload
     )
-    logger.info("Rescisao DOCX generated from template: %d bytes", len(docx_bytes))
+    logger.info("Rescisão DOCX generated from template: %d bytes", len(docx_bytes))
 
-    pdf_bytes = _docx_bytes_to_pdf_bytes(docx_bytes)
-    logger.info("Rescisao PDF generated: %d bytes", len(pdf_bytes))
+    pdf_bytes = docx_bytes_to_pdf_bytes(docx_bytes)
+    logger.info("Rescisão PDF generated: %d bytes", len(pdf_bytes))
 
     return pdf_bytes

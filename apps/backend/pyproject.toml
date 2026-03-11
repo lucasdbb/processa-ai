@@ -33,8 +33,6 @@ dependencies = [
     "google-auth-oauthlib>=1.2.1",
     "google-api-python-client>=2.154.0",
     "cryptography>=44.0.0",
-    # PDF Generation
-    "markdown-pdf==1.10",
     # Utils
     "python-dotenv>=1.0.0",
 ]

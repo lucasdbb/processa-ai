@@ -92,14 +92,14 @@ async def list_calculations(
     pool = await get_pool()
     row_factory = _get_dict_row()
 
-    clauses = ["user_id = %s"]
+    clauses = ["c.user_id = %s"]
     params: list[Any] = [user_id]
 
     if calculator_key:
-        clauses.append("calculator_key = %s")
+        clauses.append("c.calculator_key = %s")
         params.append(calculator_key)
     if client_id:
-        clauses.append("client_id = %s")
+        clauses.append("c.client_id = %s")
         params.append(client_id)
 
     where = " AND ".join(clauses)
@@ -109,11 +109,14 @@ async def list_calculations(
         kw = {"row_factory": row_factory} if row_factory else {}
         async with conn.cursor(**kw) as cur:
             await cur.execute(
-                f"SELECT id, calculator_key, status, user_id, client_id, "
-                f"input_payload, output_payload, error, created_at, finished_at "
-                f"FROM public.calculations "
+                f"SELECT c.id, c.calculator_key, c.status, c.user_id, c.client_id, "
+                f"c.input_payload, c.output_payload, c.error, c.created_at, c.finished_at, "
+                f"d.id AS document_id "
+                f"FROM public.calculations c "
+                f"LEFT JOIN public.generated_documents d "
+                f"ON d.calculation_id = c.id AND d.document_type = 'output' "
                 f"WHERE {where} "
-                f"ORDER BY created_at DESC LIMIT %s",
+                f"ORDER BY c.created_at DESC LIMIT %s",
                 params,
             )
             rows = await cur.fetchall()
@@ -137,10 +140,12 @@ async def list_calculations(
                 "error": row[7],
                 "created_at": row[8],
                 "finished_at": row[9],
+                "document_id": row[10],
             }
         # Serialize UUID and datetime
-        if isinstance(item.get("id"), uuid.UUID):
-            item["id"] = str(item["id"])
+        for uid_key in ("id", "document_id"):
+            if isinstance(item.get(uid_key), uuid.UUID):
+                item[uid_key] = str(item[uid_key])
         for dt_key in ("created_at", "finished_at"):
             v = item.get(dt_key)
             if v is not None and hasattr(v, "isoformat"):
