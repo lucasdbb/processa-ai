@@ -1,1 +1,0 @@
-- Remover geração de word + pdf do backend (calculadora) e jogar para o worker.
