@@ -114,7 +114,7 @@ async def list_calculations(
                 f"d.id AS document_id "
                 f"FROM public.calculations c "
                 f"LEFT JOIN public.generated_documents d "
-                f"ON d.calculation_id = c.id AND d.document_type = 'output' "
+                f"ON d.calculation_id = c.id "
                 f"WHERE {where} "
                 f"ORDER BY c.created_at DESC LIMIT %s",
                 params,

@@ -177,7 +177,7 @@ async def rescisao_trabalhista(
             data_admissao=data.data_admissao,
             data_rescisao=data.data_rescisao,
             tipo_rescisao=data.tipo_rescisao,
-            aviso_previo=bool(data.aviso_previo),
+            tipo_aviso_previo=str(data.tipo_aviso_previo),
             ferias_vencidas=int(data.ferias_vencidas or 0),
             ferias_proporcionais=bool(data.ferias_proporcionais),
             decimo_terceiro=bool(data.decimo_terceiro),

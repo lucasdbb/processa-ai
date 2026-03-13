@@ -23,7 +23,13 @@ class RescisaoTrabalhistaRequest(BaseModel):
     data_admissao: date
     data_rescisao: date
     tipo_rescisao: str = Field(min_length=1)
-    aviso_previo: bool = True
+    tipo_aviso_previo: str = Field(
+        default="indenizado",
+        pattern="^(indenizado|trabalhado|dispensado|nao_cumprido)$",
+        description=(
+            "Tipo de aviso prévio: indenizado, trabalhado, dispensado ou nao_cumprido"
+        ),
+    )
     ferias_vencidas: int = Field(default=0, ge=0, le=365)
     ferias_proporcionais: bool = True
     decimo_terceiro: bool = True
@@ -39,9 +45,13 @@ class RescisaoTrabalhistaDetalhes(BaseModel):
     ferias_vencidas: float
     ferias_proporcionais: float
     decimo_terceiro: float
-    fgts: float
+    fgts_acumulado: float
     fgts_rescisorio: float = 0.0
     multa_fgts: float
+    inss: float = 0.0
+    irrf: float = 0.0
+    total_bruto: float
+    total_descontos: float
     total: float
 
 

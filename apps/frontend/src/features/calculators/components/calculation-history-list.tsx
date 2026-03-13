@@ -70,7 +70,7 @@ export function CalculationHistoryList({
     if (calc.status !== 'completed' || !user) return
 
     if (!calc.document_id) {
-      toast.error('PDF não disponível para este cálculo')
+      toast.info('PDF ainda está sendo gerado. Tente novamente em alguns segundos.')
       return
     }
 
@@ -224,7 +224,12 @@ export function CalculationHistoryList({
                       <p className="text-[11px] text-muted-foreground mt-1 truncate">
                         {day} &middot; {time}
                         {calc.status === 'completed' && (
-                          <> &middot; <span className="font-medium text-foreground">{summary.subtitle}</span></>
+                          <>
+                            {' '}&middot; <span className="font-medium text-foreground">{summary.subtitle}</span>
+                            {!calc.document_id && (
+                              <> &middot; <span className="text-yellow-600 dark:text-yellow-400 animate-pulse">Gerando PDF...</span></>
+                            )}
+                          </>
                         )}
                         {calc.status !== 'completed' && (
                           <>
