@@ -83,9 +83,9 @@ export default function ConfiguracoesPage() {
   // Refresh user data on mount
   useEffect(() => {
     authService.getCurrentUser().then((userData) => {
-      if (userData) setUser(userData)
+      if (userData) setUser({ ...user, ...userData })
     })
-  }, [setUser])
+  }, [setUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load billing data on mount
   useEffect(() => {
@@ -177,7 +177,7 @@ export default function ConfiguracoesPage() {
         whatsapp_opt_in: formData.whatsapp,
         avatar_url: avatarPreview || undefined,
       })
-      setUser(updatedUser)
+      setUser({ ...user, ...updatedUser })
       setEditingProfile(false)
       setAvatarPreview(null)
       toast.success('Perfil atualizado com sucesso!')

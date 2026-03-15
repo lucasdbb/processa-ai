@@ -76,6 +76,7 @@ class UserProfile(BaseModel):
     cpf: str | None = None
     newsletter_opt_in: bool = False
     whatsapp_opt_in: bool = False
+    welcome_credits_claimed: bool = False
     confirmed_at: str | None = None
     created_at: datetime
     credits: UserCredits | None = None

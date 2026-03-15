@@ -25,7 +25,7 @@ class ProfilesService:
         try:
             profile_response = (
                 self.supabase.table("profiles")
-                .select("id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, created_at")
+                .select("id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, welcome_credits_claimed, created_at")
                 .eq("id", user_id)
                 .execute()
             )
@@ -72,6 +72,7 @@ class ProfilesService:
                 "cpf": profile.get("cpf"),
                 "newsletter_opt_in": newsletter_opt_in,
                 "whatsapp_opt_in": profile.get("whatsapp_opt_in", False),
+                "welcome_credits_claimed": profile.get("welcome_credits_claimed", False),
                 "confirmed_at": confirmed_at,
                 "created_at": profile["created_at"],
             }
@@ -148,6 +149,7 @@ class ProfilesService:
                 "bio": profile.get("bio"),
                 "newsletter_opt_in": current_newsletter_opt_in,
                 "whatsapp_opt_in": profile.get("whatsapp_opt_in", False),
+                "welcome_credits_claimed": profile.get("welcome_credits_claimed", False),
                 "created_at": profile["created_at"],
             }
         except HTTPException:
