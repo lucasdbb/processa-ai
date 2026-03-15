@@ -53,7 +53,7 @@ def create_scheduler() -> AsyncIOScheduler:
 
 
 async def check_deadlines_job():
-    """Job to check upcoming deadlines and create notifications"""
+    """Job to check upcoming deadlines and create notifications + send emails"""
     try:
         logger.info("Running scheduled job: check_deadlines")
 
@@ -69,6 +69,18 @@ async def check_deadlines_job():
         logger.info("Completed scheduled job: check_deadlines")
     except Exception as e:
         logger.error(f"Error in check_deadlines job: {e}", exc_info=True)
+
+
+async def weekly_deadline_summary_job():
+    """Job to send weekly summary of upcoming deadlines via email"""
+    try:
+        logger.info("Running scheduled job: weekly_deadline_summary")
+
+        service = DeadlineNotificationService()
+        await service.send_weekly_summary()
+        logger.info("Completed scheduled job: weekly_deadline_summary")
+    except Exception as e:
+        logger.error(f"Error in weekly_deadline_summary job: {e}", exc_info=True)
 
 
 def setup_jobs(scheduler: AsyncIOScheduler):
@@ -89,12 +101,20 @@ def setup_jobs(scheduler: AsyncIOScheduler):
         name="Check upcoming deadlines (8AM Brazil time)",
     )
 
+    # Weekly deadline summary every Monday at 8:00 AM Brazil time
+    scheduler.add_job(
+        weekly_deadline_summary_job,
+        "cron",
+        day_of_week="mon",
+        hour=8,
+        minute=0,
+        timezone=ZoneInfo("America/Sao_Paulo"),
+        id="weekly_deadline_summary",
+        replace_existing=True,
+        name="Weekly deadline summary (Monday 8AM Brazil time)",
+    )
+
     logger.info("Scheduled jobs configured:")
     for job in scheduler.get_jobs():
         next_run = getattr(job, "next_run_time", "Not scheduled yet (scheduler not started)")
         logger.info(f"  - {job.name} (id: {job.id}, next run: {next_run})")
-
-
-# For future: Add more jobs here
-# scheduler.add_job(send_weekly_reports, 'cron', day_of_week='mon', hour=9)
-# scheduler.add_job(cleanup_old_data, 'cron', day='1', hour=2)
