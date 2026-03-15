@@ -42,20 +42,24 @@ def _format_whatsapp_number(phone: str) -> str:
     return f"whatsapp:+{digits}"
 
 
-async def send_whatsapp(to_phone: str, body: str) -> bool:
+class WhatsAppResult:
+    """Result of a WhatsApp send attempt."""
+
+    def __init__(self, success: bool, sid: str | None = None, error: str | None = None):
+        self.success = success
+        self.sid = sid
+        self.error = error
+
+
+async def send_whatsapp(to_phone: str, body: str) -> WhatsAppResult:
     """
     Send a WhatsApp message via Twilio.
 
-    Args:
-        to_phone: Recipient phone number (any Brazilian format)
-        body: Message text
-
-    Returns:
-        True if sent successfully, False otherwise.
-        Returns False silently if Twilio is not configured.
+    Returns WhatsAppResult with success status and Twilio SID for tracking.
+    Returns failure silently if Twilio is not configured.
     """
     if not is_whatsapp_configured():
-        return False
+        return WhatsAppResult(success=False, error="Twilio not configured")
 
     to_formatted = _format_whatsapp_number(to_phone)
 
@@ -68,37 +72,42 @@ async def send_whatsapp(to_phone: str, body: str) -> bool:
                     "From": settings.TWILIO_WHATSAPP_FROM,
                     "To": to_formatted,
                     "Body": body,
+                    "StatusCallback": f"{settings.FRONTEND_URL.replace('localhost:5173', 'localhost:8000')}/api/notification-logs/webhooks/twilio",
                 },
             )
 
             if response.status_code in (200, 201):
-                logger.info(f"WhatsApp sent to {to_formatted}")
-                return True
+                data = response.json()
+                sid = data.get("sid")
+                logger.info(f"WhatsApp sent to {to_formatted} (SID: {sid})")
+                return WhatsAppResult(success=True, sid=sid)
             else:
-                logger.error(f"Twilio error: {response.status_code} - {response.text}")
-                return False
+                error = f"Twilio error: {response.status_code} - {response.text}"
+                logger.error(error)
+                return WhatsAppResult(success=False, error=error)
 
     except Exception as e:
-        logger.error(f"Failed to send WhatsApp to {to_formatted}: {e}")
-        return False
+        error = f"Failed to send WhatsApp to {to_formatted}: {e}"
+        logger.error(error)
+        return WhatsAppResult(success=False, error=str(e))
 
 
 async def send_deadline_whatsapp(
     to_phone: str,
     user_name: str | None,
     deadlines: list[dict],
-) -> bool:
+) -> WhatsAppResult:
     """
-    Send a consolidated WhatsApp message about urgent deadlines (vence hoje ou amanha).
+    Send a consolidated WhatsApp message about urgent deadlines.
 
     Each item in deadlines should have: title, days_until, due_date_str.
-    Returns False silently if Twilio is not configured.
+    Returns WhatsAppResult with success status and Twilio SID.
     """
     if not is_whatsapp_configured():
-        return False
+        return WhatsAppResult(success=False, error="Twilio not configured")
 
     if not deadlines:
-        return False
+        return WhatsAppResult(success=False, error="No deadlines")
 
     name = user_name or "Advogado(a)"
     lines = []
@@ -106,12 +115,12 @@ async def send_deadline_whatsapp(
         if d["days_until"] == 0:
             lines.append(f"  *HOJE* - {d['title']} ({d['due_date_str']})")
         else:
-            lines.append(f"  *Amanha* - {d['title']} ({d['due_date_str']})")
+            lines.append(f"  *Amanhã* - {d['title']} ({d['due_date_str']})")
 
     deadlines_text = "\n".join(lines)
 
     body = (
-        f"Ola {name}! Voce tem prazo(s) urgente(s):\n\n"
+        f"Olá {name}! Você tem prazo(s) urgente(s):\n\n"
         f"{deadlines_text}\n\n"
         f"Acesse: {settings.FRONTEND_URL}/app/calendario"
     )

@@ -14,6 +14,7 @@ from src.core.db import get_pool
 from src.core.email import send_deadline_reminder, send_weekly_deadline_summary
 from src.core.logging import logger
 from src.core.whatsapp import send_deadline_whatsapp
+from src.features.core.notification_logs.service import notification_log_service
 
 
 class DeadlineNotificationService:
@@ -148,7 +149,11 @@ class DeadlineNotificationService:
             # Send one consolidated email per user (outside the DB transaction)
             emails_sent = 0
             whatsapp_sent = 0
+            deadline_titles = lambda ds: ", ".join(d["title"] for d in ds)
+
             for user_id, data in user_deadlines.items():
+                subject = f"Lembrete de prazo ({len(data['deadlines'])} prazo(s))"
+
                 # Email (all deadlines)
                 try:
                     sent = await send_deadline_reminder(
@@ -156,28 +161,63 @@ class DeadlineNotificationService:
                         user_name=data["name"],
                         deadlines=data["deadlines"],
                     )
+                    await notification_log_service.log(
+                        user_id=user_id,
+                        channel="email",
+                        recipient=data["email"],
+                        notification_type="deadline_reminder",
+                        subject=subject,
+                        status="sent" if sent else "failed",
+                        error_message=None if sent else "SendGrid send failed",
+                        metadata={"deadline_count": len(data["deadlines"])},
+                    )
                     if sent:
                         emails_sent += 1
-                    else:
-                        logger.warning(f"Failed to send consolidated email to {data['email']}")
                 except Exception as email_err:
                     logger.error(f"Error sending deadline email to {data['email']}: {email_err}")
+                    await notification_log_service.log(
+                        user_id=user_id,
+                        channel="email",
+                        recipient=data["email"],
+                        notification_type="deadline_reminder",
+                        subject=subject,
+                        status="failed",
+                        error_message=str(email_err),
+                    )
 
                 # WhatsApp (only urgent deadlines, autonomo plan only)
                 if data["whatsapp_opt_in"] and data["phone"] and data["plan"] == "autonomo":
                     urgent = [d for d in data["deadlines"] if d["days_until"] <= 1]
                     if urgent:
                         try:
-                            sent = await send_deadline_whatsapp(
+                            result = await send_deadline_whatsapp(
                                 to_phone=data["phone"],
                                 user_name=data["name"],
                                 deadlines=urgent,
                             )
-                            if sent:
+                            await notification_log_service.log(
+                                user_id=user_id,
+                                channel="whatsapp",
+                                recipient=data["phone"],
+                                notification_type="deadline_urgent",
+                                subject=deadline_titles(urgent),
+                                status="sent" if result.success else "failed",
+                                external_id=result.sid,
+                                error_message=result.error if not result.success else None,
+                                metadata={"deadline_count": len(urgent)},
+                            )
+                            if result.success:
                                 whatsapp_sent += 1
                         except Exception as wa_err:
-                            logger.error(
-                                f"Error sending WhatsApp to {data['phone']}: {wa_err}"
+                            logger.error(f"Error sending WhatsApp to {data['phone']}: {wa_err}")
+                            await notification_log_service.log(
+                                user_id=user_id,
+                                channel="whatsapp",
+                                recipient=data["phone"],
+                                notification_type="deadline_urgent",
+                                subject=deadline_titles(urgent),
+                                status="failed",
+                                error_message=str(wa_err),
                             )
 
             logger.info(
@@ -251,18 +291,36 @@ class DeadlineNotificationService:
             # Send one summary email per user
             emails_sent = 0
             for user_id, data in users.items():
+                subject = f"Resumo semanal: {len(data['deadlines'])} prazo(s)"
                 try:
                     sent = await send_weekly_deadline_summary(
                         to_email=data["email"],
                         user_name=data["name"],
                         deadlines=data["deadlines"],
                     )
+                    await notification_log_service.log(
+                        user_id=user_id,
+                        channel="email",
+                        recipient=data["email"],
+                        notification_type="weekly_summary",
+                        subject=subject,
+                        status="sent" if sent else "failed",
+                        error_message=None if sent else "SendGrid send failed",
+                        metadata={"deadline_count": len(data["deadlines"])},
+                    )
                     if sent:
                         emails_sent += 1
-                    else:
-                        logger.warning(f"Failed to send weekly summary to {data['email']}")
                 except Exception as email_err:
                     logger.error(f"Error sending weekly summary to {data['email']}: {email_err}")
+                    await notification_log_service.log(
+                        user_id=user_id,
+                        channel="email",
+                        recipient=data["email"],
+                        notification_type="weekly_summary",
+                        subject=subject,
+                        status="failed",
+                        error_message=str(email_err),
+                    )
 
             logger.info(
                 f"Weekly summary completed: {emails_sent} emails sent to "

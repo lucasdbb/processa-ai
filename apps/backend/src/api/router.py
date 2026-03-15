@@ -17,6 +17,7 @@ from src.features.core.dashboard.router import router as dashboard_router
 from src.features.core.feedback.router import router as feedback_router
 from src.features.core.materials.router import router as materials_router
 from src.features.core.newsletter.router import router as newsletter_router
+from src.features.core.notification_logs.router import router as notification_logs_router
 from src.features.core.notifications.router import router as notifications_router
 from src.features.core.plans.router import router as plans_router
 
@@ -54,6 +55,7 @@ api_router.include_router(feedback_router, prefix="/feedback", tags=["Feedback"]
 api_router.include_router(materials_router, prefix="/materials", tags=["Materials"])
 api_router.include_router(plans_router, prefix="/plans", tags=["Plans"])
 api_router.include_router(notifications_router, prefix="/notifications", tags=["Notifications"])
+api_router.include_router(notification_logs_router, prefix="/notification-logs", tags=["Notification Logs"])
 api_router.include_router(storage_router, prefix="/storage", tags=["Storage"])
 api_router.include_router(gen_documents_router, prefix="/documents", tags=["Documents"])
 
