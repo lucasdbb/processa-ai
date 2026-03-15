@@ -86,6 +86,7 @@ export const updateProfileSchema = z.object({
     .optional()
     .or(z.literal('')),
   newsletter_opt_in: z.boolean().optional(),
+  whatsapp_opt_in: z.boolean().optional(),
 }).refine((data) => {
   if (data.document_number && data.document_type) {
     if (data.document_type === 'cpf') {

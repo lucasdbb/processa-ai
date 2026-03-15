@@ -25,7 +25,7 @@ class ProfilesService:
         try:
             profile_response = (
                 self.supabase.table("profiles")
-                .select("id, email, name, role, avatar_url, phone, cpf, created_at")
+                .select("id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, created_at")
                 .eq("id", user_id)
                 .execute()
             )
@@ -71,6 +71,7 @@ class ProfilesService:
                 "phone": profile.get("phone"),
                 "cpf": profile.get("cpf"),
                 "newsletter_opt_in": newsletter_opt_in,
+                "whatsapp_opt_in": profile.get("whatsapp_opt_in", False),
                 "confirmed_at": confirmed_at,
                 "created_at": profile["created_at"],
             }
@@ -87,8 +88,9 @@ class ProfilesService:
         try:
             update_data = profile_data.model_dump(exclude_none=True)
             newsletter_opt_in = update_data.pop("newsletter_opt_in", None)
+            whatsapp_opt_in = update_data.pop("whatsapp_opt_in", None)
 
-            if not update_data and newsletter_opt_in is None:
+            if not update_data and newsletter_opt_in is None and whatsapp_opt_in is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Nenhum dado para atualizar",
@@ -108,6 +110,8 @@ class ProfilesService:
                 db_update["company"] = update_data["company"]
             if "bio" in update_data:
                 db_update["bio"] = update_data["bio"]
+            if whatsapp_opt_in is not None:
+                db_update["whatsapp_opt_in"] = whatsapp_opt_in
 
             if db_update:
                 response = (
@@ -143,6 +147,7 @@ class ProfilesService:
                 "company": profile.get("company"),
                 "bio": profile.get("bio"),
                 "newsletter_opt_in": current_newsletter_opt_in,
+                "whatsapp_opt_in": profile.get("whatsapp_opt_in", False),
                 "created_at": profile["created_at"],
             }
         except HTTPException:

@@ -11,6 +11,7 @@ export interface User {
   bio?: string;
   welcome_credits_claimed?: boolean;
   newsletter_opt_in?: boolean;
+  whatsapp_opt_in?: boolean;
   role: UserRole;
   status: 'active' | 'suspended' | 'deleted';
   created_at: string;
@@ -38,6 +39,7 @@ export interface UpdateProfileData {
   company?: string;
   bio?: string;
   newsletter_opt_in?: boolean;
+  whatsapp_opt_in?: boolean;
 }
 
 export interface ResetPasswordData {

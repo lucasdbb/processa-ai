@@ -75,6 +75,7 @@ class UserProfile(BaseModel):
     phone: str | None = None
     cpf: str | None = None
     newsletter_opt_in: bool = False
+    whatsapp_opt_in: bool = False
     confirmed_at: str | None = None
     created_at: datetime
     credits: UserCredits | None = None
@@ -95,6 +96,7 @@ class UpdateProfile(BaseModel):
     company: str | None = None
     bio: str | None = None
     newsletter_opt_in: bool | None = None
+    whatsapp_opt_in: bool | None = None
 
     @field_validator("cpf")
     @classmethod

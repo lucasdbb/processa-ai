@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 from src.core.db import get_pool
 from src.core.email import send_deadline_reminder, send_weekly_deadline_summary
 from src.core.logging import logger
+from src.core.whatsapp import send_deadline_whatsapp
 
 
 class DeadlineNotificationService:
@@ -42,9 +43,13 @@ class DeadlineNotificationService:
                         """
                         SELECT e.id, e.user_id, e.title, e.processo_id,
                                e.start_at, e.reminder_days_before,
-                               p.email AS user_email, p.name AS user_name
+                               p.email AS user_email, p.name AS user_name,
+                               p.phone AS user_phone, p.whatsapp_opt_in,
+                               s.plan_id AS user_plan
                         FROM office_api.events e
                         JOIN public.profiles p ON p.id = e.user_id
+                        LEFT JOIN public.subscriptions s
+                          ON s.user_id = e.user_id AND s.status = 'active'
                         WHERE e.event_type = 'prazo' AND e.deadline_status = 'pending'
                         """
                     )
@@ -121,12 +126,15 @@ class DeadlineNotificationService:
                             f"deadline={event['title']}, days_until={days_until_deadline}"
                         )
 
-                        # Accumulate for consolidated email
+                        # Accumulate for consolidated email / WhatsApp
                         user_id = event["user_id"]
                         if user_id not in user_deadlines:
                             user_deadlines[user_id] = {
                                 "email": event["user_email"],
                                 "name": event.get("user_name"),
+                                "phone": event.get("user_phone"),
+                                "whatsapp_opt_in": event.get("whatsapp_opt_in", False),
+                                "plan": event.get("user_plan"),
                                 "deadlines": [],
                             }
                         user_deadlines[user_id]["deadlines"].append(
@@ -139,7 +147,9 @@ class DeadlineNotificationService:
 
             # Send one consolidated email per user (outside the DB transaction)
             emails_sent = 0
+            whatsapp_sent = 0
             for user_id, data in user_deadlines.items():
+                # Email (all deadlines)
                 try:
                     sent = await send_deadline_reminder(
                         to_email=data["email"],
@@ -153,9 +163,26 @@ class DeadlineNotificationService:
                 except Exception as email_err:
                     logger.error(f"Error sending deadline email to {data['email']}: {email_err}")
 
+                # WhatsApp (only urgent deadlines, autonomo plan only)
+                if data["whatsapp_opt_in"] and data["phone"] and data["plan"] == "autonomo":
+                    urgent = [d for d in data["deadlines"] if d["days_until"] <= 1]
+                    if urgent:
+                        try:
+                            sent = await send_deadline_whatsapp(
+                                to_phone=data["phone"],
+                                user_name=data["name"],
+                                deadlines=urgent,
+                            )
+                            if sent:
+                                whatsapp_sent += 1
+                        except Exception as wa_err:
+                            logger.error(
+                                f"Error sending WhatsApp to {data['phone']}: {wa_err}"
+                            )
+
             logger.info(
                 f"Deadline check completed: {notifications_created} notifications created, "
-                f"{emails_sent} emails sent to {len(user_deadlines)} users"
+                f"{emails_sent} emails sent, {whatsapp_sent} WhatsApp sent"
             )
 
         except Exception as e:

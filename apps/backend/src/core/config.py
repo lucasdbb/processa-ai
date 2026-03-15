@@ -43,5 +43,10 @@ class Settings(BaseSettings):
     SENDGRID_FROM: str = ""
     SUPPORT_EMAIL: str = ""
 
+    # WhatsApp (Twilio)
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_WHATSAPP_FROM: str = ""  # e.g. "whatsapp:+14155238886"
+
 
 settings = Settings()

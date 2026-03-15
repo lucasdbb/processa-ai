@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User } from 'lucide-react'
+import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle, Crown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -55,6 +55,7 @@ export default function ConfiguracoesPage() {
     company: user?.company || '',
     bio: user?.bio || '',
     newsletter: user?.newsletter_opt_in || false,
+    whatsapp: user?.whatsapp_opt_in || false,
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -73,6 +74,11 @@ export default function ConfiguracoesPage() {
   // Delete account
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+
+  // WhatsApp upgrade modal
+  const [showWhatsAppUpgrade, setShowWhatsAppUpgrade] = useState(false)
+
+  const isAutonomo = subscription?.plan_id === 'autonomo' && subscription?.status === 'active'
 
   // Refresh user data on mount
   useEffect(() => {
@@ -105,6 +111,7 @@ export default function ConfiguracoesPage() {
         company: user.company || '',
         bio: user.bio || '',
         newsletter: user.newsletter_opt_in || false,
+        whatsapp: user.whatsapp_opt_in || false,
       })
       setAvatarPreview(null)
     }
@@ -167,6 +174,7 @@ export default function ConfiguracoesPage() {
         company: formData.company.trim() || undefined,
         bio: formData.bio.trim() || undefined,
         newsletter_opt_in: formData.newsletter,
+        whatsapp_opt_in: formData.whatsapp,
         avatar_url: avatarPreview || undefined,
       })
       setUser(updatedUser)
@@ -368,6 +376,37 @@ export default function ConfiguracoesPage() {
                 >
                   {user?.newsletter_opt_in ? 'Ativo' : 'Inativo'}
                 </span>
+              </div>
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Notificações WhatsApp</p>
+                    <p className="text-sm text-muted-foreground">
+                      {isAutonomo
+                        ? user?.whatsapp_opt_in
+                          ? 'Recebendo alertas de prazos urgentes'
+                          : 'Não ativado'
+                        : 'Disponível no plano Autônomo'}
+                    </p>
+                  </div>
+                </div>
+                {isAutonomo ? (
+                  <span
+                    className={cn(
+                      'px-2.5 py-1 text-xs font-medium rounded-full',
+                      user?.whatsapp_opt_in
+                        ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                        : 'bg-muted text-muted-foreground',
+                    )}
+                  >
+                    {user?.whatsapp_opt_in ? 'Ativo' : 'Inativo'}
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                    Pro
+                  </span>
+                )}
               </div>
             </div>
             <p className="text-xs text-muted-foreground pt-2 px-1">
@@ -732,6 +771,47 @@ export default function ConfiguracoesPage() {
                 Receber novidades e atualizacoes por e-mail
               </label>
             </div>
+
+            {/* WhatsApp */}
+            <div
+              className={cn(
+                'flex items-center gap-3 p-3 rounded-lg',
+                isAutonomo ? 'bg-muted/50' : 'bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors',
+              )}
+              onClick={!isAutonomo ? () => setShowWhatsAppUpgrade(true) : undefined}
+            >
+              <input
+                type="checkbox"
+                id="modal-whatsapp"
+                name="whatsapp"
+                checked={formData.whatsapp}
+                disabled={!isAutonomo}
+                onChange={isAutonomo ? handleInputChange : undefined}
+                onClick={!isAutonomo ? (e) => { e.preventDefault(); setShowWhatsAppUpgrade(true) } : undefined}
+                className={cn(
+                  'h-4 w-4 border-input rounded bg-background',
+                  isAutonomo
+                    ? 'text-primary focus:ring-primary cursor-pointer'
+                    : 'opacity-50 cursor-pointer',
+                )}
+              />
+              <div className="flex items-center gap-2 flex-1">
+                <label
+                  htmlFor="modal-whatsapp"
+                  className={cn(
+                    'text-sm font-medium cursor-pointer',
+                    isAutonomo ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                >
+                  Receber alertas de prazos urgentes via WhatsApp
+                </label>
+                {!isAutonomo && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                    PRO
+                  </span>
+                )}
+              </div>
+            </div>
           </form>
 
           <DialogFooter>
@@ -780,6 +860,54 @@ export default function ConfiguracoesPage() {
         variant="info"
         isLoading={openingPortal}
       />
+
+      {/* Modal de upgrade para WhatsApp */}
+      <Dialog open={showWhatsAppUpgrade} onOpenChange={setShowWhatsAppUpgrade}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-500" />
+              Recurso do plano Autônomo
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              As notificações por WhatsApp estão disponíveis exclusivamente no plano <strong className="text-foreground">Autônomo</strong>.
+            </p>
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <MessageCircle className="h-4 w-4 text-green-600 shrink-0" />
+                <span>Alertas de prazos urgentes direto no WhatsApp</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Check className="h-4 w-4 text-green-600 shrink-0" />
+                <span>Prazos que vencem hoje ou amanhã</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Check className="h-4 w-4 text-green-600 shrink-0" />
+                <span>Nunca mais perca um prazo importante</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setShowWhatsAppUpgrade(false)}
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowWhatsAppUpgrade(false); navigate('/app/assinatura') }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors"
+            >
+              <Crown className="w-4 h-4" />
+              Ver planos
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
