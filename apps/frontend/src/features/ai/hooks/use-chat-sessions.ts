@@ -17,8 +17,13 @@ export type ChatSource = {
   legislacao: string
   artigo: string
   area: string
+  tema: string
   score: number
   content: string
+  resumo: string
+  status: string
+  revogado_por: string | null
+  section_title: string
 }
 
 export type ChatMessageData = {

@@ -1,9 +1,9 @@
-"""Legal document chunking — articles as atomic units."""
+"""Legal document chunking — articles as atomic units with revocation detection."""
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 MIN_CHUNK_SIZE = 200
 MAX_CHUNK_SIZE = 2400
@@ -18,6 +18,15 @@ SECTION_PATTERN = re.compile(
     re.MULTILINE | re.IGNORECASE,
 )
 
+# Markers injected by HTML extractor for strikethrough text.
+# Two forms:
+#   ««REVOGADO»»          — no law reference found in DOM
+#   ««REVOGADO|Lei nº X»» — law reference extracted from DOM sibling
+REVOGADO_CLOSE = "««/REVOGADO»»"
+
+# Regex to match both forms of the opening marker
+REVOGADO_OPEN_RE = re.compile(r"««REVOGADO(?:\|([^»]*))?»»")
+
 
 @dataclass
 class LegalChunk:
@@ -26,6 +35,13 @@ class LegalChunk:
     legislacao: str | None
     artigo: str | None
     chunk_index: int
+    status: str = "vigente"  # vigente | revogado | alterado
+    revogado_por: str | None = None
+    # Fields populated by LLM enrichment
+    tema: str | None = None
+    resumo: str | None = None
+    quality: int = 1  # 0=skip, 1=normal, 2=high relevance
+    tipo_documento: str | None = None
 
 
 def chunk_legal_text(
@@ -39,13 +55,14 @@ def chunk_legal_text(
     1. Try to split by article boundaries (Art. N)
     2. If no articles found, fall back to paragraph-based splitting
     3. Merge small chunks, split oversized chunks
+    4. Detect revoked/amended articles via ««REVOGADO»» markers
 
     Args:
-        text: The full extracted text.
+        text: The full extracted text (may contain ««REVOGADO»» markers).
         legislacao: Name of the legislation (e.g., "CLT", "Código Civil").
 
     Returns:
-        List of LegalChunk with content and metadata.
+        List of LegalChunk with content, metadata, and revocation status.
     """
     if not text or not text.strip():
         return []
@@ -60,11 +77,64 @@ def chunk_legal_text(
     # Merge small chunks and split oversized ones
     chunks = _normalize_chunks(chunks)
 
+    # Detect revocation status from markers
+    for chunk in chunks:
+        _detect_revocation(chunk)
+
     # Re-index
     for i, chunk in enumerate(chunks):
         chunk.chunk_index = i
 
     return chunks
+
+
+def _detect_revocation(chunk: LegalChunk) -> None:
+    """Detect if a chunk contains revoked text and extract the altering law reference.
+
+    Parses two forms of markers:
+        ««REVOGADO»»text««/REVOGADO»»         — status only
+        ««REVOGADO|Lei nº X»»text««/REVOGADO»» — status + law reference from DOM
+    """
+    content = chunk.content
+    open_matches = list(REVOGADO_OPEN_RE.finditer(content))
+
+    if not open_matches:
+        return
+
+    # Extract law references from markers (if present)
+    law_refs = [m.group(1) for m in open_matches if m.group(1)]
+    if law_refs:
+        # Use the first non-empty law reference found
+        chunk.revogado_por = law_refs[0].strip()
+
+    # Calculate how much of the content is within revocation markers
+    clean = REVOGADO_OPEN_RE.sub("", content).replace(REVOGADO_CLOSE, "").strip()
+
+    revoked_text = ""
+    remaining = content
+    while True:
+        match = REVOGADO_OPEN_RE.search(remaining)
+        if not match:
+            break
+        start = match.end()
+        end_idx = remaining.find(REVOGADO_CLOSE, start)
+        if end_idx == -1:
+            revoked_text += remaining[start:]
+            break
+        revoked_text += remaining[start:end_idx]
+        remaining = remaining[end_idx + len(REVOGADO_CLOSE):]
+
+    revoked_ratio = len(revoked_text.strip()) / len(clean) if clean else 0
+
+    if revoked_ratio > 0.7:
+        chunk.status = "revogado"
+    elif revoked_ratio > 0.1:
+        chunk.status = "alterado"
+    else:
+        chunk.status = "vigente"
+
+    # Clean all markers from final content
+    chunk.content = clean
 
 
 def _split_by_articles(text: str, *, legislacao: str | None) -> list[LegalChunk]:
@@ -169,10 +239,17 @@ def _normalize_chunks(chunks: list[LegalChunk]) -> list[LegalChunk]:
     if not chunks:
         return []
 
+    # Calculate clean length (without markers)
+    def _clean_len(content: str) -> int:
+        clean = REVOGADO_OPEN_RE.sub("", content).replace(REVOGADO_CLOSE, "")
+        return len(clean)
+
     normalized: list[LegalChunk] = []
 
     for chunk in chunks:
-        if len(chunk.content) > MAX_CHUNK_SIZE:
+        cl = _clean_len(chunk.content)
+
+        if cl > MAX_CHUNK_SIZE:
             # Split oversized chunk
             text = chunk.content
             while text:
@@ -202,11 +279,11 @@ def _normalize_chunks(chunks: list[LegalChunk]) -> list[LegalChunk]:
                 if text == part:
                     break
 
-        elif len(chunk.content) < MIN_CHUNK_SIZE and normalized:
+        elif cl < MIN_CHUNK_SIZE and normalized:
             # Merge with previous chunk if it won't exceed max
             prev = normalized[-1]
             merged = prev.content + "\n" + chunk.content
-            if len(merged) <= MAX_CHUNK_SIZE:
+            if _clean_len(merged) <= MAX_CHUNK_SIZE:
                 prev.content = merged
             else:
                 normalized.append(chunk)

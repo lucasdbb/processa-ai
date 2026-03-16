@@ -55,6 +55,8 @@ interface RagDocument {
   topic_name?: string | null
   created_at: string
   updated_at: string
+  progress?: number
+  progress_message?: string | null
 }
 
 interface RagChunkPreview {
@@ -92,6 +94,27 @@ function StatusBadge({ status, errorMessage }: { status: string; errorMessage?: 
       {status === 'processing' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
       {label}
     </span>
+  )
+}
+
+function ProgressBar({ progress, message }: { progress: number; message?: string | null }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-500 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
+        <span className="text-[11px] font-mono text-muted-foreground tabular-nums w-8 text-right">
+          {progress}%
+        </span>
+      </div>
+      {message ? (
+        <p className="text-[11px] text-muted-foreground/70 truncate">{message}</p>
+      ) : null}
+    </div>
   )
 }
 
@@ -442,7 +465,7 @@ export default function KnowledgeBaseTab() {
       pollingRef.current = setInterval(() => {
         void loadDocuments()
         void loadStats()
-      }, 5000)
+      }, 3000)
     }
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current)
@@ -672,12 +695,12 @@ export default function KnowledgeBaseTab() {
               <thead>
                 <tr className="border-b border-border bg-muted/40">
                   <th className="text-left px-4 py-3 font-medium">Nome</th>
-                  <th className="text-left px-4 py-3 font-medium">Tipo</th>
-                  <th className="text-left px-4 py-3 font-medium">Área</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-right px-4 py-3 font-medium">Chunks</th>
-                  <th className="text-left px-4 py-3 font-medium">Data</th>
-                  <th className="text-right px-4 py-3 font-medium">Ações</th>
+                  <th className="text-center px-4 py-3 font-medium">Tipo</th>
+                  <th className="text-center px-4 py-3 font-medium">Área</th>
+                  <th className="text-center px-4 py-3 font-medium">Status</th>
+                  <th className="text-center px-4 py-3 font-medium">Chunks</th>
+                  <th className="text-center px-4 py-3 font-medium">Data</th>
+                  <th className="text-center px-4 py-3 font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -689,42 +712,50 @@ export default function KnowledgeBaseTab() {
                     </td>
                   </tr>
                 ) : (
-                  documents.map((doc) => (
-                    <tr key={doc.id} className="border-b border-border hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="font-medium truncate max-w-[250px]">{doc.original_filename}</p>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{doc.document_type}</td>
-                      <td className="px-4 py-3">{doc.area_name || '—'}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={doc.status} errorMessage={doc.error_message} />
-                      </td>
-                      <td className="px-4 py-3 text-right">{doc.total_chunks}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => void handleViewChunks(doc)}
-                            className="p-1.5 rounded hover:bg-muted transition-colors"
-                            title="Ver chunks"
-                          >
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget(doc)}
-                            className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                            title="Deletar"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  documents.map((doc) => {
+                    const isProcessing = doc.status === 'processing' || doc.status === 'pending'
+                    return (
+                      <tr key={doc.id} className="border-b border-border hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-medium truncate max-w-[250px]">{doc.original_filename}</p>
+                          {isProcessing && doc.progress != null && doc.progress > 0 ? (
+                            <div className="mt-1.5 max-w-[250px]">
+                              <ProgressBar progress={doc.progress} message={doc.progress_message} />
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-3 text-center text-muted-foreground">{doc.document_type}</td>
+                        <td className="px-4 py-3 text-center">{doc.area_name || '—'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <StatusBadge status={doc.status} errorMessage={doc.error_message} />
+                        </td>
+                        <td className="px-4 py-3 text-center">{doc.total_chunks}</td>
+                        <td className="px-4 py-3 text-center text-muted-foreground">
+                          {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void handleViewChunks(doc)}
+                              className="p-1.5 rounded hover:bg-muted transition-colors"
+                              title="Ver chunks"
+                            >
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(doc)}
+                              className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                              title="Deletar"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>

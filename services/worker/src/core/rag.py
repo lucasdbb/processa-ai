@@ -1,4 +1,4 @@
-"""RAG search for worker AI agents — hybrid pgvector cosine similarity."""
+"""RAG search for worker AI agents — dual embedding pgvector cosine similarity."""
 
 from __future__ import annotations
 
@@ -18,6 +18,9 @@ class RagChunk:
     legislacao: str | None
     artigo: str | None
     score: float
+    status: str = "vigente"
+    revogado_por: str | None = None
+    resumo: str | None = None
 
 
 async def search_legal_chunks(
@@ -27,9 +30,14 @@ async def search_legal_chunks(
     top_k: int = 10,
     similarity_threshold: float = 0.3,
 ) -> list[RagChunk]:
-    """Search RAG chunks using pgvector cosine similarity.
+    """Search RAG chunks using dual embedding (content + resumo) with pgvector.
 
-    Uses the worker's database pool. For use in AI agent handlers.
+    Searches both the original content embedding and the resumo embedding,
+    taking the best score from either. This handles cases where the user's
+    query matches the modern-language resumo better than the archaic original text.
+
+    Filters out quality=0 chunks (empty/useless).
+    Prioritizes vigente chunks with a score boost.
 
     Args:
         query_embedding: The embedding vector for the query (768 dims).
@@ -43,29 +51,45 @@ async def search_legal_chunks(
     pool = await get_pool()
     embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
+    conditions = ["quality > 0"]
+    params: list = []
+
     if area:
-        query = """
-            SELECT id, content, section_title, area, tema, legislacao, artigo,
-                   1 - (embedding <=> %s::vector) AS score
+        conditions.append("area = %s")
+        params.append(area)
+
+    where = " AND ".join(conditions)
+
+    # Dual embedding search: take the BEST score from content or resumo embedding
+    # GREATEST picks the higher similarity between the two vectors
+    query = f"""
+        WITH scored AS (
+            SELECT
+                id, content, section_title, area, tema, legislacao, artigo,
+                status, revogado_por, resumo,
+                GREATEST(
+                    CASE WHEN embedding IS NOT NULL
+                         THEN 1 - (embedding <=> %s::vector)
+                         ELSE 0 END,
+                    CASE WHEN embedding_resumo IS NOT NULL
+                         THEN 1 - (embedding_resumo <=> %s::vector)
+                         ELSE 0 END
+                ) AS raw_score
             FROM public.rag_chunks
-            WHERE embedding IS NOT NULL
-              AND area = %s
-              AND 1 - (embedding <=> %s::vector) >= %s
-            ORDER BY embedding <=> %s::vector
-            LIMIT %s
-        """
-        params = (embedding_str, area, embedding_str, similarity_threshold, embedding_str, top_k)
-    else:
-        query = """
-            SELECT id, content, section_title, area, tema, legislacao, artigo,
-                   1 - (embedding <=> %s::vector) AS score
-            FROM public.rag_chunks
-            WHERE embedding IS NOT NULL
-              AND 1 - (embedding <=> %s::vector) >= %s
-            ORDER BY embedding <=> %s::vector
-            LIMIT %s
-        """
-        params = (embedding_str, embedding_str, similarity_threshold, embedding_str, top_k)
+            WHERE {where}
+        )
+        SELECT *,
+            CASE status
+                WHEN 'vigente'  THEN raw_score
+                WHEN 'alterado' THEN raw_score * 0.9
+                ELSE                 raw_score * 0.7
+            END AS boosted_score
+        FROM scored
+        WHERE raw_score >= %s
+        ORDER BY boosted_score DESC
+        LIMIT %s
+    """
+    params = [embedding_str, embedding_str] + params + [similarity_threshold, top_k]
 
     try:
         async with pool.connection() as conn:
@@ -85,7 +109,10 @@ async def search_legal_chunks(
             tema=r[4],
             legislacao=r[5],
             artigo=r[6],
-            score=float(r[7]),
+            score=float(r[10]),  # raw_score
+            status=r[7] or "vigente",
+            revogado_por=r[8],
+            resumo=r[9],
         )
         for r in rows
     ]

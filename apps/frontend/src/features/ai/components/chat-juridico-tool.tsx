@@ -36,6 +36,89 @@ function TypingIndicator() {
   )
 }
 
+// ── Source card ──────────────────────────────────────────
+
+function SourceCard({ source }: { source: ChatSource }) {
+  const [showOriginal, setShowOriginal] = useState(false)
+
+  const label = [source.artigo, source.legislacao].filter(Boolean).join(', ') || source.section_title || source.area
+  const areaLabel = source.area.charAt(0).toUpperCase() + source.area.slice(1)
+  const hasResumo = source.resumo && source.resumo.length > 0
+  const displayText = hasResumo ? source.resumo : source.content
+
+  const statusConfig: Record<string, { label: string; className: string }> = {
+    revogado: { label: 'Revogado', className: 'bg-red-500/10 text-red-600 dark:text-red-400' },
+    alterado: { label: 'Alterado', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  }
+  const statusInfo = statusConfig[source.status]
+
+  return (
+    <div className="rounded-lg bg-muted/60 border border-border/60 px-3 py-2.5 text-xs">
+      <div className="flex items-start gap-2">
+        <Scale className="h-3.5 w-3.5 text-primary/70 flex-shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          {/* Header: label + badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-foreground">{label}</span>
+            <span className="rounded-full bg-primary/10 text-primary/80 px-2 py-0.5 text-[10px] font-medium">
+              {areaLabel}
+            </span>
+            {source.tema ? (
+              <span className="rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[10px]">
+                {source.tema}
+              </span>
+            ) : null}
+            {statusInfo ? (
+              <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', statusInfo.className)}>
+                {statusInfo.label}
+              </span>
+            ) : null}
+            <span className="text-muted-foreground/60 text-[10px]">
+              {Math.round(source.score * 100)}% relevância
+            </span>
+          </div>
+
+          {/* Revogado por info */}
+          {source.revogado_por ? (
+            <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400 italic">
+              Alterado/revogado por: {source.revogado_por}
+            </p>
+          ) : null}
+
+          {/* Main text: resumo (complete) or content fallback */}
+          {displayText ? (
+            <p className="mt-1.5 text-muted-foreground leading-relaxed">
+              {hasResumo ? (
+                <span>{displayText}</span>
+              ) : (
+                <span className="line-clamp-3">{displayText}</span>
+              )}
+            </p>
+          ) : null}
+
+          {/* Toggle to see original text */}
+          {hasResumo && source.content ? (
+            <div className="mt-1.5">
+              <button
+                type="button"
+                onClick={() => setShowOriginal((v) => !v)}
+                className="text-[10px] text-primary/60 hover:text-primary/80 transition-colors underline underline-offset-2"
+              >
+                {showOriginal ? 'Ocultar texto original' : 'Ver texto original'}
+              </button>
+              {showOriginal ? (
+                <p className="mt-1 text-muted-foreground/70 leading-relaxed text-[11px] border-l-2 border-primary/20 pl-2">
+                  {source.content}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Sources panel ───────────────────────────────────────
 
 function SourcesBadges({ sources }: { sources: ChatSource[] }) {
@@ -43,15 +126,17 @@ function SourcesBadges({ sources }: { sources: ChatSource[] }) {
 
   if (sources.length === 0) return null
 
-  // Deduplicate by legislacao+artigo
+  // Deduplicate by legislacao+artigo, keeping highest score
   const uniqueSources = useMemo(() => {
-    const seen = new Set<string>()
-    return sources.filter((s) => {
+    const map = new Map<string, ChatSource>()
+    for (const s of sources) {
       const key = `${s.legislacao}::${s.artigo}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
+      const existing = map.get(key)
+      if (!existing || s.score > existing.score) {
+        map.set(key, s)
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.score - a.score)
   }, [sources])
 
   return (
@@ -67,32 +152,9 @@ function SourcesBadges({ sources }: { sources: ChatSource[] }) {
       </button>
       {expanded ? (
         <div className="mt-2 space-y-1.5">
-          {uniqueSources.map((s, i) => {
-            const label = [s.artigo, s.legislacao].filter(Boolean).join(', ') || s.area
-            const areaLabel = s.area.charAt(0).toUpperCase() + s.area.slice(1)
-            return (
-              <div
-                key={i}
-                className="flex items-start gap-2 rounded-lg bg-muted/60 border border-border/60 px-3 py-2 text-xs"
-              >
-                <Scale className="h-3.5 w-3.5 text-primary/70 flex-shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-foreground">{label}</span>
-                    <span className="rounded-full bg-primary/10 text-primary/80 px-2 py-0.5 text-[10px] font-medium">
-                      {areaLabel}
-                    </span>
-                    <span className="text-muted-foreground/60 text-[10px]">
-                      {Math.round(s.score * 100)}% relevância
-                    </span>
-                  </div>
-                  {s.content ? (
-                    <p className="mt-1 text-muted-foreground line-clamp-2 leading-relaxed">{s.content}</p>
-                  ) : null}
-                </div>
-              </div>
-            )
-          })}
+          {uniqueSources.map((s, i) => (
+            <SourceCard key={i} source={s} />
+          ))}
         </div>
       ) : null}
     </div>

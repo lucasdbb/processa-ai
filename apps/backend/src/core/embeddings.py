@@ -1,4 +1,4 @@
-"""Google text-embedding-004 client for generating embeddings."""
+"""Google gemini-embedding-001 client for generating embeddings."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from src.core.logging import logger
 
 _client: genai.Client | None = None
 
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = settings.GEMINI_EMBEDDING_MODEL
 EMBEDDING_DIMENSIONS = 768
 MAX_BATCH_SIZE = 100
 

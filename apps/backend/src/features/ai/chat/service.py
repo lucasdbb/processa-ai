@@ -36,6 +36,10 @@ RAG_CONTEXT_TEMPLATE = """
 === INSTRUÇÃO ===
 Fundamente sua resposta nos artigos acima quando forem relevantes para a pergunta.
 Cite SEMPRE a fonte entre parênteses: (Art. X, Lei Y).
+Se um artigo estiver marcado como ⚠️ REVOGADO ou ⚠️ ALTERADO, INFORME o advogado:
+- Explique que o artigo foi revogado/alterado e por qual lei.
+- Apresente a redação vigente atual quando disponível nas fontes.
+- Se a versão vigente não estiver nas fontes, alerte que o advogado deve consultar a legislação atualizada.
 Se a legislação fornecida não cobrir a pergunta, responda com seu conhecimento geral e diga claramente que não há fonte específica na base."""
 
 
@@ -54,7 +58,19 @@ def _build_system_prompt(chunks: list[RagChunk]) -> str:
         if not label_parts and c.section_title:
             label_parts.append(c.section_title)
         label = ", ".join(label_parts) or f"Fonte {i}"
-        formatted.append(f"[{i}] {label}: \"{c.content[:800]}\"")
+
+        # Add status annotation for revoked/amended articles
+        status_note = ""
+        if c.status == "revogado":
+            status_note = " ⚠️ REVOGADO"
+            if c.revogado_por:
+                status_note += f" por {c.revogado_por}"
+        elif c.status == "alterado":
+            status_note = " ⚠️ ALTERADO"
+            if c.revogado_por:
+                status_note += f" por {c.revogado_por}"
+
+        formatted.append(f"[{i}] {label}{status_note}: \"{c.content[:800]}\"")
 
     return LEGAL_SYSTEM_PROMPT_BASE + RAG_CONTEXT_TEMPLATE.format(
         chunks="\n".join(formatted),
@@ -68,8 +84,13 @@ def _chunks_to_sources(chunks: list[RagChunk]) -> list[dict]:
             "legislacao": c.legislacao or "",
             "artigo": c.artigo or "",
             "area": c.area,
+            "tema": c.tema or "",
             "score": round(c.score, 3),
-            "content": c.content[:200],
+            "content": c.content[:500],
+            "resumo": c.resumo or "",
+            "status": c.status,
+            "revogado_por": c.revogado_por,
+            "section_title": c.section_title or "",
         }
         for c in chunks
     ]

@@ -66,6 +66,7 @@ services:
       # Gemini (Chat Jurídico + Embeddings RAG)
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_CHAT_MODEL=${GEMINI_CHAT_MODEL:-gemini-3.1-flash}
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       # Email
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - SENDGRID_FROM=${SENDGRID_FROM}
@@ -98,9 +99,11 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       - LLM_MODEL=${LLM_MODEL:-gpt-4.1-mini}
-      # Gemini (CNIS analysis)
+      # Gemini (CNIS analysis + RAG embeddings)
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-pro-preview}
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      - GEMINI_ENRICHMENT_MODEL=${GEMINI_ENRICHMENT_MODEL:-gemini-3.1-flash-lite-preview}
       # Google (for office jobs)
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}

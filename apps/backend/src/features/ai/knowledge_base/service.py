@@ -149,7 +149,8 @@ class KnowledgeBaseService:
                            d.status, d.error_message, d.total_chunks, d.is_compound,
                            d.area_id, a.name AS area_name,
                            d.topic_id, t.name AS topic_name,
-                           d.created_at, d.updated_at
+                           d.created_at, d.updated_at,
+                           d.progress, d.progress_message
                     FROM public.rag_documents d
                     LEFT JOIN public.legal_areas a ON a.id = d.area_id
                     LEFT JOIN public.legal_topics t ON t.id = d.topic_id
@@ -174,7 +175,8 @@ class KnowledgeBaseService:
                            d.status, d.error_message, d.total_chunks, d.is_compound,
                            d.area_id, a.name AS area_name,
                            d.topic_id, t.name AS topic_name,
-                           d.created_at, d.updated_at
+                           d.created_at, d.updated_at,
+                           d.progress, d.progress_message
                     FROM public.rag_documents d
                     LEFT JOIN public.legal_areas a ON a.id = d.area_id
                     LEFT JOIN public.legal_topics t ON t.id = d.topic_id
@@ -238,7 +240,8 @@ class KnowledgeBaseService:
                     RETURNING id, filename, original_filename, document_type,
                               status, error_message, total_chunks, is_compound,
                               area_id, NULL, topic_id, NULL,
-                              created_at, updated_at
+                              created_at, updated_at,
+                              progress, progress_message
                     """,
                     (doc_id, user_id, filename, filename, storage_path, bucket, area_id, topic_id),
                 )
@@ -301,7 +304,8 @@ class KnowledgeBaseService:
                     RETURNING id, filename, original_filename, document_type,
                               status, error_message, total_chunks, is_compound,
                               area_id, NULL, topic_id, NULL,
-                              created_at, updated_at
+                              created_at, updated_at,
+                              progress, progress_message
                     """,
                     (doc_id, user_id, title, title, area_id),
                 )
@@ -362,7 +366,8 @@ class KnowledgeBaseService:
                     RETURNING id, filename, original_filename, document_type,
                               status, error_message, total_chunks, is_compound,
                               area_id, NULL, topic_id, NULL,
-                              created_at, updated_at
+                              created_at, updated_at,
+                              progress, progress_message
                     """,
                     (doc_id, user_id, display_title, display_title, url, area_id),
                 )
@@ -482,4 +487,6 @@ class KnowledgeBaseService:
             "topic_name": row[11],
             "created_at": row[12].isoformat() if row[12] else "",
             "updated_at": row[13].isoformat() if row[13] else "",
+            "progress": row[14] if len(row) > 14 else 0,
+            "progress_message": row[15] if len(row) > 15 else None,
         }

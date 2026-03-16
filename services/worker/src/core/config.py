@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     MISTRAL_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.1-pro-preview"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
+    GEMINI_ENRICHMENT_MODEL: str = "gemini-3.1-flash-lite-preview"
 
     # Google Integration (for office jobs)
     GOOGLE_CLIENT_ID: str = ""
