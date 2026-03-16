@@ -56,53 +56,67 @@ def create_scheduler() -> AsyncIOScheduler:
 ADMIN_EMAIL = "admin@processai.app.br"
 
 
-async def _notify_admin(job_name: str):
-    """Send admin notification that a scheduled job has started."""
+async def _notify_admin(job_name: str, event: str, error: str | None = None):
+    """Send admin notification about a scheduled job event (started, completed, error)."""
     now = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y %H:%M:%S")
-    await send_email(
-        to_email=ADMIN_EMAIL,
-        subject=f"[Processa AI] Job {job_name} iniciado",
-        body=f"O job agendado {job_name} foi iniciado em {now} (America/Sao_Paulo).",
-    )
+    if event == "started":
+        subject = f"[Processa AI] Job {job_name} iniciado"
+        body = f"O job agendado {job_name} foi iniciado em {now} (America/Sao_Paulo)."
+    elif event == "completed":
+        subject = f"[Processa AI] Job {job_name} concluído"
+        body = f"O job agendado {job_name} foi concluído com sucesso em {now} (America/Sao_Paulo)."
+    else:
+        subject = f"[Processa AI] Job {job_name} falhou"
+        body = f"O job agendado {job_name} falhou em {now} (America/Sao_Paulo).\n\nErro: {error}"
+    await send_email(to_email=ADMIN_EMAIL, subject=subject, body=body)
 
 
 async def check_deadlines_job():
     """Job to check upcoming deadlines and create notifications + send emails"""
     try:
         logger.info("Running scheduled job: check_deadlines")
-        await _notify_admin("check_deadlines")
+        await _notify_admin("check_deadlines", "started")
 
         service = DeadlineNotificationService()
         await service.check_upcoming_deadlines()
+
         logger.info("Completed scheduled job: check_deadlines")
+        await _notify_admin("check_deadlines", "completed")
     except Exception as e:
         logger.error(f"Error in check_deadlines job: {e}", exc_info=True)
+        await _notify_admin("check_deadlines", "error", error=str(e))
 
 
 async def weekly_deadline_summary_job():
     """Job to send weekly summary of upcoming deadlines via email"""
     try:
         logger.info("Running scheduled job: weekly_deadline_summary")
-        await _notify_admin("weekly_deadline_summary")
+        await _notify_admin("weekly_deadline_summary", "started")
 
         service = DeadlineNotificationService()
         await service.send_weekly_summary()
+
         logger.info("Completed scheduled job: weekly_deadline_summary")
+        await _notify_admin("weekly_deadline_summary", "completed")
     except Exception as e:
         logger.error(f"Error in weekly_deadline_summary job: {e}", exc_info=True)
+        await _notify_admin("weekly_deadline_summary", "error", error=str(e))
 
 
 async def cleanup_old_data_job():
     """Job to clean up old AI jobs, orphan uploads, and expired portal invites"""
     try:
         logger.info("Running scheduled job: cleanup_old_data")
-        await _notify_admin("cleanup_old_data")
+        await _notify_admin("cleanup_old_data", "started")
 
         service = CleanupService()
         await service.run_all()
+
         logger.info("Completed scheduled job: cleanup_old_data")
+        await _notify_admin("cleanup_old_data", "completed")
     except Exception as e:
         logger.error(f"Error in cleanup_old_data job: {e}", exc_info=True)
+        await _notify_admin("cleanup_old_data", "error", error=str(e))
 
 
 def setup_jobs(scheduler: AsyncIOScheduler):
