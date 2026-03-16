@@ -219,3 +219,99 @@ class StorageService:
             "bucket": bucket,
             "job_uuid": final_job_uuid,
         }
+
+    async def upload_file(
+        self,
+        *,
+        file_bytes: bytes,
+        filename: str,
+        user_id: str,
+        functionality: str = "ai",
+        bucket: str = "documents",
+        content_type: str = "application/pdf",
+    ) -> dict:
+        """Upload a file directly to Supabase Storage from the backend.
+
+        Returns dict with bucket, storage_path.
+        """
+        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
+        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
+
+        if not base_url or not api_key:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Supabase Storage não configurado",
+            )
+
+        uid = self._sanitize_path_segment(user_id, default="unknown-user")
+        func = self._sanitize_path_segment(functionality, default="ai")
+        file_uuid = str(uuid.uuid4())
+        slug = self._slugify_filename(filename)
+        ext = filename.rsplit(".", 1)[-1] if "." in filename else "pdf"
+        storage_path = f"{uid}/{func}/{file_uuid}/{slug}.{ext}"
+
+        upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
+        headers = {
+            "apikey": api_key,
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": content_type,
+            "x-upsert": "true",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(upload_url, headers=headers, content=file_bytes)
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Tempo limite ao subir arquivo para storage",
+            )
+        except Exception as e:
+            logger.exception("Erro ao subir arquivo para storage: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao conectar com storage",
+            )
+
+        if resp.status_code >= 400:
+            logger.error("Upload failed (%d): %s", resp.status_code, resp.text[:200])
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Falha ao subir arquivo para storage",
+            )
+
+        return {"bucket": bucket, "storage_path": storage_path}
+
+    async def delete_file(self, *, bucket: str, storage_path: str) -> bool:
+        """Delete a file from Supabase Storage."""
+        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
+        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
+
+        if not base_url or not api_key:
+            logger.error("Cannot delete file: Supabase Storage not configured")
+            return False
+
+        delete_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.delete(
+                    delete_url,
+                    headers={
+                        "apikey": api_key,
+                        "Authorization": f"Bearer {api_key}",
+                    },
+                )
+                if resp.status_code >= 400:
+                    logger.error(
+                        "Failed to delete file %s/%s: %d %s",
+                        bucket,
+                        storage_path,
+                        resp.status_code,
+                        resp.text[:200],
+                    )
+                    return False
+                return True
+        except Exception as e:
+            logger.error("Error deleting file %s/%s: %s", bucket, storage_path, e)
+            return False

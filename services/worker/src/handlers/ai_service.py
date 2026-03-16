@@ -558,6 +558,35 @@ class AiService:
         response["content"] = content
         return response
 
+    async def _fetch_rag_context(self, query: str, area: str | None = None, top_k: int = 8) -> str:
+        """Search RAG chunks and return formatted context string for prompt injection."""
+        try:
+            from src.core.embeddings import generate_embedding
+            from src.core.rag import search_legal_chunks
+
+            query_embedding = await generate_embedding(query[:2000])
+            chunks = await search_legal_chunks(
+                query_embedding, area=area, top_k=top_k, similarity_threshold=0.35,
+            )
+            if not chunks:
+                return ""
+
+            logger.info("RAG returned %d chunks (top score: %.3f)", len(chunks), chunks[0].score)
+            lines = []
+            for i, c in enumerate(chunks, 1):
+                label_parts = []
+                if c.artigo:
+                    label_parts.append(c.artigo)
+                if c.legislacao:
+                    label_parts.append(c.legislacao)
+                label = ", ".join(label_parts) or f"Fonte {i}"
+                lines.append(f"[{i}] {label}: \"{c.content[:800]}\"")
+
+            return "\n--- LEGISLAÇÃO RELEVANTE (BASE DE CONHECIMENTO) ---\n" + "\n".join(lines)
+        except Exception:
+            logger.exception("RAG search failed in worker, proceeding without")
+            return ""
+
     async def analyze_labor_claim(
         self,
         *,
@@ -571,6 +600,14 @@ class AiService:
         progress: ProgressReporter | None = None,
         functionality: str = "ai",
     ) -> dict:
+        # Fetch RAG context for labor law based on user prompt
+        rag_context = await self._fetch_rag_context(
+            query=user_prompt, area="trabalhista",
+        )
+        enriched_prompt = user_prompt
+        if rag_context:
+            enriched_prompt = user_prompt + "\n" + rag_context
+
         return await self._run_multi_file_pipeline(
             file_urls=file_urls,
             endpoint_key="labor_claim",
@@ -581,7 +618,7 @@ class AiService:
             signed_url_expires_in=signed_url_expires_in,
             job_id=job_id,
             progress=progress,
-            user_prompt=user_prompt,
+            user_prompt=enriched_prompt,
             functionality=functionality,
         )
 

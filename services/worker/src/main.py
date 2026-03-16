@@ -779,12 +779,38 @@ async def _handle_office_job(job: dict) -> None:
     )
 
 
+async def _handle_rag_ingest_job(job: dict) -> None:
+    """Handle RAG document ingestion jobs."""
+    from src.handlers.rag_ingest import handle_rag_ingest
+
+    job_id = str(job.get("job_id") or "").strip()
+    logger.info("Processing RAG ingest job: %s", job_id)
+
+    try:
+        await handle_rag_ingest(job)
+        if job_id:
+            await _safe_set_job_status(
+                job_id, {"job_id": job_id, "status": "completed", "progress": 100}
+            )
+    except Exception as e:
+        logger.exception("RAG ingest job failed: %s", job_id)
+        if job_id:
+            await _safe_set_job_status(
+                job_id,
+                {"job_id": job_id, "status": "failed", "error": str(e)[:500]},
+            )
+
+
 async def _handle_job(job: dict) -> None:
     """Route job to appropriate handler based on job type."""
     job_type = str(job.get("type") or "").strip()
 
     if job_type in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner"):
         await _handle_ai_job(job)
+        return
+
+    if job_type == "rag_ingest":
+        await _handle_rag_ingest_job(job)
         return
 
     if job_type in ("calculator_rescisao", "calculator_aposentadoria"):

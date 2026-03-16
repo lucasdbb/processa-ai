@@ -48,5 +48,9 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_WHATSAPP_FROM: str = ""  # e.g. "whatsapp:+14155238886"
 
+    # Gemini (Chat)
+    GEMINI_API_KEY: str = ""
+    GEMINI_CHAT_MODEL: str = "gemini-3.1-flash"
+
 
 settings = Settings()

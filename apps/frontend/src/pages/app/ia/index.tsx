@@ -58,22 +58,22 @@ export default function IAHubPage() {
 
     // Map variant to feature_key used in FEATURE_COSTS
     const variantToFeatureKey: Record<string, string> = {
-      chat: 'ai_chat',
+      chat: 'ai_chat_session',
       cnis: 'cnis_analysis',
       process_summary: 'process_summary',
       labor_claim: 'labor_claim',
       scanner: 'brief_scanner',
-      prompt: 'ai_chat',
+      prompt: 'ai_chat_session',
     }
 
-    const featureKey = variantToFeatureKey[currentTool.variant] || 'ai_chat'
+    const featureKey = variantToFeatureKey[currentTool.variant] || 'ai_chat_session'
 
     const costItem = costs.find(c => c.feature_key === featureKey)
     if (costItem) return costItem.cost === 1 ? '1 crédito' : `${costItem.cost} créditos`
 
     // Fallbacks
     const fallbacks: Record<string, string> = {
-      ai_chat: '1 crédito',
+      ai_chat_session: '3 créditos',
       cnis_analysis: '5 créditos',
       process_summary: '5 créditos',
       labor_claim: '5 créditos',
@@ -169,7 +169,7 @@ export default function IAHubPage() {
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 </div>
-                {costDisplay && (
+                {costDisplay && currentTool?.variant !== 'chat' && (
                   <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs font-medium text-yellow-600 dark:text-yellow-500">
                     <Coins className="w-3.5 h-3.5" />
                     <span>{costDisplay}</span>
@@ -181,13 +181,15 @@ export default function IAHubPage() {
           </div>
 
           <div className="flex items-end gap-3">
-            <ClientSelector
-              value={selectedClientId}
-              onChange={(id) => setSelectedClientId(id)}
-              className="w-60"
-              label="Cliente"
-            />
-            
+            {currentTool?.variant !== 'chat' && (
+              <ClientSelector
+                value={selectedClientId}
+                onChange={(id) => setSelectedClientId(id)}
+                className="w-60"
+                label="Cliente"
+              />
+            )}
+
             {showLayoutToggle && (
               <div className="bg-muted/30 p-1 rounded-lg border border-border inline-flex gap-1 h-[40px] items-center">
                 <button

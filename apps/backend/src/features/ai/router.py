@@ -20,8 +20,6 @@ from src.features.ai.schemas import (
     AnalysisHistoryItem,
     AnalysisHistoryResponse,
     BriefScannerRequest,
-    ChatRequest,
-    ChatResponse,
     CnisAnalysisRequest,
     DocumentDownloadResponse,
     DocumentResponse,
@@ -29,10 +27,14 @@ from src.features.ai.schemas import (
     JobStatusResponse,
     ProcessSummaryRequest,
 )
+from src.features.ai.chat.router import router as chat_router
+from src.features.ai.knowledge_base.router import router as kb_router
 from src.features.ai.service import AiJobService
 from src.features.core.storage.service import StorageService
 
 router = APIRouter()
+router.include_router(chat_router, prefix="/chat", tags=["chat"])
+router.include_router(kb_router, prefix="/knowledge-base", tags=["knowledge-base"])
 ai_job_service = AiJobService()
 
 
@@ -400,43 +402,6 @@ async def delete_ai_job(
 
     return None
 
-
-@router.post(
-    "/chat",
-    response_model=ChatResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def chat_message(
-    data: ChatRequest,
-    user_id: str = Depends(get_user_id),
-    _internal=Depends(require_internal_auth),
-):
-    """Envia mensagem para o chat jurídico."""
-    if not data.message.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mensagem obrigatória")
-
-    # service = AiService()
-    try:
-        # result = await service.chat(
-        #     message=data.message,
-        #     user_id=user_id,
-        #     client_id=data.client_id,
-        # )
-        # return ChatResponse(
-        #     response=result["response"],
-        #     credits_consumed=result["credits_consumed"]
-        # )
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Chat migration in progress"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Erro no chat")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
 
 
 @router.get(

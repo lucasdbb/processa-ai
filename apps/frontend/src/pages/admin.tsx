@@ -11,6 +11,7 @@ import {
   Bell,
   Cpu,
   Send,
+  BookOpen,
 } from 'lucide-react'
 import OverviewTab from './admin/overview-tab'
 import UsersTab from './admin/users-tab'
@@ -20,18 +21,19 @@ import FeedbacksTab from './admin/feedbacks-tab'
 import NotificationsTab from './admin/notifications-tab'
 import AiCostsTab from './admin/ai-costs-tab'
 import NotificationLogsTab from './admin/notification-logs-tab'
+import KnowledgeBaseTab from './admin/knowledge-base-tab'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUser } from '@/features/auth/hooks/use-user'
 
-type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks' | 'notifications' | 'notification-logs' | 'ai-costs'
+type Tab = 'overview' | 'users' | 'posts' | 'materials' | 'feedbacks' | 'notifications' | 'notification-logs' | 'ai-costs' | 'knowledge-base'
 
-const TABS_ADMIN: Tab[] = ['overview', 'users', 'posts', 'materials', 'feedbacks', 'notifications', 'notification-logs', 'ai-costs']
+const TABS_ADMIN: Tab[] = ['overview', 'users', 'posts', 'materials', 'feedbacks', 'notifications', 'notification-logs', 'ai-costs', 'knowledge-base']
 const TABS_AUTHOR: Tab[] = ['overview', 'posts']
 
 const isTab = (value: string | null | undefined): value is Tab =>
-  value === 'overview' || value === 'users' || value === 'posts' || value === 'materials' || value === 'feedbacks' || value === 'notifications' || value === 'notification-logs' || value === 'ai-costs'
+  value === 'overview' || value === 'users' || value === 'posts' || value === 'materials' || value === 'feedbacks' || value === 'notifications' || value === 'notification-logs' || value === 'ai-costs' || value === 'knowledge-base'
 
 
 export default function AdminPage() {
@@ -202,6 +204,21 @@ export default function AdminPage() {
               Custos IA
             </button>
           ) : null}
+
+          {isAdmin ? (
+            <button
+              onClick={() => setTab('knowledge-base')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'knowledge-base'
+                  ? 'bg-slate-900 text-white'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+              type="button"
+            >
+              <BookOpen className="w-5 h-5" />
+              Base de Conhecimento
+            </button>
+          ) : null}
         </nav>
 
         <div className="p-4 border-t border-border">
@@ -278,6 +295,12 @@ export default function AdminPage() {
                 Custos IA
               </Button>
             ) : null}
+            {isAdmin ? (
+              <Button variant={activeTab === 'knowledge-base' ? 'default' : 'outline'} onClick={() => setTab('knowledge-base')}>
+                <BookOpen className="h-4 w-4" />
+                Base de Conhecimento
+              </Button>
+            ) : null}
           </div>
 
           {activeTab === 'overview' ? <OverviewTab isAdmin={isAdmin} /> : null}
@@ -299,6 +322,9 @@ export default function AdminPage() {
           ) : null}
           {isAdmin && activeTab === 'ai-costs' ? (
             <AiCostsTab />
+          ) : null}
+          {isAdmin && activeTab === 'knowledge-base' ? (
+            <KnowledgeBaseTab />
           ) : null}
 
         </div>
