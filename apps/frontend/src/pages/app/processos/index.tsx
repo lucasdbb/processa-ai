@@ -67,7 +67,6 @@ export default function ProcessosPage() {
   type EditingProcess =
     | (NonNullable<ComponentProps<typeof ProcessFormDialog>['process']> & { nextDeadline?: string | null })
     | undefined
-  type SaveProcessPayload = Parameters<ComponentProps<typeof ProcessFormDialog>['onSave']>[0]
 
   const [editingProcess, setEditingProcess] = useState<EditingProcess>(undefined)
   const queryClient = useQueryClient()
@@ -91,7 +90,7 @@ export default function ProcessosPage() {
     partnershipFilter === 'own' ? false : 
     undefined;
 
-  const { data, isLoading, isFetching } = useProcesses({
+  const { data, isLoading } = useProcesses({
     search: debouncedSearch,
     status: viewMode === 'list' ? filter : 'all',
     tribunal: tribunalFilter,
@@ -104,7 +103,7 @@ export default function ProcessosPage() {
   const processes = data?.processes ?? []
   const total = data?.total ?? 0
 
-  const handleSaveProcess = async (processData: SaveProcessPayload) => {
+  const handleSaveProcess = async () => {
     setIsFormOpen(false)
     setEditingProcess(undefined)
     // Invalidate queries to trigger a refetch
