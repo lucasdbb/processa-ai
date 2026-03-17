@@ -75,8 +75,6 @@ export default function ConfiguracoesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
-  // WhatsApp upgrade modal
-  const [showWhatsAppUpgrade, setShowWhatsAppUpgrade] = useState(false)
 
   const isAutonomo = subscription?.plan_id === 'autonomo' && subscription?.status === 'active'
 
@@ -348,16 +346,16 @@ export default function ConfiguracoesPage() {
         {activeTab === 'perfil' && (
           <div className="space-y-1">
             <div className="bg-card border border-border rounded-xl divide-y divide-border">
-              <DataRow label="Nome completo" value={user?.name || 'Nao informado'} />
-              <DataRow label="Escritório" value={user?.company || 'Nao informado'} />
-              <DataRow label="Principal área de atuação" value={user?.bio || 'Nao informado'} />
+              <DataRow label="Nome completo" value={user?.name || 'Não informado'} />
+              <DataRow label="Escritório" value={user?.company || 'Não informado'} />
+              <DataRow label="Principal área de atuação" value={user?.bio || 'Não informado'} />
               <DataRow
                 label="Telefone"
-                value={user?.phone ? phoneMask(user.phone) : 'Nao informado'}
+                value={user?.phone ? phoneMask(user.phone) : 'Não informado'}
               />
               <DataRow
                 label="CPF"
-                value={user?.cpf ? cpfMask(user.cpf) : 'Nao informado'}
+                value={user?.cpf ? cpfMask(user.cpf) : 'Não informado'}
               />
               <div className="flex items-center justify-between px-5 py-4">
                 <div>
@@ -383,30 +381,13 @@ export default function ConfiguracoesPage() {
                   <div>
                     <p className="text-sm font-medium text-foreground">Notificações WhatsApp</p>
                     <p className="text-sm text-muted-foreground">
-                      {isAutonomo
-                        ? user?.whatsapp_opt_in
-                          ? 'Recebendo alertas de prazos urgentes'
-                          : 'Não ativado'
-                        : 'Disponível no plano Autônomo'}
+                      Alertas de prazos urgentes direto no WhatsApp
                     </p>
                   </div>
                 </div>
-                {isAutonomo ? (
-                  <span
-                    className={cn(
-                      'px-2.5 py-1 text-xs font-medium rounded-full',
-                      user?.whatsapp_opt_in
-                        ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                        : 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {user?.whatsapp_opt_in ? 'Ativo' : 'Inativo'}
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
-                    Pro
-                  </span>
-                )}
+                <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400">
+                  Em breve
+                </span>
               </div>
             </div>
             <p className="text-xs text-muted-foreground pt-2 px-1">
@@ -535,7 +516,7 @@ export default function ConfiguracoesPage() {
                   {subscription.cancel_at_period_end && (
                     <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-4 py-3">
                       <p className="text-xs text-yellow-700 dark:text-yellow-400">
-                        Sua assinatura sera cancelada ao fim do periodo atual.
+                        Sua assinatura será cancelada ao final do periodo atual.
                       </p>
                     </div>
                   )}
@@ -559,7 +540,7 @@ export default function ConfiguracoesPage() {
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Faturas e cancelamentos sao gerenciados pelo portal seguro do Stripe.
+                    Faturas e cancelamentos são gerenciados pelo portal seguro do Stripe.
                   </p>
                 </div>
               ) : (
@@ -772,44 +753,29 @@ export default function ConfiguracoesPage() {
               </label>
             </div>
 
-            {/* WhatsApp */}
+            {/* WhatsApp — em breve */}
             <div
-              className={cn(
-                'flex items-center gap-3 p-3 rounded-lg',
-                isAutonomo ? 'bg-muted/50' : 'bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors',
-              )}
-              onClick={!isAutonomo ? () => setShowWhatsAppUpgrade(true) : undefined}
+              className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 cursor-default"
+              onClick={() => toast.info('As notificações por WhatsApp estarão disponíveis em breve!')}
             >
               <input
                 type="checkbox"
                 id="modal-whatsapp"
                 name="whatsapp"
-                checked={formData.whatsapp}
-                disabled={!isAutonomo}
-                onChange={isAutonomo ? handleInputChange : undefined}
-                onClick={!isAutonomo ? (e) => { e.preventDefault(); setShowWhatsAppUpgrade(true) } : undefined}
-                className={cn(
-                  'h-4 w-4 border-input rounded bg-background',
-                  isAutonomo
-                    ? 'text-primary focus:ring-primary cursor-pointer'
-                    : 'opacity-50 cursor-pointer',
-                )}
+                checked={false}
+                disabled
+                className="h-4 w-4 border-input rounded bg-background opacity-50"
               />
               <div className="flex items-center gap-2 flex-1">
                 <label
                   htmlFor="modal-whatsapp"
-                  className={cn(
-                    'text-sm font-medium cursor-pointer',
-                    isAutonomo ? 'text-foreground' : 'text-muted-foreground',
-                  )}
+                  className="text-sm font-medium text-muted-foreground"
                 >
                   Receber alertas de prazos urgentes via WhatsApp
                 </label>
-                {!isAutonomo && (
-                  <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-amber-500/10 text-amber-700 dark:text-amber-400">
-                    PRO
-                  </span>
-                )}
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-500/10 text-blue-700 dark:text-blue-400">
+                  Em breve
+                </span>
               </div>
             </div>
           </form>
@@ -861,53 +827,6 @@ export default function ConfiguracoesPage() {
         isLoading={openingPortal}
       />
 
-      {/* Modal de upgrade para WhatsApp */}
-      <Dialog open={showWhatsAppUpgrade} onOpenChange={setShowWhatsAppUpgrade}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Crown className="h-5 w-5 text-amber-500" />
-              Recurso do plano Autônomo
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <p className="text-sm text-muted-foreground">
-              As notificações por WhatsApp estão disponíveis exclusivamente no plano <strong className="text-foreground">Autônomo</strong>.
-            </p>
-            <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <MessageCircle className="h-4 w-4 text-green-600 shrink-0" />
-                <span>Alertas de prazos urgentes direto no WhatsApp</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-600 shrink-0" />
-                <span>Prazos que vencem hoje ou amanhã</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-600 shrink-0" />
-                <span>Nunca mais perca um prazo importante</span>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setShowWhatsAppUpgrade(false)}
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowWhatsAppUpgrade(false); navigate('/app/assinatura') }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors"
-            >
-              <Crown className="w-4 h-4" />
-              Ver planos
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
