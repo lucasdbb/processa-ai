@@ -29,7 +29,6 @@ import {
   type PortalFee,
   type PortalFinancesSummary,
   type PortalTimelineEvent,
-  type PortalTimelineTranslation,
 } from '@/services/portal-service'
 
 // -----------------------------------------------------------------------

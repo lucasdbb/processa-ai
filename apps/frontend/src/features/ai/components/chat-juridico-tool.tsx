@@ -173,7 +173,7 @@ const SUGGESTED_QUESTIONS = [
 // ── Main component ──────────────────────────────────────
 
 export function ChatJuridicoTool() {
-  const { user, isAuthenticated } = useUser()
+  const { isAuthenticated } = useUser()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
@@ -286,7 +286,7 @@ export function ChatJuridicoTool() {
         streamContentRef.current += chunk
         updateLastMessage(streamContentRef.current)
       },
-      (messageId, sources) => {
+      (_messageId, sources) => {
         if (sources && sources.length > 0) {
           updateLastMessage(streamContentRef.current, sources as ChatSource[])
         }
