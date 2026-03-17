@@ -23,6 +23,11 @@ async def enqueue_job(payload: dict) -> None:
     await r.rpush(settings.JOBS_QUEUE_KEY, json.dumps(payload, ensure_ascii=False))
 
 
+async def enqueue_translation_job(payload: dict) -> None:
+    r = await get_redis()
+    await r.rpush(settings.TRANSLATION_QUEUE_KEY, json.dumps(payload, ensure_ascii=False))
+
+
 async def dequeue_job(*, timeout_s: int = 5) -> dict | None:
     r = await get_redis()
     res = await r.blpop(settings.JOBS_QUEUE_KEY, timeout=timeout_s)

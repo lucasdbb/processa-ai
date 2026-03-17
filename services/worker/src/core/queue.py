@@ -32,6 +32,20 @@ async def dequeue_job(*, timeout_s: int = 5) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+async def dequeue_translation_job(*, timeout_s: int = 2) -> dict | None:
+    r = await get_redis()
+    res = await r.blpop(settings.TRANSLATION_QUEUE_KEY, timeout=timeout_s)
+    if not res:
+        return None
+
+    _queue, raw = res
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
 async def set_job_status(job_id: str, status: dict) -> None:
     r = await get_redis()
     await r.set(

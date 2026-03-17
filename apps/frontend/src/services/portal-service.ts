@@ -17,6 +17,16 @@ export interface PortalEventDocument {
   mime_type: string | null
 }
 
+export interface PortalTimelineTranslation {
+  summary: string
+  explanation: string
+  action_required: string
+  next_step: string | null
+  sentiment: 'positive' | 'neutral' | 'negative' | 'urgent'
+  process_phase: string | null
+  process_phase_progress: number | null
+}
+
 export interface PortalTimelineEvent {
   id: string
   title: string
@@ -24,6 +34,7 @@ export interface PortalTimelineEvent {
   event_date: string
   event_type: string
   documents: PortalEventDocument[]
+  translation: PortalTimelineTranslation | null
 }
 
 export interface PortalProcess {

@@ -28,6 +28,8 @@ import {
   type PortalDocument,
   type PortalFee,
   type PortalFinancesSummary,
+  type PortalTimelineEvent,
+  type PortalTimelineTranslation,
 } from '@/services/portal-service'
 
 // -----------------------------------------------------------------------
@@ -82,6 +84,74 @@ function formatFileSize(bytes: number | null): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const SENTIMENT_STYLES: Record<string, string> = {
+  positive: 'border-green-200 bg-green-50/40',
+  negative: 'border-red-200 bg-red-50/40',
+  urgent:   'border-orange-300 bg-orange-50/50',
+  neutral:  'border-border bg-muted/20',
+}
+
+function TranslatedEvent({ event }: { event: PortalTimelineEvent }) {
+  const { translation } = event
+
+  if (!translation) {
+    return (
+      <div className="rounded-lg border border-border bg-muted/20 p-3">
+        <p className="text-xs text-muted-foreground font-mono leading-relaxed">
+          {event.title}{event.description ? ` — ${event.description}` : ''}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          {formatDate(event.event_date, true)}
+        </p>
+      </div>
+    )
+  }
+
+  const hasAction = translation.action_required
+    && !translation.action_required.toLowerCase().includes('nenhuma ação')
+    && !translation.action_required.toLowerCase().includes('nenhuma acao')
+
+  return (
+    <div className={cn('rounded-lg border p-3', SENTIMENT_STYLES[translation.sentiment] ?? SENTIMENT_STYLES.neutral)}>
+      {/* Texto jurídico original + data */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs text-muted-foreground font-mono leading-relaxed">
+          {event.title}{event.description ? ` — ${event.description}` : ''}
+        </p>
+        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+          {formatDate(event.event_date, true)}
+        </span>
+      </div>
+
+      {/* Separador */}
+      <div className="border-t border-border/40 mt-2.5 pt-2.5">
+        <p className="text-sm font-medium leading-snug">{translation.summary}</p>
+        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{translation.explanation}</p>
+
+        {hasAction && (
+          <div className={cn(
+            'mt-2 flex items-start gap-1.5 text-xs font-medium',
+            translation.sentiment === 'urgent' ? 'text-orange-700' : 'text-foreground/80',
+          )}>
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            {translation.action_required}
+          </div>
+        )}
+
+        {translation.next_step && (
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Próximo passo: {translation.next_step}
+          </p>
+        )}
+
+        <p className="text-xs text-muted-foreground/50 mt-2 text-right">
+          Simplificado pelo Processa AI
+        </p>
+      </div>
+    </div>
+  )
 }
 
 // -----------------------------------------------------------------------
@@ -188,29 +258,20 @@ function ProcessCard({ process }: { process: PortalProcess }) {
               <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
                 Andamentos recentes
               </p>
-              <ul className="space-y-2">
+              <div className="space-y-2">
                 {process.recent_events.map((evt) => (
-                  <li key={evt.id} className="flex gap-2.5">
-                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{evt.title}</p>
-                      {evt.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{evt.description}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatDate(evt.event_date, true)}
-                      </p>
-                      {evt.documents.length > 0 && (
-                        <ul className="mt-1.5 space-y-1 pl-0.5">
-                          {evt.documents.map((doc) => (
-                            <ProcessDocumentItem key={doc.id} doc={doc} />
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </li>
+                  <div key={evt.id}>
+                    <TranslatedEvent event={evt} />
+                    {evt.documents.length > 0 && (
+                      <ul className="mt-1.5 space-y-1 pl-1">
+                        {evt.documents.map((doc) => (
+                          <ProcessDocumentItem key={doc.id} doc={doc} />
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Nenhum andamento registrado ainda.</p>

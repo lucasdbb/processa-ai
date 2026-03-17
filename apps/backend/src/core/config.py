@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Redis (for job queue)
     REDIS_URL: str = "redis://localhost:6379/0"
     JOBS_QUEUE_KEY: str = "jobs"
+    TRANSLATION_QUEUE_KEY: str = "translation_queue"
     JOB_STATUS_TTL_S: int = 86400
 
     # Google Integration

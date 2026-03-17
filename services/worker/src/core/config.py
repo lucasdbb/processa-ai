@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     JOBS_QUEUE_KEY: str = "jobs"
+    TRANSLATION_QUEUE_KEY: str = "translation_queue"
     JOB_STATUS_TTL_S: int = 86400
 
     # AI Providers
@@ -36,6 +37,7 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-3.1-pro-preview"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     GEMINI_ENRICHMENT_MODEL: str = "gemini-3.1-flash-lite-preview"
+    GEMINI_TRANSLATION_MODEL: str = "gemini-3.1-flash-lite-preview"
 
     # Google Integration (for office jobs)
     GOOGLE_CLIENT_ID: str = ""

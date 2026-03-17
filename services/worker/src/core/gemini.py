@@ -131,3 +131,44 @@ async def analyze_multiple_pdfs(
                 await asyncio.sleep(RETRY_DELAY_S)
 
     raise RuntimeError(f"Gemini call failed after {MAX_RETRIES} attempts: {last_error}")
+
+
+async def generate_text(
+    *,
+    system_instruction: str,
+    user_prompt: str,
+    model: str | None = None,
+    response_mime_type: str = "application/json",
+) -> str:
+    """Call Gemini with a text-only prompt (no PDF).
+
+    Returns the raw text response.
+    Raises RuntimeError on failure after all retries.
+    """
+    client = get_gemini_client()
+    model = model or settings.GEMINI_ENRICHMENT_MODEL
+    last_error: Exception | None = None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    response_mime_type=response_mime_type,
+                ),
+                contents=user_prompt,
+            )
+            text = (response.text or "").strip()
+            if not text:
+                raise ValueError("Resposta vazia do Gemini")
+            return text
+        except Exception as e:
+            last_error = e
+            logger.warning(
+                "Gemini text call failed (attempt %d/%d): %s", attempt, MAX_RETRIES, e
+            )
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(RETRY_DELAY_S)
+
+    raise RuntimeError(f"Gemini text call failed after {MAX_RETRIES} attempts: {last_error}")

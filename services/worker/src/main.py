@@ -29,7 +29,7 @@ from src.core.worker_store import (
 from src.core.db import init_db
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
-from src.core.queue import dequeue_job, set_job_status
+from src.core.queue import dequeue_job, dequeue_translation_job, set_job_status
 from src.handlers.ai_service import AiService
 
 ai_service = AiService()
@@ -829,13 +829,8 @@ async def _handle_job(job: dict) -> None:
         )
 
 
-async def run_worker() -> None:
-    """Main worker loop."""
-    try:
-        await init_db()
-    except Exception:
-        logger.exception("Failed to initialize database")
-
+async def _run_ai_worker() -> None:
+    """Main loop for AI/calculator/office jobs."""
     logger.info("Processa AI Worker started - waiting for jobs...")
 
     while True:
@@ -851,6 +846,43 @@ async def run_worker() -> None:
             await _handle_job(job)
         except Exception:
             logger.exception("Unhandled error processing job: %s", job_id)
+
+
+async def _run_translation_worker() -> None:
+    """Dedicated loop for fast translation jobs (separate from heavy AI jobs)."""
+    from src.handlers.translate_timeline import handle_translate_timeline_event
+
+    logger.info("Translation Worker started - waiting for translation jobs...")
+
+    while True:
+        job = await dequeue_translation_job(timeout_s=2)
+        if not job:
+            continue
+
+        job_type = job.get("job_type", "unknown")
+        event_id = job.get("timeline_event_id", "unknown")
+        logger.info("Processing translation job: event=%s (type: %s)", event_id, job_type)
+
+        try:
+            if job_type == "translate_timeline_event":
+                await handle_translate_timeline_event(job)
+            else:
+                logger.warning("Unknown translation job type: %s", job_type)
+        except Exception:
+            logger.exception("Unhandled error processing translation job: event=%s", event_id)
+
+
+async def run_worker() -> None:
+    """Entry point: initializes DB and runs both worker loops concurrently."""
+    try:
+        await init_db()
+    except Exception:
+        logger.exception("Failed to initialize database")
+
+    await asyncio.gather(
+        _run_ai_worker(),
+        _run_translation_worker(),
+    )
 
 
 def main() -> None:

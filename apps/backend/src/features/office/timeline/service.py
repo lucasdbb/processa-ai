@@ -7,6 +7,7 @@ from uuid import UUID
 from psycopg.rows import dict_row
 
 from src.core.db import get_pool
+from src.core.logging import logger
 from src.features.office.timeline.schemas import (
     DocumentSummary,
     TimelineEventCreate,
@@ -182,6 +183,13 @@ class TimelineService:
 
                 await conn.commit()
 
+                # Enqueue translation asynchronously (fire-and-forget)
+                try:
+                    from src.features.portal.translation.service import translation_service
+                    await translation_service.enqueue_translation(conn, str(event_id))
+                except Exception:
+                    logger.exception("Failed to enqueue translation for event %s", event_id)
+
                 # Fetch with documents
                 documents = await self._fetch_event_documents(conn, event_id)
                 event_data = {**row, "documents": documents}
@@ -228,6 +236,14 @@ class TimelineService:
                     await self._link_documents(conn, event_id, data.document_ids)
 
             await conn.commit()
+
+            # Re-enqueue translation if title or description changed
+            if "title" in update_data or "description" in update_data:
+                try:
+                    from src.features.portal.translation.service import translation_service
+                    await translation_service.enqueue_translation(conn, str(event_id))
+                except Exception:
+                    logger.exception("Failed to re-enqueue translation for event %s", event_id)
 
             # Fetch updated event with documents
             return await self.get_event(user_id, event_id)

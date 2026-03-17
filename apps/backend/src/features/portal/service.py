@@ -24,8 +24,10 @@ from src.features.portal.schemas import (
     PortalProcessStatus,
     PortalProcessSummary,
     PortalTimelineEvent,
+    PortalTimelineTranslation,
     RevokePortalResponse,
 )
+from src.features.portal.translation.service import translation_service
 
 # Map raw process status -> (label, tailwind color token)
 _PROCESS_STATUS_MAP: dict[str, tuple[str, str]] = {
@@ -164,50 +166,77 @@ class PortalService:
                 )
                 process_rows = await cur.fetchall()
 
-                processes: list[PortalProcessSummary] = []
-                for row in process_rows:
-                    process_id = str(row["id"])
+                process_ids = [str(row["id"]) for row in process_rows]
 
-                    # Recent timeline events (last 3)
+                # Batch-fetch recent timeline events for ALL processes at once
+                # Uses LATERAL join to get the last 3 events per process
+                await cur.execute(
+                    """
+                    SELECT te.id, te.process_id, te.title, te.description,
+                           te.event_date, te.event_type
+                    FROM unnest(%s::uuid[]) AS pid(id)
+                    CROSS JOIN LATERAL (
+                        SELECT *
+                        FROM office_api.timeline_events t
+                        WHERE t.process_id = pid.id
+                        ORDER BY t.event_date DESC
+                        LIMIT 3
+                    ) te
+                    """,
+                    (process_ids,),
+                )
+                all_event_rows = await cur.fetchall()
+
+                # Group events by process
+                events_by_process: dict[str, list[dict]] = {}
+                all_event_ids: list[str] = []
+                for e in all_event_rows:
+                    pid = str(e["process_id"])
+                    events_by_process.setdefault(pid, []).append(e)
+                    all_event_ids.append(str(e["id"]))
+
+                # Batch-fetch translations for ALL events across all processes
+                translations = await translation_service.get_translations_for_events(
+                    conn, all_event_ids
+                ) if all_event_ids else {}
+
+                # Batch-fetch documents for ALL events at once
+                docs_by_event: dict[str, list[PortalEventDocument]] = {}
+                if all_event_ids:
                     await cur.execute(
                         """
-                        SELECT id, title, description, event_date, event_type
-                        FROM office_api.timeline_events
-                        WHERE process_id = %s
-                        ORDER BY event_date DESC
-                        LIMIT 3
+                        SELECT ted.timeline_event_id, d.id, d.name, d.file_size, d.mime_type
+                        FROM office_api.documents d
+                        INNER JOIN office_api.timeline_event_documents ted
+                            ON d.id = ted.document_id
+                        WHERE ted.timeline_event_id = ANY(%s)
+                          AND d.visible_to_client = true
+                          AND d.status != 'archived'
+                        ORDER BY ted.created_at ASC
                         """,
-                        (process_id,),
+                        (all_event_ids,),
                     )
-                    event_rows = await cur.fetchall()
-
-                    recent_events: list[PortalTimelineEvent] = []
-                    for e in event_rows:
-                        # Fetch visible documents linked to this event
-                        await cur.execute(
-                            """
-                            SELECT d.id, d.name, d.file_size, d.mime_type
-                            FROM office_api.documents d
-                            INNER JOIN office_api.timeline_event_documents ted
-                                ON d.id = ted.document_id
-                            WHERE ted.timeline_event_id = %s
-                              AND d.visible_to_client = true
-                              AND d.status != 'archived'
-                            ORDER BY ted.created_at ASC
-                            """,
-                            (str(e["id"]),),
-                        )
-                        doc_rows = await cur.fetchall()
-                        event_docs = [
+                    for d in await cur.fetchall():
+                        eid = str(d["timeline_event_id"])
+                        docs_by_event.setdefault(eid, []).append(
                             PortalEventDocument(
                                 id=d["id"],
                                 name=d["name"],
                                 file_size=d["file_size"],
                                 mime_type=d["mime_type"],
                             )
-                            for d in doc_rows
-                        ]
+                        )
 
+                # Assemble response
+                processes: list[PortalProcessSummary] = []
+                for row in process_rows:
+                    process_id = str(row["id"])
+                    event_rows = events_by_process.get(process_id, [])
+
+                    recent_events: list[PortalTimelineEvent] = []
+                    for e in event_rows:
+                        eid = str(e["id"])
+                        t = translations.get(eid)
                         recent_events.append(
                             PortalTimelineEvent(
                                 id=e["id"],
@@ -215,7 +244,16 @@ class PortalService:
                                 description=e["description"],
                                 event_date=e["event_date"],
                                 event_type=e["event_type"],
-                                documents=event_docs,
+                                documents=docs_by_event.get(eid, []),
+                                translation=PortalTimelineTranslation(
+                                    summary=t.summary,
+                                    explanation=t.explanation,
+                                    action_required=t.action_required,
+                                    next_step=t.next_step,
+                                    sentiment=t.sentiment,
+                                    process_phase=t.process_phase,
+                                    process_phase_progress=t.process_phase_progress,
+                                ) if t else None,
                             )
                         )
 

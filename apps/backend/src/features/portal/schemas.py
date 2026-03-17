@@ -40,6 +40,16 @@ class PortalEventDocument(BaseModel):
     mime_type: str | None
 
 
+class PortalTimelineTranslation(BaseModel):
+    summary: str
+    explanation: str
+    action_required: str
+    next_step: str | None
+    sentiment: str  # positive | neutral | negative | urgent
+    process_phase: str | None
+    process_phase_progress: int | None
+
+
 class PortalTimelineEvent(BaseModel):
     id: UUID
     title: str
@@ -47,6 +57,7 @@ class PortalTimelineEvent(BaseModel):
     event_date: datetime
     event_type: str
     documents: list[PortalEventDocument] = []
+    translation: PortalTimelineTranslation | None = None
 
 
 class PortalProcessSummary(BaseModel):
