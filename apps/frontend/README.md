@@ -1,73 +1,108 @@
-# React + TypeScript + Vite
+# Processa AI - Frontend App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+O frontend do **Processa AI** é uma Single Page Application (SPA) moderna, desenvolvida para fornecer uma experiência fluida de gestão de escritórios de advocacia, ferramentas de Inteligência Artificial e um portal para clientes finais.
 
-Currently, two official plugins are available:
+## 🚀 Tecnologias e Arquitetura
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+*   **Framework:** React 19 (SPA)
+*   **Bundler:** Vite 7
+*   **Linguagem:** TypeScript 5.9
+*   **Roteamento:** React Router v7 (Client-side routing)
+*   **Estilização:** Tailwind CSS 4
+*   **Componentes UI:** shadcn/ui (Radix UI primitives)
+*   **Gerenciamento de Estado:** Zustand 5
+*   **Formulários & Validação:** react-hook-form + Zod
+*   **Autenticação e DB:** `@supabase/supabase-js` (Client-side integration)
+*   **Analytics:** PostHog
+*   **Notificações:** Sonner (Toasts)
 
-## React Compiler
+O código segue a **Feature-first architecture**, agrupando componentes, hooks, tipos e serviços de API por domínio de negócio (`features/`), facilitando a manutenção e o desenvolvimento de novas funcionalidades.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 📂 Estrutura de Diretórios
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+apps/frontend/
+├── docs/                # Documentações internas do frontend
+├── public/              # Ativos estáticos (imagens, ícones)
+├── src/
+│   ├── components/      # Componentes de UI reutilizáveis (botões, modais, layouts, charts)
+│   │   ├── auth/        # Route guards (AuthGuard, AdminGuard, PortalGuard)
+│   │   ├── ui/          # Componentes primitivos do shadcn/ui
+│   │   └── ...          # Kanbans, formulários genéricos, skeletons
+│   ├── features/        # Módulos por domínio de negócio (IA, Autenticação, Calculadoras, Onboarding)
+│   ├── hooks/           # Custom hooks globais (useGlobalSearch, useBreadcrumbs)
+│   ├── lib/             # Utils, analytics, cliente do Supabase e formatação (máscaras)
+│   ├── pages/           # Views/Páginas mapeadas pelas rotas
+│   │   ├── admin/       # Dashboard administrativo
+│   │   ├── app/         # Área autenticada do usuário (escritório)
+│   │   ├── auth/        # Páginas de login/callback
+│   │   └── portal/      # Portal read-only para clientes do escritório
+│   ├── services/        # Serviços de comunicação com a API backend (fetch/axios)
+│   ├── stores/          # Zustand stores globais (Billing, CommandPalette, Sidebar, Créditos)
+│   ├── App.tsx          # Ponto de entrada da aplicação React
+│   ├── index.css        # Estilos globais Tailwind
+│   ├── main.tsx         # Renderização do root e provedores
+│   └── router.tsx       # Definição e mapeamento das rotas da SPA
+├── index.html           # Template HTML base
+├── vite.config.ts       # Configuração do Vite (plugins, aliases)
+└── tsconfig.json        # Configurações do TypeScript
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## ⚙️ Configuração Local
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 1. Pré-requisitos
+*   Node.js 20+
+*   npm (ou pnpm/yarn)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Instalação
+
+```bash
+cd apps/frontend
+npm install
 ```
+
+### 3. Variáveis de Ambiente
+
+Crie um arquivo `.env` na raiz do `frontend/` (baseado no `.env.example`):
+
+```env
+# URL do seu projeto Supabase
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+# Chave pública anônima do Supabase
+VITE_SUPABASE_ANON_KEY=sua-chave-anon
+
+# URL do Backend API (FastAPI)
+VITE_BACKEND_URL=http://localhost:8000
+
+# Chave para chamadas internas protegidas
+VITE_INTERNAL_TOKEN=seu-token-interno
+```
+
+### 4. Executando o Frontend
+
+Para iniciar o servidor de desenvolvimento:
+
+```bash
+npm run dev
+```
+
+O app estará disponível em `http://localhost:5173`. O Vite possui Hot Module Replacement (HMR) ativado por padrão.
+
+## 🛠️ Scripts Disponíveis
+
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Inicia o servidor de desenvolvimento local (porta 5173) |
+| `npm run build` | Faz o build de produção da aplicação |
+| `npm run preview` | Sobe um servidor para visualizar o build de produção localmente |
+| `npm run lint` | Executa o ESLint no código TypeScript/React |
+
+## 🛡️ Roteamento e Proteção (Guards)
+
+A navegação da SPA é gerenciada pelo React Router v7. Existem quatro níveis principais de proteção nas rotas:
+1.  **Públicas:** Rotas como `/`, `/blog`, `/sobre`, etc. Não exigem autenticação.
+2.  **App (`/app/*`):** Rotas protegidas pelo `<AuthGuard />`. Exigem um usuário logado no Supabase. O layout carrega a Sidebar e o Header.
+3.  **Admin (`/admin/*`):** Rotas protegidas pelo `<AdminGuard />`. Exigem a role de `admin` ou `author`.
+4.  **Portal (`/portal/*`):** Rotas protegidas pelo `<PortalGuard />`. Permitem que clientes do escritório acessem seus processos.
+
+Além disso, algumas páginas podem ser bloqueadas pelo `<RequirePlan />` dependendo do plano de assinatura (ex: calculadoras premium).

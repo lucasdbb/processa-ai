@@ -4,22 +4,19 @@ Plataforma de tecnologia jurídica com gestão de escritório, assistência com 
 
 ## Estrutura do Monorepo
 
-```
+O projeto é dividido em três aplicações/serviços principais. Cada um possui sua própria documentação detalhada:
+
+*   [**Frontend** (`apps/frontend/README.md`)](./apps/frontend/README.md): Vite 7 + React 19 + TypeScript (SPA)
+*   [**Backend** (`apps/backend/README.md`)](./apps/backend/README.md): Python 3.13 + FastAPI
+*   [**Worker** (`services/worker/README.md`)](./services/worker/README.md): Worker assíncrono para IA e geração de documentos
+
+```text
 processa-ai/
 ├── apps/
 │   ├── frontend/           # Vite 7 + React 19 + TypeScript (SPA)
-│   │   ├── src/
-│   │   ├── Dockerfile
-│   │   └── package.json
 │   └── backend/            # Python 3.13 + FastAPI
-│       ├── src/
-│       ├── Dockerfile
-│       └── pyproject.toml
 ├── services/
 │   └── worker/             # Worker assíncrono (processamento de jobs IA)
-│       ├── src/
-│       ├── Dockerfile
-│       └── pyproject.toml
 ├── docker-compose.yml      # Orquestração de serviços (dev)
 ├── docker-compose.prod.yml # Override para produção
 └── package.json            # Workspace raiz (npm)
