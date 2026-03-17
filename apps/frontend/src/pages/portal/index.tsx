@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   XCircle,
   Scale,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -85,6 +87,142 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// -----------------------------------------------------------------------
+// Process Journey — progress bar
+// -----------------------------------------------------------------------
+
+const PHASES = [
+  { key: 'inicio', label: 'Início' },
+  { key: 'defesa', label: 'Defesa' },
+  { key: 'instrucao', label: 'Instrução' },
+  { key: 'sentenca', label: 'Sentença' },
+  { key: 'recurso', label: 'Recurso' },
+  { key: 'execucao', label: 'Execução' },
+  { key: 'encerrado', label: 'Encerrado' },
+]
+
+function ProcessJourney({ currentPhase, progress }: { currentPhase: string | null; progress: number | null }) {
+  if (!currentPhase) return null
+
+  const currentIndex = PHASES.findIndex((p) => p.key === currentPhase)
+  if (currentIndex === -1) return null
+
+  const pct = progress ?? Math.round((currentIndex / (PHASES.length - 1)) * 100)
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Jornada do processo
+        </p>
+        <span className="text-xs text-blue-600 font-medium">
+          {PHASES[currentIndex].label} · {pct}%
+        </span>
+      </div>
+
+      {/* Desktop: horizontal stepper with aligned labels */}
+      <div
+        className="hidden sm:grid gap-y-1.5"
+        style={{ gridTemplateColumns: `repeat(${PHASES.length}, 1fr)` }}
+      >
+        {PHASES.map((phase, i) => (
+          <div key={`dot-${phase.key}`} className="flex items-center">
+            <div
+              className={cn(
+                'flex-1 h-0.5',
+                i === 0
+                  ? 'bg-transparent'
+                  : i <= currentIndex
+                    ? 'bg-green-500'
+                    : 'bg-muted',
+              )}
+            />
+            <div
+              className={cn(
+                'h-3.5 w-3.5 rounded-full border-2 border-background shrink-0 transition-colors',
+                i < currentIndex
+                  ? 'bg-green-500'
+                  : i === currentIndex
+                    ? 'bg-blue-500 ring-2 ring-blue-500/30'
+                    : 'bg-muted',
+              )}
+            />
+            <div
+              className={cn(
+                'flex-1 h-0.5',
+                i === PHASES.length - 1
+                  ? 'bg-transparent'
+                  : i < currentIndex
+                    ? 'bg-green-500'
+                    : 'bg-muted',
+              )}
+            />
+          </div>
+        ))}
+        {PHASES.map((phase, i) => (
+          <p
+            key={`label-${phase.key}`}
+            className={cn(
+              'text-center text-[10px] leading-tight',
+              i === currentIndex
+                ? 'font-semibold text-blue-600'
+                : i < currentIndex
+                  ? 'text-muted-foreground'
+                  : 'text-muted-foreground/60',
+            )}
+          >
+            {phase.label}
+          </p>
+        ))}
+      </div>
+
+      {/* Mobile: vertical compact stepper */}
+      <div className="sm:hidden flex flex-col">
+        {PHASES.map((phase, i) => (
+          <div key={phase.key} className="flex items-start gap-2.5">
+            <div className="flex flex-col items-center">
+              <div
+                className={cn(
+                  'h-3 w-3 rounded-full shrink-0 mt-0.5 transition-colors',
+                  i < currentIndex
+                    ? 'bg-green-500'
+                    : i === currentIndex
+                      ? 'bg-blue-500 ring-2 ring-blue-500/30'
+                      : 'bg-muted',
+                )}
+              />
+              {i < PHASES.length - 1 && (
+                <div
+                  className={cn(
+                    'w-0.5 h-3',
+                    i < currentIndex ? 'bg-green-500' : 'bg-muted',
+                  )}
+                />
+              )}
+            </div>
+            <span
+              className={cn(
+                'text-xs leading-none',
+                i === currentIndex
+                  ? 'font-semibold text-blue-600'
+                  : i < currentIndex
+                    ? 'text-muted-foreground'
+                    : 'text-muted-foreground/60',
+              )}
+            >
+              {phase.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------
+// Translated Event
+// -----------------------------------------------------------------------
+
 const SENTIMENT_STYLES: Record<string, string> = {
   positive: 'border-green-200 bg-green-50/40',
   negative: 'border-red-200 bg-red-50/40',
@@ -94,6 +232,7 @@ const SENTIMENT_STYLES: Record<string, string> = {
 
 function TranslatedEvent({ event }: { event: PortalTimelineEvent }) {
   const { translation } = event
+  const [showOriginal, setShowOriginal] = useState(false)
 
   if (!translation) {
     return (
@@ -114,41 +253,63 @@ function TranslatedEvent({ event }: { event: PortalTimelineEvent }) {
 
   return (
     <div className={cn('rounded-lg border p-3', SENTIMENT_STYLES[translation.sentiment] ?? SENTIMENT_STYLES.neutral)}>
-      {/* Texto jurídico original + data */}
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs text-muted-foreground font-mono leading-relaxed">
-          {event.title}{event.description ? ` — ${event.description}` : ''}
-        </p>
-        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+      {/* Header: data + toggle */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-xs text-muted-foreground">
           {formatDate(event.event_date, true)}
         </span>
+        <button
+          type="button"
+          onClick={() => setShowOriginal((v) => !v)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {showOriginal ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+          {showOriginal ? 'Ver tradução' : 'Ver texto original'}
+        </button>
       </div>
 
-      {/* Separador */}
-      <div className="border-t border-border/40 mt-2.5 pt-2.5">
-        <p className="text-sm font-medium leading-snug">{translation.summary}</p>
-        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{translation.explanation}</p>
-
-        {hasAction && (
-          <div className={cn(
-            'mt-2 flex items-start gap-1.5 text-xs font-medium',
-            translation.sentiment === 'urgent' ? 'text-orange-700' : 'text-foreground/80',
-          )}>
-            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            {translation.action_required}
-          </div>
-        )}
-
-        {translation.next_step && (
-          <p className="text-xs text-muted-foreground mt-1.5">
-            Próximo passo: {translation.next_step}
+      {showOriginal ? (
+        /* Texto jurídico original expandido */
+        <div className="rounded bg-muted/40 p-2.5">
+          <p className="text-xs text-muted-foreground font-mono leading-relaxed">
+            {event.title}{event.description ? ` — ${event.description}` : ''}
           </p>
-        )}
+        </div>
+      ) : (
+        /* Tradução simplificada */
+        <>
+          {/* Texto original resumido */}
+          <p className="text-xs text-muted-foreground font-mono leading-relaxed">
+            {event.title}{event.description ? ` — ${event.description}` : ''}
+          </p>
 
-        <p className="text-xs text-muted-foreground/50 mt-2 text-right">
-          Simplificado pelo Processa AI
-        </p>
-      </div>
+          {/* Separador */}
+          <div className="border-t border-border/40 mt-2.5 pt-2.5">
+            <p className="text-sm font-medium leading-snug">{translation.summary}</p>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{translation.explanation}</p>
+
+            {hasAction && (
+              <div className={cn(
+                'mt-2 flex items-start gap-1.5 text-xs font-medium',
+                translation.sentiment === 'urgent' ? 'text-orange-700' : 'text-foreground/80',
+              )}>
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                {translation.action_required}
+              </div>
+            )}
+
+            {translation.next_step && (
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Próximo passo: {translation.next_step}
+              </p>
+            )}
+
+            <p className="text-xs text-muted-foreground/50 mt-2 text-right">
+              Simplificado pelo Processa AI
+            </p>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -245,6 +406,17 @@ function ProcessCard({ process }: { process: PortalProcess }) {
 
       {expanded && (
         <div className="border-t px-4 pb-4 pt-3 space-y-2.5">
+          {/* Process Journey — from latest translated event */}
+          {(() => {
+            const latestTranslation = process.recent_events.find((e) => e.translation)?.translation
+            return latestTranslation?.process_phase ? (
+              <ProcessJourney
+                currentPhase={latestTranslation.process_phase}
+                progress={latestTranslation.process_phase_progress}
+              />
+            ) : null
+          })()}
+
           {process.value != null && (
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Valor da causa:</span>{' '}

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle, Crown } from 'lucide-react'
+import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -76,7 +76,7 @@ export default function ConfiguracoesPage() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
 
-  const isAutonomo = subscription?.plan_id === 'autonomo' && subscription?.status === 'active'
+  // const isAutonomo = subscription?.plan_id === 'autonomo' && subscription?.status === 'active'
 
   // Refresh user data on mount
   useEffect(() => {
