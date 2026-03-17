@@ -1,16 +1,5 @@
 services:
   # =============================================================================
-  # INFRASTRUCTURE
-  # =============================================================================
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    networks:
-      - processa-network
-
-  # =============================================================================
   # APPLICATIONS
   # =============================================================================
 
@@ -51,10 +40,6 @@ services:
       # Stripe
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      # Redis
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
-      - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
       # Google (Calendar Integration)
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -73,8 +58,6 @@ services:
       - SUPPORT_EMAIL=${SUPPORT_EMAIL}
     networks:
       - processa-network
-    depends_on:
-      - redis
 
   # =============================================================================
   # SERVICES
@@ -91,10 +74,6 @@ services:
       # Supabase
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      # Redis
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - JOBS_QUEUE_KEY=${JOBS_QUEUE_KEY:-jobs}
-      - JOB_STATUS_TTL_S=${JOB_STATUS_TTL_S:-86400}
       # AI Providers
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
@@ -110,8 +89,6 @@ services:
       - PORT=8001
     networks:
       - processa-network
-    depends_on:
-      - redis
     deploy:
       replicas: 1  # Can be scaled horizontally
 

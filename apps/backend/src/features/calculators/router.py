@@ -2,7 +2,6 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from src.core.worker_store import add_worker_job_event, create_worker_job
 from src.core.auth import require_internal_auth
 from src.core.calc_engine_store import (
     create_calculation,
@@ -12,7 +11,8 @@ from src.core.calc_engine_store import (
     mark_calculation_failed,
 )
 from src.core.logging import logger
-from src.core.queue import enqueue_job, set_job_status
+from src.core.queue import enqueue_job
+from src.core.worker_store import add_worker_job_event, create_worker_job
 from src.features.billing.credits.service import credits_service
 from src.features.calculators.schemas import (
     AposentadoriaRequest,
@@ -40,20 +40,14 @@ async def _enqueue_calculator_pdf(
     input_payload: dict,
     output_payload: dict,
 ) -> str:
-    """Create an ai_jobs record and enqueue a calculator PDF job to Redis.
+    """Create a worker_jobs record and enqueue a calculator PDF job.
 
     Returns the job_id string (e.g. "calc:<uuid>").
     """
     job_uuid = uuid.uuid4()
     job_id = f"calc:{job_uuid}"
 
-    # Set initial status in Redis
-    try:
-        await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
-    except Exception:
-        logger.exception("Failed to persist queued status in Redis for calculator job")
-
-    # Create job record in DB (reuse ai_jobs table)
+    # Create job record in DB
     try:
         await create_worker_job(
             job_uuid=job_uuid,
@@ -74,7 +68,7 @@ async def _enqueue_calculator_pdf(
             detail="Erro ao criar job de geração de PDF",
         )
 
-    # Enqueue to Redis for worker consumption
+    # Enqueue for worker consumption
     await enqueue_job(
         {
             "job_id": job_id,

@@ -1,12 +1,11 @@
 """Processa AI - Async Job Worker
 
-This worker processes jobs from a Redis queue for:
+Processes jobs from a PostgreSQL queue for:
 - AI jobs (CNIS analysis, Process Summary)
 - Office jobs (Google Calendar sync, etc.)
 """
 
 import asyncio
-import base64
 import hashlib
 import uuid
 
@@ -18,32 +17,21 @@ from src.core.ai_worker_store import (
     mark_job_processing,
     parse_job_uuid,
 )
+from src.core.config import settings
+from src.core.db import init_db
+from src.core.logging import logger
+from src.core.progress import ProgressReporter
+from src.core.queue import dequeue_job, dequeue_translation_job
 from src.core.worker_store import (
     add_worker_job_event,
     create_calculator_document,
     mark_worker_job_completed,
     mark_worker_job_failed,
     mark_worker_job_processing,
-    update_worker_job_progress,
 )
-from src.core.db import init_db
-from src.core.logging import logger
-from src.core.progress import ProgressReporter
-from src.core.queue import dequeue_job, dequeue_translation_job, set_job_status
 from src.handlers.ai_service import AiService
 
 ai_service = AiService()
-
-
-def _encode_bytes(b: bytes) -> str:
-    return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
-
-
-async def _safe_set_job_status(job_id: str, status_payload: dict) -> None:
-    try:
-        await set_job_status(job_id, status_payload)
-    except Exception:
-        logger.exception("Failed to persist job status in Redis")
 
 
 # Costs mapping (must match backend/src/features/billing/credits/constants.py)
@@ -76,10 +64,6 @@ async def _validate_job_basic(job: dict) -> tuple[str, uuid.UUID | None, str, di
 
     job_type = str(job.get("type") or "").strip()
     if job_type not in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner"):
-        await _safe_set_job_status(
-            job_id,
-            {"job_id": job_id, "status": "failed", "error": "Tipo inválido"},
-        )
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Tipo inválido")
@@ -90,10 +74,6 @@ async def _validate_job_basic(job: dict) -> tuple[str, uuid.UUID | None, str, di
 
     payload = job.get("payload")
     if not isinstance(payload, dict):
-        await _safe_set_job_status(
-            job_id,
-            {"job_id": job_id, "status": "failed", "error": "Payload inválido"},
-        )
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Payload inválido")
@@ -123,10 +103,6 @@ async def _prepare_files(
 
         # process_summary requires at least one file
         if job_type == "process_summary" and not file_urls:
-            await _safe_set_job_status(
-                job_id,
-                {"job_id": job_id, "status": "failed", "error": "Nenhum arquivo enviado"},
-            )
             if job_uuid:
                 try:
                     await mark_job_failed(job_uuid=job_uuid, error="Nenhum arquivo enviado")
@@ -192,7 +168,6 @@ async def _execute_ai_service(
     functionality = str(payload.get("functionality") or "ai").strip()
 
     # Mark as processing
-    await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 5})
     if job_uuid:
         try:
             await mark_job_processing(job_uuid=job_uuid, progress=5)
@@ -266,10 +241,6 @@ async def _handle_failure(
 ) -> None:
     """Handle job failure, cleanup files, and refund credits."""
     err = str(getattr(e, "detail", None) or str(e) or "Erro")
-    await _safe_set_job_status(
-        job_id,
-        {"job_id": job_id, "status": "failed", "progress": 100, "error": err},
-    )
     if job_uuid:
         try:
             # 1. Mark job as failed in DB
@@ -327,7 +298,6 @@ async def _save_results(
     store_pdf = bool(payload.get("store_pdf"))
     input_document_id = payload.get("input_document_id")
 
-    status: dict = {"job_id": job_id, "status": "completed", "progress": 100}
     result_payload: dict = {}
 
     input_hash = result.get("input_hash")
@@ -336,10 +306,6 @@ async def _save_results(
 
     structured_summary = result.get("structured_summary")
     if structured_summary is not None and isinstance(structured_summary, dict):
-        status["result"] = {
-            **(status.get("result") or {}),
-            "structured_summary": structured_summary,
-        }
         result_payload["structured_summary"] = structured_summary
 
     # Persist Gemini structured JSON (used by CNIS analysis cache)
@@ -388,7 +354,6 @@ async def _save_results(
                 doc_id = None
 
             if doc_id:
-                # Generate signed URL for the output document so frontend can preview it immediately
                 try:
                     from src.core.storage import StorageService
 
@@ -396,49 +361,18 @@ async def _save_results(
                     download_url = await storage.generate_signed_url(
                         bucket=bucket,
                         storage_path=storage_path,
-                        expires_in=3600,  # 1 hour preview
+                        expires_in=3600,
                     )
-                    status["result"] = {
-                        **(status.get("result") or {}),
-                        "document_id": str(doc_id),
-                        "download_url": download_url,
-                    }
                     result_payload["download_url"] = download_url
                 except Exception as e:
                     logger.warning(f"Failed to generate preview URL for output document: {e}")
-                    # Fallback to just document_id
-                    status["result"] = {
-                        **(status.get("result") or {}),
-                        "document_id": str(doc_id),
-                    }
 
                 result_payload["document_id"] = str(doc_id)
                 logger.info("Output document saved: %s", doc_id)
             else:
-                status["result"] = {
-                    **(status.get("result") or {}),
-                    "bucket": bucket,
-                    "storage_path": storage_path,
-                }
                 result_payload["bucket"] = bucket
                 result_payload["storage_path"] = storage_path
-        else:
-            if isinstance(pdf_bytes, (bytes, bytearray)):
-                status["result"] = {
-                    **(status.get("result") or {}),
-                    "content": _encode_bytes(bytes(pdf_bytes)),
-                }
-                result_payload["content_storage"] = "redis"
-    else:
-        content = result.get("content")
-        if isinstance(content, (bytes, bytearray)):
-            status["result"] = {
-                **(status.get("result") or {}),
-                "content": _encode_bytes(bytes(content)),
-            }
-            result_payload["content_storage"] = "redis"
 
-    await _safe_set_job_status(job_id, status)
     if job_uuid:
         try:
             await mark_job_completed(job_uuid=job_uuid, result_payload=result_payload)
@@ -476,10 +410,6 @@ async def _handle_ai_job(job: dict) -> None:
         logger.info("file_url: %s", file_url)
         logger.info("user_id: %s", user_id)
 
-        await _safe_set_job_status(
-            job_id,
-            {"job_id": job_id, "status": "failed", "error": "Dados inválidos"},
-        )
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Dados inválidos")
@@ -491,10 +421,6 @@ async def _handle_ai_job(job: dict) -> None:
         return
 
     if not user_id:
-        await _safe_set_job_status(
-            job_id,
-            {"job_id": job_id, "status": "failed", "error": "user_id obrigatório"},
-        )
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
@@ -526,9 +452,6 @@ async def _handle_calculator_job(job: dict) -> None:
     job_type = str(job.get("type") or "").strip()
     payload = job.get("payload")
     if not isinstance(payload, dict):
-        await _safe_set_job_status(
-            job_id, {"job_id": job_id, "status": "failed", "error": "Payload inválido"}
-        )
         return
 
     job_uuid: uuid.UUID | None = None
@@ -549,9 +472,6 @@ async def _handle_calculator_job(job: dict) -> None:
     calculator_key = str(payload.get("calculator_key") or "").strip()
 
     if not user_id:
-        await _safe_set_job_status(
-            job_id, {"job_id": job_id, "status": "failed", "error": "user_id obrigatório"}
-        )
         if job_uuid:
             try:
                 await mark_worker_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
@@ -560,7 +480,6 @@ async def _handle_calculator_job(job: dict) -> None:
         return
 
     # Mark as processing
-    await _safe_set_job_status(job_id, {"job_id": job_id, "status": "processing", "progress": 10})
     if job_uuid:
         try:
             await mark_worker_job_processing(job_uuid=job_uuid, progress=10)
@@ -589,11 +508,6 @@ async def _handle_calculator_job(job: dict) -> None:
 
         if not pdf_bytes or not pdf_bytes.lstrip().startswith(b"%PDF"):
             raise RuntimeError("Falha ao gerar PDF do relatório")
-
-        # Update progress
-        await _safe_set_job_status(
-            job_id, {"job_id": job_id, "status": "processing", "progress": 60}
-        )
 
         # Upload to Supabase Storage
         from src.core.storage import StorageService
@@ -670,15 +584,6 @@ async def _handle_calculator_job(job: dict) -> None:
             result_payload["download_url"] = download_url
             status_result["download_url"] = download_url
 
-        await _safe_set_job_status(
-            job_id,
-            {
-                "job_id": job_id,
-                "status": "completed",
-                "progress": 100,
-                "result": status_result,
-            },
-        )
         if job_uuid:
             try:
                 await mark_worker_job_completed(job_uuid=job_uuid, result_payload=result_payload)
@@ -691,9 +596,6 @@ async def _handle_calculator_job(job: dict) -> None:
     except Exception as e:
         err = str(getattr(e, "detail", None) or str(e) or "Erro ao gerar PDF")
         logger.exception("Calculator job failed: %s", err)
-        await _safe_set_job_status(
-            job_id, {"job_id": job_id, "status": "failed", "progress": 100, "error": err}
-        )
         if job_uuid:
             try:
                 await mark_worker_job_failed(job_uuid=job_uuid, error=err)
@@ -768,15 +670,7 @@ async def _handle_office_job(job: dict) -> None:
     job_type = str(job.get("type") or "").strip()
 
     logger.info("Processing office job: %s (type: %s)", job_id, job_type)
-
-    await _safe_set_job_status(
-        job_id,
-        {
-            "job_id": job_id,
-            "status": "failed",
-            "error": f"Office job type '{job_type}' not implemented yet",
-        },
-    )
+    logger.warning("Office job type '%s' not implemented yet", job_type)
 
 
 async def _handle_rag_ingest_job(job: dict) -> None:
@@ -788,17 +682,8 @@ async def _handle_rag_ingest_job(job: dict) -> None:
 
     try:
         await handle_rag_ingest(job)
-        if job_id:
-            await _safe_set_job_status(
-                job_id, {"job_id": job_id, "status": "completed", "progress": 100}
-            )
-    except Exception as e:
+    except Exception:
         logger.exception("RAG ingest job failed: %s", job_id)
-        if job_id:
-            await _safe_set_job_status(
-                job_id,
-                {"job_id": job_id, "status": "failed", "error": str(e)[:500]},
-            )
 
 
 async def _handle_job(job: dict) -> None:
@@ -821,12 +706,7 @@ async def _handle_job(job: dict) -> None:
         await _handle_office_job(job)
         return
 
-    job_id = str(job.get("job_id") or "").strip()
-    if job_id:
-        await _safe_set_job_status(
-            job_id,
-            {"job_id": job_id, "status": "failed", "error": f"Unknown job type: {job_type}"},
-        )
+    logger.warning("Unknown job type: %s", job_type)
 
 
 async def _run_ai_worker() -> None:
@@ -834,8 +714,9 @@ async def _run_ai_worker() -> None:
     logger.info("Processa AI Worker started - waiting for jobs...")
 
     while True:
-        job = await dequeue_job(timeout_s=5)
+        job = await dequeue_job()
         if not job:
+            await asyncio.sleep(settings.POLL_INTERVAL_S)
             continue
 
         job_id = job.get("job_id", "unknown")
@@ -855,8 +736,9 @@ async def _run_translation_worker() -> None:
     logger.info("Translation Worker started - waiting for translation jobs...")
 
     while True:
-        job = await dequeue_translation_job(timeout_s=2)
+        job = await dequeue_translation_job()
         if not job:
+            await asyncio.sleep(settings.TRANSLATION_POLL_INTERVAL_S)
             continue
 
         job_type = job.get("job_type", "unknown")

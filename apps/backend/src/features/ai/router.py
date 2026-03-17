@@ -12,8 +12,9 @@ from src.core.ai_worker_store import (
 )
 from src.core.auth import get_user_id, require_internal_auth
 from src.core.logging import logger
-from src.core.queue import get_job_status
 from src.core.worker_store import get_worker_job_status
+from src.features.ai.chat.router import router as chat_router
+from src.features.ai.knowledge_base.router import router as kb_router
 from src.features.ai.schemas import (
     AiToolResponse,
     AiToolsListResponse,
@@ -27,8 +28,6 @@ from src.features.ai.schemas import (
     JobStatusResponse,
     ProcessSummaryRequest,
 )
-from src.features.ai.chat.router import router as chat_router
-from src.features.ai.knowledge_base.router import router as kb_router
 from src.features.ai.service import AiJobService
 from src.features.core.storage.service import StorageService
 
@@ -342,13 +341,6 @@ async def get_ai_job(
                 }
         except Exception:
             logger.exception("Failed to load job status from database")
-
-    if not current:
-        try:
-            current = await get_job_status(jid)
-        except Exception:
-            logger.exception("Failed to load job status from Redis")
-            current = None
 
     if not current:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado")

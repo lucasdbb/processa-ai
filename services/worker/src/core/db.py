@@ -17,6 +17,9 @@ async def init_db() -> None:
         min_size=1,
         max_size=5,
         open=False,
+        kwargs={
+            "prepare_threshold": None,
+        },
     )
     await _pool.open()
     logger.info("Database connection pool initialized")

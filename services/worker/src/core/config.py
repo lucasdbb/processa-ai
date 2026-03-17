@@ -24,11 +24,9 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
 
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
-    JOBS_QUEUE_KEY: str = "jobs"
-    TRANSLATION_QUEUE_KEY: str = "translation_queue"
-    JOB_STATUS_TTL_S: int = 86400
+    # Queue polling
+    POLL_INTERVAL_S: float = 1.0
+    TRANSLATION_POLL_INTERVAL_S: float = 0.5
 
     # AI Providers
     OPENAI_API_KEY: str = ""

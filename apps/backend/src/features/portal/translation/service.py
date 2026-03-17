@@ -14,7 +14,7 @@ class TranslationService:
     async def enqueue_translation(self, conn, timeline_event_id: str) -> bool:
         """
         Verifica se o processo do evento tem cliente vinculado.
-        Se sim, enfileira job de tradução no Redis.
+        Se sim, enfileira job de tradução.
         Retorna True se enfileirado, False caso contrário.
         """
         async with conn.cursor(row_factory=dict_row) as cur:

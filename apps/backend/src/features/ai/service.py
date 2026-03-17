@@ -11,7 +11,7 @@ from src.core.ai_worker_store import (
     update_job_payload,
 )
 from src.core.logging import logger
-from src.core.queue import enqueue_job, set_job_status
+from src.core.queue import enqueue_job
 from src.features.billing.credits.service import CreditsService
 from src.features.core.storage.service import StorageService
 
@@ -55,13 +55,7 @@ class AiJobService:
             job_uuid = uuid4()
         job_id = f"ai:{job_uuid}"
 
-        # 3. Status inicial no Redis
-        try:
-            await set_job_status(job_id, {"job_id": job_id, "status": "queued", "progress": 0})
-        except Exception:
-            logger.exception("Failed to persist queued status in Redis")
-
-        # 4. Payload base
+        # 3. Payload base
         base_payload = {
             "job_id": job_id,
             "user_id": user_id,
@@ -178,7 +172,7 @@ class AiJobService:
 
             await update_job_payload(job_uuid=job_uuid, request_payload=final_payload)
 
-            # 8. Enfileirar Job no Redis (Worker)
+            # 8. Enfileirar Job (Worker)
             await enqueue_job(
                 {
                     "job_id": job_id,

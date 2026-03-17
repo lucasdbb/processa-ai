@@ -23,12 +23,6 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
 
-    # Redis (for job queue)
-    REDIS_URL: str = "redis://localhost:6379/0"
-    JOBS_QUEUE_KEY: str = "jobs"
-    TRANSLATION_QUEUE_KEY: str = "translation_queue"
-    JOB_STATUS_TTL_S: int = 86400
-
     # Google Integration
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
