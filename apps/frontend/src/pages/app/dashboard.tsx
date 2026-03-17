@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
 import {
   Users,
   FolderKanban,
@@ -15,15 +14,6 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/features/auth/hooks/use-user'
-import {
-  dashboardService,
-  type DashboardStats,
-  type UpcomingDeadline,
-  type FinancialStats,
-  type ProcessesSummary,
-  type ActivityItem,
-} from '@/services/dashboard-service'
-import { servicesService } from '@/services/services-service'
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
 import { TourButton } from '@/features/onboarding/tour-button'
 import { RevenueChart } from '@/components/charts/revenue-chart'
@@ -33,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { PartyPopper } from 'lucide-react'
 import { useOnboardingStore } from '@/features/onboarding/store'
+import { useDashboardData } from '@/hooks/use-dashboard-data'
 
 interface StatCard {
   name: string
@@ -59,45 +50,17 @@ const ACTIVITY_ICONS: Record<string, typeof Clock> = {
 export default function DashboardPage() {
   const { user } = useUser()
   const firstName = user?.name?.split(' ')[0] || 'Usuario'
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>([])
-  const [financial, setFinancial] = useState<FinancialStats | null>(null)
-  const [processesSummary, setProcessesSummary] = useState<ProcessesSummary | null>(null)
-  const [activity, setActivity] = useState<ActivityItem[]>([])
-  const [servicesCount, setServicesCount] = useState<number>(0)
   const { openWelcomeModal } = useOnboardingStore()
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setLoading(true)
-        const [statsData, deadlinesData, financialData, processesData, activityData, servicesData] =
-          await Promise.all([
-            dashboardService.getStats(),
-            dashboardService.getUpcomingDeadlines(5),
-            dashboardService.getFinancialStats().catch(() => null),
-            dashboardService.getProcessesSummary().catch(() => null),
-            dashboardService.getRecentActivity(8).catch(() => []),
-            servicesService.count().catch(() => ({ total: 0 })),
-          ])
-        setStats(statsData)
-        setDeadlines(deadlinesData)
-        setFinancial(financialData)
-        setProcessesSummary(processesData)
-        setActivity(activityData)
-        setServicesCount(servicesData.total)
-      } catch (error) {
-        console.error('Failed to load dashboard data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (user) {
-      loadDashboardData()
-    }
-  }, [user])
+  const {
+    stats,
+    deadlines,
+    financial,
+    processesSummary,
+    activity,
+    servicesCount,
+    isLoading,
+  } = useDashboardData()
 
   const statCards: StatCard[] = stats
     ? [
@@ -145,7 +108,7 @@ export default function DashboardPage() {
       ]
     : []
 
-  if (loading) {
+  if (isLoading) {
     return <DashboardSkeleton />
   }
   

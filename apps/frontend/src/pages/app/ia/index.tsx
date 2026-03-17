@@ -47,6 +47,9 @@ export default function IAHubPage() {
     return allTools.find((t) => t.slug === activeSlug) || null
   }, [activeSlug, allTools])
 
+  // Reset client when changing tool if needed (optional)
+  // useEffect(() => setSelectedClientId(null), [activeSlug])
+
   const showLayoutToggle = useMemo(() => {
     if (!currentTool) return false
     const toolsWithLayout = ['cnis', 'scanner', 'process_summary', 'labor_claim']
@@ -84,6 +87,10 @@ export default function IAHubPage() {
 
   if (isAuthLoading || isLoadingTools) {
     return <LoadingSpinner fullScreen size="lg" />
+  }
+
+  const handleToolChange = (slug: string) => {
+    navigate(`/app/ia/${slug}`, { replace: true })
   }
 
   const tipsButton = (
@@ -128,7 +135,7 @@ export default function IAHubPage() {
           <p className="text-muted-foreground mt-1">Selecione uma opção no menu lateral e tente novamente.</p>
         </div>
         <button
-          onClick={() => navigate('/app/ia')}
+          onClick={() => navigate('/app/ia', { replace: true })}
           className="inline-flex items-center gap-2 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
           Voltar para IA Jurídica
@@ -137,17 +144,22 @@ export default function IAHubPage() {
     )
   }
 
+  // Memoize the header content so it doesn't re-render on navigation
+  const headerContent = useMemo(() => (
+    <div className="flex items-start justify-between gap-4 flex-shrink-0">
+      <div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground">IA Juridica</h1>
+          {tipsButton}
+        </div>
+        <p className="text-muted-foreground mt-1">Escolha uma ferramenta no menu lateral e comece a usar.</p>
+      </div>
+    </div>
+  ), [])
+
   return (
     <div className="h-[calc(100vh-160px)] flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4 flex-shrink-0">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">IA Juridica</h1>
-            {tipsButton}
-          </div>
-          <p className="text-muted-foreground mt-1">Escolha uma ferramenta no menu lateral e comece a usar.</p>
-        </div>
-      </div>
+      {headerContent}
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-4 flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
@@ -160,7 +172,7 @@ export default function IAHubPage() {
                 <div className="relative">
                   <select
                     value={activeSlug}
-                    onChange={(e) => navigate(`/app/ia/${e.target.value}`)}
+                    onChange={(e) => handleToolChange(e.target.value)}
                     className="appearance-none pl-3 pr-8 py-1.5 bg-muted border border-border rounded-lg text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                   >
                     {allTools.filter((t) => !t.locked).map((t) => (

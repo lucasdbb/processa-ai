@@ -35,7 +35,7 @@ export interface ClientUpdate extends Partial<ClientCreate> {
 
 export interface ClientListParams {
   search?: string;
-  status?: "active" | "inactive" | "archived";
+  status?: "active" | "inactive" | "archived" | "all";
   limit?: number;
   offset?: number;
 }
@@ -95,7 +95,7 @@ export const clientsService = {
   async list(params?: ClientListParams): Promise<ClientListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set("search", params.search);
-    if (params?.status) searchParams.set("status", params.status);
+    if (params?.status && params.status !== "all") searchParams.set("status", params.status);
     if (params?.limit) searchParams.set("limit", params.limit.toString());
     if (params?.offset) searchParams.set("offset", params.offset.toString());
 

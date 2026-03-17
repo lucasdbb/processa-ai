@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
+import { useEffect, useRef, useState, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle, CheckCircle2, DollarSign, Edit, FileText, MoreVertical, Plus, Trash2, Wallet, Handshake } from 'lucide-react'
 import { toast } from 'sonner'
@@ -6,10 +6,12 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { analytics } from '@/lib/analytics'
-import { servicesService, type ServiceDetail } from '@/services/services-service'
+import { servicesService } from '@/services/services-service'
 import { documentsService, type Document } from '@/services/documents-service'
 import { ServiceFormDialog } from '@/components/forms/service-form-dialog'
 import { DocumentFormDialog } from '@/components/forms/document-form-dialog'
+import { useServiceDetail } from '@/hooks/use-services'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 type Tab = 'resumo' | 'documentos'
 
@@ -76,11 +78,8 @@ const formatFileSize = (bytes: number) => {
 export default function ServicoDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
-  const [service, setService] = useState<ServiceDetail | null>(null)
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDocumentDialog, setShowDocumentDialog] = useState(false)
   const [editingDocument, setEditingDocument] = useState<Document | null>(null)
@@ -88,44 +87,21 @@ export default function ServicoDetalhePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const actionsMenuRef = useRef<HTMLDivElement>(null)
 
-  const fetchService = useCallback(async () => {
-    if (!id) return
-    setIsLoading(true)
-    try {
-      const data = await servicesService.getDetail(id)
-      setService(data)
-    } catch (error) {
-      console.error('Error fetching service:', error)
+  const { data: service, isLoading, isError } = useServiceDetail(id || '')
+
+  useEffect(() => {
+    if (isError) {
       toast.error('Erro ao carregar serviço')
       navigate('/app/servicos')
-    } finally {
-      setIsLoading(false)
     }
-  }, [id, navigate])
+  }, [isError, navigate])
 
-  const fetchDocuments = useCallback(async () => {
-    if (!id) return
-    setIsLoadingDocuments(true)
-    try {
-      const response = await documentsService.list({ service_id: id })
-      setDocuments(response.documents)
-    } catch (error) {
-      console.error('Error fetching documents:', error)
-      toast.error('Erro ao carregar documentos')
-    } finally {
-      setIsLoadingDocuments(false)
-    }
-  }, [id])
-
-  useEffect(() => {
-    fetchService()
-  }, [fetchService])
-
-  useEffect(() => {
-    if (activeTab === 'documentos') {
-      fetchDocuments()
-    }
-  }, [activeTab, fetchDocuments])
+  const { data: documentsResponse, isLoading: isLoadingDocuments } = useQuery({
+    queryKey: ['documents', 'service', id],
+    queryFn: () => documentsService.list({ service_id: id! }),
+    enabled: !!id && activeTab === 'documentos',
+  })
+  const documents = documentsResponse?.documents ?? []
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -141,7 +117,7 @@ export default function ServicoDetalhePage() {
     try {
       await servicesService.update(id!, data)
       toast.success('Serviço atualizado')
-      fetchService()
+      await queryClient.invalidateQueries({ queryKey: ['services', 'detail', id] })
       setShowEditDialog(false)
     } catch (error) {
       console.error('Error updating service:', error)
@@ -174,11 +150,8 @@ export default function ServicoDetalhePage() {
         }
         toast.success('Documento criado')
       }
-      fetchDocuments()
-      if (service) {
-        const updatedService = await servicesService.getDetail(id!)
-        setService(updatedService)
-      }
+      await queryClient.invalidateQueries({ queryKey: ['documents', 'service', id] })
+      await queryClient.invalidateQueries({ queryKey: ['services', 'detail', id] })
       setShowDocumentDialog(false)
       setEditingDocument(null)
     } catch (error) {
@@ -214,11 +187,8 @@ export default function ServicoDetalhePage() {
       await documentsService.delete(docId)
       analytics.track('office_action', { entity: 'document', action: 'deleted' })
       toast.success('Documento excluído')
-      fetchDocuments()
-      if (service) {
-        const updatedService = await servicesService.getDetail(id!)
-        setService(updatedService)
-      }
+      await queryClient.invalidateQueries({ queryKey: ['documents', 'service', id] })
+      await queryClient.invalidateQueries({ queryKey: ['services', 'detail', id] })
     } catch (error) {
       console.error('Error deleting document:', error)
       toast.error('Erro ao excluir documento')

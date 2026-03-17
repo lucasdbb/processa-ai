@@ -58,9 +58,10 @@ export interface ProcessUpdate extends Partial<
 
 export interface ProcessListParams {
   search?: string;
-  status?: "active" | "concluded" | "cancelled";
+  status?: "active" | "concluded" | "cancelled" | "all";
   client_id?: string;
   tribunal?: string;
+  process_category?: string;
   is_partnership?: boolean;
   limit?: number;
   offset?: number;
@@ -127,9 +128,10 @@ export const processesService = {
   async list(params?: ProcessListParams): Promise<ProcessListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set("search", params.search);
-    if (params?.status) searchParams.set("status", params.status);
+    if (params?.status && params.status !== "all") searchParams.set("status", params.status);
     if (params?.client_id) searchParams.set("client_id", params.client_id);
-    if (params?.tribunal) searchParams.set("tribunal", params.tribunal);
+    if (params?.tribunal && params.tribunal !== "all") searchParams.set("tribunal", params.tribunal);
+    if (params?.process_category && params.process_category !== "all") searchParams.set("process_category", params.process_category);
     if (params?.is_partnership !== undefined) searchParams.set("is_partnership", params.is_partnership.toString());
     if (params?.limit) searchParams.set("limit", params.limit.toString());
     if (params?.offset) searchParams.set("offset", params.offset.toString());

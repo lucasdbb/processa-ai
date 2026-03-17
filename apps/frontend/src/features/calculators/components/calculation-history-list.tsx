@@ -59,7 +59,9 @@ export function CalculationHistoryList({
   refreshKey,
 }: CalculationHistoryListProps) {
   const { user } = useUser()
-  const { calculations, isLoading, error, refetch } = useCalculationHistory(calculatorKey, clientId, refreshKey)
+  const { data: calculationsData, isLoading, error, refetch } = useCalculationHistory(calculatorKey, clientId, refreshKey)
+  const calculations = calculationsData ?? []
+  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [pdfUrl, setPdfUrl] = useState<string | undefined>()
   const [modalTitle, setModalTitle] = useState('')
@@ -169,7 +171,7 @@ export function CalculationHistoryList({
   if (error) {
     return (
       <div className="p-4 text-center text-red-500 bg-red-50 dark:bg-red-950/20 rounded-lg">
-        Erro ao carregar histórico: {error}
+        Erro ao carregar histórico: {error.message}
       </div>
     )
   }

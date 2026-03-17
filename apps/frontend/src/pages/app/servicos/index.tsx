@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, Briefcase, ChevronDown, Handshake } from 'lucide-react'
 import { toast } from 'sonner'
@@ -17,6 +17,9 @@ import { GenericKanban } from '@/components/kanban/generic-kanban'
 import { ServiceCard } from '@/components/kanban/service-card'
 import { PageLayout } from '@/components/layout/page-layout'
 import { ClientSelect } from '@/components/ui/client-select'
+import { useServices } from '@/hooks/use-services'
+import { useDebounce } from '@/hooks/use-debounce'
+import { useQueryClient, useMutation } from '@tanstack/react-query'
 
 const CATEGORIES: ServiceCategory[] = [
   'previdenciario',
@@ -80,40 +83,37 @@ export default function ServicosPage() {
   type SaveServicePayload = Parameters<ComponentProps<typeof ServiceFormDialog>['onSave']>[0]
 
   const [editingService, setEditingService] = useState<Service | undefined>(undefined)
+  const queryClient = useQueryClient()
+  const debouncedSearch = useDebounce(search, 300)
 
-  const [services, setServices] = useState<Service[]>([])
-  const [total, setTotal] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
+  const isPartnership = 
+    partnershipFilter === 'partnership' ? true : 
+    partnershipFilter === 'own' ? false : 
+    undefined;
 
-  const fetchServices = useCallback(async (searchQuery: string, statusFilter: string, catFilter: string, partnership: string, mode: 'list' | 'kanban') => {
-    setIsLoading(true)
-    try {
-      // In Kanban mode, we want all statuses to populate columns
-      // In List mode, we respect the filter
-      const status = (mode === 'list' && statusFilter !== 'all') ? (statusFilter as ServiceStatus) : undefined
-      const category = catFilter !== 'all' ? (catFilter as ServiceCategory) : undefined
-      const isPartnership = partnership === 'partnership' ? true : partnership === 'own' ? false : undefined
+  const { data, isLoading } = useServices({
+    search: debouncedSearch,
+    status: viewMode === 'list' ? filter : 'all',
+    category: categoryFilter,
+    isPartnership,
+    clientId: selectedClientId || undefined,
+  })
 
-      const res = await servicesService.list(undefined, category, status, searchQuery.trim(), isPartnership)
+  const services = data?.services ?? []
+  const total = data?.total ?? 0
 
-      setServices(res.services)
-      setTotal(res.total)
-    } catch {
-      setServices([])
-      setTotal(0)
-      toast.error('Erro ao carregar serviços')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      void fetchServices(search, filter, categoryFilter, partnershipFilter, viewMode)
-    }, search ? 300 : 0)
-
-    return () => clearTimeout(timeout)
-  }, [search, filter, categoryFilter, partnershipFilter, viewMode, fetchServices])
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return servicesService.update(id, { status: status as ServiceStatus })
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Serviço movido para ${SERVICE_COLUMNS[variables.status]}`)
+      void queryClient.invalidateQueries({ queryKey: ['services'] })
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar status do serviço')
+    },
+  })
 
   const handleSaveService = async (serviceData: SaveServicePayload) => {
     try {
@@ -146,7 +146,7 @@ export default function ServicosPage() {
       }
       setIsFormOpen(false)
       setEditingService(undefined)
-      void fetchServices(search, filter, categoryFilter, partnershipFilter, viewMode)
+      await queryClient.invalidateQueries({ queryKey: ['services'] })
     } catch {
       toast.error('Erro ao salvar serviço')
     }
@@ -308,20 +308,17 @@ export default function ServicosPage() {
       ) : viewMode === 'kanban' ? (
         <div className="h-[calc(100vh-280px)] min-h-[500px]">
           <GenericKanban
-            items={services}
+            items={filteredServices}
             columns={SERVICE_COLUMNS}
             columnOrder={SERVICE_COLUMN_ORDER}
             onStatusChange={async (item, newStatus) => {
-              try {
-                await servicesService.update(item.id, { status: newStatus as any })
-                toast.success(`Serviço movido para ${SERVICE_COLUMNS[newStatus]}`)
-              } catch {
-                toast.error('Erro ao atualizar status do serviço')
-                void fetchServices(search, filter, categoryFilter, partnershipFilter, viewMode)
-              }
+              await updateStatusMutation.mutateAsync({ id: item.id, status: newStatus as ServiceStatus })
             }}
             renderCard={(item, isDragging) => (
-              <ServiceCard service={item} isDragging={isDragging} />
+              <ServiceCard
+                service={item}
+                isDragging={isDragging}
+              />
             )}
           />
         </div>

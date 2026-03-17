@@ -91,22 +91,26 @@ export interface ServicesListResponse {
   total: number;
 }
 
+export interface ServicesListParams {
+  clientId?: string;
+  category?: ServiceCategory | "all";
+  status?: ServiceStatus | "all";
+  search?: string;
+  isPartnership?: boolean;
+}
+
 export const servicesService = {
   async list(
-    clientId?: string,
-    category?: ServiceCategory,
-    status?: ServiceStatus,
-    search?: string,
-    isPartnership?: boolean,
+    params?: ServicesListParams
   ): Promise<ServicesListResponse> {
-    const params = new URLSearchParams();
-    if (clientId) params.append("client_id", clientId);
-    if (category) params.append("category", category);
-    if (status) params.append("status", status);
-    if (search) params.append("search", search);
-    if (isPartnership !== undefined) params.append("is_partnership", isPartnership.toString());
+    const searchParams = new URLSearchParams();
+    if (params?.clientId) searchParams.append("client_id", params.clientId);
+    if (params?.category && params.category !== "all") searchParams.append("category", params.category);
+    if (params?.status && params.status !== "all") searchParams.append("status", params.status);
+    if (params?.search) searchParams.append("search", params.search);
+    if (params?.isPartnership !== undefined) searchParams.append("is_partnership", params.isPartnership.toString());
 
-    const url = `${API_URL}/office/services${params.toString() ? `?${params.toString()}` : ""}`;
+    const url = `${API_URL}/office/services${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
     const response = await fetchWithCredentials(url, {
       method: "GET",
     });

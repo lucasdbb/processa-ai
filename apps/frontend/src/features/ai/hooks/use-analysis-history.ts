@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 
@@ -26,17 +26,11 @@ const POLL_INTERVAL = 5000 // 5s when there are processing jobs
 
 export function useAnalysisHistory(functionality?: string, clientId?: string | null, refreshKey?: number) {
   const { user } = useUser()
-  const [jobs, setJobs] = useState<AnalysisJob[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const fetchJobs = useCallback(async () => {
-    if (!user) return
-
-    try {
-      setIsLoading(true)
-      let url = `${API_URL}/ai/jobs?user_id=${user.id}`
+  return useQuery({
+    queryKey: ['ai', 'jobs', functionality, clientId, refreshKey],
+    queryFn: async () => {
+      let url = `${API_URL}/ai/jobs?user_id=${user!.id}`
 
       if (functionality) {
         url += `&functionality=${functionality}`
@@ -53,47 +47,14 @@ export function useAnalysisHistory(functionality?: string, clientId?: string | n
       }
 
       const data = await response.json()
-      // O backend já retorna ordenado
-      setJobs(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro desconhecido')
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user, functionality, clientId])
-
-  // Initial fetch + refresh on key change
-  useEffect(() => {
-    fetchJobs()
-  }, [fetchJobs, refreshKey])
-
-  // Auto-poll when there are processing jobs
-  useEffect(() => {
-    const hasProcessing = jobs.some((j) => j.status === 'processing')
-
-    if (hasProcessing) {
-      // Start polling if not already
-      if (!pollRef.current) {
-        pollRef.current = setInterval(() => {
-          fetchJobs()
-        }, POLL_INTERVAL)
-      }
-    } else {
-      // Stop polling
-      if (pollRef.current) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-      }
-    }
-
-    return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-      }
-    }
-  }, [jobs, fetchJobs])
-
-  return { jobs, isLoading, error, refetch: fetchJobs }
+      return data as AnalysisJob[]
+    },
+    enabled: !!user,
+    // Polling is configured directly via react-query refetchInterval
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const hasProcessing = data?.some((j: AnalysisJob) => j.status === 'processing')
+      return hasProcessing ? POLL_INTERVAL : false
+    },
+  })
 }

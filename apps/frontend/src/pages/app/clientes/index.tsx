@@ -1,67 +1,35 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Mail, Phone, MapPin, User, SlidersHorizontal } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { phoneMask, cpfMask, cnpjMask, removeDocumentMask } from '@/lib/masks'
-import { clientsService, type Client } from '@/services/clients-service'
 import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ClientFormDialog } from '@/components/forms/client-form-dialog'
+import { useClients } from '@/hooks/use-clients'
+import { useDebounce } from '@/hooks/use-debounce'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
+  
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [showClientDialog, setShowClientDialog] = useState(false)
 
-  const [clients, setClients] = useState<Client[]>([])
-  const [total, setTotal] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
+  const queryClient = useQueryClient()
 
-  const fetchClients = useCallback(async (searchQuery: string, statusFilter: string) => {
-    setIsLoading(true)
-    try {
-      const params: {
-        limit: number
-        offset: number
-        search?: string
-        status?: 'active' | 'inactive'
-      } = {
-        limit: 50,
-        offset: 0,
-      }
+  const { data, isLoading } = useClients({
+    search: debouncedSearch,
+    status: filter,
+    limit: 50,
+    offset: 0,
+  })
 
-      if (searchQuery.trim()) params.search = searchQuery.trim()
-      if (statusFilter !== 'all') params.status = statusFilter as 'active' | 'inactive'
-
-      const data = await clientsService.list(params)
-      setClients(data.clients)
-      setTotal(data.total)
-    } catch {
-      setClients([])
-      setTotal(0)
-      toast.error('Erro ao carregar clientes')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      void fetchClients(search, filter)
-    }, search ? 300 : 0)
-
-    return () => clearTimeout(timeout)
-  }, [search, filter, fetchClients])
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      void fetchClients(search, filter)
-    }, search ? 300 : 0)
-
-    return () => clearTimeout(timeout)
-  }, [search, filter, fetchClients])
+  const clients = data?.clients ?? []
+  const total = data?.total ?? 0
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('pt-BR')
@@ -267,7 +235,7 @@ export default function ClientesPage() {
         onClose={() => setShowClientDialog(false)}
         onSave={async () => {
           setShowClientDialog(false)
-          await fetchClients(search, filter)
+          await queryClient.invalidateQueries({ queryKey: ['clients'] })
           toast.success('Cliente criado com sucesso!')
         }}
       />

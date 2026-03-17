@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Mail,
@@ -43,15 +43,21 @@ import {
   type ClientDetail,
 } from '@/services/clients-service'
 import { notesService, type Note } from '../../../services/notes-service'
-import { feesService, type Fee } from '@/services/fees-service'
-import { servicesService, type Service } from '@/services/services-service'
+import { type Fee } from '@/services/fees-service'
+import { type Service } from '@/services/services-service'
 import { inviteClient, revokeClientPortalAccess } from '@/services/portal-service'
+import { useClientDetail } from '@/hooks/use-clients'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { feesService } from '@/services/fees-service'
+import { servicesService } from '@/services/services-service'
 
 type Tab = 'resumo' | 'atividades' | 'financeiro' | 'notas'
 
 export default function ClienteDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
   const [showProcessDialog, setShowProcessDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -61,10 +67,6 @@ export default function ClienteDetalhePage() {
   const [editingNote, setEditingNote] = useState<Note | null>(null)
   const [editingFee, setEditingFee] = useState<Fee | null>(null)
   const [editingService, setEditingService] = useState<Service | null>(null)
-  const [fees, setFees] = useState<Fee[]>([])
-  const [services, setServices] = useState<Service[]>([])
-  const [isLoadingFees, setIsLoadingFees] = useState(false)
-  const [isLoadingServices, setIsLoadingServices] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState(false)
@@ -76,73 +78,34 @@ export default function ClienteDetalhePage() {
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const fabMenuRef = useRef<HTMLDivElement>(null)
 
-  const [client, setClient] = useState<ClientDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: client, isLoading, isError } = useClientDetail(id || '')
 
-  const fetchClient = useCallback(async () => {
-    if (!id) return
-    setIsLoading(true)
-    try {
-      const data = await clientsService.getDetail(id)
-      setClient(data)
-      setPortalStatus((data as unknown as { portal_status?: string }).portal_status ?? null)
-    } catch (error) {
-      console.error('Error fetching client:', error)
+  useEffect(() => {
+    if (client) {
+      setPortalStatus((client as unknown as { portal_status?: string }).portal_status ?? null)
+    }
+  }, [client])
+
+  useEffect(() => {
+    if (isError) {
       toast.error('Erro ao carregar cliente')
       navigate('/app/clientes')
-    } finally {
-      setIsLoading(false)
     }
-  }, [id, navigate])
+  }, [isError, navigate])
 
-  const fetchFees = useCallback(async () => {
-    if (!id) return
-    setIsLoadingFees(true)
-    try {
-      const response = await feesService.list(id)
-      setFees(response.fees)
-    } catch (error) {
-      console.error('Error fetching fees:', error)
-      toast.error('Erro ao carregar honorários')
-    } finally {
-      setIsLoadingFees(false)
-    }
-  }, [id])
+  const { data: feesResponse, isLoading: isLoadingFees } = useQuery({
+    queryKey: ['fees', 'client', id],
+    queryFn: () => feesService.list(id!),
+    enabled: !!id && activeTab === 'financeiro',
+  })
+  const fees = feesResponse?.fees ?? []
 
-  const fetchServices = useCallback(async () => {
-    if (!id) return
-    setIsLoadingServices(true)
-    try {
-      const response = await servicesService.list(id)
-      setServices(response.services)
-    } catch (error) {
-      console.error('Error fetching services:', error)
-      toast.error('Erro ao carregar serviços')
-    } finally {
-      setIsLoadingServices(false)
-    }
-  }, [id])
-
-  useEffect(() => {
-    void fetchClient()
-  }, [fetchClient])
-
-  useEffect(() => {
-    if (activeTab === 'financeiro') {
-      void fetchFees()
-      void fetchServices()
-    }
-  }, [activeTab, fetchFees, fetchServices])
-
-  useEffect(() => {
-    if (activeTab === 'atividades') {
-      void fetchServices()
-    }
-    // Carregar serviços também no resumo para mostrar "Serviços Recentes"
-    if (activeTab === 'resumo') {
-      void fetchServices()
-    }
-  }, [activeTab, fetchServices])
+  const { data: servicesResponse, isLoading: isLoadingServices } = useQuery({
+    queryKey: ['services', 'client', id],
+    queryFn: () => servicesService.list({ clientId: id! }),
+    enabled: !!id && (activeTab === 'financeiro' || activeTab === 'atividades' || activeTab === 'resumo'),
+  })
+  const services = servicesResponse?.services ?? []
 
   // Close actions menu on outside click
   useEffect(() => {
@@ -287,7 +250,8 @@ export default function ClienteDetalhePage() {
         })
         toast.success('Honorário criado com sucesso')
       }
-      await Promise.all([fetchClient(), fetchFees()])
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
+      await queryClient.invalidateQueries({ queryKey: ['fees', 'client', id] })
       setShowFeeDialog(false)
       setEditingFee(null)
     } catch (error) {
@@ -296,12 +260,12 @@ export default function ClienteDetalhePage() {
     }
   }
 
-  const handleSaveBatchFees = async (fees: Array<Partial<Fee>>) => {
+  const handleSaveBatchFees = async (feesList: Array<Partial<Fee>>) => {
     if (!id) return
 
     try {
       // Create all fees sequentially
-      for (const feeData of fees) {
+      for (const feeData of feesList) {
         await feesService.create({
           client_id: id,
           fee_type: feeData.fee_type!,
@@ -313,8 +277,9 @@ export default function ClienteDetalhePage() {
           notes: feeData.notes || null,
         })
       }
-      toast.success(`${fees.length} parcelas criadas com sucesso`)
-      await Promise.all([fetchClient(), fetchFees()])
+      toast.success(`${feesList.length} parcelas criadas com sucesso`)
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
+      await queryClient.invalidateQueries({ queryKey: ['fees', 'client', id] })
       setShowFeeDialog(false)
       setEditingFee(null)
     } catch (error) {
@@ -330,7 +295,8 @@ export default function ClienteDetalhePage() {
       await feesService.delete(feeId)
       analytics.track('office_action', { entity: 'fee', action: 'deleted' })
       toast.success('Honorário excluído com sucesso')
-      await Promise.all([fetchClient(), fetchFees()])
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
+      await queryClient.invalidateQueries({ queryKey: ['fees', 'client', id] })
     } catch (error) {
       console.error('Error deleting fee:', error)
       toast.error('Erro ao excluir honorário')
@@ -343,7 +309,8 @@ export default function ClienteDetalhePage() {
         status: 'paid',
       })
       toast.success('Honorário marcado como pago')
-      await Promise.all([fetchClient(), fetchFees()])
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
+      await queryClient.invalidateQueries({ queryKey: ['fees', 'client', id] })
     } catch (error) {
       console.error('Error marking fee as paid:', error)
       toast.error('Erro ao marcar como pago')
@@ -369,7 +336,8 @@ export default function ClienteDetalhePage() {
         })
         toast.success('Serviço criado com sucesso')
       }
-      await Promise.all([fetchClient(), fetchServices()])
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
+      await queryClient.invalidateQueries({ queryKey: ['services', 'client', id] })
       setShowServiceDialog(false)
       setEditingService(null)
     } catch (error) {
@@ -383,7 +351,7 @@ export default function ClienteDetalhePage() {
     try {
       await clientsService.update(id, { status: 'archived' })
       toast.success('Cliente arquivado com sucesso')
-      await fetchClient()
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
       setShowActionsMenu(false)
     } catch (error) {
       console.error('Error archiving client:', error)
@@ -398,6 +366,7 @@ export default function ClienteDetalhePage() {
       await clientsService.delete(id)
       analytics.track('office_action', { entity: 'client', action: 'deleted' })
       toast.success('Cliente excluído com sucesso')
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'list'] })
       navigate('/app/clientes')
     } catch (error) {
       console.error('Error deleting client:', error)
@@ -422,6 +391,7 @@ export default function ClienteDetalhePage() {
       setPortalStatus(result.portal_status)
       toast.success(result.message)
       setShowActionsMenu(false)
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
     } catch (error: unknown) {
       const msg = (error as { message?: string })?.message ?? 'Erro ao enviar convite'
       toast.error(msg)
@@ -438,6 +408,7 @@ export default function ClienteDetalhePage() {
       setPortalStatus(result.portal_status)
       toast.success('Acesso ao portal revogado')
       setShowActionsMenu(false)
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
     } catch {
       toast.error('Erro ao revogar acesso')
     }
@@ -1310,7 +1281,7 @@ export default function ClienteDetalhePage() {
                           try {
                             await notesService.delete(note.id)
                             toast.success('Nota excluída com sucesso')
-                            await fetchClient()
+                            await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
                           } catch (error) {
                             console.error('Error deleting note:', error)
                             toast.error('Erro ao excluir nota')
@@ -1382,7 +1353,7 @@ export default function ClienteDetalhePage() {
           preselectedClient={clientForDialog}
           onSave={() => {
             setShowProcessDialog(false)
-            void fetchClient()
+            void queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
           }}
         />
       )}
@@ -1395,7 +1366,7 @@ export default function ClienteDetalhePage() {
           client={clientForDialog}
           onSave={async () => {
             setShowEditDialog(false)
-            await fetchClient()
+            await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
           }}
         />
       )}
@@ -1431,7 +1402,7 @@ export default function ClienteDetalhePage() {
               }
               setShowNoteDialog(false)
               setEditingNote(null)
-              await fetchClient()
+              await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
             } catch (error) {
               console.error('Error saving note:', error)
               toast.error(editingNote ? 'Erro ao atualizar nota' : 'Erro ao criar nota')

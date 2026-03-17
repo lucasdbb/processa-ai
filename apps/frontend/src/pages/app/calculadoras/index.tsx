@@ -92,11 +92,23 @@ export default function CalculadorasHubPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
 
+  // Memoize the calculator component to prevent unnecessary re-renders
+  // when navigating between calculators
   const CalculatorComponent = useMemo(() => {
     if (selectedCalculator === 'rescisao') return RescisaoCalculator
     if (selectedCalculator === 'aposentadoria') return AposentadoriaCalculator
     return null
   }, [selectedCalculator])
+
+  // Handle calculator change without full page reload effect
+  const handleCalculatorChange = (newCalcId: string) => {
+    const calc = calculators.find((c) => c.id === newCalcId)
+    if (calc) {
+      // Use replace: true prevents adding to history stack, making it feel more like a tab switch
+      // inside the same "app" rather than a navigation
+      navigate(calc.href, { replace: true })
+    }
+  }
 
   const tipsButton = (
     <details className="relative z-[60]">
@@ -170,10 +182,7 @@ export default function CalculadorasHubPage() {
                   <div className="relative">
                     <select
                       value={selectedCalculator}
-                      onChange={(e) => {
-                        const calc = calculators.find((c) => c.id === e.target.value)
-                        if (calc) navigate(calc.href)
-                      }}
+                      onChange={(e) => handleCalculatorChange(e.target.value)}
                       className="appearance-none pl-3 pr-8 py-1.5 bg-muted border border-border rounded-lg text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                     >
                       {calculators.filter((c) => c.available).map((c) => (

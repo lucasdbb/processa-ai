@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef, type ComponentProps } from 'react'
+import { useEffect, useState, useRef, type ComponentProps } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   Calendar,
@@ -33,12 +33,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import {
   processesService,
-  type ProcessDetail,
   type ProcessTimelineEvent,
 } from '@/services/processes-service'
 import { calendarService, type CalendarEvent } from '@/services/calendar-service'
 import { documentsService, type Document } from '@/services/documents-service'
 import { timelineService, type TimelineEventType } from '@/services/timeline-service'
+import { useProcessDetail } from '@/hooks/use-processes'
+import { useQueryClient } from '@tanstack/react-query'
 
 type Tab = 'resumo' | 'andamentos' | 'prazos' | 'documentos'
 type EditingTimelineEvent = ComponentProps<typeof TimelineFormDialog>['event']
@@ -46,6 +47,8 @@ type EditingTimelineEvent = ComponentProps<typeof TimelineFormDialog>['event']
 export default function ProcessoDetalhePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  
   const [activeTab, setActiveTab] = useState<Tab>('resumo')
   const [showEventDialog, setShowEventDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -66,27 +69,14 @@ export default function ProcessoDetalhePage() {
   const [showFabMenu, setShowFabMenu] = useState(false)
   const fabMenuRef = useRef<HTMLDivElement>(null)
 
-  const [process, setProcess] = useState<ProcessDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  const fetchProcess = useCallback(async () => {
-    if (!id) return
-    setIsLoading(true)
-    try {
-      const data = await processesService.getDetail(id)
-      setProcess(data)
-    } catch (error) {
-      console.error('Error fetching process:', error)
-      toast.error('Erro ao carregar processo')
-      navigate('/app/processos')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [id, navigate])
+  const { data: process, isLoading, isError } = useProcessDetail(id || '')
 
   useEffect(() => {
-    void fetchProcess()
-  }, [fetchProcess])
+    if (isError) {
+      toast.error('Erro ao carregar processo')
+      navigate('/app/processos')
+    }
+  }, [isError, navigate])
 
   // Close actions menu on outside click
   useEffect(() => {
@@ -181,7 +171,7 @@ export default function ProcessoDetalhePage() {
     try {
       await processesService.update(id, { status: 'concluded' })
       toast.success('Processo concluído com sucesso')
-      await fetchProcess()
+      await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
       setShowActionsMenu(false)
     } catch (error) {
       console.error('Error concluding process:', error)
@@ -196,6 +186,7 @@ export default function ProcessoDetalhePage() {
       await processesService.delete(id)
       analytics.track('office_action', { entity: 'process', action: 'deleted' })
       toast.success('Processo excluído com sucesso')
+      await queryClient.invalidateQueries({ queryKey: ['processes', 'list'] })
       navigate('/app/processos')
     } catch (error) {
       console.error('Error deleting process:', error)
@@ -238,7 +229,7 @@ export default function ProcessoDetalhePage() {
       }
       
       toast.success('Andamento excluído com sucesso')
-      await fetchProcess()
+      await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
       setShowDeleteTimelineModal(false)
       setTimelineToDelete(null)
       setDeleteTimelineDocuments(false)
@@ -793,7 +784,7 @@ export default function ProcessoDetalhePage() {
                               try {
                                 await calendarService.deleteEvent(deadline.id)
                                 toast.success('Prazo excluído com sucesso')
-                                await fetchProcess()
+                                await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
                               } catch {
                                 toast.error('Erro ao excluir prazo')
                               }
@@ -907,7 +898,7 @@ export default function ProcessoDetalhePage() {
                               try {
                                 await documentsService.delete(doc.id)
                                 toast.success('Documento excluído com sucesso')
-                                await fetchProcess()
+                                await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
                               } catch {
                                 toast.error('Erro ao excluir documento')
                               }
@@ -953,7 +944,7 @@ export default function ProcessoDetalhePage() {
             onSave={() => {
               setShowEventDialog(false)
               setEditingEvent(undefined)
-              void fetchProcess()
+              void queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
             }}
           />
           <ProcessFormDialog
@@ -962,7 +953,7 @@ export default function ProcessoDetalhePage() {
             process={processForDialog}
             onSave={async () => {
               setShowEditDialog(false)
-              await fetchProcess()
+              await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
               toast.success('Processo atualizado com sucesso')
             }}
           />
@@ -1023,7 +1014,7 @@ export default function ProcessoDetalhePage() {
                 }
                 setShowDocumentDialog(false)
                 setEditingDocument(null)
-                await fetchProcess()
+                await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
               } catch (error) {
                 console.error('Error saving document:', error)
                 toast.error(editingDocument ? 'Erro ao atualizar documento' : 'Erro ao criar documento')
@@ -1041,7 +1032,7 @@ export default function ProcessoDetalhePage() {
             onSave={() => {
               setShowTimelineDialog(false)
               setEditingTimelineEvent(undefined)
-              void fetchProcess()
+              void queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
             }}
           />
 

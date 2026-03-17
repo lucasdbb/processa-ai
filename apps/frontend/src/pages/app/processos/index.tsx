@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useState, type ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, Filter, FolderKanban, ChevronDown, Scale, Building2, Handshake } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { ProcessListSkeleton } from '@/components/skeletons/process-list-skeleton'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -15,10 +13,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { TRIBUNALS } from '@/lib/constants'
-import { type Process, type ProcessListResponse } from '@/services/processes-service'
 import { GenericKanban } from '@/components/kanban/generic-kanban'
 import { ProcessCard } from '@/components/kanban/process-card'
 import { PageLayout } from '@/components/layout/page-layout'
+import { useProcesses } from '@/hooks/use-processes'
+import { useDebounce } from '@/hooks/use-debounce'
+import { useQueryClient, useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { processesService } from '@/services/processes-service'
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   active: { label: 'Ativo', className: 'bg-green-500/10 text-green-600 dark:text-green-400' },
@@ -54,6 +56,8 @@ const CATEGORY_CONFIG = {
 export default function ProcessosPage() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
+  
   const [filter, setFilter] = useState<'all' | 'active' | 'concluded' | 'cancelled'>('all')
   const [tribunalFilter, setTribunalFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'judicial' | 'administrative'>('all')
@@ -66,62 +70,45 @@ export default function ProcessosPage() {
   type SaveProcessPayload = Parameters<ComponentProps<typeof ProcessFormDialog>['onSave']>[0]
 
   const [editingProcess, setEditingProcess] = useState<EditingProcess>(undefined)
+  const queryClient = useQueryClient()
 
-  const [processes, setProcesses] = useState<Process[]>([])
-  const [total, setTotal] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      // Usando o service correto, já tipado no backend
+      return processesService.update(id, { status: status as any })
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Processo movido para ${PROCESS_COLUMNS[variables.status]}`)
+      void queryClient.invalidateQueries({ queryKey: ['processes'] })
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar status do processo')
+    },
+  })
 
-  const fetchProcesses = useCallback(async (searchQuery: string, statusFilter: string, tribunal: string, category: string, partnership: string, mode: 'list' | 'kanban') => {
-    setIsLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (searchQuery.trim()) params.set('search', searchQuery.trim())
+  const isPartnership = 
+    partnershipFilter === 'partnership' ? true : 
+    partnershipFilter === 'own' ? false : 
+    undefined;
 
-      // In Kanban mode, we want all statuses to populate columns
-      // In List mode, we respect the filter
-      if (mode === 'list' && statusFilter !== 'all') {
-        params.set('status', statusFilter)
-      }
+  const { data, isLoading, isFetching } = useProcesses({
+    search: debouncedSearch,
+    status: viewMode === 'list' ? filter : 'all',
+    tribunal: tribunalFilter,
+    process_category: categoryFilter,
+    is_partnership: isPartnership,
+    limit: viewMode === 'kanban' ? 100 : 50,
+    offset: 0,
+  })
 
-      if (tribunal !== 'all') params.set('tribunal', tribunal)
-      if (category !== 'all') params.set('process_category', category)
-      if (partnership === 'partnership') params.set('is_partnership', 'true')
-      if (partnership === 'own') params.set('is_partnership', 'false')
-
-      // For Kanban, we might need more items or pagination per column
-      // For now, let's just increase limit for Kanban to show a good overview
-      params.set('limit', mode === 'kanban' ? '100' : '50')
-      params.set('offset', '0')
-
-      const res = await fetchWithCredentials(`${API_URL}/office/processes?${params.toString()}`)
-      if (!res.ok) throw new Error('Erro ao carregar processos')
-
-      const data = (await res.json()) as ProcessListResponse
-      setProcesses(data.processes)
-      setTotal(data.total)
-    } catch {
-      setProcesses([])
-      setTotal(0)
-      toast.error('Erro ao carregar processos')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      void fetchProcesses(search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode)
-    }, search ? 300 : 0)
-
-    return () => clearTimeout(timeout)
-  }, [search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode, fetchProcesses])
+  const processes = data?.processes ?? []
+  const total = data?.total ?? 0
 
   const handleSaveProcess = async (processData: SaveProcessPayload) => {
-    console.log('Salvando processo:', processData)
     setIsFormOpen(false)
     setEditingProcess(undefined)
-    // Reload processes list
-    await fetchProcesses(search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode)
+    // Invalidate queries to trigger a refetch
+    await queryClient.invalidateQueries({ queryKey: ['processes'] })
   }
 
   const handleNewProcess = () => {
@@ -288,17 +275,7 @@ export default function ProcessosPage() {
             columns={PROCESS_COLUMNS}
             columnOrder={PROCESS_COLUMN_ORDER}
             onStatusChange={async (item, newStatus) => {
-              try {
-                await fetchWithCredentials(`${API_URL}/office/processes/${item.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ status: newStatus }),
-                })
-                toast.success(`Processo movido para ${PROCESS_COLUMNS[newStatus]}`)
-              } catch {
-                toast.error('Erro ao atualizar status do processo')
-                void fetchProcesses(search, filter, tribunalFilter, categoryFilter, partnershipFilter, viewMode)
-              }
+              await updateStatusMutation.mutateAsync({ id: item.id, status: newStatus })
             }}
             renderCard={(item, isDragging) => (
               <ProcessCard process={item} isDragging={isDragging} />

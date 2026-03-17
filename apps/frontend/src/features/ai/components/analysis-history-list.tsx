@@ -23,7 +23,9 @@ function formatDateTime(dateStr: string) {
 }
 
 export function AnalysisHistoryList({ functionality, clientId, title = 'Histórico de Análises', refreshKey }: AnalysisHistoryListProps) {
-  const { jobs, isLoading, error, refetch } = useAnalysisHistory(functionality, clientId, refreshKey)
+  const { data: jobsData, isLoading, error, refetch } = useAnalysisHistory(functionality, clientId, refreshKey)
+  const jobs = jobsData ?? []
+  
   const [selectedJob, setSelectedJob] = useState<AnalysisJob | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [jobToDelete, setJobToDelete] = useState<AnalysisJob | null>(null)
@@ -123,7 +125,7 @@ export function AnalysisHistoryList({ functionality, clientId, title = 'Históri
   if (error) {
     return (
       <div className="p-4 text-center text-red-500 bg-red-50 dark:bg-red-950/20 rounded-lg">
-        Erro ao carregar histórico: {error}
+        Erro ao carregar histórico: {error.message}
       </div>
     )
   }

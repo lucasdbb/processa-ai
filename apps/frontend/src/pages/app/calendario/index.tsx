@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -9,37 +9,64 @@ import { PrazosCalendar, type CalendarEvent as PrazosCalendarEvent } from '@/com
 import { CalendarEventFormDialog } from '@/components/forms/calendar-event-form-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import {
-  calendarService,
-  type CalendarEvent,
-  type GoogleSyncStatus,
-} from '@/services/calendar-service'
+import { calendarService, type CalendarEvent } from '@/services/calendar-service'
+import { useCalendarEvents, useGoogleSyncStatus } from '@/hooks/use-calendar'
+import { useQueryClient } from '@tanstack/react-query'
 
 // Sync overlay steps
 type SyncStep = 'connecting' | 'syncing' | 'done' | 'error'
 
 export default function CalendarioPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const [showEventDialog, setShowEventDialog] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [defaultDate, setDefaultDate] = useState<string | undefined>()
   const [showGoogleDropdown, setShowGoogleDropdown] = useState(false)
   const [showDisconnectModal, setShowDisconnectModal] = useState(false)
-  const [googleStatus, setGoogleStatus] = useState<GoogleSyncStatus | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const summaryDropdownRef = useRef<HTMLDivElement>(null)
   const [summaryDropdownOpen, setSummaryDropdownOpen] = useState(false)
-  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // Prazo events for summary cards + list
-  const [prazoEvents, setPrazoEvents] = useState<CalendarEvent[]>([])
-  const [isPrazosLoading, setIsPrazosLoading] = useState(false)
+  const { data: googleStatus } = useGoogleSyncStatus()
 
   // Quick Stats sidebar
   const [summaryPeriod, setSummaryPeriod] = useState<'today' | 'month' | 'year'>('today')
-  const [summaryEvents, setSummaryEvents] = useState<CalendarEvent[]>([])
+
+  const now = new Date()
+  const todayStr = format(now, 'yyyy-MM-dd')
+  
+  const summaryDates = useMemo(() => {
+    if (summaryPeriod === 'today') return { start: todayStr, end: todayStr }
+    if (summaryPeriod === 'month') {
+      return {
+        start: format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd'),
+        end: format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+      }
+    }
+    return {
+      start: format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd'),
+      end: format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd')
+    }
+  }, [summaryPeriod, todayStr])
+
+  const { data: todayEventsResponse } = useCalendarEvents({ start: todayStr, end: todayStr })
+  const todayEvents = todayEventsResponse?.events ?? []
+
+  const { data: summaryEventsResponse } = useCalendarEvents({ start: summaryDates.start, end: summaryDates.end })
+  const summaryEvents = summaryEventsResponse?.events ?? []
+
+  const prazosStart = format(addDays(now, -60), 'yyyy-MM-dd')
+  const prazosEnd = format(addDays(now, 90), 'yyyy-MM-dd')
+  const { data: prazoEventsResponse, isLoading: isPrazosLoading } = useCalendarEvents({
+    start: prazosStart,
+    end: prazosEnd,
+    event_type: 'prazo',
+    deadline_status: 'pending',
+  })
+  const prazoEvents = prazoEventsResponse?.events ?? []
 
   // Sync overlay state
   const [syncOverlay, setSyncOverlay] = useState<{
@@ -51,72 +78,6 @@ export default function CalendarioPage() {
   }>({ visible: false, step: 'connecting', message: '', progress: 0 })
 
   const callbackHandled = useRef(false)
-
-  const loadGoogleStatus = useCallback(async () => {
-    try {
-      const status = await calendarService.getGoogleStatus()
-      setGoogleStatus(status)
-    } catch {
-      setGoogleStatus({ connected: false, email: null, expires_at: null, scopes: [] })
-    }
-  }, [])
-
-  const loadTodayEvents = useCallback(async () => {
-    try {
-      const todayStr = format(new Date(), 'yyyy-MM-dd')
-      const data = await calendarService.listEvents(todayStr, todayStr)
-      setTodayEvents(data.events)
-    } catch {
-      // Fail silently for sidebar data
-    }
-  }, [])
-
-  const loadSummaryEvents = useCallback(async (period: 'month' | 'year') => {
-    try {
-      const now = new Date()
-      const start = period === 'month'
-        ? format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
-        : format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd')
-      const end = period === 'month'
-        ? format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
-        : format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd')
-      const data = await calendarService.listEvents(start, end)
-      setSummaryEvents(data.events)
-    } catch {
-      setSummaryEvents([])
-    }
-  }, [])
-
-  const loadPrazoEvents = useCallback(async () => {
-    setIsPrazosLoading(true)
-    try {
-      // Fetch pending prazos: from 60 days ago to 90 days ahead
-      const now = new Date()
-      const start = format(addDays(now, -60), 'yyyy-MM-dd')
-      const end = format(addDays(now, 90), 'yyyy-MM-dd')
-      const data = await calendarService.listEvents(start, end, {
-        event_type: 'prazo',
-        deadline_status: 'pending',
-      })
-      setPrazoEvents(data.events)
-    } catch {
-      setPrazoEvents([])
-    } finally {
-      setIsPrazosLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void loadGoogleStatus()
-    void loadTodayEvents()
-    void loadPrazoEvents()
-  }, [loadGoogleStatus, loadTodayEvents, loadPrazoEvents])
-
-  useEffect(() => {
-    if (summaryPeriod !== 'today') {
-      void loadSummaryEvents(summaryPeriod)
-    }
-  }, [summaryPeriod, loadSummaryEvents])
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -155,7 +116,7 @@ export default function CalendarioPage() {
         })
 
         // Load status to get email
-        await loadGoogleStatus()
+        await queryClient.invalidateQueries({ queryKey: ['calendar', 'google', 'status'] })
 
         setSyncOverlay({
           visible: true,
@@ -204,7 +165,7 @@ export default function CalendarioPage() {
       setSearchParams({}, { replace: true })
       toast.error(error ? `Erro ao conectar: ${error}` : 'Falha ao conectar com Google Calendar')
     }
-  }, [searchParams, setSearchParams, loadGoogleStatus])
+  }, [searchParams, setSearchParams, queryClient])
 
   const handleConnectGoogle = async () => {
     try {
@@ -267,7 +228,7 @@ export default function CalendarioPage() {
   const handleDisconnectGoogle = async () => {
     try {
       await calendarService.disconnectGoogle()
-      setGoogleStatus({ connected: false, email: null, expires_at: null, scopes: [] })
+      await queryClient.invalidateQueries({ queryKey: ['calendar', 'google', 'status'] })
       setShowGoogleDropdown(false)
       setShowDisconnectModal(false)
       toast.success('Google Calendar desconectado')
@@ -308,14 +269,6 @@ export default function CalendarioPage() {
     setEditingEvent(null)
     setDefaultDate(undefined)
     setShowEventDialog(true)
-  }
-
-  const handleEventSaved = () => {
-    setShowEventDialog(false)
-    setEditingEvent(null)
-    setRefreshKey((k) => k + 1)
-    void loadTodayEvents()
-    void loadPrazoEvents()
   }
 
   const getEventTypeLabel = (type: string) => {
@@ -915,8 +868,16 @@ export default function CalendarioPage() {
         onClose={() => {
           setShowEventDialog(false)
           setEditingEvent(null)
+          setDefaultDate(undefined)
         }}
-        onSave={handleEventSaved}
+        onSave={() => {
+          setShowEventDialog(false)
+          setEditingEvent(null)
+          setDefaultDate(undefined)
+          void queryClient.invalidateQueries({ queryKey: ['calendar'] })
+          // Force calendar redraw
+          setRefreshKey((k) => k + 1)
+        }}
         event={editingEvent || undefined}
         defaultDate={defaultDate}
       />
