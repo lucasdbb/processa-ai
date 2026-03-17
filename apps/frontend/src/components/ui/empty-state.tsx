@@ -1,5 +1,6 @@
 import { type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface EmptyStateProps {
   icon: LucideIcon
@@ -25,9 +26,9 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn('bg-card border border-border rounded-xl p-12 text-center', className)}>
+    <div className={cn('bg-card border border-border rounded-xl p-12 text-center flex flex-col items-center justify-center', className)}>
       {/* Icon */}
-      <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
         <Icon className="h-8 w-8 text-muted-foreground" />
       </div>
 
@@ -35,7 +36,7 @@ export function EmptyState({
       <h3 className="text-lg font-medium text-foreground mb-2">{title}</h3>
 
       {/* Description */}
-      <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+      <p className="text-muted-foreground text-sm mb-6 max-w-md">
         {description}
       </p>
 
@@ -43,21 +44,15 @@ export function EmptyState({
       {(action || secondaryAction) && (
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {action && (
-            <button
-              onClick={action.onClick}
-              className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shadow-sm"
-            >
+            <Button onClick={action.onClick} variant="default">
               {action.label}
-            </button>
+            </Button>
           )}
 
           {secondaryAction && (
-            <button
-              onClick={secondaryAction.onClick}
-              className="px-6 py-2.5 bg-muted text-foreground rounded-lg font-medium hover:bg-muted/80 transition-colors"
-            >
+            <Button onClick={secondaryAction.onClick} variant="secondary">
               {secondaryAction.label}
-            </button>
+            </Button>
           )}
         </div>
       )}
