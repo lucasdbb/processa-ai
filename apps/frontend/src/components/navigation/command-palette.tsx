@@ -13,6 +13,9 @@ import {
   Plus,
   Search,
   Briefcase,
+  Bell,
+  CreditCard,
+  HelpCircle,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -201,6 +204,39 @@ export function CommandPalette() {
         },
       },
       {
+        id: 'go-notifications',
+        name: 'Notificações',
+        description: 'Minhas notificações',
+        icon: Bell,
+        category: 'navigation',
+        action: () => {
+          navigate('/app/notificacoes')
+          closeAndReset()
+        },
+      },
+      {
+        id: 'go-subscription',
+        name: 'Assinatura',
+        description: 'Gerenciar plano e fatura',
+        icon: CreditCard,
+        category: 'navigation',
+        action: () => {
+          navigate('/app/assinatura')
+          closeAndReset()
+        },
+      },
+      {
+        id: 'go-help',
+        name: 'Ajuda',
+        description: 'Central de ajuda',
+        icon: HelpCircle,
+        category: 'navigation',
+        action: () => {
+          navigate('/app/ajuda')
+          closeAndReset()
+        },
+      },
+      {
         id: 'go-settings',
         name: 'Configurações',
         description: 'Preferências da conta',
@@ -245,7 +281,9 @@ export function CommandPalette() {
     return [
       ...searchResults.clients,
       ...searchResults.processes,
+      ...searchResults.services,
       ...searchResults.calculations,
+      ...searchResults.ai_tools,
     ]
   }, [searchResults])
 
@@ -259,7 +297,9 @@ export function CommandPalette() {
     return (
       searchResults.clients.length > 0 ||
       searchResults.processes.length > 0 ||
-      searchResults.calculations.length > 0
+      searchResults.services.length > 0 ||
+      searchResults.calculations.length > 0 ||
+      searchResults.ai_tools.length > 0
     )
   }, [searchResults])
 
@@ -390,8 +430,12 @@ export function CommandPalette() {
   currentIndex += searchResults.clients.length
   const processesStartIndex = currentIndex
   currentIndex += searchResults.processes.length
+  const servicesStartIndex = currentIndex
+  currentIndex += searchResults.services.length
   const calculationsStartIndex = currentIndex
   currentIndex += searchResults.calculations.length
+  const aiStartIndex = currentIndex
+  currentIndex += searchResults.ai_tools.length
 
   // Then commands
   const actionStartIndex = currentIndex
@@ -414,7 +458,7 @@ export function CommandPalette() {
               setSearch(e.target.value)
               setSelectedIndex(0)
             }}
-            placeholder="Buscar clientes, processos, cálculos ou digite um comando"
+            placeholder="Buscar clientes, processos, ferramentas..."
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             autoFocus
           />
@@ -431,7 +475,9 @@ export function CommandPalette() {
               {/* Search Results */}
               {renderSearchGroup('Clientes', searchResults.clients, clientsStartIndex)}
               {renderSearchGroup('Processos', searchResults.processes, processesStartIndex)}
-              {renderSearchGroup('Calculos', searchResults.calculations, calculationsStartIndex)}
+              {renderSearchGroup('Serviços', searchResults.services, servicesStartIndex)}
+              {renderSearchGroup('Calculadoras', searchResults.calculations, calculationsStartIndex)}
+              {renderSearchGroup('Ferramentas IA', searchResults.ai_tools, aiStartIndex)}
 
               {/* Separator if both search results and commands exist */}
               {hasSearchResults && filteredCommands.length > 0 && (
