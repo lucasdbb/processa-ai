@@ -124,8 +124,6 @@ function SourceCard({ source }: { source: ChatSource }) {
 function SourcesBadges({ sources }: { sources: ChatSource[] }) {
   const [expanded, setExpanded] = useState(false)
 
-  if (sources.length === 0) return null
-
   // Deduplicate by legislacao+artigo, keeping highest score
   const uniqueSources = useMemo(() => {
     const map = new Map<string, ChatSource>()
@@ -138,6 +136,8 @@ function SourcesBadges({ sources }: { sources: ChatSource[] }) {
     }
     return Array.from(map.values()).sort((a, b) => b.score - a.score)
   }, [sources])
+
+  if (sources.length === 0) return null
 
   return (
     <div className="mt-2 ml-10">

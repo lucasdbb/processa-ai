@@ -27,6 +27,7 @@ interface State {
 // Error reporter — fire-and-forget, never throws
 // ---------------------------------------------------------------------------
 
+// eslint-disable-next-line react-refresh/only-export-components
 export async function reportError(error: Error, errorInfo?: ErrorInfo): Promise<void> {
   const errorId = `err_${Date.now()}`
 

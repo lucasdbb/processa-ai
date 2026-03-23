@@ -85,10 +85,6 @@ export default function IAHubPage() {
     return fallbacks[featureKey] || null
   }, [currentTool, costs])
 
-  if (isAuthLoading || isLoadingTools) {
-    return <LoadingSpinner fullScreen size="lg" />
-  }
-
   const handleToolChange = (slug: string) => {
     navigate(`/app/ia/${slug}`, { replace: true })
   }
@@ -127,6 +123,23 @@ export default function IAHubPage() {
     </details>
   )
 
+  // Memoize the header content so it doesn't re-render on navigation
+  const headerContent = useMemo(() => (
+    <div className="flex items-start justify-between gap-4 flex-shrink-0">
+      <div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground">IA Juridica</h1>
+          {tipsButton}
+        </div>
+        <p className="text-muted-foreground mt-1">Escolha uma ferramenta no menu lateral e comece a usar.</p>
+      </div>
+    </div>
+  ), [tipsButton])
+
+  if (isAuthLoading || isLoadingTools) {
+    return <LoadingSpinner fullScreen size="lg" />
+  }
+
   if (toolId && !currentTool) {
     return (
       <div className="space-y-6">
@@ -143,19 +156,6 @@ export default function IAHubPage() {
       </div>
     )
   }
-
-  // Memoize the header content so it doesn't re-render on navigation
-  const headerContent = useMemo(() => (
-    <div className="flex items-start justify-between gap-4 flex-shrink-0">
-      <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-foreground">IA Juridica</h1>
-          {tipsButton}
-        </div>
-        <p className="text-muted-foreground mt-1">Escolha uma ferramenta no menu lateral e comece a usar.</p>
-      </div>
-    </div>
-  ), [])
 
   return (
     <div className="h-[calc(100vh-160px)] flex flex-col gap-4">
