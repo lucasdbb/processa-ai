@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify'
 import { Download, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogClose, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -67,7 +68,7 @@ export function AnalysisResultModal({
             <div className="h-full overflow-y-auto p-8 bg-dot-pattern">
               <div 
                 className="prose prose-slate dark:prose-invert max-w-3xl mx-auto bg-card p-10 rounded-xl shadow-lg border border-border/60"
-                dangerouslySetInnerHTML={{ __html: htmlContent }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
               />
             </div>
           ) : (

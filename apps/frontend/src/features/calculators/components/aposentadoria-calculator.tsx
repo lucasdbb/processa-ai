@@ -64,7 +64,6 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user.id,
           ...(selectedClientId && { client_id: selectedClientId }),
           sexo: formData.sexo,
           tipo_aposentadoria: formData.tipoAposentadoria,

@@ -30,7 +30,7 @@ export function useAnalysisHistory(functionality?: string, clientId?: string | n
   return useQuery({
     queryKey: ['ai', 'jobs', functionality, clientId, refreshKey],
     queryFn: async () => {
-      let url = `${API_URL}/ai/jobs?user_id=${user!.id}`
+      let url = `${API_URL}/ai/jobs?limit=50`
 
       if (functionality) {
         url += `&functionality=${functionality}`

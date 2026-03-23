@@ -113,7 +113,7 @@ export function CalculationHistoryList({
     setIsDeleting(true)
     try {
       const res = await fetchWithCredentials(
-        `${API_URL}/calculators/${encodeURIComponent(calcToDelete.id)}?user_id=${user.id}`,
+        `${API_URL}/calculators/${encodeURIComponent(calcToDelete.id)}`,
         { method: 'DELETE' }
       )
 

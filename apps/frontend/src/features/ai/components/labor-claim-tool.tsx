@@ -149,7 +149,6 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
         setProgress(10)
         const result = await uploadFiles(
           files,
-          user.id,
           selectedClientId,
           FunctionalityType.AI,
           (p) => {
@@ -171,7 +170,6 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
           prompt,
           files: uploadedFiles,
           job_uuid: jobUuid,
-          user_id: user.id,
           client_id: selectedClientId || undefined,
           functionality: FunctionalityType.AI,
           store_pdf: true,

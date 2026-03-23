@@ -12,7 +12,6 @@ class FunctionalityType(str, Enum):
 
 class UploadUrlRequest(BaseModel):
     filename: str
-    user_id: str
     functionality: FunctionalityType
     client_id: str | None = None
     expires_in: int = 3600

@@ -140,7 +140,6 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
 
       const { uploadMetadata, jobUuid: commonJobUuid } = await uploadFiles(
         [file],
-        user.id,
         selectedClientId,
         FunctionalityType.AI,
         (uploadProgress) => {
@@ -162,7 +161,6 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
           bucket: fileMetadata.bucket,
           files: uploadMetadata,
           job_uuid: commonJobUuid,
-          user_id: user.id,
           client_id: selectedClientId || undefined,
           functionality: FunctionalityType.AI,
           store_pdf: true,

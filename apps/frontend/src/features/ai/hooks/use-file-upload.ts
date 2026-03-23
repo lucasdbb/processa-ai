@@ -10,8 +10,7 @@ export interface UploadedFileMetadata {
 
 export function useFileUpload() {
   const uploadFiles = useCallback(async (
-    files: File[], 
-    user_id: string, 
+    files: File[],
     client_id?: string | null,
     functionality: FunctionalityType = FunctionalityType.AI,
     onProgress?: (progress: number) => void
@@ -34,7 +33,6 @@ export function useFileUpload() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filename: file.name,
-          user_id,
           client_id: client_id || undefined,
           functionality,
         }),

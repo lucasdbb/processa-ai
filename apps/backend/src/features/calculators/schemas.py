@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 
 class RescisaoTrabalhistaRequest(BaseModel):
-    user_id: str = Field(min_length=1)
     client_id: str | None = None
 
     # Composição Salarial
@@ -69,7 +68,6 @@ class RescisaoTrabalhistaResponse(BaseModel):
 
 
 class AposentadoriaRequest(BaseModel):
-    user_id: str = Field(min_length=1)
     client_id: str | None = None
 
     sexo: str = Field(pattern="^(masculino|feminino)$")

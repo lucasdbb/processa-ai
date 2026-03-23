@@ -1,8 +1,8 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.core.auth import require_internal_auth
+from src.core.auth import get_user_id, require_internal_auth
 from src.core.calc_engine_store import (
     create_calculation,
     delete_calculation,
@@ -130,12 +130,10 @@ async def get_calculators(_internal=Depends(require_internal_auth)):
 )
 async def rescisao_trabalhista(
     data: RescisaoTrabalhistaRequest,
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
-    user_id = (data.user_id or "").strip()
     client_id = (data.client_id or "").strip() or None
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
     calculation_id = uuid.uuid4()
     calculator_key = "trabalhista.rescisao-trabalhista"
@@ -237,12 +235,10 @@ async def rescisao_trabalhista(
 )
 async def calcular_aposentadoria(
     data: AposentadoriaRequest,
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
-    user_id = (data.user_id or "").strip()
     client_id = (data.client_id or "").strip() or None
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
     calculation_id = uuid.uuid4()
     calculator_key = "previdencia.aposentadoria"
@@ -334,10 +330,10 @@ async def calcular_aposentadoria(
     status_code=status.HTTP_200_OK,
 )
 async def get_calculation_history(
-    user_id: str = Query(..., min_length=1, description="ID do usuário"),
-    calculator_key: str | None = Query(None, description="Filtro por calculadora"),
-    client_id: str | None = Query(None, description="Filtro por cliente"),
-    limit: int = Query(50, ge=1, le=100),
+    user_id: str = Depends(get_user_id),
+    calculator_key: str | None = None,
+    client_id: str | None = None,
+    limit: int = 50,
     _internal=Depends(require_internal_auth),
 ):
     """Retorna histórico de cálculos do usuário."""
@@ -356,7 +352,7 @@ async def get_calculation_history(
 )
 async def delete_calculation_endpoint(
     calculation_id: str,
-    user_id: str = Query(..., min_length=1, description="ID do usuário"),
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
     """Deleta um cálculo e seus documentos associados."""

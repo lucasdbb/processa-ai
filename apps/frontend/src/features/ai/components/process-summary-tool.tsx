@@ -125,7 +125,6 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
       const UPLOAD_PROGRESS_MAX = 20
       const { uploadMetadata, jobUuid } = await uploadFiles(
         files,
-        user.id,
         selectedClientId,
         FunctionalityType.AI,
         (p) => {
@@ -146,7 +145,6 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
         body: JSON.stringify({
           files: uploadMetadata,
           job_uuid: jobUuid,
-          user_id: user.id,
           client_id: selectedClientId || undefined,
           functionality: FunctionalityType.AI,
           store_pdf: true,

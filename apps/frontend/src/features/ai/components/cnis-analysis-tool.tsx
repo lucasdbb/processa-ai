@@ -137,8 +137,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
       const UPLOAD_PROGRESS_MAX = 20 // 20% reserved for uploads
       
       const { uploadMetadata, jobUuid: commonJobUuid } = await uploadFiles(
-        [cnisFile], 
-        user.id, 
+        [cnisFile],
         selectedClientId,
         FunctionalityType.AI,
         (uploadProgress) => {
@@ -161,7 +160,6 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
           bucket: fileMetadata.bucket,
           files: uploadMetadata,
           job_uuid: commonJobUuid,
-          user_id: user.id,
           client_id: selectedClientId || undefined,
           functionality: FunctionalityType.AI,
           store_pdf: true,

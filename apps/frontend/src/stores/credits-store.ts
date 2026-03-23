@@ -115,8 +115,6 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          console.log('Realtime credit update received:', payload)
-          
           if (payload.eventType === 'DELETE') {
              set({ credits: null })
              return

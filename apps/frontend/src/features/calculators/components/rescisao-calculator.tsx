@@ -94,7 +94,6 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user.id,
           ...(selectedClientId && { client_id: selectedClientId }),
           salario_base: parseFloat(formData.salarioBase) || 0,
           adicional_periculosidade: formData.adicionalPericulosidade,

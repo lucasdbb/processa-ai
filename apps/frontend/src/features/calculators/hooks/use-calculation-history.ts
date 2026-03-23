@@ -25,7 +25,7 @@ export function useCalculationHistory(
   return useQuery({
     queryKey: ['calculations', 'history', calculatorKey, clientId, refreshKey],
     queryFn: async () => {
-      let url = `${API_URL}/calculators/history?user_id=${user!.id}`
+      let url = `${API_URL}/calculators/history?limit=50`
 
       if (calculatorKey) {
         url += `&calculator_key=${encodeURIComponent(calculatorKey)}`

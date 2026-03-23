@@ -59,8 +59,9 @@ export function LoginForm({ onSuccess, onForgotPassword, onRegister }: LoginForm
       }
 
       const redirect = searchParams.get('redirect')
-      if (redirect) {
-        navigate(redirect, { replace: true })
+      const safeRedirect = redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : null
+      if (safeRedirect) {
+        navigate(safeRedirect, { replace: true })
       } else {
         navigate('/app', { replace: true })
       }

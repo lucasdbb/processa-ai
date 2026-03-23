@@ -22,20 +22,20 @@ import CallbackPage from '@/pages/auth/CallbackPage'
 import TermosPage from '@/pages/termos'
 import PrivacidadePage from '@/pages/privacidade'
 
-// App pages (eager loading - frequently accessed)
-import DashboardPage from '@/pages/app/dashboard'
-import ClientesPage from '@/pages/app/clientes'
-import ClienteDetalhePage from '@/pages/app/clientes/[id]'
-import ProcessosPage from '@/pages/app/processos'
-import ProcessoDetalhePage from '@/pages/app/processos/[id]'
-import ServicosPage from '@/pages/app/servicos'
-import ServicoDetalhePage from '@/pages/app/servicos/[id]'
-import CalendarioPage from '@/pages/app/calendario'
-import DocumentosPage from '@/pages/app/documentos'
-import NotificacoesPage from '@/pages/app/notificacoes'
-import ConfiguracoesPage from '@/pages/app/configuracoes'
-import AssinaturaPage from '@/pages/app/assinatura'
-import AjudaPage from '@/pages/app/ajuda'
+// App pages (lazy loading for code splitting)
+const DashboardPage = lazy(() => import('@/pages/app/dashboard'))
+const ClientesPage = lazy(() => import('@/pages/app/clientes'))
+const ClienteDetalhePage = lazy(() => import('@/pages/app/clientes/[id]'))
+const ProcessosPage = lazy(() => import('@/pages/app/processos'))
+const ProcessoDetalhePage = lazy(() => import('@/pages/app/processos/[id]'))
+const ServicosPage = lazy(() => import('@/pages/app/servicos'))
+const ServicoDetalhePage = lazy(() => import('@/pages/app/servicos/[id]'))
+const CalendarioPage = lazy(() => import('@/pages/app/calendario'))
+const DocumentosPage = lazy(() => import('@/pages/app/documentos'))
+const NotificacoesPage = lazy(() => import('@/pages/app/notificacoes'))
+const ConfiguracoesPage = lazy(() => import('@/pages/app/configuracoes'))
+const AssinaturaPage = lazy(() => import('@/pages/app/assinatura'))
+const AjudaPage = lazy(() => import('@/pages/app/ajuda'))
 
 // App pages (lazy loading - less frequently accessed)
 const CalculadorasAppPage = lazy(() => import('@/pages/app/calculadoras'))
@@ -121,44 +121,44 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <DashboardPage />,
+        element: <Suspense fallback={<LoadingFallback />}><DashboardPage /></Suspense>,
       },
       {
         element: <RequirePlan />,
         children: [
           {
             path: 'clientes',
-            element: <ClientesPage />,
+            element: <Suspense fallback={<LoadingFallback />}><ClientesPage /></Suspense>,
           },
           {
             path: 'clientes/:id',
-            element: <ClienteDetalhePage />,
+            element: <Suspense fallback={<LoadingFallback />}><ClienteDetalhePage /></Suspense>,
           },
           {
             path: 'processos',
-            element: <ProcessosPage />,
+            element: <Suspense fallback={<LoadingFallback />}><ProcessosPage /></Suspense>,
           },
           {
             path: 'processos/:id',
-            element: <ProcessoDetalhePage />,
+            element: <Suspense fallback={<LoadingFallback />}><ProcessoDetalhePage /></Suspense>,
           },
           {
             path: 'servicos',
-            element: <ServicosPage />,
+            element: <Suspense fallback={<LoadingFallback />}><ServicosPage /></Suspense>,
           },
           {
             path: 'servicos/:id',
-            element: <ServicoDetalhePage />,
+            element: <Suspense fallback={<LoadingFallback />}><ServicoDetalhePage /></Suspense>,
           },
           {
             path: 'calendario',
-            element: <CalendarioPage />,
+            element: <Suspense fallback={<LoadingFallback />}><CalendarioPage /></Suspense>,
           },
         ]
       },
       {
         path: 'notificacoes',
-        element: <NotificacoesPage />,
+        element: <Suspense fallback={<LoadingFallback />}><NotificacoesPage /></Suspense>,
       },
       {
         path: 'calculadoras',
@@ -198,19 +198,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'documentos',
-        element: <DocumentosPage />,
+        element: <Suspense fallback={<LoadingFallback />}><DocumentosPage /></Suspense>,
       },
       {
         path: 'configuracoes',
-        element: <ConfiguracoesPage />,
+        element: <Suspense fallback={<LoadingFallback />}><ConfiguracoesPage /></Suspense>,
       },
       {
         path: 'assinatura',
-        element: <AssinaturaPage />,
+        element: <Suspense fallback={<LoadingFallback />}><AssinaturaPage /></Suspense>,
       },
       {
         path: 'ajuda',
-        element: <AjudaPage />,
+        element: <Suspense fallback={<LoadingFallback />}><AjudaPage /></Suspense>,
       },
     ],
   },
