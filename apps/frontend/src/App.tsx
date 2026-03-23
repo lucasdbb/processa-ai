@@ -4,7 +4,11 @@ import { Toaster } from '@/components/ui/sonner'
 import { TourProvider } from '@/features/onboarding/tour-provider'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { lazy } from 'react'
+
+const ReactQueryDevtools = import.meta.env.DEV
+  ? lazy(() => import('@tanstack/react-query-devtools').then(m => ({ default: m.ReactQueryDevtools })))
+  : () => null
 import { router } from './router'
 
 const queryClient = new QueryClient({

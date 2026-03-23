@@ -44,6 +44,17 @@ class Settings(BaseSettings):
     # Worker
     PORT: int = 8001
 
+    def validate(self) -> None:
+        """Validate required secrets are set before starting the worker."""
+        required = {
+            "DATABASE_URL": self.DATABASE_URL,
+            "SUPABASE_URL": self.SUPABASE_URL,
+            "SUPABASE_SERVICE_ROLE_KEY": self.SUPABASE_SERVICE_ROLE_KEY,
+        }
+        missing = [k for k, v in required.items() if not v]
+        if missing:
+            raise ValueError(f"Missing required configuration: {', '.join(missing)}")
+
 
 settings = Settings()
 

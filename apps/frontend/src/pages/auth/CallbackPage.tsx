@@ -14,18 +14,26 @@ export default function CallbackPage() {
         return
       }
 
-      // Check the user's role to decide where to redirect
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
+      try {
+        // Check the user's role to decide where to redirect
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
 
-      if (profile?.role === 'office_client') {
-        navigate('/portal', { replace: true })
-      } else {
+        if (profile?.role === 'office_client') {
+          navigate('/portal', { replace: true })
+        } else {
+          navigate('/app', { replace: true })
+        }
+      } catch {
+        // Profile fetch failed — redirect to app as default
         navigate('/app', { replace: true })
       }
+    }).catch(() => {
+      // Session retrieval failed — redirect to home
+      navigate('/')
     })
   }, [navigate, supabase])
 

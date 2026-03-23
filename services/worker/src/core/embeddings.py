@@ -39,7 +39,7 @@ async def generate_embeddings(texts: list[str]) -> list[list[float]]:
         batch = texts[i : i + MAX_BATCH_SIZE]
 
         try:
-            response = client.models.embed_content(
+            response = await client.aio.models.embed_content(
                 model=EMBEDDING_MODEL,
                 contents=batch,
                 config={"output_dimensionality": EMBEDDING_DIMENSIONS},

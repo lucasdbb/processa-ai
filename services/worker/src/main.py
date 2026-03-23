@@ -7,6 +7,9 @@ Processes jobs from a PostgreSQL queue for:
 
 import asyncio
 import hashlib
+import json
+import os
+import signal
 import uuid
 
 from src.core.ai_worker_store import (
@@ -32,6 +35,15 @@ from src.core.worker_store import (
 from src.handlers.ai_service import AiService
 
 ai_service = AiService()
+
+# Graceful shutdown event
+_shutdown_event = asyncio.Event()
+
+
+def _handle_signal(sig, frame):
+    """Signal handler for graceful shutdown."""
+    logger.info("Received signal %s, initiating graceful shutdown...", sig)
+    _shutdown_event.set()
 
 
 # Costs mapping (must match backend/src/features/billing/credits/constants.py)
@@ -713,7 +725,7 @@ async def _run_ai_worker() -> None:
     """Main loop for AI/calculator/office jobs."""
     logger.info("Processa AI Worker started - waiting for jobs...")
 
-    while True:
+    while not _shutdown_event.is_set():
         job = await dequeue_job()
         if not job:
             await asyncio.sleep(settings.POLL_INTERVAL_S)
@@ -724,9 +736,19 @@ async def _run_ai_worker() -> None:
         logger.info("Processing job: %s (type: %s)", job_id, job_type)
 
         try:
-            await _handle_job(job)
+            await asyncio.wait_for(_handle_job(job), timeout=600)
+        except asyncio.TimeoutError:
+            logger.error("Job %s timed out after 600 seconds", job_id)
+            try:
+                job_uuid = parse_job_uuid(job_id)
+                if job_uuid:
+                    await mark_job_failed(job_uuid, "Job timed out after 10 minutes")
+            except Exception:
+                logger.exception("Failed to mark timed-out job %s as failed", job_id)
         except Exception:
             logger.exception("Unhandled error processing job: %s", job_id)
+
+    logger.info("AI Worker loop stopped (shutdown requested)")
 
 
 async def _run_translation_worker() -> None:
@@ -735,7 +757,7 @@ async def _run_translation_worker() -> None:
 
     logger.info("Translation Worker started - waiting for translation jobs...")
 
-    while True:
+    while not _shutdown_event.is_set():
         job = await dequeue_translation_job()
         if not job:
             await asyncio.sleep(settings.TRANSLATION_POLL_INTERVAL_S)
@@ -754,16 +776,55 @@ async def _run_translation_worker() -> None:
             logger.exception("Unhandled error processing translation job: event=%s", event_id)
 
 
+async def _run_health_server() -> None:
+    """Minimal HTTP health check server."""
+
+    async def handle_client(reader, writer):
+        try:
+            await reader.read(1024)
+            body = json.dumps({"status": "healthy", "service": "worker"})
+            response = (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(body)}\r\n"
+                "\r\n"
+                f"{body}"
+            )
+            writer.write(response.encode())
+            await writer.drain()
+        finally:
+            writer.close()
+
+    port = int(os.environ.get("PORT", 8001))
+    server = await asyncio.start_server(handle_client, "0.0.0.0", port)
+    logger.info("Health check server started on port %d", port)
+
+    async with server:
+        await _shutdown_event.wait()
+
+    logger.info("Health check server stopped")
+
+
 async def run_worker() -> None:
     """Entry point: initializes DB and runs both worker loops concurrently."""
+    # Validate configuration
+    settings.validate()
+
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
+    # Initialize database — fail fast if it's unreachable
     try:
         await init_db()
     except Exception:
-        logger.exception("Failed to initialize database")
+        logger.exception("Failed to initialize database — cannot proceed")
+        raise
 
     await asyncio.gather(
         _run_ai_worker(),
         _run_translation_worker(),
+        _run_health_server(),
     )
 
 

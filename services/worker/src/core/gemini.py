@@ -93,7 +93,7 @@ async def analyze_multiple_pdfs(
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = client.models.generate_content(
+            response = await client.aio.models.generate_content(
                 model=model,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
@@ -151,7 +151,7 @@ async def generate_text(
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = client.models.generate_content(
+            response = await client.aio.models.generate_content(
                 model=model,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
