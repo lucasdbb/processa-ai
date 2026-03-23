@@ -13,6 +13,7 @@ import {
   isValidCpf,
 } from '@/lib/masks'
 import { fileToBase64 } from '@/lib/imageUtils'
+import { createClient } from '@/lib/supabase/client'
 import { authService } from '@/features/auth/services/auth-service'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
@@ -38,6 +39,7 @@ const AREAS = [
 export default function ConfiguracoesPage() {
   const navigate = useNavigate()
   const { user } = useUser()
+  const supabase = createClient()
   const setUser = useAuthStore((state) => state.setUser)
   const { logout } = useAuthStore()
   const { credits, fetchCredits, isLoading: loadingCredits } = useCreditsStore()
@@ -202,7 +204,8 @@ export default function ConfiguracoesPage() {
     }
     setIsChangingPassword(true)
     try {
-      // TODO: Implementar endpoint de mudança de senha
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
       toast.success('Senha alterada com sucesso')
       setNewPassword('')
       setConfirmPassword('')
