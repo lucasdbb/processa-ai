@@ -10,7 +10,6 @@ class CnisAnalysisRequest(BaseModel):
     job_uuid: str | None = None
     files: list[dict] | None = None  # [{bucket, storage_path, filename}]
 
-    user_id: str
     client_id: str | None = None
     functionality: str = "ai"
     store_pdf: bool = False
@@ -83,7 +82,6 @@ class ProcessSummaryRequest(BaseModel):
     job_uuid: str | None = None
     files: list[dict] | None = None  # [{bucket, storage_path, filename}]
 
-    user_id: str
     client_id: str | None = None
     functionality: str = "ai"
     store_pdf: bool = False
@@ -115,7 +113,6 @@ class LaborClaimUploadRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     prompt: str
-    user_id: str
     client_id: str | None = None
     functionality: str = "ai"
     store_pdf: bool = True
@@ -133,7 +130,6 @@ class BriefScannerRequest(BaseModel):
     job_uuid: str | None = None
     files: list[dict] | None = None  # [{bucket, storage_path, filename}]
 
-    user_id: str
     client_id: str | None = None
     functionality: str = "ai"
     store_pdf: bool = True

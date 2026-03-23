@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,18 @@ class Settings(BaseSettings):
 
     # Internal Auth
     INTERNAL_TOKEN: str = ""
+
+    # Supabase JWT verification
+    SUPABASE_JWT_SECRET: str = ""
+
+    @model_validator(mode="after")
+    def validate_required_secrets(self):
+        if self.ENVIRONMENT != "development":
+            if not self.INTERNAL_TOKEN:
+                raise ValueError("INTERNAL_TOKEN must be set in non-development environments")
+            if not self.SUPABASE_JWT_SECRET:
+                raise ValueError("SUPABASE_JWT_SECRET must be set in non-development environments")
+        return self
 
     # Database
     DATABASE_URL: str = ""

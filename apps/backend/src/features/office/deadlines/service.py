@@ -200,7 +200,8 @@ class DeadlinesService:
         """Update an existing deadline."""
         pool = await get_pool()
 
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+        ALLOWED_FIELDS = {"title", "description", "due_date", "priority", "status", "reminder_days_before"}
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None and k in ALLOWED_FIELDS}
 
         if not update_data:
             return await self.get_deadline(user_id, deadline_id)

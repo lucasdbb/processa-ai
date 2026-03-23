@@ -201,8 +201,9 @@ class TimelineService:
         """Update an existing timeline event and its document links."""
         pool = await get_pool()
 
+        ALLOWED_FIELDS = {"title", "description", "event_date", "metadata"}
         update_data = {
-            k: v for k, v in data.model_dump().items() if v is not None and k != "document_ids"
+            k: v for k, v in data.model_dump().items() if v is not None and k != "document_ids" and k in ALLOWED_FIELDS
         }
 
         async with pool.connection() as conn:

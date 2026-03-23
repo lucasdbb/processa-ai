@@ -209,7 +209,8 @@ class ServicesService:
         """Update an existing service."""
         pool = await get_pool()
 
-        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None or k == "is_partnership"}
+        ALLOWED_FIELDS = {"name", "category", "status", "value", "paid_amount", "notes", "is_partnership", "partner_lawyer", "partner_percentage"}
+        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if (v is not None or k == "is_partnership") and k in ALLOWED_FIELDS}
         if not update_data:
             return await self.get_service(user_id, service_id)
 

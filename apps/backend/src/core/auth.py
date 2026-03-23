@@ -15,16 +15,11 @@ def verify_internal_token(x_internal_token: str = Header(...)) -> None:
         )
 
 
-def get_user_id(request: Request, x_user_id: str = Header(None)) -> str:
-    """Get the user ID from request state (set by middleware) or header."""
-    # Try to get from middleware first (JWT)
+def get_user_id(request: Request) -> str:
+    """Get the user ID from request state (set by JWT middleware)."""
     user_id = getattr(request.state, "user_id", None)
     if user_id:
         return user_id
-
-    # Fallback to header (for gateway/proxy)
-    if x_user_id:
-        return x_user_id
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -32,16 +27,11 @@ def get_user_id(request: Request, x_user_id: str = Header(None)) -> str:
     )
 
 
-def get_user_role(request: Request, x_user_role: str = Header(None)) -> str:
-    """Get the user role from request state (set by middleware) or header."""
-    # Try to get from middleware first (JWT)
+def get_user_role(request: Request) -> str:
+    """Get the user role from request state (set by JWT middleware)."""
     user_role = getattr(request.state, "user_role", None)
     if user_role:
         return user_role
-
-    # Fallback to header (for gateway/proxy)
-    if x_user_role:
-        return x_user_role
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -58,11 +48,6 @@ def get_current_user(request: Request) -> CurrentUser:
     """Dependency to get the current authenticated user."""
     user_id = getattr(request.state, "user_id", None)
     user_role = getattr(request.state, "user_role", "client")
-
-    if not user_id:
-        # Check header fallback
-        user_id = request.headers.get("x-user-id")
-        user_role = request.headers.get("x-user-role", "client")
 
     if not user_id:
         raise HTTPException(

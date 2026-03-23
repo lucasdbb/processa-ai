@@ -133,7 +133,8 @@ class FeesService:
         """Update an existing fee."""
         pool = await get_pool()
 
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+        ALLOWED_FIELDS = {"process_id", "service_id", "fee_type", "description", "amount", "due_date", "paid_at", "status", "notes"}
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None and k in ALLOWED_FIELDS}
         if not update_data:
             return await self.get_fee(user_id, fee_id)
 

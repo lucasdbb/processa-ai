@@ -4,6 +4,7 @@ import jwt
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from src.core.config import settings
 from src.core.logging import logger
 from src.core.supabase import get_supabase
 
@@ -23,9 +24,21 @@ class SupabaseAuthMiddleware(BaseHTTPMiddleware):
             token = auth_header.replace("Bearer ", "")
 
             try:
-                # Decode JWT without verification (Supabase already verified it)
-                # In production, you should verify the signature with Supabase's public key
-                decoded = jwt.decode(token, options={"verify_signature": False})
+                # Verify JWT signature with Supabase JWT secret
+                if settings.SUPABASE_JWT_SECRET:
+                    decoded = jwt.decode(
+                        token,
+                        settings.SUPABASE_JWT_SECRET,
+                        algorithms=["HS256"],
+                        options={"verify_exp": True},
+                        audience="authenticated",
+                    )
+                else:
+                    logger.warning(
+                        "SUPABASE_JWT_SECRET not set — JWT signature NOT verified. "
+                        "This is insecure and must not be used in production."
+                    )
+                    decoded = jwt.decode(token, options={"verify_signature": False})
 
                 # Extract user ID from JWT
                 user_id = decoded.get("sub")  # subject = user_id

@@ -164,7 +164,8 @@ class ProcessesService:
         """Update an existing process."""
         pool = await get_pool()
 
-        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None or k == "is_partnership"}
+        ALLOWED_FIELDS = {"process_number", "process_category", "court", "tribunal", "defendant", "client_role", "type", "area", "subject", "value", "status", "notes", "start_date", "end_date", "is_partnership"}
+        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if (v is not None or k == "is_partnership") and k in ALLOWED_FIELDS}
         if not update_data:
             return await self.get_process(user_id, process_id)
 

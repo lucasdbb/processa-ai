@@ -136,7 +136,8 @@ class NotesService:
         self, user_id: UUID, note_id: UUID, data: NoteUpdate
     ) -> NoteResponse | None:
         """Update an existing note."""
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+        ALLOWED_FIELDS = {"note_type", "title", "content", "is_pinned"}
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None and k in ALLOWED_FIELDS}
         if not update_data:
             return await self.get_note(user_id, note_id)
 

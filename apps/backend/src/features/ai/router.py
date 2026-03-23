@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from src.core.ai_worker_store import (
     delete_job,
@@ -77,11 +77,9 @@ async def get_ai_tools(_internal=Depends(require_internal_auth)):
 )
 async def cnis_analysis(
     data: CnisAnalysisRequest,
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
-    user_id = (data.user_id or "").strip()
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
     # Handle multiple files or single file (CNIS usually processes single, but we standardize input)
     files_list = data.files or []
@@ -137,12 +135,10 @@ async def cnis_analysis(
 )
 async def process_summary_analysis(
     data: ProcessSummaryRequest,
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
     """Análise de resumo de processo via URL ou storage_path."""
-    user_id = (data.user_id or "").strip()
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
     # Handle multiple files or single file
     files_list = data.files or []
@@ -198,6 +194,7 @@ async def process_summary_analysis(
 )
 async def labor_claim_analysis(
     data: dict = Body(...),
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
     """
@@ -209,10 +206,6 @@ async def labor_claim_analysis(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Descreva os fatos do caso (mínimo 50 caracteres)",
         )
-
-    user_id = (data.get("user_id") or "").strip()
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
     client_id = data.get("client_id")
     store_pdf = bool(data.get("store_pdf", True))
@@ -260,12 +253,10 @@ async def labor_claim_analysis(
 )
 async def brief_scanner_analysis(
     data: BriefScannerRequest,
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
     """Analisa peça processual para identificar fragilidades."""
-    user_id = (data.user_id or "").strip()
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
     # Handle single file (like CNIS)
     files_list = data.files or []
@@ -402,14 +393,12 @@ async def delete_ai_job(
     status_code=status.HTTP_200_OK,
 )
 async def get_analysis_history(
-    user_id: str = Query(..., description="ID do usuário"),
-    limit: int = Query(50, ge=1, le=100, description="Limite de resultados"),
-    offset: int = Query(0, ge=0, description="Offset para paginação"),
+    user_id: str = Depends(get_user_id),
+    limit: int = 50,
+    offset: int = 0,
     _internal=Depends(require_internal_auth),
 ):
     """Lista histórico de análises CNIS de um usuário."""
-    if not user_id.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id obrigatório")
 
     try:
         rows = await get_user_analysis_history(
@@ -518,11 +507,11 @@ async def download_document(
 
 @router.get("/jobs", status_code=status.HTTP_200_OK)
 async def get_user_jobs_list(
-    user_id: str = Query(..., description="ID do usuário"),
-    client_id: str | None = Query(None, description="ID do cliente opcional"),
-    functionality: str | None = Query(None, description="Filtro por funcionalidade (endpoint_key)"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    user_id: str = Depends(get_user_id),
+    client_id: str | None = None,
+    functionality: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
     _internal=Depends(require_internal_auth),
 ):
     """Lista jobs de IA do usuário."""

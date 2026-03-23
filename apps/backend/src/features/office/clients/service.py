@@ -146,8 +146,9 @@ class ClientsService:
         """Update an existing client."""
         pool = await get_pool()
 
-        # Filter out None values
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+        # Filter out None values with column allowlist
+        ALLOWED_FIELDS = {"name", "email", "phone", "cpf_cnpj", "address", "city", "state", "zip_code", "notes", "status"}
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None and k in ALLOWED_FIELDS}
 
         if not update_data:
             return await self.get_client(user_id, client_id)
