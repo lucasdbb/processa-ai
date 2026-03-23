@@ -1,14 +1,14 @@
 # Processa AI
 
-Plataforma de tecnologia jurídica com gestão de escritório, assistência com IA, calculadoras trabalhistas e blog especializado. Desenvolvida com **Vite 7 + React 19** (frontend) e **Python 3.13 + FastAPI** (backend), utilizando **Supabase** como banco de dados e autenticação.
+Plataforma de tecnologia jurídica com gestão de escritório, assistência com IA, chat jurídico com RAG, calculadoras trabalhistas e blog especializado. Desenvolvida com **Vite 7 + React 19** (frontend) e **Python 3.13 + FastAPI** (backend), utilizando **Supabase** como banco de dados e autenticação.
 
 ## Estrutura do Monorepo
 
-O projeto é dividido em três aplicações/serviços principais. Cada um possui sua própria documentação detalhada:
+O projeto é dividido em três aplicações/serviços principais:
 
-*   [**Frontend** (`apps/frontend/README.md`)](./apps/frontend/README.md): Vite 7 + React 19 + TypeScript (SPA)
-*   [**Backend** (`apps/backend/README.md`)](./apps/backend/README.md): Python 3.13 + FastAPI
-*   [**Worker** (`services/worker/README.md`)](./services/worker/README.md): Worker assíncrono para IA e geração de documentos
+*   [**Frontend** (`apps/frontend/`)](./apps/frontend/): Vite 7 + React 19 + TypeScript (SPA)
+*   [**Backend** (`apps/backend/`)](./apps/backend/): Python 3.13 + FastAPI
+*   [**Worker** (`services/worker/`)](./services/worker/): Worker assíncrono para IA e geração de documentos
 
 ```text
 processa-ai/
@@ -16,21 +16,21 @@ processa-ai/
 │   ├── frontend/           # Vite 7 + React 19 + TypeScript (SPA)
 │   └── backend/            # Python 3.13 + FastAPI
 ├── services/
-│   └── worker/             # Worker assíncrono (processamento de jobs IA)
-├── docker-compose.yml      # Orquestração de serviços (dev)
-├── docker-compose.prod.yml # Override para produção
+│   └── worker/             # Worker assíncrono (processamento de jobs IA + PDFs)
+├── docker-compose.yml      # Orquestração de serviços
 └── package.json            # Workspace raiz (npm)
 ```
 
 ## Funcionalidades
 
-- **Gestão de Escritório (Office)**: Clientes, processos, serviços, documentos, honorários, prazos, andamentos (timeline) e calendário
-- **Portal do Cliente**: Área de acesso para clientes do escritório acompanharem seus processos
-- **Assistente IA**: Ferramentas de IA jurídica com upload de documentos, OCR e processamento assíncrono via worker
-- **Calculadoras Trabalhistas**: Cálculos de rescisão e simulações previdenciárias
+- **Gestão de Escritório**: Clientes, processos, serviços, documentos, honorários, prazos, andamentos (timeline), notas e calendário
+- **Portal do Cliente**: Área read-only para clientes do escritório acompanharem seus processos (acesso via link de convite)
+- **Ferramentas de IA**: Análise de CNIS, resumo de processos, reclamação trabalhista, scanner de petições — com upload de documentos, OCR e processamento assíncrono via worker
+- **Chat Jurídico com RAG**: Chat com IA especializada em direito brasileiro, fundamentado em legislação via RAG taxonômico (pgvector), streaming SSE, cobrança por sessão
+- **Calculadoras**: Rescisão trabalhista e simulação de aposentadoria, com geração de relatório PDF
 - **Blog Jurídico**: Sistema completo com editor Markdown, categorias e admin dashboard
 - **Billing**: Assinaturas via Stripe com sistema de créditos
-- **Autenticação**: Login, registro e recuperação de senha via Supabase Auth
+- **Autenticação**: Login, registro e OAuth via Supabase Auth
 - **Newsletter e Suporte**: Inscrição em newsletter e formulário de contato
 - **Notificações**: Sistema de notificações in-app
 - **Materiais**: Biblioteca de materiais jurídicos para download
@@ -38,33 +38,36 @@ processa-ai/
 ## Tecnologias
 
 ### Frontend (`apps/frontend`)
-| Tecnologia | Versão |
+| Tecnologia | Versão/Detalhe |
 |---|---|
 | Vite | 7 |
 | React | 19 |
-| TypeScript | 5.9 |
+| TypeScript | 5.9 (strict mode) |
 | React Router | 7 (SPA, sem SSR) |
-| Tailwind CSS | 4 |
+| React Query | Server state caching |
+| Tailwind CSS | 4 (via `@tailwindcss/vite`) |
 | shadcn/ui | Radix UI primitives |
-| Zustand | 5 |
+| Zustand | 5 (estado global) |
 | react-hook-form + Zod | Validação de formulários |
 | Supabase JS | `@supabase/supabase-js` (client-side) |
+| DOMPurify | Sanitização XSS |
 | lucide-react | Ícones |
 | Sonner | Toasts |
 | PostHog | Analytics |
 
 ### Backend (`apps/backend`)
-| Tecnologia | Versão |
+| Tecnologia | Versão/Detalhe |
 |---|---|
 | Python | 3.13 |
 | FastAPI | Framework ASGI |
 | Uvicorn | Servidor ASGI |
-| Pydantic | 2.10 (validação) |
-| psycopg | 3 (PostgreSQL async) |
+| Pydantic | 2 (validação com type safety) |
+| psycopg | 3 (PostgreSQL async, connection pool) |
+| PyJWT | Verificação de JWT Supabase |
 | Supabase | Database + Auth + Storage |
 | Stripe | Pagamentos e assinaturas |
+| Google Gemini | Chat jurídico com RAG (streaming SSE) |
 | SendGrid | Envio de e-mails |
-| Redis | Fila de jobs (via `redis-py`) |
 | uv | Package manager |
 | Ruff | Linter e formatter |
 
@@ -72,10 +75,11 @@ processa-ai/
 | Tecnologia | Uso |
 |---|---|
 | Python 3.13 | Runtime |
-| Redis (BLPOP) | Consumo da fila de jobs |
-| OpenAI / Mistral | Providers de LLM |
+| PostgreSQL queue | Consumo de jobs (`FOR UPDATE SKIP LOCKED`) |
+| Google Gemini (async) | LLM para análises (Pro) + tarefas leves (Flash Lite) |
+| Google Embeddings | `gemini-embedding-001` para RAG |
 | Supabase Storage | Acesso a documentos |
-| OCR (Tesseract/pdf) | Extração de texto de documentos |
+| OCR | Extração de texto de documentos |
 
 ## Instalação
 
@@ -100,6 +104,13 @@ pip install uv   # se não tiver
 uv sync
 ```
 
+**Worker:**
+```bash
+cd services/worker
+pip install uv   # se não tiver
+uv sync
+```
+
 ### 3. Configure as variáveis de ambiente
 
 **Frontend** (`apps/frontend/.env`):
@@ -115,17 +126,27 @@ VITE_INTERNAL_TOKEN=seu-token-interno
 DATABASE_URL=postgresql://postgres:SENHA@db.PROJETO.supabase.co:5432/postgres
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
+SUPABASE_JWT_SECRET=seu-jwt-secret
 INTERNAL_TOKEN=seu-token-interno
-REDIS_URL=redis://localhost:6379/0
 FRONTEND_URL=http://localhost:5173
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 STRIPE_SECRET_KEY=sk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=...
 ENCRYPTION_KEY=chave-fernet-base64
+GEMINI_API_KEY=...
 SENDGRID_API_KEY=SG....
 SENDGRID_FROM=email@dominio.com
+```
+
+**Worker** (`services/worker/.env`):
+```env
+DATABASE_URL=postgresql://postgres:SENHA@db.PROJETO.supabase.co:5432/postgres
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
+GEMINI_API_KEY=...
 ```
 
 ### 4. Inicie o desenvolvimento
@@ -141,8 +162,7 @@ Serviços:
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000
 - API Docs: http://localhost:8000/docs
-- Worker: processamento em background
-- Redis: fila de jobs
+- Worker: processamento em background (health check na porta 8001)
 
 #### Opção B: Desenvolvimento Local
 
@@ -154,6 +174,11 @@ cd apps/frontend && npm run dev
 **Backend (porta 8000):**
 ```bash
 cd apps/backend && uv run uvicorn src.main:app --reload
+```
+
+**Worker (porta 8001 para health check):**
+```bash
+cd services/worker && uv run python -m src.main
 ```
 
 ## Comandos de Desenvolvimento
@@ -176,9 +201,17 @@ uv run ruff check src/                 # Linting
 uv run ruff format src/                # Formatação
 ```
 
+### Worker
+```bash
+cd services/worker
+uv run python -m src.main              # Iniciar worker
+```
+
 ## Rotas da Aplicação
 
 ### Frontend (React Router v7)
+
+Todas as páginas do app são lazy-loaded com `React.lazy()` + `Suspense`.
 
 **Públicas:**
 | Rota | Descrição |
@@ -191,6 +224,7 @@ uv run ruff format src/                # Formatação
 | `/materiais` | Biblioteca de materiais |
 | `/termos` | Termos de uso |
 | `/privacidade` | Política de privacidade |
+| `/auth/callback` | Callback OAuth/magic-link |
 
 **App (requer autenticação):**
 | Rota | Descrição |
@@ -207,15 +241,17 @@ uv run ruff format src/                # Formatação
 | `/app/ia` | Hub de ferramentas de IA |
 | `/app/ia/:toolId` | Ferramenta de IA específica |
 | `/app/calculadoras` | Calculadoras trabalhistas |
+| `/app/calculadoras/:calculatorId` | Calculadora específica |
 | `/app/assinatura` | Gerenciar assinatura |
 | `/app/notificacoes` | Central de notificações |
 | `/app/configuracoes` | Configurações do usuário |
 | `/app/ajuda` | Central de ajuda |
+| `/app/materiais` | Materiais jurídicos |
 
 **Portal do Cliente:**
 | Rota | Descrição |
 |---|---|
-| `/portal/ativar` | Ativação de conta do portal (via link de convite) |
+| `/portal/ativar` | Ativação de conta (via link de convite) |
 | `/portal` | Dashboard do cliente |
 
 **Admin (requer role admin/author):**
@@ -227,7 +263,7 @@ uv run ruff format src/                # Formatação
 
 ### Backend API
 
-Todas as rotas sob o prefixo `/api`.
+Todas as rotas sob o prefixo `/api`. Documentação interativa: http://localhost:8000/docs
 
 **Core:**
 | Prefixo | Módulo |
@@ -241,7 +277,9 @@ Todas as rotas sob o prefixo `/api`.
 | `/api/materials` | Materiais para download |
 | `/api/plans` | Planos disponíveis |
 | `/api/notifications` | Notificações |
+| `/api/notification-logs` | Logs de notificações |
 | `/api/storage` | Upload via signed URL |
+| `/api/documents` | Documentos gerais |
 
 **Billing:**
 | Prefixo | Módulo |
@@ -264,14 +302,12 @@ Todas as rotas sob o prefixo `/api`.
 | `/api/office/services` | Serviços |
 | `/api/office/calendar` | Calendário |
 
-**Outros:**
+**IA e Outros:**
 | Prefixo | Módulo |
 |---|---|
-| `/api/ai` | Ferramentas de IA |
+| `/api/ai` | Ferramentas de IA + Chat jurídico (SSE streaming) |
 | `/api/calculators` | Calculadoras trabalhistas |
 | `/api/portal` | Portal do cliente (read-only) |
-
-Documentação interativa: http://localhost:8000/docs
 
 ## Arquitetura
 
@@ -281,9 +317,10 @@ Documentação interativa: http://localhost:8000/docs
 - **React Router v7** para roteamento client-side
 - **Feature-first architecture**: código organizado por domínio
 - **Zustand** para estado global (auth, billing, créditos)
+- **React Query** para server state caching (5 min staleTime)
 - **Supabase JS** para autenticação client-side (sessão via localStorage + JWT)
 - **Route guards** (AuthGuard, AdminGuard, PortalGuard, RequirePlan) para proteção de rotas
-- **Lazy loading** para páginas menos acessadas (admin, calculadoras, IA)
+- **Lazy loading** em todas as páginas autenticadas com `React.lazy()` + `Suspense`
 
 ```
 apps/frontend/src/
@@ -296,10 +333,11 @@ apps/frontend/src/
 │   ├── auth/         # Autenticação (store, hooks)
 │   ├── ai/           # IA (hooks, componentes)
 │   ├── blog/         # Blog
-│   └── ...
+│   ├── calculators/  # Calculadoras
+│   └── onboarding/   # Tour/onboarding
 ├── pages/            # Páginas (componentes de rota)
-│   ├── app/          # Páginas autenticadas
-│   ├── admin/        # Tabs do admin
+│   ├── app/          # Páginas autenticadas (lazy-loaded)
+│   ├── admin/        # Tabs do admin (lazy-loaded)
 │   └── portal/       # Páginas do portal
 ├── services/         # Serviços de API
 ├── stores/           # Zustand stores
@@ -312,50 +350,59 @@ apps/frontend/src/
 
 - **Feature-based modules**: cada feature com `router.py`, `schemas.py`, `service.py`
 - **Async-first**: todas as operações de I/O são assíncronas
-- **Pydantic** para validação de request/response
-- **psycopg 3** para queries PostgreSQL diretas (connection pool)
+- **Pydantic 2** para validação de request/response
+- **psycopg 3** para queries PostgreSQL diretas (connection pool, sem ORM)
+- **JWT middleware**: verifica assinatura do token Supabase, extrai `user_id` e `role` no `request.state`
+- **Identidade server-side**: endpoints usam `Depends(get_user_id)` — nunca aceitam `user_id` do frontend
 - **Supabase Storage** para arquivos (upload via signed URL)
-- **Redis** como fila de jobs para o worker
+- **PostgreSQL queue** para enfileirar jobs para o worker
 
 ```
 apps/backend/src/
 ├── main.py           # Entry point FastAPI
-├── core/             # Config, DB pool, logging, Supabase client
+├── core/             # Config, DB pool, logging, Supabase client, middleware, auth
 ├── api/              # Router principal (agrega todos os routers)
 ├── features/
-│   ├── core/         # Blog, profiles, storage, newsletter, support, etc.
+│   ├── core/         # Blog, profiles, storage, newsletter, support, documents, etc.
 │   ├── office/       # Clients, processes, documents, timeline, fees, etc.
 │   ├── billing/      # Subscriptions, webhooks, credits
-│   ├── ai/           # Ferramentas de IA (enqueue jobs)
+│   ├── ai/           # Ferramentas de IA + chat jurídico (chat/ submodule com RAG)
 │   ├── calculators/  # Calculadoras trabalhistas
 │   └── portal/       # Portal do cliente (read-only)
-└── shared/           # Database, auth dependencies
+└── shared/           # Database utilities
 ```
 
 ### Worker (Processamento Assíncrono)
 
-- Serviço independente que consome jobs da fila Redis
-- Pipeline: download do documento → OCR → envio ao LLM → salvar resultado
-- Suporta múltiplos providers (OpenAI, Mistral)
+- Serviço independente que consome jobs de uma **fila PostgreSQL** (`FOR UPDATE SKIP LOCKED`)
+- Dois loops concorrentes: **AI worker** (jobs pesados) + **translation worker** (jobs rápidos)
+- **Google Gemini** (async SDK) como LLM principal para análises e embeddings
+- Pipeline: download do documento → OCR → envio ao LLM → salvar resultado no DB
+- Geração de PDFs para calculadoras (rescisão, aposentadoria)
+- Ingestão RAG: processamento de documentos para base de conhecimento
+- **Health check HTTP** na porta 8001
+- **Graceful shutdown** via signal handlers (SIGTERM/SIGINT)
+- **Job timeout**: 600 segundos por job
 - Escalável horizontalmente (múltiplas réplicas)
 
 ```
 services/worker/src/
-├── main.py           # Loop principal (BLPOP Redis)
-├── core/             # Config, DB, queue, LLM, OCR, storage
-└── handlers/         # Pipeline de processamento + prompts por tipo de job
+├── main.py           # Loops principais (AI worker + translation worker + health server)
+├── core/             # Config, DB, queue, Gemini LLM, OCR, storage, embeddings
+└── handlers/         # Pipeline de processamento, prompts, RAG ingest, reports
 ```
 
 ## Docker
 
-O projeto inclui Docker Compose com 4 serviços:
+O projeto inclui Docker Compose com 3 serviços:
 
 | Serviço | Porta | Descrição |
 |---|---|---|
-| `frontend` | 5173 | Vite/React (nginx em produção) |
+| `frontend` | 5173 → 80 | Vite/React (Nginx em produção) |
 | `backend` | 8000 | FastAPI (Uvicorn) |
-| `worker` | — | Processamento assíncrono de jobs IA |
-| `redis` | 6379 | Fila de jobs e cache |
+| `worker` | 8001 (health) | Processamento assíncrono de jobs |
+
+Todos os serviços possuem healthchecks, `restart: unless-stopped`, e o frontend espera o backend ficar healthy antes de iniciar.
 
 ```bash
 docker-compose up --build       # Build e iniciar
@@ -366,24 +413,41 @@ docker-compose logs -f backend  # Ver logs de um serviço
 
 ## Deploy
 
-### Frontend (Vercel)
+### Frontend
 ```bash
 cd apps/frontend && npm run build
-vercel --prod
 ```
 
-Variáveis de ambiente:
+Variáveis de ambiente necessárias:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_BACKEND_URL`
 - `VITE_INTERNAL_TOKEN`
 
-### Backend (Railway/Render)
+### Backend
 
 Start command:
 ```bash
 uv run uvicorn src.main:app --host 0.0.0.0 --port $PORT
 ```
+
+Variáveis de ambiente obrigatórias em produção:
+- `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_JWT_SECRET` (verificação de JWT)
+- `INTERNAL_TOKEN` (autenticação frontend→backend)
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- `GEMINI_API_KEY`
+
+### Worker
+
+Start command:
+```bash
+uv run python -m src.main
+```
+
+Variáveis de ambiente obrigatórias:
+- `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- `GEMINI_API_KEY`
 
 ## Licença
 
