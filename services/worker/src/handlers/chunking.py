@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 MIN_CHUNK_SIZE = 200
 MAX_CHUNK_SIZE = 2400

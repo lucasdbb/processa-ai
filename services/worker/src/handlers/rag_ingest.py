@@ -17,7 +17,7 @@ from src.core.embeddings import generate_embeddings
 from src.core.logging import logger
 from src.core.ocr import extract_text_from_url
 from src.core.storage import StorageService
-from src.handlers.chunking import LegalChunk, chunk_legal_text
+from src.handlers.chunking import chunk_legal_text
 from src.handlers.enrichment import classify_document, enrich_chunks
 
 

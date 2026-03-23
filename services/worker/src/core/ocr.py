@@ -2,7 +2,6 @@
 
 import asyncio
 import re
-import tempfile
 from urllib.parse import urlparse
 
 import httpx
