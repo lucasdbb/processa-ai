@@ -25,9 +25,7 @@ depends_on = None
 
 def upgrade() -> None:
     # Drop only the old 3-param overload by specifying its exact signature
-    op.execute(
-        "DROP FUNCTION IF EXISTS public.grant_credits_to_user(UUID, INTEGER, TEXT)"
-    )
+    op.execute("DROP FUNCTION IF EXISTS public.grant_credits_to_user(UUID, INTEGER, TEXT)")
 
 
 def downgrade() -> None:

@@ -10,11 +10,10 @@ from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from src.core.email import send_email
-from src.core.logging import logger
-
 # Import job dependencies
 from src.core.cleanup import CleanupService
+from src.core.email import send_email
+from src.core.logging import logger
 from src.features.office.deadlines.notifications import DeadlineNotificationService
 
 

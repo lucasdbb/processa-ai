@@ -188,12 +188,14 @@ def _build_deadlines_html_list(deadlines: list[dict]) -> str:
     items = []
     for d in deadlines:
         urgency = _format_deadline_urgency(d["days_until"])
-        color = "#dc2626" if d["days_until"] <= 1 else "#d97706" if d["days_until"] <= 3 else "#334155"
+        color = (
+            "#dc2626" if d["days_until"] <= 1 else "#d97706" if d["days_until"] <= 3 else "#334155"
+        )
         items.append(
             f'<li style="margin-bottom: 8px;">'
-            f'<strong>{d["title"]}</strong> — '
+            f"<strong>{d['title']}</strong> — "
             f'<span style="color: {color}; font-weight: 600;">vence {urgency}</span> '
-            f'({d["due_date_str"]})</li>'
+            f"({d['due_date_str']})</li>"
         )
     return f'<ul style="padding-left: 20px; margin: 16px 0;">{"".join(items)}</ul>'
 
@@ -277,9 +279,7 @@ async def send_weekly_deadline_summary(
     deadlines_text = _build_deadlines_text_list(deadlines)
     deadlines_html = _build_deadlines_html_list(deadlines)
 
-    content_text = (
-        f"{greeting}\n\nAqui está o resumo dos seus prazos para a próxima semana:\n\n{deadlines_text}"
-    )
+    content_text = f"{greeting}\n\nAqui está o resumo dos seus prazos para a próxima semana:\n\n{deadlines_text}"
     cta_link = f"{settings.FRONTEND_URL}/app/calendario"
 
     body = f"{content_text}\n\nAcesse seu calendário: {cta_link}\n\nAtenciosamente,\nEquipe Processa AI"
@@ -498,58 +498,6 @@ def _build_unsubscribe_link(url: str | None, token: str | None) -> str:
     if not token or not url:
         return ""
     return f'<p class="unsubscribe"><a href="{url}">Cancelar inscrição</a></p>'
-
-
-async def send_deadline_reminder(
-    to_email: str,
-    user_name: str | None,
-    deadline_title: str,
-    days_until: int,
-    due_date_str: str,
-    processo_id: str | None = None,
-) -> bool:
-    """Send email reminder about an upcoming deadline."""
-    if days_until == 0:
-        urgency = "HOJE"
-        subject = f"Prazo vence HOJE: {deadline_title}"
-    elif days_until == 1:
-        urgency = "AMANHÃ"
-        subject = f"Prazo vence amanhã: {deadline_title}"
-    else:
-        urgency = f"em {days_until} dias"
-        subject = f"Lembrete de prazo: {deadline_title} (vence {urgency})"
-
-    greeting = f"Olá{', ' + user_name if user_name else ''}!"
-
-    content = f"""{greeting}
-
-Este é um lembrete de que o seguinte prazo vence {urgency}:
-
-Prazo: {deadline_title}
-Data de vencimento: {due_date_str}"""
-
-    cta_link = f"{settings.FRONTEND_URL}/app/calendario"
-    cta_text = "Ver Calendário"
-
-    body = f"{content}\n\nAcesse seu calendário: {cta_link}\n\nAtenciosamente,\nEquipe Processa AI"
-
-    html_body = load_email_template(
-        "default.html",
-        {
-            "Titulo": f"Prazo vence {urgency}",
-            "Conteudo": content.replace("\n", "<br>"),
-            "Botao_Texto": cta_text,
-            "Botao_Link": cta_link,
-            "Rodape": "Você recebeu este e-mail porque possui prazos cadastrados no Processa AI.",
-        },
-    )
-
-    return await send_email(
-        to_email=to_email,
-        subject=subject,
-        body=body,
-        html_body=html_body,
-    )
 
 
 async def send_new_blog_post_notification(

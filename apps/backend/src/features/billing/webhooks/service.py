@@ -181,16 +181,26 @@ class WebhooksService:
 
             else:
                 logger.debug(f"Unhandled webhook event type: {event_type}")
-                self._record_event(event_id, event_type, event_status="skipped", metadata=event_metadata)
+                self._record_event(
+                    event_id, event_type, event_status="skipped", metadata=event_metadata
+                )
                 return {"received": True}
 
             # Record successful processing
-            self._record_event(event_id, event_type, event_status="processed", metadata=event_metadata)
+            self._record_event(
+                event_id, event_type, event_status="processed", metadata=event_metadata
+            )
 
         except TransientError as e:
             # Transient error - tell Stripe to retry
             logger.error(f"Transient error processing webhook {event_type}: {e}")
-            self._record_event(event_id, event_type, event_status="failed", error_message=str(e), metadata=event_metadata)
+            self._record_event(
+                event_id,
+                event_type,
+                event_status="failed",
+                error_message=str(e),
+                metadata=event_metadata,
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Temporary error, please retry",
@@ -199,7 +209,13 @@ class WebhooksService:
         except PermanentError as e:
             # Permanent error - log but acknowledge to Stripe (no retry needed)
             logger.error(f"Permanent error processing webhook {event_type}: {e}")
-            self._record_event(event_id, event_type, event_status="failed", error_message=str(e), metadata=event_metadata)
+            self._record_event(
+                event_id,
+                event_type,
+                event_status="failed",
+                error_message=str(e),
+                metadata=event_metadata,
+            )
             # Return success to prevent retries, but error is logged for investigation
 
         except Exception as e:

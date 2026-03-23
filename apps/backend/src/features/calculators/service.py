@@ -214,9 +214,7 @@ class CalculatorsService:
                 aniversario = date(ano_aniversario, data_admissao.month, 28)
             if aniversario > data_rescisao:
                 try:
-                    aniversario = date(
-                        ano_aniversario - 1, data_admissao.month, data_admissao.day
-                    )
+                    aniversario = date(ano_aniversario - 1, data_admissao.month, data_admissao.day)
                 except ValueError:
                     aniversario = date(ano_aniversario - 1, data_admissao.month, 28)
 
@@ -272,9 +270,7 @@ class CalculatorsService:
 
         fgts_rescisorio = 0.0
         if regras["fgts_rescisorio"]:
-            fgts_rescisorio = (
-                saldo_salario + max(0.0, valor_aviso_previo) + valor_13
-            ) * 0.08
+            fgts_rescisorio = (saldo_salario + max(0.0, valor_aviso_previo) + valor_13) * 0.08
 
         multa_percent = regras["multa_fgts_percent"]
         multa_fgts = (fgts_acumulado + fgts_rescisorio) * multa_percent

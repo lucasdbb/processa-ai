@@ -16,9 +16,7 @@ TWILIO_MESSAGES_URL = (
 def is_whatsapp_configured() -> bool:
     """Check if all required Twilio WhatsApp env vars are set."""
     return bool(
-        settings.TWILIO_ACCOUNT_SID
-        and settings.TWILIO_AUTH_TOKEN
-        and settings.TWILIO_WHATSAPP_FROM
+        settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_WHATSAPP_FROM
     )
 
 

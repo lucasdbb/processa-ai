@@ -5,11 +5,11 @@ from src.core.auth import get_user_id, require_internal_auth
 from src.core.logging import logger
 from src.features.ai.chat.schemas import (
     ChatMessageRequest,
+    ChatMessageResponse,
     CreateSessionRequest,
     SessionListResponse,
     SessionResponse,
     SessionWithMessagesResponse,
-    ChatMessageResponse,
 )
 from src.features.ai.chat.service import ChatService
 from src.features.billing.credits.service import CreditsService

@@ -70,7 +70,7 @@ def _build_system_prompt(chunks: list[RagChunk]) -> str:
             if c.revogado_por:
                 status_note += f" por {c.revogado_por}"
 
-        formatted.append(f"[{i}] {label}{status_note}: \"{c.content[:800]}\"")
+        formatted.append(f'[{i}] {label}{status_note}: "{c.content[:800]}"')
 
     return LEGAL_SYSTEM_PROMPT_BASE + RAG_CONTEXT_TEMPLATE.format(
         chunks="\n".join(formatted),
@@ -119,7 +119,9 @@ class ChatService:
 
         return self._session_row_to_dict(row)
 
-    async def list_sessions(self, user_id: str, limit: int = 20, offset: int = 0) -> tuple[list[dict], int]:
+    async def list_sessions(
+        self, user_id: str, limit: int = 20, offset: int = 0
+    ) -> tuple[list[dict], int]:
         pool = await get_pool()
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
@@ -220,13 +222,13 @@ class ChatService:
 
         if session["message_count"] >= session["max_messages"]:
             await self._expire_session(session_id)
-            raise ValueError(
-                f"Limite de {session['max_messages']} mensagens atingido"
-            )
+            raise ValueError(f"Limite de {session['max_messages']} mensagens atingido")
 
         return session
 
-    async def save_message(self, session_id: str, role: str, content: str, token_count: int | None = None) -> str:
+    async def save_message(
+        self, session_id: str, role: str, content: str, token_count: int | None = None
+    ) -> str:
         pool = await get_pool()
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
@@ -305,12 +307,17 @@ class ChatService:
             query_embedding = await generate_embedding(message)
             pool = await get_pool()
             rag_chunks = await search_legal_chunks(
-                pool, query_embedding, top_k=8, similarity_threshold=0.35,
+                pool,
+                query_embedding,
+                top_k=8,
+                similarity_threshold=0.35,
             )
             if rag_chunks:
                 logger.info(
                     "RAG returned %d chunks for session %s (top score: %.3f)",
-                    len(rag_chunks), session_id, rag_chunks[0].score,
+                    len(rag_chunks),
+                    session_id,
+                    rag_chunks[0].score,
                 )
         except Exception:
             logger.exception("RAG search failed for session %s, proceeding without", session_id)

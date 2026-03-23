@@ -577,7 +577,6 @@ class DashboardService:
             years = int(diff.days / 365)
             return f"há {years} ano{'s' if years != 1 else ''}"
 
-
     async def get_ai_cost_stats(self) -> dict:
         """Get AI token usage and cost statistics (admin only)."""
         try:
@@ -733,8 +732,20 @@ class DashboardService:
         except Exception as e:
             logger.error(f"Failed to get AI cost stats: {e}")
             return {
-                "all_time": {"total_jobs": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost_usd": 0.0},
-                "last_30d": {"total_jobs": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cost_usd": 0.0},
+                "all_time": {
+                    "total_jobs": 0,
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "cost_usd": 0.0,
+                },
+                "last_30d": {
+                    "total_jobs": 0,
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "cost_usd": 0.0,
+                },
                 "by_model": [],
                 "by_endpoint": [],
                 "daily_trend": [],

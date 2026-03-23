@@ -25,7 +25,9 @@ class ProfilesService:
         try:
             profile_response = (
                 self.supabase.table("profiles")
-                .select("id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, welcome_credits_claimed, created_at")
+                .select(
+                    "id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, welcome_credits_claimed, created_at"
+                )
                 .eq("id", user_id)
                 .execute()
             )

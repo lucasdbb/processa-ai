@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from src.core.ai_worker_store import (
     delete_job,
@@ -80,7 +80,6 @@ async def cnis_analysis(
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
-
     # Handle multiple files or single file (CNIS usually processes single, but we standardize input)
     files_list = data.files or []
     file_url = (data.file_url or "").strip()
@@ -384,7 +383,6 @@ async def delete_ai_job(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado")
 
     return None
-
 
 
 @router.get(

@@ -30,7 +30,12 @@ class CreditPackageDef:
 FEATURE_COSTS: dict[str, FeatureCost] = {
     fc.feature_key: fc
     for fc in [
-        FeatureCost("ai_chat_session", "Sessão Chat IA Jurídica", 3, "Sessão de chat com a IA jurídica (mensagens ilimitadas)"),
+        FeatureCost(
+            "ai_chat_session",
+            "Sessão Chat IA Jurídica",
+            3,
+            "Sessão de chat com a IA jurídica (mensagens ilimitadas)",
+        ),
         FeatureCost(
             "cnis_analysis", "Análise de CNIS", 5, "Análise completa de extrato previdenciário"
         ),

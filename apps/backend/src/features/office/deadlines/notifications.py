@@ -149,7 +149,9 @@ class DeadlineNotificationService:
             # Send one consolidated email per user (outside the DB transaction)
             emails_sent = 0
             whatsapp_sent = 0
-            deadline_titles = lambda ds: ", ".join(d["title"] for d in ds)
+
+            def deadline_titles(ds):
+                return ", ".join(d["title"] for d in ds)
 
             for user_id, data in user_deadlines.items():
                 subject = f"Lembrete de prazo ({len(data['deadlines'])} prazo(s))"

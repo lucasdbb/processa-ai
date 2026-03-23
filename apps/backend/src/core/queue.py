@@ -1,4 +1,3 @@
-
 from psycopg.types.json import Jsonb
 
 from src.core.db import get_pool

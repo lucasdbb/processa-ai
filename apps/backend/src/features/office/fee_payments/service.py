@@ -105,7 +105,9 @@ class FeePaymentsService:
         pool = await get_pool()
 
         ALLOWED_FIELDS = {"amount", "payment_date", "payment_method", "notes"}
-        update_data = {k: v for k, v in data.model_dump().items() if v is not None and k in ALLOWED_FIELDS}
+        update_data = {
+            k: v for k, v in data.model_dump().items() if v is not None and k in ALLOWED_FIELDS
+        }
         if not update_data:
             return await self.get_payment(user_id, payment_id)
 

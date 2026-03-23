@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
-from src.core.auth import get_current_admin, get_user_id, require_internal_auth
+from src.core.auth import get_user_id, require_internal_auth
 from src.core.logging import logger
 from src.features.ai.knowledge_base.schemas import (
     CreateAreaRequest,
@@ -47,7 +47,6 @@ async def create_area(
     user_id: str = Depends(get_user_id),
 ):
     """Criar nova área jurídica (admin-only)."""
-    from src.core.auth import get_user_role
 
     try:
         result = await kb_service.create_area(data.name, data.slug, data.description)
@@ -71,9 +70,7 @@ async def create_topic(
 ):
     """Criar novo tópico jurídico (admin-only)."""
     try:
-        result = await kb_service.create_topic(
-            data.area_id, data.name, data.slug, data.keywords
-        )
+        result = await kb_service.create_topic(data.area_id, data.name, data.slug, data.keywords)
         return LegalTopicResponse(**result)
     except Exception as e:
         logger.exception("Failed to create topic")
@@ -106,9 +103,7 @@ async def delete_topic(
     """Deletar tópico jurídico."""
     deleted = await kb_service.delete_topic(topic_id)
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Tópico não encontrado"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tópico não encontrado")
     return None
 
 
@@ -152,9 +147,7 @@ async def upload_document(
 ):
     """Upload PDF para a base de conhecimento."""
     if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Arquivo sem nome"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Arquivo sem nome")
 
     content_type = (file.content_type or "").lower()
     if "pdf" not in content_type and not (file.filename or "").lower().endswith(".pdf"):

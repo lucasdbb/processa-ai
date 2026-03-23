@@ -186,6 +186,7 @@ class TimelineService:
                 # Enqueue translation asynchronously (fire-and-forget)
                 try:
                     from src.features.portal.translation.service import translation_service
+
                     await translation_service.enqueue_translation(conn, str(event_id))
                 except Exception:
                     logger.exception("Failed to enqueue translation for event %s", event_id)
@@ -203,7 +204,9 @@ class TimelineService:
 
         ALLOWED_FIELDS = {"title", "description", "event_date", "metadata"}
         update_data = {
-            k: v for k, v in data.model_dump().items() if v is not None and k != "document_ids" and k in ALLOWED_FIELDS
+            k: v
+            for k, v in data.model_dump().items()
+            if v is not None and k != "document_ids" and k in ALLOWED_FIELDS
         }
 
         async with pool.connection() as conn:
@@ -242,6 +245,7 @@ class TimelineService:
             if "title" in update_data or "description" in update_data:
                 try:
                     from src.features.portal.translation.service import translation_service
+
                     await translation_service.enqueue_translation(conn, str(event_id))
                 except Exception:
                     logger.exception("Failed to re-enqueue translation for event %s", event_id)

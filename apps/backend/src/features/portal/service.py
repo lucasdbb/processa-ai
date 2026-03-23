@@ -196,9 +196,11 @@ class PortalService:
                     all_event_ids.append(str(e["id"]))
 
                 # Batch-fetch translations for ALL events across all processes
-                translations = await translation_service.get_translations_for_events(
-                    conn, all_event_ids
-                ) if all_event_ids else {}
+                translations = (
+                    await translation_service.get_translations_for_events(conn, all_event_ids)
+                    if all_event_ids
+                    else {}
+                )
 
                 # Batch-fetch documents for ALL events at once
                 docs_by_event: dict[str, list[PortalEventDocument]] = {}
@@ -253,7 +255,9 @@ class PortalService:
                                     sentiment=t.sentiment,
                                     process_phase=t.process_phase,
                                     process_phase_progress=t.process_phase_progress,
-                                ) if t else None,
+                                )
+                                if t
+                                else None,
                             )
                         )
 
@@ -430,9 +434,7 @@ class PortalService:
         # Generate signed URL via Supabase Storage
         supabase = get_supabase()
         try:
-            signed = supabase.storage.from_("documents").create_signed_url(
-                file_url, expires_in
-            )
+            signed = supabase.storage.from_("documents").create_signed_url(file_url, expires_in)
             return PortalDocumentDownloadResponse(url=signed["signedURL"], expires_in=expires_in)
         except Exception as e:
             logger.error(f"Error generating signed URL: {e}")

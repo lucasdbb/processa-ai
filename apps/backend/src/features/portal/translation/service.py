@@ -1,7 +1,5 @@
 """Translation service — enqueues and fetches timeline translations."""
 
-import json
-
 from psycopg.rows import dict_row
 
 from src.core.logging import logger
@@ -10,7 +8,6 @@ from src.features.portal.translation.schemas import TimelineTranslation
 
 
 class TranslationService:
-
     async def enqueue_translation(self, conn, timeline_event_id: str) -> bool:
         """
         Verifica se o processo do evento tem cliente vinculado.

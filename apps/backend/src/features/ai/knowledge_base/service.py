@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import uuid
 
 from src.core.db import get_pool
@@ -29,8 +28,7 @@ class KnowledgeBaseService:
                 topic_rows = await cur.fetchall()
 
         areas = [
-            {"id": str(r[0]), "name": r[1], "slug": r[2], "description": r[3]}
-            for r in area_rows
+            {"id": str(r[0]), "name": r[1], "slug": r[2], "description": r[3]} for r in area_rows
         ]
         topics = [
             {
@@ -59,9 +57,7 @@ class KnowledgeBaseService:
                 row = await cur.fetchone()
         return {"id": str(row[0]), "name": row[1], "slug": row[2], "description": row[3]}
 
-    async def create_topic(
-        self, area_id: str, name: str, slug: str, keywords: list[str]
-    ) -> dict:
+    async def create_topic(self, area_id: str, name: str, slug: str, keywords: list[str]) -> dict:
         pool = await get_pool()
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
@@ -95,18 +91,14 @@ class KnowledgeBaseService:
                 if count > 0:
                     return False
 
-                await cur.execute(
-                    "DELETE FROM public.legal_areas WHERE id = %s", (area_id,)
-                )
+                await cur.execute("DELETE FROM public.legal_areas WHERE id = %s", (area_id,))
                 return cur.rowcount > 0
 
     async def delete_topic(self, topic_id: str) -> bool:
         pool = await get_pool()
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "DELETE FROM public.legal_topics WHERE id = %s", (topic_id,)
-                )
+                await cur.execute("DELETE FROM public.legal_topics WHERE id = %s", (topic_id,))
                 return cur.rowcount > 0
 
     # ── Documents ─────────────────────────────────────────
@@ -138,9 +130,7 @@ class KnowledgeBaseService:
 
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    f"SELECT count(*) FROM public.rag_documents d {where}", params
-                )
+                await cur.execute(f"SELECT count(*) FROM public.rag_documents d {where}", params)
                 total = (await cur.fetchone())[0]
 
                 await cur.execute(
@@ -315,9 +305,7 @@ class KnowledgeBaseService:
         area_slug = None
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT slug FROM public.legal_areas WHERE id = %s", (area_id,)
-                )
+                await cur.execute("SELECT slug FROM public.legal_areas WHERE id = %s", (area_id,))
                 area_row = await cur.fetchone()
                 if area_row:
                     area_slug = area_row[0]
@@ -377,9 +365,7 @@ class KnowledgeBaseService:
         area_slug = None
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT slug FROM public.legal_areas WHERE id = %s", (area_id,)
-                )
+                await cur.execute("SELECT slug FROM public.legal_areas WHERE id = %s", (area_id,))
                 area_row = await cur.fetchone()
                 if area_row:
                     area_slug = area_row[0]
@@ -432,9 +418,7 @@ class KnowledgeBaseService:
         # Delete from database (CASCADE deletes chunks)
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "DELETE FROM public.rag_documents WHERE id = %s", (document_id,)
-                )
+                await cur.execute("DELETE FROM public.rag_documents WHERE id = %s", (document_id,))
                 return cur.rowcount > 0
 
     # ── Stats ─────────────────────────────────────────────

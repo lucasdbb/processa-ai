@@ -25,9 +25,7 @@ class RescisaoTrabalhistaRequest(BaseModel):
     tipo_aviso_previo: str = Field(
         default="indenizado",
         pattern="^(indenizado|trabalhado|dispensado|nao_cumprido)$",
-        description=(
-            "Tipo de aviso prévio: indenizado, trabalhado, dispensado ou nao_cumprido"
-        ),
+        description=("Tipo de aviso prévio: indenizado, trabalhado, dispensado ou nao_cumprido"),
     )
     ferias_vencidas: int = Field(default=0, ge=0, le=365)
     ferias_proporcionais: bool = True
@@ -134,5 +132,3 @@ class CalculationHistoryResponse(BaseModel):
     """Resposta do histórico de cálculos."""
 
     calculations: list[CalculationHistoryItem]
-
-

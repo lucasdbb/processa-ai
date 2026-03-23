@@ -60,10 +60,12 @@ class GoogleCalendarSync:
 
             # Encrypt user_id + code_verifier together in state so the callback
             # can reconstruct the PKCE verifier that Google expects.
-            state_payload = json.dumps({
-                "user_id": user_id,
-                "code_verifier": flow.code_verifier,
-            })
+            state_payload = json.dumps(
+                {
+                    "user_id": user_id,
+                    "code_verifier": flow.code_verifier,
+                }
+            )
             encrypted_state = encrypt_token(state_payload)
 
             # Replace the auto-generated state in the URL with our encrypted one

@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from src.core.auth import get_current_admin, verify_internal_token
-from src.core.config import settings
 from src.core.logging import logger
 from src.features.core.notification_logs.service import notification_log_service
 

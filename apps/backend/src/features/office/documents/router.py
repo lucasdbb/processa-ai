@@ -83,7 +83,9 @@ async def update_document(
     return document
 
 
-@router.post("/confirm-upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/confirm-upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED
+)
 async def confirm_upload(
     data: DocumentConfirmUpload,
     user_id: str = Depends(get_user_id),

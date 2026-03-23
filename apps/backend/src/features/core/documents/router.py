@@ -56,9 +56,7 @@ async def download_document(
     try:
         doc_uuid = uuid.UUID(document_id)
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="document_id inválido"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="document_id inválido")
 
     doc = await _get_document(doc_uuid)
 

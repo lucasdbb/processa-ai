@@ -5,14 +5,14 @@ Revises: j5k6l7m8n9o0
 Create Date: 2026-03-17 10:31:51.911293
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
-revision: str = '978d770ae76f'
-down_revision: Union[str, None] = 'j5k6l7m8n9o0'
+revision: str = "978d770ae76f"
+down_revision: Union[str, None] = "j5k6l7m8n9o0"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
