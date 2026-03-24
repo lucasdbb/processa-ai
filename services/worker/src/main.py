@@ -814,14 +814,49 @@ async def _run_reaper() -> None:
 
 
 async def _run_health_server() -> None:
-    """Minimal HTTP health check server."""
+    """HTTP health check server with DB connectivity and queue status."""
+
+    async def _build_health_response() -> tuple[int, str]:
+        """Build health check response with DB and queue info."""
+        from src.core.db import get_pool
+
+        health: dict = {"service": "worker"}
+
+        try:
+            pool = await get_pool()
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    # Check DB connectivity
+                    await cur.execute("SELECT 1")
+
+                    # Get queue stats
+                    await cur.execute(
+                        "SELECT status, COUNT(*) AS cnt "
+                        "FROM job_queue GROUP BY status"
+                    )
+                    rows = await cur.fetchall()
+                    queue_stats = {row[0]: row[1] for row in rows}
+
+                    health["status"] = "healthy"
+                    health["db"] = "connected"
+                    health["queue"] = {
+                        "pending": queue_stats.get("pending", 0),
+                        "processing": queue_stats.get("processing", 0),
+                        "dead": queue_stats.get("dead", 0),
+                    }
+            return 200, json.dumps(health)
+        except Exception as e:
+            health["status"] = "degraded"
+            health["db"] = f"error: {e}"
+            return 503, json.dumps(health)
 
     async def handle_client(reader, writer):
         try:
             await reader.read(1024)
-            body = json.dumps({"status": "healthy", "service": "worker"})
+            status_code, body = await _build_health_response()
+            status_text = "OK" if status_code == 200 else "Service Unavailable"
             response = (
-                "HTTP/1.1 200 OK\r\n"
+                f"HTTP/1.1 {status_code} {status_text}\r\n"
                 "Content-Type: application/json\r\n"
                 f"Content-Length: {len(body)}\r\n"
                 "\r\n"

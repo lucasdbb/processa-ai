@@ -4,7 +4,6 @@ Jobs are claimed (not deleted) during processing. If a worker crashes,
 a reaper coroutine re-enqueues stuck jobs after VISIBILITY_TIMEOUT_S.
 """
 
-from datetime import datetime, timezone
 
 from src.core.db import get_pool
 from src.core.logging import logger
