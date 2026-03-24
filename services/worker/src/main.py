@@ -24,7 +24,7 @@ from src.core.config import settings
 from src.core.db import init_db
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
-from src.core.queue import dequeue_job, dequeue_translation_job
+from src.core.queue import ack_job, dequeue_job, dequeue_translation_job, nack_job, reap_stuck_jobs
 from src.core.worker_store import (
     add_worker_job_event,
     create_calculator_document,
@@ -726,19 +726,24 @@ async def _run_ai_worker() -> None:
     logger.info("Processa AI Worker started - waiting for jobs...")
 
     while not _shutdown_event.is_set():
-        job = await dequeue_job()
-        if not job:
+        queue_id, job = await dequeue_job()
+        if not job or queue_id is None:
             await asyncio.sleep(settings.POLL_INTERVAL_S)
             continue
 
         job_id = job.get("job_id", "unknown")
         job_type = job.get("type", "unknown")
-        logger.info("Processing job: %s (type: %s)", job_id, job_type)
+        logger.info("Processing job: %s (type: %s, queue_id: %s)", job_id, job_type, queue_id)
 
         try:
             await asyncio.wait_for(_handle_job(job), timeout=600)
+            # Job processed successfully — remove from queue
+            await ack_job(queue_id)
+            logger.info("Job %s completed and acknowledged", job_id)
         except asyncio.TimeoutError:
             logger.error("Job %s timed out after 600 seconds", job_id)
+            # Return to queue for retry via nack
+            await nack_job(queue_id)
             try:
                 job_uuid = parse_job_uuid(job_id)
                 if job_uuid:
@@ -747,6 +752,8 @@ async def _run_ai_worker() -> None:
                 logger.exception("Failed to mark timed-out job %s as failed", job_id)
         except Exception:
             logger.exception("Unhandled error processing job: %s", job_id)
+            # Return to queue for retry via nack
+            await nack_job(queue_id)
 
     logger.info("AI Worker loop stopped (shutdown requested)")
 
@@ -758,8 +765,8 @@ async def _run_translation_worker() -> None:
     logger.info("Translation Worker started - waiting for translation jobs...")
 
     while not _shutdown_event.is_set():
-        job = await dequeue_translation_job()
-        if not job:
+        queue_id, job = await dequeue_translation_job()
+        if not job or queue_id is None:
             await asyncio.sleep(settings.TRANSLATION_POLL_INTERVAL_S)
             continue
 
@@ -772,8 +779,38 @@ async def _run_translation_worker() -> None:
                 await handle_translate_timeline_event(job)
             else:
                 logger.warning("Unknown translation job type: %s", job_type)
+            await ack_job(queue_id)
         except Exception:
             logger.exception("Unhandled error processing translation job: event=%s", event_id)
+            await nack_job(queue_id)
+
+
+async def _run_reaper() -> None:
+    """Periodically re-enqueue jobs stuck in 'processing' state.
+
+    Runs every 60 seconds. Jobs stuck longer than VISIBILITY_TIMEOUT_S
+    are returned to 'pending'. Jobs exceeding MAX_RETRIES go to 'dead'.
+    """
+    logger.info("Reaper started - monitoring for stuck jobs...")
+
+    while not _shutdown_event.is_set():
+        # Wait 60s between reaper runs, but check shutdown every second
+        for _ in range(60):
+            if _shutdown_event.is_set():
+                break
+            await asyncio.sleep(1)
+
+        if _shutdown_event.is_set():
+            break
+
+        try:
+            reaped = await reap_stuck_jobs()
+            if reaped > 0:
+                logger.info("Reaper re-enqueued %d stuck jobs", reaped)
+        except Exception:
+            logger.exception("Reaper failed to check for stuck jobs")
+
+    logger.info("Reaper stopped (shutdown requested)")
 
 
 async def _run_health_server() -> None:
@@ -824,6 +861,7 @@ async def run_worker() -> None:
     await asyncio.gather(
         _run_ai_worker(),
         _run_translation_worker(),
+        _run_reaper(),
         _run_health_server(),
     )
 
