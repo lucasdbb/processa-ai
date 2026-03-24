@@ -122,7 +122,7 @@ export default function DashboardPage() {
              <div>
                <AlertTitle>Ganhe 10 créditos grátis!</AlertTitle>
                <AlertDescription>
-                 Complete seu cadastro informando seu CPF para ganhar créditos de boas-vindas.
+                 Complete seu cadastro para ganhar créditos de boas-vindas.
                </AlertDescription>
              </div>
            </div>

@@ -9,15 +9,14 @@ import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useOnboardingStore } from '@/features/onboarding/store'
 import { creditsService } from '@/services/credits-service'
 import { authService } from '@/features/auth/services/auth-service'
-import { calendarService } from '@/services/calendar-service'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Loader2, PartyPopper, Calendar, Bot, Calculator, Users, Building2, Check } from 'lucide-react'
+import { Loader2, PartyPopper, Bot, Calculator, Building2, FileText } from 'lucide-react'
 import { cpfMask, phoneMask, isValidCpf, removeDocumentMask, removePhoneMask } from '@/lib/masks'
 import { cn } from '@/lib/utils'
 import confetti from 'canvas-confetti'
 
-type Step = 'perfil' | 'calendario' | 'sucesso'
+type Step = 'missao' | 'perfil' | 'sucesso'
 
 const AREAS = [
   'Trabalhista',
@@ -52,22 +51,20 @@ function StepDots({ current }: { current: number }) {
 
 export function WelcomeModal() {
   const { user, setUser } = useAuthStore()
-  const { isWelcomeModalOpen, openWelcomeModal, closeWelcomeModal, startTour } = useOnboardingStore()
+  const { isWelcomeModalOpen, openWelcomeModal, closeWelcomeModal } = useOnboardingStore()
   const navigate = useNavigate()
 
   // Step state
-  const [step, setStep] = useState<Step>('perfil')
+  const [step, setStep] = useState<Step>('missao')
+  const [selectedMission, setSelectedMission] = useState<string | null>(null)
+  const [missionPath, setMissionPath] = useState<string | null>(null)
 
-  // Step 1 — perfil
+  // Step 2 — perfil
   const [company, setCompany] = useState('')
   const [area, setArea] = useState('')
   const [cpf, setCpf] = useState('')
   const [phone, setPhone] = useState('')
   const [isSubmittingPerfil, setIsSubmittingPerfil] = useState(false)
-
-  // Step 2 — calendario
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
-  const [googleConnected] = useState(false)
 
   // Initial check
   const [isCheckingStatus, setIsCheckingStatus] = useState(true)
@@ -151,7 +148,7 @@ export function WelcomeModal() {
 
       setUser({ ...user!, ...updatedUser, welcome_credits_claimed: true })
 
-      setStep('calendario')
+      setStep('sucesso')
     } catch (error: unknown) {
       const err = error as { status?: number; message?: string }
       if (err?.status === 409 || err?.message?.includes('CPF já cadastrado')) {
@@ -164,24 +161,15 @@ export function WelcomeModal() {
     }
   }
 
-  const handleConnectGoogle = async () => {
-    setIsConnectingGoogle(true)
-    try {
-      const { auth_url } = await calendarService.connectGoogle()
-      window.location.href = auth_url
-    } catch {
-      toast.error('Erro ao conectar com Google Calendar.')
-      setIsConnectingGoogle(false)
-    }
-  }
-
   const handleFinish = (destination?: string) => {
     confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } })
     closeWelcomeModal()
     if (destination) {
       navigate(destination)
+    } else if (missionPath) {
+      navigate(missionPath)
     } else {
-      startTour('dashboard')
+      navigate('/app/dashboard')
     }
   }
 
@@ -205,9 +193,9 @@ export function WelcomeModal() {
         onInteractOutside={(e) => e.preventDefault()}
         showCloseButton={false}
       >
-        {/* ── Passo 1: Perfil ── */}
-        {step === 'perfil' && (
-          <form onSubmit={handleSubmitPerfil}>
+        {/* ── Passo 1: Missão ── */}
+        {step === 'missao' && (
+          <div>
             {/* Header */}
             <div className="px-6 pt-6 pb-4 border-b border-border">
               <div className="flex items-center justify-between mb-1">
@@ -215,10 +203,62 @@ export function WelcomeModal() {
                 <span className="text-xs text-muted-foreground">Passo 1 de {TOTAL_STEPS}</span>
               </div>
               <h2 className="text-lg font-semibold text-foreground mt-3">
-                Bem-vindo ao Processa AI
+                Bem-vindo ao futuro da advocacia! 🚀
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Configure seu perfil e ganhe <span className="font-semibold text-foreground">10 créditos</span> para começar.
+                Você acaba de dar um passo importante para modernizar sua rotina. Qual é o seu maior desafio hoje?
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5">
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { id: 'pecas', label: 'Analisar e resumir peças complexas', icon: Bot, path: '/app/ia' },
+                  { id: 'calculos', label: 'Fazer cálculos tabalhistas e previdenciários', icon: Calculator, path: '/app/calculadoras' },
+                  { id: 'rag', label: 'Tirar dúvidas e criar argumentações', icon: FileText, path: '/app/ia/chat' },
+                  { id: 'gestao', label: 'Organizar meus clientes, processos e prazos', icon: Building2, path: '/app/clientes' },
+                ].map(({ id, label, icon: Icon, path }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                        setSelectedMission(id)
+                        setMissionPath(path)
+                        setStep('perfil')
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left group",
+                      selectedMission === id 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/40 hover:bg-muted/40"
+                    )}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Icon className="w-5 h-5 text-foreground" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Passo 2: Perfil ── */}
+        {step === 'perfil' && (
+          <form onSubmit={handleSubmitPerfil}>
+            {/* Header */}
+            <div className="px-6 pt-6 pb-4 border-b border-border">
+              <div className="flex items-center justify-between mb-1">
+                <StepDots current={1} />
+                <span className="text-xs text-muted-foreground">Passo 2 de {TOTAL_STEPS}</span>
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mt-3">
+                Liberte seus Superpoderes ⚡
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Para liberar essa funcionalidade e te dar <span className="font-semibold text-foreground">10 créditos gratuitos</span>, precisamos validar seu acesso.
               </p>
             </div>
 
@@ -288,84 +328,13 @@ export function WelcomeModal() {
               </button>
               <Button type="submit" disabled={isSubmittingPerfil || cpf.length < 14}>
                 {isSubmittingPerfil ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" />Verificando...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" />Liberando...</>
                 ) : (
-                  'Continuar →'
+                  'Liberar Acesso →'
                 )}
               </Button>
             </div>
           </form>
-        )}
-
-        {/* ── Passo 2: Google Calendar ── */}
-        {step === 'calendario' && (
-          <div>
-            {/* Header */}
-            <div className="px-6 pt-6 pb-4 border-b border-border">
-              <div className="flex items-center justify-between mb-1">
-                <StepDots current={1} />
-                <span className="text-xs text-muted-foreground">Passo 2 de {TOTAL_STEPS}</span>
-              </div>
-              <h2 className="text-lg font-semibold text-foreground mt-3">
-                Conecte seu Google Calendar
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Sincronize prazos e audiências automaticamente. Nunca mais perca uma data.
-              </p>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 py-5">
-              {googleConnected ? (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                  <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                    <Check className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-green-800 dark:text-green-300">Conectado!</p>
-                    <p className="text-xs text-green-600 dark:text-green-400">Google Calendar sincronizado com sucesso.</p>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleConnectGoogle}
-                  disabled={isConnectingGoogle}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-border hover:border-primary/40 hover:bg-muted/40 transition-all text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                    {isConnectingGoogle ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    ) : (
-                      <Calendar className="w-5 h-5 text-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      {isConnectingGoogle ? 'Conectando...' : 'Conectar com Google Calendar'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Seus prazos processuais aparecem automaticamente na agenda
-                    </p>
-                  </div>
-                </button>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 pb-6 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => setStep('sucesso')}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Conectar depois
-              </button>
-              <Button onClick={() => setStep('sucesso')}>
-                Continuar →
-              </Button>
-            </div>
-          </div>
         )}
 
         {/* ── Passo 3: Sucesso ── */}
@@ -376,43 +345,16 @@ export function WelcomeModal() {
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-yellow-100 dark:bg-yellow-900/30 mb-3">
                 <PartyPopper className="w-7 h-7 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <h2 className="text-lg font-semibold text-foreground">Tudo pronto!</h2>
+              <h2 className="text-lg font-semibold text-foreground">Acesso Liberado!</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Você ganhou <span className="font-semibold text-foreground">10 créditos</span> para explorar as ferramentas.
+                Você ganhou <span className="font-semibold text-foreground">10 créditos</span> para experimentar as ferramentas de inteligência artificial.
               </p>
-            </div>
-
-            {/* Atalhos */}
-            <div className="px-6 py-5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                Por onde quer começar?
-              </p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {[
-                  { label: 'Usar IA Jurídica', icon: Bot, path: '/app/ia' },
-                  { label: 'Calculadoras', icon: Calculator, path: '/app/calculadoras' },
-                  { label: 'Meus Processos', icon: Building2, path: '/app/processos' },
-                  { label: 'Meus Clientes', icon: Users, path: '/app/clientes' },
-                ].map(({ label, icon: Icon, path }) => (
-                  <button
-                    key={path}
-                    type="button"
-                    onClick={() => handleFinish(path)}
-                    className="flex items-center gap-2.5 p-3 rounded-xl border border-border hover:border-primary/40 hover:bg-muted/40 transition-all text-left"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-foreground" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground leading-tight">{label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Footer */}
-            <div className="px-6 pb-6">
-              <Button variant="ghost" className="w-full" onClick={() => handleFinish()}>
-                Ir para o Dashboard
+            <div className="px-6 py-6">
+              <Button size="lg" className="w-full text-base" onClick={() => handleFinish(missionPath || '/app/ia')}>
+                Iniciar minha jornada →
               </Button>
             </div>
           </div>

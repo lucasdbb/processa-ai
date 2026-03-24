@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { Mail, Lock, Eye, EyeOff, Loader2, User, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/use-auth'
-import { useOnboardingStore } from '@/features/onboarding'
 import { registerSchema, type RegisterFormData } from '../../schemas/auth-schemas'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme } from 'next-themes'
@@ -23,7 +22,6 @@ export function RegisterForm({ onSuccess, onLogin }: RegisterFormProps) {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { register: registerUser } = useAuth()
   const navigate = useNavigate()
-  const { startTour } = useOnboardingStore()
   const supabase = createClient()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -64,11 +62,6 @@ export function RegisterForm({ onSuccess, onLogin }: RegisterFormProps) {
         
         // Redireciona para o app
         navigate('/app', { replace: true })
-        
-        // Pequeno delay para o modal fechar antes do tour iniciar
-        setTimeout(() => {
-          startTour('welcome')
-        }, 500)
       } else {
         // Email confirmation required
         setSuccessMessage('Solicitação enviada com sucesso! Confirme o seu e-mail.')
