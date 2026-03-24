@@ -7,6 +7,8 @@ import type {
 } from "../types";
 import { createClient } from "@/lib/supabase/client";
 import { analytics } from "@/lib/analytics";
+import { useBillingStore } from "@/stores/billing-store";
+import { useCreditsStore } from "@/stores/credits-store";
 
 export function useAuth() {
   const {
@@ -229,13 +231,19 @@ export function useAuth() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-      
+
       analytics.track('user_logged_out');
       analytics.reset();
+
+      // Clear all stores to prevent stale data from previous user
+      useCreditsStore.getState().reset();
+      useBillingStore.setState({ subscription: null, isLoading: false, error: null });
 
       clearUser();
     } catch (error) {
       console.error("Logout failed:", error);
+      useCreditsStore.getState().reset();
+      useBillingStore.setState({ subscription: null, isLoading: false, error: null });
       clearUser();
     } finally {
       setLoading(false);
