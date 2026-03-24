@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -112,6 +112,7 @@ const bottomNavigation: NavItem[] = [
 
 export function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { isExpanded, isMobileOpen, toggle, closeMobile } = useSidebarStore()
   const { resolvedTheme } = useTheme()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
@@ -159,13 +160,21 @@ const renderNavItem = (item: NavItem) => {
       return (
         <div key={item.name} data-tour={item.dataTour}>
           <button
-            onClick={() => toggleExpanded(item.name)}
+            onClick={() => {
+              if (!isExpanded) {
+                navigate(item.href)
+              } else {
+                toggleExpanded(item.name)
+              }
+            }}
             className={cn(
               'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
               active
                 ? 'bg-accent text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+              !isExpanded && 'justify-center'
             )}
+            title={!isExpanded ? item.name : undefined}
           >
             <Icon className="h-5 w-5 shrink-0" />
             {isExpanded && (
