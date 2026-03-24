@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut, FileText, Info, Users, Zap, Crown, GraduationCap } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut, FileText, Info, Users, Zap, Crown, GraduationCap, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useBillingStore } from '@/stores/billing-store'
+import { useOnboardingStore } from '@/features/onboarding/store'
 
 // Plan badge config
 const PLAN_CONFIG: Record<string, { label: string; icon: typeof Users; className: string }> = {
@@ -91,6 +92,7 @@ export function AppHeader() {
   const navigate = useNavigate()
   const { credits } = useCreditsStore()
   const { subscription } = useBillingStore()
+  const { startTour } = useOnboardingStore()
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -449,6 +451,10 @@ export function AppHeader() {
               <DropdownMenuItem onClick={() => setIsFeedbackOpen(true)}>
                 <MessageSquarePlus className="mr-2 h-4 w-4" />
                 <span>Enviar Sugestão</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => startTour('dashboard')}>
+                <Play className="mr-2 h-4 w-4" />
+                <span>Iniciar Tour</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

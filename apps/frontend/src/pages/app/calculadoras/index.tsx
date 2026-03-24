@@ -5,6 +5,7 @@ import { Calculator, Loader2, Coins, ChevronDown, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCalculators } from '@/features/calculators/context'
 import { useCreditsStore } from '@/stores/credits-store'
+import { useOnboardingStore } from '@/features/onboarding/store'
 import { ClientSelector } from '@/components/forms/client-selector'
 import type { LucideIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -49,9 +50,16 @@ export default function CalculadorasHubPage() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
+  const { markCalculatorUsed } = useOnboardingStore()
+
   useEffect(() => {
     fetchCosts()
   }, [fetchCosts])
+
+  // Mark calculator as used for onboarding checklist
+  useEffect(() => {
+    markCalculatorUsed()
+  }, [markCalculatorUsed])
 
   // Build calculators array from context
   const calculators = useMemo<CalculatorConfig[]>(() => {

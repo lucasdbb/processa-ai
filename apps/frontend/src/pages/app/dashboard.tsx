@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton'
-import { TourButton } from '@/features/onboarding/tour-button'
+import { OnboardingProgress } from '@/components/onboarding/OnboardingChecklist'
 import { RevenueChart } from '@/components/charts/revenue-chart'
 import { ProcessesChart } from '@/components/charts/processes-chart'
 import { AgingChart } from '@/components/charts/aging-chart'
@@ -145,7 +145,7 @@ export default function DashboardPage() {
             Aqui está um resumo da sua atividade.
           </p>
         </div>
-        <TourButton tourId="dashboard" forceShow />
+        <OnboardingProgress />
       </div>
 
       {/* Stats Grid */}

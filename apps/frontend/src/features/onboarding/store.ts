@@ -7,6 +7,9 @@ interface OnboardingState {
   currentTour: TourId | null;
   isOpen: boolean;
   isWelcomeModalOpen: boolean;
+  hasUsedAiTool: boolean;
+  hasUsedCalculator: boolean;
+  isChecklistDismissed: boolean;
   startTour: (tourId: TourId) => void;
   completeTour: (tourId: TourId) => void;
   closeTour: () => void;
@@ -14,6 +17,10 @@ interface OnboardingState {
   hasCompletedTour: (tourId: TourId) => boolean;
   openWelcomeModal: () => void;
   closeWelcomeModal: () => void;
+  markAiToolUsed: () => void;
+  markCalculatorUsed: () => void;
+  dismissChecklist: () => void;
+  resetChecklist: () => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -23,6 +30,9 @@ export const useOnboardingStore = create<OnboardingState>()(
       currentTour: null,
       isOpen: false,
       isWelcomeModalOpen: false,
+      hasUsedAiTool: false,
+      hasUsedCalculator: false,
+      isChecklistDismissed: false,
 
       startTour: (tourId) => {
         set({ currentTour: tourId, isOpen: true });
@@ -54,6 +64,22 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       closeWelcomeModal: () => {
         set({ isWelcomeModalOpen: false });
+      },
+
+      markAiToolUsed: () => {
+        set({ hasUsedAiTool: true });
+      },
+
+      markCalculatorUsed: () => {
+        set({ hasUsedCalculator: true });
+      },
+
+      dismissChecklist: () => {
+        set({ isChecklistDismissed: true });
+      },
+
+      resetChecklist: () => {
+        set({ isChecklistDismissed: false });
       },
     }),
     {

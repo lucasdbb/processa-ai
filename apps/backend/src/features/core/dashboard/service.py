@@ -84,6 +84,17 @@ class DashboardService:
                         1 for d in deadlines_today if d.get("priority") == "high"
                     )
 
+                    # Get total deadlines ever created (for onboarding checklist)
+                    await cur.execute(
+                        """
+                        SELECT COUNT(*) as total FROM office_api.events
+                        WHERE user_id = %s AND event_type = 'prazo'
+                        """,
+                        (user_id,),
+                    )
+                    result = await cur.fetchone()
+                    stats["total_deadlines"] = result["total"] if result else 0
+
                     # Get calculations count this month (from credit transactions)
                     await cur.execute(
                         """
