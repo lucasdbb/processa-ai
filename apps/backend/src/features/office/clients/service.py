@@ -207,30 +207,100 @@ class ClientsService:
     async def get_client_detail(
         self, user_id: UUID, client_id: UUID
     ) -> ClientDetailResponse | None:
-        """Get aggregated client detail with processes, fees, and notes."""
+        """Get aggregated client detail with processes, fees, notes, and services.
+
+        Uses a single query with subqueries to avoid N+1 problem
+        (previously 5 separate queries).
+        """
         pool = await get_pool()
+        uid = str(user_id)
+        cid = str(client_id)
 
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
-                # Get client basic info
+                # Single query: client + aggregated fees/services/notes via subqueries
                 await cur.execute(
                     """
-                    SELECT * FROM office_api.clients
-                    WHERE user_id = %s AND id = %s
+                    SELECT
+                        c.*,
+                        -- Fees summary
+                        COALESCE(f.total_amount, 0)  AS fees_total_amount,
+                        COALESCE(f.total_paid, 0)     AS fees_total_paid,
+                        COALESCE(f.total_pending, 0)  AS fees_total_pending,
+                        COALESCE(f.total_overdue, 0)  AS fees_total_overdue,
+                        COALESCE(f.fees_count, 0)     AS fees_count,
+                        -- Services summary
+                        COALESCE(s.total_amount, 0)   AS svc_total_amount,
+                        COALESCE(s.total_paid, 0)     AS svc_total_paid,
+                        COALESCE(s.total_pending, 0)  AS svc_total_pending,
+                        COALESCE(s.services_count, 0) AS svc_services_count,
+                        COALESCE(s.active_count, 0)   AS svc_active_count,
+                        COALESCE(s.completed_count, 0) AS svc_completed_count,
+                        -- Notes count
+                        COALESCE(n.notes_count, 0)    AS notes_count
+                    FROM office_api.clients c
+                    LEFT JOIN LATERAL (
+                        SELECT
+                            SUM(amount)  AS total_amount,
+                            SUM(paid_amount) AS total_paid,
+                            SUM(CASE WHEN status = 'pending'
+                                     THEN amount - COALESCE(paid_amount, 0) ELSE 0 END) AS total_pending,
+                            SUM(CASE WHEN status = 'overdue'
+                                     THEN amount - COALESCE(paid_amount, 0) ELSE 0 END) AS total_overdue,
+                            COUNT(*) AS fees_count
+                        FROM office_api.fees
+                        WHERE user_id = c.user_id AND client_id = c.id
+                    ) f ON true
+                    LEFT JOIN LATERAL (
+                        SELECT
+                            SUM(value) AS total_amount,
+                            SUM(paid_amount) AS total_paid,
+                            SUM(COALESCE(value, 0) - paid_amount) AS total_pending,
+                            COUNT(*) AS services_count,
+                            COUNT(*) FILTER (WHERE status = 'active') AS active_count,
+                            COUNT(*) FILTER (WHERE status = 'completed') AS completed_count
+                        FROM office_api.services
+                        WHERE user_id = c.user_id AND client_id = c.id
+                    ) s ON true
+                    LEFT JOIN LATERAL (
+                        SELECT COUNT(*) AS notes_count
+                        FROM office_api.notes
+                        WHERE user_id = c.user_id AND client_id = c.id
+                    ) n ON true
+                    WHERE c.user_id = %s AND c.id = %s
                     """,
-                    (str(user_id), str(client_id)),
+                    (uid, cid),
                 )
-                client_row = await cur.fetchone()
+                row = await cur.fetchone()
 
-                if not client_row:
+                if not row:
                     return None
 
-                # Get processes with next deadline
+                # Extract aggregated summaries from the single row
+                fees_summary = ClientFeeSummary(
+                    total_amount=float(row.pop("fees_total_amount")),
+                    total_paid=float(row.pop("fees_total_paid")),
+                    total_pending=float(row.pop("fees_total_pending")),
+                    total_overdue=float(row.pop("fees_total_overdue")),
+                    fees_count=row.pop("fees_count"),
+                )
+                services_summary = ClientServiceSummary(
+                    total_amount=float(row.pop("svc_total_amount")),
+                    total_paid=float(row.pop("svc_total_paid")),
+                    total_pending=float(row.pop("svc_total_pending")),
+                    services_count=row.pop("svc_services_count"),
+                    active_count=row.pop("svc_active_count"),
+                    completed_count=row.pop("svc_completed_count"),
+                )
+                notes_count = row.pop("notes_count")
+
+                # Second query: processes with next deadline + recent notes
+                # (these return multiple rows so can't be embedded in the main query)
                 await cur.execute(
                     """
                     SELECT
                         p.id,
-                        p.process_number as number,
+                        p.process_number AS number,
                         p.type,
                         p.status,
                         p.court,
@@ -241,63 +311,27 @@ class ClientsService:
                             WHERE e.processo_id = p.id AND e.event_type = 'prazo'
                               AND e.start_at >= CURRENT_DATE
                               AND e.deadline_status != 'completed'
-                        ) as next_deadline
+                        ) AS next_deadline
                     FROM office_api.processes p
                     WHERE p.user_id = %s AND p.client_id = %s
                     ORDER BY p.created_at DESC
                     """,
-                    (str(user_id), str(client_id)),
+                    (uid, cid),
                 )
                 process_rows = await cur.fetchall()
                 processes = [
                     ClientProcessSummary(
-                        id=row["id"],
-                        number=row["number"],
-                        type=row["type"],
-                        status=row["status"],
-                        court=row["court"],
-                        value=float(row["value"]) if row["value"] else None,
-                        next_deadline=row["next_deadline"],
+                        id=r["id"],
+                        number=r["number"],
+                        type=r["type"],
+                        status=r["status"],
+                        court=r["court"],
+                        value=float(r["value"]) if r["value"] else None,
+                        next_deadline=r["next_deadline"],
                     )
-                    for row in process_rows
+                    for r in process_rows
                 ]
 
-                # Get fees summary
-                await cur.execute(
-                    """
-                    SELECT
-                        COALESCE(SUM(amount), 0) as total_amount,
-                        COALESCE(SUM(paid_amount), 0) as total_paid,
-                        COALESCE(
-                            SUM(
-                                CASE WHEN status = 'pending' THEN amount - COALESCE(paid_amount, 0)
-                                ELSE 0 END
-                            ),
-                            0
-                        ) as total_pending,
-                        COALESCE(
-                            SUM(
-                                CASE WHEN status = 'overdue' THEN amount - COALESCE(paid_amount, 0)
-                                ELSE 0 END
-                            ),
-                            0
-                        ) as total_overdue,
-                        COUNT(*) as fees_count
-                    FROM office_api.fees
-                    WHERE user_id = %s AND client_id = %s
-                    """,
-                    (str(user_id), str(client_id)),
-                )
-                fees_row = await cur.fetchone()
-                fees_summary = ClientFeeSummary(
-                    total_amount=float(fees_row["total_amount"]) if fees_row else 0,
-                    total_paid=float(fees_row["total_paid"]) if fees_row else 0,
-                    total_pending=float(fees_row["total_pending"]) if fees_row else 0,
-                    total_overdue=float(fees_row["total_overdue"]) if fees_row else 0,
-                    fees_count=fees_row["fees_count"] if fees_row else 0,
-                )
-
-                # Get recent notes (last 5, pinned first)
                 await cur.execute(
                     """
                     SELECT id, title, note_type, is_pinned, created_at, updated_at
@@ -306,50 +340,12 @@ class ClientsService:
                     ORDER BY is_pinned DESC, updated_at DESC
                     LIMIT 5
                     """,
-                    (str(user_id), str(client_id)),
+                    (uid, cid),
                 )
-                notes_rows = await cur.fetchall()
-                recent_notes = [ClientNoteSummary(**row) for row in notes_rows]
-
-                # Get total notes count
-                await cur.execute(
-                    """
-                    SELECT COUNT(*) as count
-                    FROM office_api.notes
-                    WHERE user_id = %s AND client_id = %s
-                    """,
-                    (str(user_id), str(client_id)),
-                )
-                notes_count_row = await cur.fetchone()
-                notes_count = notes_count_row["count"] if notes_count_row else 0
-
-                # Get services summary
-                await cur.execute(
-                    """
-                    SELECT
-                        COALESCE(SUM(value), 0) as total_amount,
-                        COALESCE(SUM(paid_amount), 0) as total_paid,
-                        COALESCE(SUM(COALESCE(value, 0) - paid_amount), 0) as total_pending,
-                        COUNT(*) as services_count,
-                        COUNT(*) FILTER (WHERE status = 'active') as active_count,
-                        COUNT(*) FILTER (WHERE status = 'completed') as completed_count
-                    FROM office_api.services
-                    WHERE user_id = %s AND client_id = %s
-                    """,
-                    (str(user_id), str(client_id)),
-                )
-                services_row = await cur.fetchone()
-                services_summary = ClientServiceSummary(
-                    total_amount=float(services_row["total_amount"]) if services_row else 0,
-                    total_paid=float(services_row["total_paid"]) if services_row else 0,
-                    total_pending=float(services_row["total_pending"]) if services_row else 0,
-                    services_count=services_row["services_count"] if services_row else 0,
-                    active_count=services_row["active_count"] if services_row else 0,
-                    completed_count=services_row["completed_count"] if services_row else 0,
-                )
+                recent_notes = [ClientNoteSummary(**r) for r in await cur.fetchall()]
 
                 return ClientDetailResponse(
-                    **client_row,
+                    **row,
                     processes=processes,
                     processes_count=len(processes),
                     fees_summary=fees_summary,
