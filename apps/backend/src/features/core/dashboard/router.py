@@ -42,6 +42,12 @@ async def get_recent_activity(
     return await dashboard_service.get_recent_activity(user_id, limit)
 
 
+@router.get("/briefing")
+async def get_daily_briefing(user_id: str = Depends(get_user_id)):
+    """Get daily briefing summary (deadlines, events, overdue fees)."""
+    return await dashboard_service.get_daily_briefing(user_id)
+
+
 @router.get("/ai-costs")
 async def get_ai_cost_stats(_admin=Depends(get_current_admin)):
     """Get AI token usage and cost statistics (admin only)."""

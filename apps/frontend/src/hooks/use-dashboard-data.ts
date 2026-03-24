@@ -49,13 +49,21 @@ export function useDashboardData() {
     retry: false,
   })
 
+  const briefingQuery = useQuery({
+    queryKey: ['dashboard', 'briefing'],
+    queryFn: () => dashboardService.getDailyBriefing(),
+    enabled,
+    retry: false,
+  })
+
   const isLoading =
     statsQuery.isLoading ||
     deadlinesQuery.isLoading ||
     financialQuery.isLoading ||
     processesSummaryQuery.isLoading ||
     activityQuery.isLoading ||
-    servicesCountQuery.isLoading
+    servicesCountQuery.isLoading ||
+    briefingQuery.isLoading
 
   return {
     stats: statsQuery.data ?? null,
@@ -64,6 +72,7 @@ export function useDashboardData() {
     processesSummary: processesSummaryQuery.data ?? null,
     activity: activityQuery.data ?? [],
     servicesCount: servicesCountQuery.data?.total ?? 0,
+    briefing: briefingQuery.data ?? null,
     isLoading,
     isError: statsQuery.isError, // Consider stats as critical
   }

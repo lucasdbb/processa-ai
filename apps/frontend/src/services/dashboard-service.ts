@@ -113,6 +113,49 @@ export interface AiCostStats {
   daily_trend: AiCostDailyTrend[];
 }
 
+export interface BriefingDeadline {
+  id: string;
+  title: string;
+  process: string;
+  client: string;
+  priority: string;
+  urgent: boolean;
+}
+
+export interface BriefingEvent {
+  id: string;
+  title: string;
+  start_at: string | null;
+  event_type: string;
+  event_type_label: string;
+  process: string;
+  client: string;
+}
+
+export interface BriefingOverdueFee {
+  id: string;
+  description: string;
+  amount: number;
+  due_date: string | null;
+  client_name: string;
+  days_overdue: number;
+}
+
+export interface DailyBriefing {
+  user_name: string;
+  today_date: string;
+  deadlines_today: BriefingDeadline[];
+  events_today: BriefingEvent[];
+  overdue_fees: BriefingOverdueFee[];
+  summary: {
+    deadlines_count: number;
+    urgent_deadlines_count: number;
+    events_count: number;
+    overdue_fees_count: number;
+    overdue_fees_total: number;
+  };
+}
+
 export const dashboardService = {
   async getStats(): Promise<DashboardStats> {
     const res = await fetchWithCredentials(`${API_URL}/dashboard/stats`);
@@ -147,6 +190,12 @@ export const dashboardService = {
       `${API_URL}/dashboard/activity?limit=${limit}`,
     );
     if (!res.ok) throw new Error("Failed to get recent activity");
+    return res.json();
+  },
+
+  async getDailyBriefing(): Promise<DailyBriefing> {
+    const res = await fetchWithCredentials(`${API_URL}/dashboard/briefing`);
+    if (!res.ok) throw new Error("Failed to get daily briefing");
     return res.json();
   },
 

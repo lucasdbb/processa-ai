@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { PartyPopper } from 'lucide-react'
 import { useOnboardingStore } from '@/features/onboarding/store'
 import { useDashboardData } from '@/hooks/use-dashboard-data'
+import { DailyBriefingCard } from '@/components/dashboard/daily-briefing-card'
 
 interface StatCard {
   name: string
@@ -59,6 +60,7 @@ export default function DashboardPage() {
     processesSummary,
     activity,
     servicesCount,
+    briefing,
     isLoading,
   } = useDashboardData()
 
@@ -136,6 +138,9 @@ export default function DashboardPage() {
            </Button>
          </Alert>
        )}
+
+      {/* Daily Briefing */}
+      {briefing && <DailyBriefingCard briefing={briefing} />}
 
       {/* Header */}
       <div data-tour="welcome" className="flex items-center justify-between">

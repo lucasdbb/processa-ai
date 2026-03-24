@@ -588,6 +588,164 @@ class DashboardService:
             years = int(diff.days / 365)
             return f"há {years} ano{'s' if years != 1 else ''}"
 
+    async def get_daily_briefing(self, user_id: str) -> dict:
+        """Get daily briefing summary (deadlines, events, overdue fees)."""
+        try:
+            pool = await get_pool()
+            now = datetime.now(timezone.utc)
+            today = now.date()
+
+            async with pool.connection() as conn:
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    # Get user name
+                    await cur.execute(
+                        "SELECT name FROM public.profiles WHERE id = %s",
+                        (user_id,),
+                    )
+                    profile = await cur.fetchone()
+                    user_name = profile["name"] if profile else ""
+
+                    # Get today's deadlines (prazos)
+                    await cur.execute(
+                        """
+                        SELECT e.id, e.title, e.priority,
+                               p.process_number, c.name as client_name
+                        FROM office_api.events e
+                        LEFT JOIN office_api.processes p ON e.processo_id = p.id
+                        LEFT JOIN office_api.clients c ON p.client_id = c.id
+                        WHERE e.user_id = %s
+                          AND e.event_type = 'prazo'
+                          AND e.deadline_status = 'pending'
+                          AND e.start_at::date = %s
+                        ORDER BY e.priority DESC, e.start_at ASC
+                        """,
+                        (user_id, today),
+                    )
+                    deadlines_rows = await cur.fetchall()
+
+                    deadlines_today = [
+                        {
+                            "id": str(row["id"]),
+                            "title": row["title"] or "",
+                            "process": row["process_number"] or "N/A",
+                            "client": row["client_name"] or "N/A",
+                            "priority": row["priority"] or "medium",
+                            "urgent": row["priority"] in ("high", "urgent"),
+                        }
+                        for row in deadlines_rows
+                    ]
+
+                    # Get today's calendar events (non-deadline)
+                    await cur.execute(
+                        """
+                        SELECT e.id, e.title, e.start_at, e.event_type,
+                               p.process_number, c.name as client_name
+                        FROM office_api.events e
+                        LEFT JOIN office_api.processes p ON e.processo_id = p.id
+                        LEFT JOIN office_api.clients c ON p.client_id = c.id
+                        WHERE e.user_id = %s
+                          AND e.event_type != 'prazo'
+                          AND e.status != 'cancelled'
+                          AND e.start_at::date = %s
+                        ORDER BY e.start_at ASC
+                        """,
+                        (user_id, today),
+                    )
+                    events_rows = await cur.fetchall()
+
+                    event_type_labels = {
+                        "audiencia": "Audiência",
+                        "reuniao": "Reunião",
+                        "other": "Evento",
+                    }
+
+                    events_today = [
+                        {
+                            "id": str(row["id"]),
+                            "title": row["title"] or "",
+                            "start_at": row["start_at"].isoformat() if row["start_at"] else None,
+                            "event_type": row["event_type"],
+                            "event_type_label": event_type_labels.get(
+                                row["event_type"], "Evento"
+                            ),
+                            "process": row["process_number"] or "N/A",
+                            "client": row["client_name"] or "N/A",
+                        }
+                        for row in events_rows
+                    ]
+
+                    # Get overdue fees (top 5)
+                    await cur.execute(
+                        """
+                        SELECT f.id, f.description, f.amount, f.due_date,
+                               c.name as client_name
+                        FROM office_api.fees f
+                        LEFT JOIN office_api.clients c ON f.client_id = c.id
+                        WHERE f.user_id = %s AND f.status = 'overdue'
+                        ORDER BY f.due_date ASC
+                        LIMIT 5
+                        """,
+                        (user_id,),
+                    )
+                    overdue_rows = await cur.fetchall()
+
+                    overdue_fees = [
+                        {
+                            "id": str(row["id"]),
+                            "description": row["description"] or "",
+                            "amount": float(row["amount"]),
+                            "due_date": row["due_date"].isoformat() if row["due_date"] else None,
+                            "client_name": row["client_name"] or "N/A",
+                            "days_overdue": (today - row["due_date"]).days if row["due_date"] else 0,
+                        }
+                        for row in overdue_rows
+                    ]
+
+                    # Get total overdue count
+                    await cur.execute(
+                        """
+                        SELECT COUNT(*) as total, COALESCE(SUM(amount), 0) as total_amount
+                        FROM office_api.fees
+                        WHERE user_id = %s AND status = 'overdue'
+                        """,
+                        (user_id,),
+                    )
+                    overdue_totals = await cur.fetchone()
+
+            return {
+                "user_name": user_name,
+                "today_date": today.isoformat(),
+                "deadlines_today": deadlines_today,
+                "events_today": events_today,
+                "overdue_fees": overdue_fees,
+                "summary": {
+                    "deadlines_count": len(deadlines_today),
+                    "urgent_deadlines_count": sum(
+                        1 for d in deadlines_today if d["urgent"]
+                    ),
+                    "events_count": len(events_today),
+                    "overdue_fees_count": overdue_totals["total"] if overdue_totals else 0,
+                    "overdue_fees_total": float(overdue_totals["total_amount"]) if overdue_totals else 0.0,
+                },
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get daily briefing: {e}")
+            return {
+                "user_name": "",
+                "today_date": datetime.now(timezone.utc).date().isoformat(),
+                "deadlines_today": [],
+                "events_today": [],
+                "overdue_fees": [],
+                "summary": {
+                    "deadlines_count": 0,
+                    "urgent_deadlines_count": 0,
+                    "events_count": 0,
+                    "overdue_fees_count": 0,
+                    "overdue_fees_total": 0.0,
+                },
+            }
+
     async def get_ai_cost_stats(self) -> dict:
         """Get AI token usage and cost statistics (admin only)."""
         try:
