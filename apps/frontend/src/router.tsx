@@ -10,6 +10,7 @@ import { PortalLayout } from '@/components/layout/portal-layout'
 import PortalPage from '@/pages/portal'
 import PortalAtivarPage from '@/pages/portal/ativar'
 import { RouterErrorBoundary } from '@/components/router-error-boundary'
+import NotFoundPage from '@/pages/not-found'
 
 // Public pages
 import HomePage from '@/pages/home'
@@ -272,6 +273,20 @@ export const router = createBrowserRouter([
             <AdminEditPostPage />
           </Suspense>
         ),
+      },
+    ],
+  },
+
+  // Catch-all 404
+  {
+    path: '*',
+    element: (
+      <RootLayout />
+    ),
+    children: [
+      {
+        path: '*',
+        element: <NotFoundPage />,
       },
     ],
   },
