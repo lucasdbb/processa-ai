@@ -148,9 +148,9 @@ async def verify_recaptcha(
             return (score >= min_score, score)
 
     except Exception as e:
-        # Em caso de erro na API do Google, permitir (fail open)
+        # Em caso de erro na API do Google, bloquear por segurança (fail closed)
         logger.error(f"Error verifying reCAPTCHA: {e}")
-        return (True, None)
+        return (False, None)
 
 
 async def check_blocked_entity(supabase, entity_type: str, entity_value: str) -> bool:
