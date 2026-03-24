@@ -115,7 +115,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Alert */}
-      {(!user?.welcome_credits_claimed) && (
+      {user?.welcome_credits_claimed === false && (
          <Alert className="border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 flex items-center justify-between">
            <div className="flex items-center gap-4">
              <PartyPopper className="h-5 w-5" />

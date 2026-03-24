@@ -2,26 +2,78 @@ import { TourProvider as ReactourProvider, useTour } from '@reactour/tour'
 import { useOnboardingStore } from './store'
 import { TOURS } from './tours'
 import { useEffect } from 'react'
+import { useSidebarStore } from '@/stores/sidebar-store'
 
 interface TourWrapperProps {
   children: React.ReactNode
+}
+
+let previousSidebarExpanded: boolean | null = null
+
+const ensureSidebarExpandedForTour = (tourId: string) => {
+  if (tourId !== 'dashboard' && tourId !== 'calculators' && tourId !== 'ai-tools') {
+    return
+  }
+
+  const sidebarStore = useSidebarStore.getState()
+  if (previousSidebarExpanded === null) {
+    previousSidebarExpanded = sidebarStore.isExpanded
+  }
+
+  if (!sidebarStore.isExpanded) {
+    sidebarStore.setExpanded(true)
+  }
+}
+
+const restoreSidebarState = () => {
+  if (previousSidebarExpanded === null) {
+    return
+  }
+
+  useSidebarStore.getState().setExpanded(previousSidebarExpanded)
+  previousSidebarExpanded = null
 }
 
 function TourContent({ children }: TourWrapperProps) {
   const { currentTour, isOpen } = useOnboardingStore()
   const { setIsOpen, setSteps, setCurrentStep } = useTour()
 
+  const getSafeSteps = (tourId: string) => {
+    const tour = TOURS[tourId]
+    if (!tour) return []
+
+    return tour.steps.map((step) => {
+      if (step.selector === 'body') {
+        return step
+      }
+
+      const exists = typeof document !== 'undefined' && document.querySelector(step.selector)
+      return exists ? step : { ...step, selector: 'body' }
+    })
+  }
+
   useEffect(() => {
+    let timeoutId: number | undefined
+
     if (currentTour && isOpen) {
-      const tour = TOURS[currentTour]
-      if (tour) {
+      ensureSidebarExpandedForTour(currentTour)
+
+      timeoutId = window.setTimeout(() => {
+        const steps = getSafeSteps(currentTour)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setSteps?.(tour.steps as any)
+        setSteps?.(steps as any)
         setCurrentStep(0)
         setIsOpen(true)
-      }
+      }, 120)
     } else {
       setIsOpen(false)
+      restoreSidebarState()
+    }
+
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId)
+      }
     }
   }, [currentTour, isOpen, setIsOpen, setSteps, setCurrentStep])
 
@@ -76,11 +128,13 @@ export function TourProvider({ children }: TourWrapperProps) {
       onClickMask={({ setIsOpen }) => {
         const { closeTour } = useOnboardingStore.getState()
         closeTour()
+        restoreSidebarState()
         setIsOpen(false)
       }}
       beforeClose={() => {
         const { closeTour } = useOnboardingStore.getState()
         closeTour()
+        restoreSidebarState()
       }}
       showNavigation={true}
       showBadge={true}
@@ -115,6 +169,7 @@ export function TourProvider({ children }: TourWrapperProps) {
                   completeTour(currentTour)
                 }
                 closeTour()
+                restoreSidebarState()
                 setIsOpen(false)
               } else {
                 setCurrentStep(currentStep + 1)

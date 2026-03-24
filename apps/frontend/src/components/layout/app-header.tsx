@@ -20,10 +20,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useBillingStore } from '@/stores/billing-store'
 import { useOnboardingStore } from '@/features/onboarding/store'
+import type { TourId } from '@/features/onboarding/types'
 
 // Plan badge config
 const PLAN_CONFIG: Record<string, { label: string; icon: typeof Users; className: string }> = {
@@ -90,6 +91,7 @@ export function AppHeader() {
   const { user } = useUser()
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { credits } = useCreditsStore()
   const { subscription } = useBillingStore()
   const { startTour } = useOnboardingStore()
@@ -149,6 +151,21 @@ export function AppHeader() {
       console.error('Failed to mark all as read:', error)
       toast.error('Erro ao marcar todas como lidas')
     }
+  }
+
+  const getRecommendedTour = (pathname: string): TourId => {
+    if (pathname.startsWith('/app/ia')) return 'ai-tools'
+    if (pathname.startsWith('/app/calculadoras')) return 'calculators'
+    if (pathname.startsWith('/app/clientes')) return 'clients'
+    if (pathname.startsWith('/app/processos')) return 'processes'
+    return 'dashboard'
+  }
+
+  const handleStartTour = () => {
+    const tourId = getRecommendedTour(location.pathname)
+    window.setTimeout(() => {
+      startTour(tourId)
+    }, 120)
   }
 
   const getInitials = (name?: string | null, email?: string | null) => {
@@ -452,9 +469,9 @@ export function AppHeader() {
                 <MessageSquarePlus className="mr-2 h-4 w-4" />
                 <span>Enviar Sugestão</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => startTour('dashboard')}>
+              <DropdownMenuItem onClick={handleStartTour}>
                 <Play className="mr-2 h-4 w-4" />
-                <span>Iniciar Tour</span>
+                <span>Iniciar missão guiada</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

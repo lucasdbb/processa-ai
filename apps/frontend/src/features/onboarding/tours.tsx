@@ -40,55 +40,118 @@ export const TOURS: Record<string, TourConfig> = {
       {
         selector: 'body',
         content: (
-          <div className="space-y-2">
-            <h3 className="font-semibold text-lg">Bem-vindo ao Processa AI! 🎉</h3>
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg">Missão de reconhecimento</h3>
             <p className="text-sm">
-              Vamos fazer um tour rápido pelas principais funcionalidades da plataforma.
+              Objetivo: entender em 1 minuto onde ficam suas funções centrais.
             </p>
+            <p className="text-xs text-muted-foreground">Passo 1 de 4</p>
           </div>
         ),
       },
       {
         selector: '#sidebar-desktop [data-tour="menu-ia"]',
         content: (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h3 className="font-semibold">IA Jurídica 🤖</h3>
             <p className="text-sm">
-              Utilize nossa Inteligência Artificial para analisar documentos, gerar peças e resumir processos.
+              Aqui ficam as ferramentas para análise de documentos e geração de peças com IA.
             </p>
+            <p className="text-xs text-muted-foreground">Passo 2 de 4</p>
           </div>
         ),
       },
       {
         selector: '#sidebar-desktop [data-tour="menu-calendario"]',
         content: (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h3 className="font-semibold">Gestão do Escritório 📅</h3>
             <p className="text-sm">
               Gerencie clientes, processos, prazos e documentos no menu lateral. Nunca mais perca um prazo.
             </p>
+            <p className="text-xs text-muted-foreground">Passo 3 de 4</p>
           </div>
         ),
       },
       {
         selector: '[data-tour="header-credits"]',
         content: (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h3 className="font-semibold">Seus Créditos 🪙</h3>
             <p className="text-sm">
               Acompanhe aqui seu saldo de créditos para utilizar as ferramentas de IA e calculadoras.
             </p>
+            <p className="text-xs text-muted-foreground">Passo 4 de 4</p>
+          </div>
+        ),
+      },
+    ],
+  },
+  'ai-tools': {
+    id: 'ai-tools',
+    steps: [
+      {
+        selector: '#sidebar-desktop [data-tour="menu-ia"]',
+        content: (
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg">Missão IA Jurídica</h3>
+            <p className="text-sm">Comece abrindo o hub de IA para escolher a ferramenta ideal para o seu caso.</p>
+            <p className="text-xs text-muted-foreground">Passo 1 de 3</p>
           </div>
         ),
       },
       {
-        selector: 'body',
+        selector: '#sidebar-desktop [data-tour="menu-ia"]',
         content: (
           <div className="space-y-3">
-            <h3 className="font-semibold text-lg">Tudo pronto! 🚀</h3>
-            <p className="text-sm">
-              Agora você já conhece a plataforma. Acompanhe seu progresso no botão <strong>"Primeiros Passos"</strong> acima.
-            </p>
+            <h3 className="font-semibold">Ação recomendada</h3>
+            <p className="text-sm">Execute uma tarefa prática: resumo processual, scanner ou criação de peça.</p>
+            <p className="text-xs text-muted-foreground">Passo 2 de 3</p>
+          </div>
+        ),
+      },
+      {
+        selector: '[data-tour="header-credits"]',
+        content: (
+          <div className="space-y-3">
+            <h3 className="font-semibold">Conquista</h3>
+            <p className="text-sm">Acompanhe seus créditos para manter ritmo de uso e evolução nas próximas missões.</p>
+            <p className="text-xs text-muted-foreground">Passo 3 de 3</p>
+          </div>
+        ),
+      },
+    ],
+  },
+  calculators: {
+    id: 'calculators',
+    steps: [
+      {
+        selector: '#sidebar-desktop [data-tour="menu-calculadoras"]',
+        content: (
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg">Missão Calculadoras</h3>
+            <p className="text-sm">Abra o hub de calculadoras para acessar os fluxos trabalhista e previdenciário.</p>
+            <p className="text-xs text-muted-foreground">Passo 1 de 3</p>
+          </div>
+        ),
+      },
+      {
+        selector: '#sidebar-desktop [data-tour="menu-calculadoras"]',
+        content: (
+          <div className="space-y-3">
+            <h3 className="font-semibold">Ação recomendada</h3>
+            <p className="text-sm">Rode uma simulação completa e valide os campos de entrada e resultado.</p>
+            <p className="text-xs text-muted-foreground">Passo 2 de 3</p>
+          </div>
+        ),
+      },
+      {
+        selector: '[data-tour="header-credits"]',
+        content: (
+          <div className="space-y-3">
+            <h3 className="font-semibold">Conquista</h3>
+            <p className="text-sm">Revise créditos disponíveis para planejar uso contínuo das funcionalidades avançadas.</p>
+            <p className="text-xs text-muted-foreground">Passo 3 de 3</p>
           </div>
         ),
       },

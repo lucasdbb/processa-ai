@@ -91,6 +91,23 @@ export const useOnboardingStore = create<OnboardingState>()(
     }),
     {
       name: "onboarding-storage",
+      version: 2,
+      migrate: (persistedState: unknown) => {
+        const state = (persistedState as Partial<OnboardingState>) || {};
+        return {
+          ...state,
+          currentTour: null,
+          isOpen: false,
+          isWelcomeModalOpen: false,
+        } as OnboardingState;
+      },
+      partialize: (state) => ({
+        completedTours: state.completedTours,
+        hasUsedAiTool: state.hasUsedAiTool,
+        hasUsedCalculator: state.hasUsedCalculator,
+        isChecklistDismissed: state.isChecklistDismissed,
+        hasClaimedChecklistBonus: state.hasClaimedChecklistBonus,
+      }),
     },
   ),
 );

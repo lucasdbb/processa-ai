@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -100,6 +100,8 @@ export function WelcomeModal() {
         }
       } catch (err) {
         console.error('Erro ao verificar status de créditos:', err)
+        // Fail-safe: if status cannot be verified, keep modal closed to avoid blocking users.
+        closeWelcomeModal()
       } finally {
         setIsCheckingStatus(false)
       }
@@ -193,6 +195,8 @@ export function WelcomeModal() {
         onInteractOutside={(e) => e.preventDefault()}
         showCloseButton={false}
       >
+        <DialogTitle className="sr-only">Onboarding de boas-vindas</DialogTitle>
+
         {/* ── Passo 1: Missão ── */}
         {step === 'missao' && (
           <div>
