@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCreditsStore } from '@/stores/credits-store'
+import { useOnboardingStore } from '@/features/onboarding'
 import { analytics } from '@/lib/analytics'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 import { CalculationHistoryList } from './calculation-history-list'
@@ -13,9 +14,41 @@ interface RescisaoCalculatorProps {
   selectedClientId: string | null
 }
 
+const tipoRescisaoLabel: Record<string, string> = {
+  sem_justa_causa: 'Dispensa sem Justa Causa',
+  por_pedido: 'Pedido de Demissão',
+  com_justa_causa: 'Dispensa com Justa Causa',
+  acordo: 'Acordo (Reforma Trabalhista)',
+  termino_contrato: 'Término de Contrato',
+}
+
+const avisoOptions: Record<string, { value: string; label: string }[]> = {
+  sem_justa_causa: [
+    { value: 'trabalhado', label: 'Trabalhado' },
+    { value: 'indenizado', label: 'Indenizado' },
+    { value: 'dispensado', label: 'Dispensado' },
+  ],
+  por_pedido: [
+    { value: 'trabalhado', label: 'Trabalhado' },
+    { value: 'nao_cumprido', label: 'Não cumprido' },
+  ],
+  com_justa_causa: [
+    { value: 'dispensado', label: 'Dispensado' },
+  ],
+  acordo: [
+    { value: 'trabalhado', label: 'Trabalhado' },
+    { value: 'indenizado', label: 'Indenizado' },
+    { value: 'dispensado', label: 'Dispensado' },
+  ],
+  termino_contrato: [
+    { value: 'dispensado', label: 'Dispensado' },
+  ],
+}
+
 export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps) {
   const { user } = useUser()
   const { credits, fetchCredits } = useCreditsStore()
+  const { markCalculatorUsed } = useOnboardingStore()
 
   const [isCalculating, setIsCalculating] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
@@ -118,6 +151,8 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
         const error = await res.json().catch(() => null)
         throw new Error((error as { detail?: string } | null)?.detail || 'Erro ao calcular rescisão')
       }
+
+      markCalculatorUsed()
 
       const data = (await res.json()) as {
         pdf?: { job_id?: string; status?: string }
@@ -223,38 +258,7 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
       })
       toast.error(err instanceof Error ? err.message : 'Erro ao calcular rescisão')
     }
-  }, [formData, selectedClientId, user, credits, fetchCredits])
-
-  const tipoRescisaoLabel: Record<string, string> = {
-    sem_justa_causa: 'Dispensa sem Justa Causa',
-    por_pedido: 'Pedido de Demissão',
-    com_justa_causa: 'Dispensa com Justa Causa',
-    acordo: 'Acordo (Reforma Trabalhista)',
-    termino_contrato: 'Término de Contrato',
-  }
-
-  const avisoOptions: Record<string, { value: string; label: string }[]> = {
-    sem_justa_causa: [
-      { value: 'trabalhado', label: 'Trabalhado' },
-      { value: 'indenizado', label: 'Indenizado' },
-      { value: 'dispensado', label: 'Dispensado' },
-    ],
-    por_pedido: [
-      { value: 'trabalhado', label: 'Trabalhado' },
-      { value: 'nao_cumprido', label: 'Não cumprido' },
-    ],
-    com_justa_causa: [
-      { value: 'dispensado', label: 'Dispensado' },
-    ],
-    acordo: [
-      { value: 'trabalhado', label: 'Trabalhado' },
-      { value: 'indenizado', label: 'Indenizado' },
-      { value: 'dispensado', label: 'Dispensado' },
-    ],
-    termino_contrato: [
-      { value: 'dispensado', label: 'Dispensado' },
-    ],
-  }
+  }, [formData, selectedClientId, user, credits, fetchCredits, markCalculatorUsed])
 
   const currentAvisoOptions = avisoOptions[formData.tipoRescisao] || avisoOptions.sem_justa_causa
 

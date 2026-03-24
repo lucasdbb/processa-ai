@@ -9,6 +9,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useTheme } from 'next-themes'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useOnboardingStore } from '@/features/onboarding'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { analytics } from '@/lib/analytics'
@@ -177,7 +178,13 @@ export function ChatJuridicoTool() {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
-  const openRegisterModal = outletContext?.openRegisterModal || (() => {})
+  
+  const openRegisterModal = useMemo(
+    () => outletContext?.openRegisterModal || (() => {}),
+    [outletContext?.openRegisterModal]
+  )
+
+  const { markAiToolUsed } = useOnboardingStore()
 
   const {
     sessions,
@@ -287,6 +294,7 @@ export function ChatJuridicoTool() {
         updateLastMessage(streamContentRef.current)
       },
       (_messageId, sources) => {
+        markAiToolUsed()
         if (sources && sources.length > 0) {
           updateLastMessage(streamContentRef.current, sources as ChatSource[])
         }
@@ -306,7 +314,7 @@ export function ChatJuridicoTool() {
         })
       },
     )
-  }, [isStreaming, activeSession, addMessage, updateLastMessage, sendMessage])
+  }, [isStreaming, activeSession, addMessage, updateLastMessage, sendMessage, markAiToolUsed])
 
   const handleSend = useCallback(() => {
     void doSend(chatInput)

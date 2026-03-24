@@ -8,6 +8,7 @@ import { cn, normalizeMarkdown } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useOnboardingStore } from '@/features/onboarding'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload, type UploadedFileMetadata } from '@/features/ai/hooks/use-file-upload'
@@ -30,8 +31,14 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
-  const openRegisterModal = outletContext?.openRegisterModal || (() => {})
+  
+  const openRegisterModal = useMemo(
+    () => outletContext?.openRegisterModal || (() => {}),
+    [outletContext?.openRegisterModal]
+  )
+
   const { uploadFiles } = useFileUpload()
+  const { markAiToolUsed } = useOnboardingStore()
 
   const [prompt, setPrompt] = useState('')
   const [files, setFiles] = useState<File[]>([])
@@ -183,6 +190,8 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
         }
         throw new Error('Erro ao gerar reclamação')
       }
+
+      markAiToolUsed()
 
       const { job_id } = await response.json()
       

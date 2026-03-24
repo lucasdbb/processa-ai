@@ -9,6 +9,7 @@ export interface DashboardStats {
   urgent_deadlines_today: number;
   calculations_this_month: number;
   calculations_change_percent: number;
+  total_deadlines: number;
 }
 
 export interface UpcomingDeadline {

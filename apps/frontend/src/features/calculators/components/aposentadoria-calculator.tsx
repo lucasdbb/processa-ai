@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCreditsStore } from '@/stores/credits-store'
+import { useOnboardingStore } from '@/features/onboarding'
 import type { AposentadoriaDetalhes, CalculatorResult } from '../types'
 import { analytics } from '@/lib/analytics'
 
@@ -16,6 +17,7 @@ interface AposentadoriaCalculatorProps {
 export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalculatorProps) {
   const { user } = useUser()
   const { credits, fetchCredits } = useCreditsStore()
+  const { markCalculatorUsed } = useOnboardingStore()
   
   const [resultado, setResultado] = useState<CalculatorResult<AposentadoriaDetalhes> | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
@@ -78,6 +80,8 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
         throw new Error((error as { detail?: string } | null)?.detail || 'Erro ao calcular aposentadoria')
       }
 
+      markCalculatorUsed()
+
       const data = await res.json() as {
         detalhes: {
           pode_aposentar: boolean
@@ -121,7 +125,7 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
     } finally {
       setIsCalculating(false)
     }
-  }, [formData, selectedClientId, user, credits, fetchCredits])
+  }, [formData, selectedClientId, user, credits, fetchCredits, markCalculatorUsed])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">

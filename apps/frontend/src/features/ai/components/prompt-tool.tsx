@@ -7,6 +7,7 @@ import { normalizeMarkdown, cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useOnboardingStore } from '@/features/onboarding'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { analytics } from '@/lib/analytics'
@@ -19,9 +20,15 @@ interface PromptToolProps {
 export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) {
   const { isAuthenticated } = useUser()
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
-  const openRegisterModal = outletContext?.openRegisterModal || (() => {})
+  
+  const openRegisterModal = useMemo(
+    () => outletContext?.openRegisterModal || (() => {}),
+    [outletContext?.openRegisterModal]
+  )
+
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  const { markAiToolUsed } = useOnboardingStore()
 
   const [prompt, setPrompt] = useState(externalPrompt || '')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -92,6 +99,8 @@ export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) 
         }
         throw new Error('Erro ao processar solicitação')
       }
+
+      markAiToolUsed()
 
       const data = await response.json()
       setGeneratedText(data.response)

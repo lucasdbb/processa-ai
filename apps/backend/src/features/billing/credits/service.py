@@ -11,6 +11,7 @@ from src.core.security import (
 from src.core.stripe_client import create_checkout_session
 from src.core.supabase import get_supabase
 from src.features.billing.credits.constants import (
+    CHECKLIST_BONUS_AMOUNT,
     CREDIT_PACKAGES,
     FEATURE_COSTS,
     WELCOME_CREDITS_AMOUNT,
@@ -325,6 +326,48 @@ class CreditsService:
             )
 
         return {"success": True, "credits_granted": WELCOME_CREDITS_AMOUNT}
+
+    async def grant_checklist_bonus(self, user_id: str) -> dict:
+        """Concede créditos bônus por completar o checklist de onboarding."""
+        # Check if already claimed via profile flag
+        profile = (
+            self.supabase.table("profiles")
+            .select("checklist_bonus_claimed")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        if profile.data and profile.data.get("checklist_bonus_claimed"):
+            raise HTTPException(status_code=400, detail="Bônus do checklist já reivindicado")
+
+        # Mark as claimed
+        self.supabase.table("profiles").update({"checklist_bonus_claimed": True}).eq(
+            "id", user_id
+        ).execute()
+
+        # Grant credits
+        try:
+            self.supabase.rpc(
+                "grant_credits_to_user",
+                {
+                    "p_user_id": user_id,
+                    "p_amount": CHECKLIST_BONUS_AMOUNT,
+                    "p_reason": "checklist_bonus",
+                    "p_credit_type": "purchased",
+                },
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error granting checklist bonus: {e}")
+            # Rollback
+            self.supabase.table("profiles").update({"checklist_bonus_claimed": False}).eq(
+                "id", user_id
+            ).execute()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao conceder bônus. Tente novamente.",
+            )
+
+        return {"success": True, "credits_granted": CHECKLIST_BONUS_AMOUNT}
 
     async def get_transaction_history(
         self, user_id: str, page: int = 1, page_size: int = 20

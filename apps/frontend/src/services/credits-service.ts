@@ -126,6 +126,15 @@ export const creditsService = {
     return res.json()
   },
 
+  async claimChecklistBonus(): Promise<{ success: boolean; credits_granted: number }> {
+    const res = await fetchWithCredentials(`${API_URL}/credits/claim-checklist-bonus`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!res.ok) throw new Error('Failed to claim checklist bonus')
+    return res.json()
+  },
+
   async getAdminStats(): Promise<AdminCreditsMetrics> {
     const res = await fetchWithCredentials(`${API_URL}/credits/admin/stats`)
     if (!res.ok) throw new Error('Failed to get admin stats')

@@ -10,6 +10,7 @@ interface OnboardingState {
   hasUsedAiTool: boolean;
   hasUsedCalculator: boolean;
   isChecklistDismissed: boolean;
+  hasClaimedChecklistBonus: boolean;
   startTour: (tourId: TourId) => void;
   completeTour: (tourId: TourId) => void;
   closeTour: () => void;
@@ -21,6 +22,7 @@ interface OnboardingState {
   markCalculatorUsed: () => void;
   dismissChecklist: () => void;
   resetChecklist: () => void;
+  claimChecklistBonus: () => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -33,6 +35,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       hasUsedAiTool: false,
       hasUsedCalculator: false,
       isChecklistDismissed: false,
+      hasClaimedChecklistBonus: false,
 
       startTour: (tourId) => {
         set({ currentTour: tourId, isOpen: true });
@@ -80,6 +83,10 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       resetChecklist: () => {
         set({ isChecklistDismissed: false });
+      },
+
+      claimChecklistBonus: () => {
+        set({ hasClaimedChecklistBonus: true });
       },
     }),
     {

@@ -64,6 +64,12 @@ async def claim_welcome_credits(
     return await credits_service.grant_welcome_credits(user_id, data.cpf, ip)
 
 
+@router.post("/claim-checklist-bonus")
+async def claim_checklist_bonus(user_id: str = Depends(get_user_id)):
+    """Reivindica créditos bônus por completar o checklist de onboarding."""
+    return await credits_service.grant_checklist_bonus(user_id)
+
+
 @router.get("/admin/stats", response_model=AdminCreditsMetrics)
 async def get_admin_stats(_admin=Depends(get_current_admin)):
     """Retorna estatísticas administrativas de créditos."""

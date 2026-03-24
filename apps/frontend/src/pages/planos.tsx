@@ -200,9 +200,9 @@ export default function PlanosPage() {
 
       // Redirecionar para o Stripe Checkout
       window.location.href = checkout_url
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating checkout:', error)
-      toast.error('Erro ao iniciar checkout. Tente novamente.')
+      toast.error(error?.message || 'Erro ao iniciar checkout. Tente novamente.')
       setLoadingPlan(null)
     }
   }

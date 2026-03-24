@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Sparkles, Trash2, Upload, FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useOnboardingStore } from '@/features/onboarding'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
@@ -26,8 +27,14 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
-  const openRegisterModal = onOpenRegisterModal || outletContext?.openRegisterModal || (() => {})
+  
+  const openRegisterModal = useMemo(
+    () => onOpenRegisterModal || outletContext?.openRegisterModal || (() => {}),
+    [onOpenRegisterModal, outletContext?.openRegisterModal]
+  )
+
   const { uploadFiles } = useFileUpload()
+  const { markAiToolUsed } = useOnboardingStore()
 
   const [cnisFile, setCnisFile] = useState<File | null>(null)
   const [cnisFileInputKey, setCnisFileInputKey] = useState(0)
@@ -182,6 +189,8 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
         throw new Error(message)
       }
 
+      markAiToolUsed()
+
       const submitData = (await submitResponse.json()) as { job_id: string }
       if (!submitData.job_id) {
         throw new Error('Resposta inválida do servidor')
@@ -275,7 +284,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId, layout
     } finally {
       setIsGenerating(false)
     }
-  }, [isAuthenticated, cnisFile, openRegisterModal, setCnisPdfUrl])
+  }, [isAuthenticated, cnisFile, openRegisterModal, setCnisPdfUrl, markAiToolUsed, selectedClientId, uploadFiles])
 
   const handleDownload = useCallback(async () => {
     if (!isAuthenticated) {

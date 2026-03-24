@@ -59,7 +59,10 @@ export const billingService = {
         body: JSON.stringify(data),
       },
     );
-    if (!res.ok) throw new Error("Failed to create checkout session");
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.detail || "Failed to create checkout session");
+    }
     return res.json();
   },
 

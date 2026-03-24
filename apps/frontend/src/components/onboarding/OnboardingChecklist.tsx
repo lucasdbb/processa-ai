@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle2,
@@ -12,11 +12,14 @@ import {
   Brain,
   Calculator,
   ArrowRight,
+  Gift,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useOnboardingStore } from '@/features/onboarding/store'
 import { useBillingStore } from '@/stores/billing-store'
 import { useDashboardData } from '@/hooks/use-dashboard-data'
+import { useCreditsStore } from '@/stores/credits-store'
 import { cn } from '@/lib/utils'
 import {
   Dialog,
@@ -24,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { creditsService } from '@/services/credits-service'
 
 interface ChecklistItem {
   id: string
@@ -32,6 +36,16 @@ interface ChecklistItem {
   locked: boolean
   href: string
   icon: typeof Circle
+}
+
+const CHECKLIST_ITEM_LABELS: Record<string, string> = {
+  account: 'Criar conta',
+  profile: 'Completar perfil',
+  client: 'Cadastrar primeiro cliente',
+  process: 'Adicionar primeiro processo',
+  deadline: 'Criar primeiro prazo',
+  ai: 'Experimentar ferramenta de IA',
+  calculator: 'Experimentar calculadora',
 }
 
 function useChecklistItems() {
@@ -56,7 +70,7 @@ function useChecklistItems() {
       label: 'Completar perfil',
       completed: !!user?.welcome_credits_claimed,
       locked: false,
-      href: '/app/configuracoes',
+      href: '#open-welcome-modal',
       icon: UserPlus,
     },
     {
@@ -111,25 +125,99 @@ function useChecklistItems() {
 
 export function OnboardingProgress() {
   const [isOpen, setIsOpen] = useState(false)
-  const { isChecklistDismissed, dismissChecklist } = useOnboardingStore()
+  const { isChecklistDismissed, dismissChecklist, hasClaimedChecklistBonus, claimChecklistBonus, openWelcomeModal } = useOnboardingStore()
+  const { fetchCredits } = useCreditsStore()
   const { items, completedCount, totalApplicable, progressPercent } = useChecklistItems()
+  const prevCompletedRef = useRef<Set<string>>(new Set())
+  const [isClaimingBonus, setIsClaimingBonus] = useState(false)
 
-  if (isChecklistDismissed || completedCount === totalApplicable) {
+  // Track completed items and show toast on new completions
+  useEffect(() => {
+    const currentCompleted = new Set(
+      items.filter((i) => i.completed && !i.locked).map((i) => i.id)
+    )
+
+    // Only show toasts after initial load (prevRef is populated)
+    if (prevCompletedRef.current.size > 0) {
+      for (const id of currentCompleted) {
+        if (!prevCompletedRef.current.has(id)) {
+          const label = CHECKLIST_ITEM_LABELS[id]
+          if (label) {
+            toast.success(`${label}`, {
+              description: 'Item do checklist concluído!',
+              duration: 3000,
+            })
+          }
+        }
+      }
+    }
+
+    prevCompletedRef.current = currentCompleted
+  }, [items])
+
+  // Check if all items complete → offer bonus
+  const allComplete = completedCount === totalApplicable && totalApplicable > 0
+  const showBonusOffer = allComplete && !hasClaimedChecklistBonus && !isChecklistDismissed
+
+  const handleClaimBonus = async () => {
+    setIsClaimingBonus(true)
+    try {
+      const result = await creditsService.claimChecklistBonus()
+      if (result.success) {
+        claimChecklistBonus()
+        fetchCredits()
+        toast.success('Parabéns! Você ganhou 5 créditos bônus!', {
+          description: 'Todos os itens do checklist foram concluídos.',
+          duration: 5000,
+        })
+        setIsOpen(false)
+      }
+    } catch {
+      toast.error('Erro ao resgatar bônus. Tente novamente.')
+    } finally {
+      setIsClaimingBonus(false)
+    }
+  }
+
+  if (isChecklistDismissed || (allComplete && hasClaimedChecklistBonus)) {
     return null
+  }
+
+  const handleItemClick = (item: ChecklistItem) => {
+    if (item.href === '#open-welcome-modal') {
+      setIsOpen(false)
+      openWelcomeModal()
+      return
+    }
+    setIsOpen(false)
   }
 
   return (
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2.5 px-4 py-2 bg-muted hover:bg-muted/80 border border-border rounded-lg text-sm font-medium transition-colors group"
+        className={cn(
+          "flex items-center gap-2.5 px-4 py-2 border border-border rounded-lg text-sm font-medium transition-colors group",
+          showBonusOffer
+            ? "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20"
+            : "bg-muted hover:bg-muted/80"
+        )}
       >
-        <Rocket className="h-4 w-4 text-foreground" />
-        <span className="hidden sm:inline text-foreground">Primeiros Passos</span>
+        {showBonusOffer ? (
+          <Gift className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        ) : (
+          <Rocket className="h-4 w-4 text-foreground" />
+        )}
+        <span className="hidden sm:inline text-foreground">
+          {showBonusOffer ? 'Resgatar bônus!' : 'Primeiros Passos'}
+        </span>
         <span className="text-xs text-muted-foreground">{completedCount}/{totalApplicable}</span>
         <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
           <div
-            className="h-full bg-slate-900 dark:bg-slate-100 rounded-full transition-all duration-500"
+            className={cn(
+              "h-full rounded-full transition-all duration-500",
+              showBonusOffer ? "bg-amber-500" : "bg-slate-900 dark:bg-slate-100"
+            )}
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -151,12 +239,39 @@ export function OnboardingProgress() {
           <div className="px-5 pt-3">
             <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-slate-900 dark:bg-slate-100 rounded-full transition-all duration-500"
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  allComplete ? "bg-green-500" : "bg-slate-900 dark:bg-slate-100"
+                )}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5">{progressPercent}% completo</p>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {allComplete ? 'Concluído!' : `${progressPercent}% completo`}
+            </p>
           </div>
+
+          {/* Bonus banner */}
+          {showBonusOffer && (
+            <div className="mx-5 mt-3 p-3 rounded-xl border-2 border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 shrink-0">
+                  <Gift className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Parabéns! Checklist completo!</p>
+                  <p className="text-xs text-muted-foreground">Resgate 5 créditos bônus como recompensa.</p>
+                </div>
+              </div>
+              <button
+                onClick={handleClaimBonus}
+                disabled={isClaimingBonus}
+                className="mt-3 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                {isClaimingBonus ? 'Resgatando...' : 'Resgatar 5 créditos bônus'}
+              </button>
+            </div>
+          )}
 
           {/* Items */}
           <div className="px-3 py-3 space-y-0.5">
@@ -192,6 +307,21 @@ export function OnboardingProgress() {
                     <Icon className="h-4 w-4 shrink-0 text-green-600/60 dark:text-green-500/60" />
                     <span className="text-sm text-muted-foreground line-through">{item.label}</span>
                   </div>
+                )
+              }
+
+              if (item.href === '#open-welcome-modal') {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleItemClick(item)}
+                    className="flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors group hover:bg-muted/50 text-foreground w-full text-left"
+                  >
+                    <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm flex-1">{item.label}</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </button>
                 )
               }
 

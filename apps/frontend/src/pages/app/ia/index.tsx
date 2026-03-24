@@ -4,7 +4,6 @@ import { Brain, Coins, ChevronDown, Info, Rows, Columns } from 'lucide-react'
 
 import { useAiTools } from '@/features/ai/context'
 import { useCreditsStore } from '@/stores/credits-store'
-import { useOnboardingStore } from '@/features/onboarding/store'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useOutletContext } from 'react-router-dom'
@@ -26,17 +25,10 @@ export default function IAHubPage() {
 
   const allTools = useMemo(() => [...aiTools].sort((a, b) => a.order - b.order), [aiTools])
 
-  const { markAiToolUsed } = useOnboardingStore()
-
   // Load costs
   useEffect(() => {
     fetchCosts()
   }, [fetchCosts])
-
-  // Mark AI tool as used for onboarding checklist
-  useEffect(() => {
-    markAiToolUsed()
-  }, [markAiToolUsed])
 
   // toolId is the URL slug, which matches the database 'key' column exactly
   const resolvedToolSlug = toolId || null

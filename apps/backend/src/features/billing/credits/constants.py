@@ -68,3 +68,6 @@ CREDIT_PACKAGES: dict[str, CreditPackageDef] = {
 
 # Créditos de boas-vindas
 WELCOME_CREDITS_AMOUNT = 10
+
+# Créditos de bônus por completar o checklist de onboarding
+CHECKLIST_BONUS_AMOUNT = 5

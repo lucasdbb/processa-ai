@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useCreditsStore } from '@/stores/credits-store'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
+import { useOnboardingStore } from '@/features/onboarding'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
@@ -28,9 +29,15 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
-  const openRegisterModal = outletContext?.openRegisterModal || (() => {})
+  
+  const openRegisterModal = useMemo(
+    () => outletContext?.openRegisterModal || (() => {}),
+    [outletContext?.openRegisterModal]
+  )
+
   const { fetchCredits } = useCreditsStore()
   const { uploadFiles } = useFileUpload()
+  const { markAiToolUsed } = useOnboardingStore()
 
   const [files, setFiles] = useState<File[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
@@ -164,6 +171,8 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
         throw new Error(message)
       }
 
+      markAiToolUsed()
+
       const { job_id } = (await response.json()) as { job_id: string }
       if (!job_id) throw new Error('Resposta inválida do servidor')
 
@@ -245,7 +254,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
     } finally {
       setIsGenerating(false)
     }
-  }, [isAuthenticated, user, files, openRegisterModal, uploadFiles, selectedClientId, setPdfUrl, fetchCredits])
+  }, [isAuthenticated, user, files, openRegisterModal, uploadFiles, selectedClientId, setPdfUrl, fetchCredits, markAiToolUsed])
 
   const handleDownload = useCallback(async () => {
     if (!generatedPdfUrl) return

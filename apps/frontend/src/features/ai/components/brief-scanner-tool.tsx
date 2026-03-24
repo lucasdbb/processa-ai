@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { ScanSearch, Trash2, Upload, FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useOnboardingStore } from '@/features/onboarding'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
@@ -26,8 +27,14 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const outletContext = useOutletContext<RootLayoutOutletContext | null>()
-  const openRegisterModal = propOpenRegisterModal || outletContext?.openRegisterModal || (() => {})
+  
+  const openRegisterModal = useMemo(
+    () => propOpenRegisterModal || outletContext?.openRegisterModal || (() => {}),
+    [propOpenRegisterModal, outletContext?.openRegisterModal]
+  )
+
   const { uploadFiles } = useFileUpload()
+  const { markAiToolUsed } = useOnboardingStore()
 
   const [file, setFile] = useState<File | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -183,6 +190,8 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         throw new Error(message)
       }
 
+      markAiToolUsed()
+
       const submitData = (await submitResponse.json()) as { job_id: string }
       if (!submitData.job_id) {
         throw new Error('Resposta inválida do servidor')
@@ -264,7 +273,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
     } finally {
       setIsGenerating(false)
     }
-  }, [file, isAuthenticated, openRegisterModal, setPdfUrl, selectedClientId, uploadFiles])
+  }, [isAuthenticated, file, setPdfUrl, openRegisterModal, uploadFiles, selectedClientId, markAiToolUsed])
 
   const handleDownload = useCallback(async () => {
     if (!isAuthenticated) {
