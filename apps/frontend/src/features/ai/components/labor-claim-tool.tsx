@@ -10,7 +10,7 @@ import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useOutletContext } from 'react-router-dom'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
-import { useFileUpload } from '@/features/ai/hooks/use-file-upload'
+import { useFileUpload, type UploadedFileMetadata } from '@/features/ai/hooks/use-file-upload'
 import { FunctionalityType } from '@/features/ai/types'
 import { analytics } from '@/lib/analytics'
 
@@ -142,7 +142,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
 
     try {
       // 1. Upload files if any
-      let uploadedFiles: any[] = []
+      let uploadedFiles: UploadedFileMetadata[] = []
       let jobUuid = ''
 
       if (files.length > 0) {

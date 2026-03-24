@@ -121,18 +121,18 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
           }
 
           // Update local state directly from payload to avoid extra API call
-          const newRecord = payload.new as any
+          const newRecord = payload.new as Record<string, unknown> | undefined
           
           if (newRecord) {
-            const subscription_credits = newRecord.subscription_credits || 0
-            const purchased_credits = newRecord.purchased_credits || 0
-            
+            const subscription_credits = Number(newRecord.subscription_credits) || 0
+            const purchased_credits = Number(newRecord.purchased_credits) || 0
+
             const updatedCredits: UserCredits = {
-              user_id: newRecord.user_id,
+              user_id: String(newRecord.user_id),
               subscription_credits,
               purchased_credits,
               total_available: subscription_credits + purchased_credits,
-              last_reset_at: newRecord.last_reset_at,
+              last_reset_at: newRecord.last_reset_at as string | null,
             }
             
             set({ credits: updatedCredits })
