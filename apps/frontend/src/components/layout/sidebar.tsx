@@ -121,6 +121,7 @@ export function Sidebar() {
 
   const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
+  const collapsedLogoSrc = isDark ? '/logo_dark_colapsada.png' : '/logo_light_colapsada.png'
 
   const navigation = getNavigationGroups(aiTools, calculators)
 
@@ -245,24 +246,29 @@ const renderNavItem = (item: NavItem) => {
   const sidebarContent = (
     <>
       {/* Logo e Toggle */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-border">
-        <Link to="/" className="flex items-center gap-2" onClick={closeMobile}>
+      <div className={cn('relative flex items-center h-16 px-4 border-b border-border', isExpanded ? 'justify-between' : 'justify-center')}>
+        <Link to="/" className={cn('flex items-center gap-2', !isExpanded && 'justify-center')} onClick={closeMobile}>
           {isExpanded ? (
             <img src={logoSrc} alt="Processa AI" className="h-10 w-auto" />
           ) : (
-            <img src="/favicon.svg" alt="Processa AI" className="h-8 w-8" />
+            <img src={collapsedLogoSrc} alt="Processa AI" className="h-8 w-auto object-contain" />
           )}
         </Link>
         <button
           onClick={toggle}
-          className="hidden lg:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className={cn(
+            'hidden lg:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+            isExpanded
+              ? 'absolute right-3 top-1/2 -translate-y-1/2'
+              : 'absolute -right-4 top-1/2 -translate-y-1/2 bg-background border border-border shadow-sm'
+          )}
           aria-label={isExpanded ? 'Recolher sidebar' : 'Expandir sidebar'}
         >
           {isExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         <button
           onClick={closeMobile}
-          className="lg:hidden h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="lg:hidden absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           aria-label="Fechar menu"
         >
           <X className="h-5 w-5" />
