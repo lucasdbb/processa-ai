@@ -49,7 +49,7 @@ const roleLabel: Record<UserListItem['role'], string> = {
   client: 'Cliente',
   author: 'Autor',
   admin: 'Admin',
-  office_client: 'Cliente / Portal',
+  office_client: 'Portal',
 }
 
 const getRoleIcon = (role: UserListItem['role']) => {
@@ -258,7 +258,7 @@ export default function UsersTab() {
               <SelectContent>
                 <SelectItem value="all">Todas as roles</SelectItem>
                 <SelectItem value="client">Cliente</SelectItem>
-                <SelectItem value="office_client">Cliente / Portal</SelectItem>
+                <SelectItem value="office_client">Portal</SelectItem>
                 <SelectItem value="author">Autor</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
