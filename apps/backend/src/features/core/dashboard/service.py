@@ -213,110 +213,118 @@ class DashboardService:
         """Get financial statistics for user."""
         try:
             pool = await get_pool()
-            now = datetime.now(timezone.utc)
-
-            # Calculate last 6 months range
-            months = []
-            for i in range(5, -1, -1):
-                month_date = now - timedelta(days=30 * i)
-                month_str = month_date.strftime("%Y-%m")
-                months.append(month_str)
 
             async with pool.connection() as conn:
                 async with conn.cursor(row_factory=dict_row) as cur:
-                    # Get total fees
+                    # Totals and aging in a single aggregate query.
                     await cur.execute(
                         """
-                        SELECT COALESCE(SUM(amount), 0) as total
+                        SELECT
+                            COALESCE(SUM(amount), 0) AS total_fees,
+                            COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0) AS total_received,
+                            COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) AS total_pending,
+                            COALESCE(SUM(amount) FILTER (WHERE status = 'overdue'), 0) AS total_overdue,
+                            COALESCE(
+                                SUM(amount) FILTER (
+                                    WHERE status = 'overdue'
+                                      AND due_date IS NOT NULL
+                                      AND (CURRENT_DATE - due_date) <= 30
+                                ),
+                                0
+                            ) AS aging_0_30,
+                            COALESCE(
+                                SUM(amount) FILTER (
+                                    WHERE status = 'overdue'
+                                      AND due_date IS NOT NULL
+                                      AND (CURRENT_DATE - due_date) BETWEEN 31 AND 60
+                                ),
+                                0
+                            ) AS aging_31_60,
+                            COALESCE(
+                                SUM(amount) FILTER (
+                                    WHERE status = 'overdue'
+                                      AND due_date IS NOT NULL
+                                      AND (CURRENT_DATE - due_date) BETWEEN 61 AND 90
+                                ),
+                                0
+                            ) AS aging_61_90,
+                            COALESCE(
+                                SUM(amount) FILTER (
+                                    WHERE status = 'overdue'
+                                      AND due_date IS NOT NULL
+                                      AND (CURRENT_DATE - due_date) > 90
+                                ),
+                                0
+                            ) AS aging_90_plus
                         FROM office_api.fees
                         WHERE user_id = %s
                         """,
                         (user_id,),
                     )
-                    result = await cur.fetchone()
-                    total_fees = float(result["total"]) if result else 0.0
+                    totals = await cur.fetchone() or {}
 
-                    # Get total received
+                    total_fees = float(totals.get("total_fees", 0.0))
+                    total_received = float(totals.get("total_received", 0.0))
+                    total_pending = float(totals.get("total_pending", 0.0))
+                    total_overdue = float(totals.get("total_overdue", 0.0))
+
+                    aging = {
+                        "0_30": float(totals.get("aging_0_30", 0.0)),
+                        "31_60": float(totals.get("aging_31_60", 0.0)),
+                        "61_90": float(totals.get("aging_61_90", 0.0)),
+                        "90_plus": float(totals.get("aging_90_plus", 0.0)),
+                    }
+
+                    # Last 6 months revenue using generated months + grouped fee aggregates.
                     await cur.execute(
                         """
-                        SELECT COALESCE(SUM(amount), 0) as total
-                        FROM office_api.fees
-                        WHERE user_id = %s AND status = 'paid'
-                        """,
-                        (user_id,),
-                    )
-                    result = await cur.fetchone()
-                    total_received = float(result["total"]) if result else 0.0
-
-                    # Get total pending
-                    await cur.execute(
-                        """
-                        SELECT COALESCE(SUM(amount), 0) as total
-                        FROM office_api.fees
-                        WHERE user_id = %s AND status = 'pending'
-                        """,
-                        (user_id,),
-                    )
-                    result = await cur.fetchone()
-                    total_pending = float(result["total"]) if result else 0.0
-
-                    # Get total overdue
-                    await cur.execute(
-                        """
-                        SELECT COALESCE(SUM(amount), 0) as total
-                        FROM office_api.fees
-                        WHERE user_id = %s AND status = 'overdue'
-                        """,
-                        (user_id,),
-                    )
-                    result = await cur.fetchone()
-                    total_overdue = float(result["total"]) if result else 0.0
-
-                    # Get monthly revenue (last 6 months)
-                    monthly_revenue = []
-                    for month_str in months:
-                        year, month = month_str.split("-")
-                        start_date = f"{year}-{month}-01"
-
-                        # Calculate end date (first day of next month)
-                        if month == "12":
-                            end_date = f"{int(year) + 1}-01-01"
-                        else:
-                            end_date = f"{year}-{int(month) + 1:02d}-01"
-
-                        # Get received amount for this month
-                        await cur.execute(
-                            """
-                            SELECT COALESCE(SUM(amount), 0) as total
+                        WITH months AS (
+                            SELECT
+                                (date_trunc('month', CURRENT_DATE) - (interval '1 month' * gs.n))::date AS month_start
+                            FROM generate_series(5, 0, -1) AS gs(n)
+                        ),
+                        paid AS (
+                            SELECT
+                                date_trunc('month', paid_date)::date AS month_start,
+                                COALESCE(SUM(amount), 0) AS received
                             FROM office_api.fees
                             WHERE user_id = %s
                               AND status = 'paid'
-                              AND paid_date >= %s
-                              AND paid_date < %s
-                            """,
-                            (user_id, start_date, end_date),
-                        )
-                        result = await cur.fetchone()
-                        received = float(result["total"]) if result else 0.0
-
-                        # Get pending amount for this month
-                        await cur.execute(
-                            """
-                            SELECT COALESCE(SUM(amount), 0) as total
+                              AND paid_date IS NOT NULL
+                              AND paid_date >= (date_trunc('month', CURRENT_DATE) - interval '5 month')::date
+                            GROUP BY 1
+                        ),
+                        pending AS (
+                            SELECT
+                                date_trunc('month', due_date)::date AS month_start,
+                                COALESCE(SUM(amount), 0) AS pending
                             FROM office_api.fees
                             WHERE user_id = %s
                               AND status IN ('pending', 'overdue')
-                              AND due_date >= %s
-                              AND due_date < %s
-                            """,
-                            (user_id, start_date, end_date),
+                              AND due_date IS NOT NULL
+                              AND due_date >= (date_trunc('month', CURRENT_DATE) - interval '5 month')::date
+                            GROUP BY 1
                         )
-                        result = await cur.fetchone()
-                        pending = float(result["total"]) if result else 0.0
-
-                        monthly_revenue.append(
-                            {"month": month_str, "received": received, "pending": pending}
-                        )
+                        SELECT
+                            to_char(m.month_start, 'YYYY-MM') AS month,
+                            COALESCE(p.received, 0) AS received,
+                            COALESCE(pe.pending, 0) AS pending
+                        FROM months m
+                        LEFT JOIN paid p ON p.month_start = m.month_start
+                        LEFT JOIN pending pe ON pe.month_start = m.month_start
+                        ORDER BY m.month_start
+                        """,
+                        (user_id, user_id),
+                    )
+                    monthly_rows = await cur.fetchall()
+                    monthly_revenue = [
+                        {
+                            "month": row["month"],
+                            "received": float(row["received"]),
+                            "pending": float(row["pending"]),
+                        }
+                        for row in monthly_rows
+                    ]
 
                     # Get breakdown by status
                     await cur.execute(
@@ -339,35 +347,6 @@ class DashboardService:
                             "count": row["count"],
                             "total": float(row["total"]),
                         }
-
-                    # Get aging breakdown (overdue)
-                    aging = {"0_30": 0.0, "31_60": 0.0, "61_90": 0.0, "90_plus": 0.0}
-
-                    await cur.execute(
-                        """
-                        SELECT
-                            due_date,
-                            amount as overdue_amount
-                        FROM office_api.fees
-                        WHERE user_id = %s AND status = 'overdue'
-                        """,
-                        (user_id,),
-                    )
-                    overdue_rows = await cur.fetchall()
-
-                    for row in overdue_rows:
-                        due_date = row["due_date"]
-                        days_overdue = (now.date() - due_date).days
-                        amount = float(row["overdue_amount"])
-
-                        if days_overdue <= 30:
-                            aging["0_30"] += amount
-                        elif days_overdue <= 60:
-                            aging["31_60"] += amount
-                        elif days_overdue <= 90:
-                            aging["61_90"] += amount
-                        else:
-                            aging["90_plus"] += amount
 
             return {
                 "total_fees": total_fees,
@@ -665,9 +644,7 @@ class DashboardService:
                             "title": row["title"] or "",
                             "start_at": row["start_at"].isoformat() if row["start_at"] else None,
                             "event_type": row["event_type"],
-                            "event_type_label": event_type_labels.get(
-                                row["event_type"], "Evento"
-                            ),
+                            "event_type_label": event_type_labels.get(row["event_type"], "Evento"),
                             "process": row["process_number"] or "N/A",
                             "client": row["client_name"] or "N/A",
                         }
@@ -696,7 +673,9 @@ class DashboardService:
                             "amount": float(row["amount"]),
                             "due_date": row["due_date"].isoformat() if row["due_date"] else None,
                             "client_name": row["client_name"] or "N/A",
-                            "days_overdue": (today - row["due_date"]).days if row["due_date"] else 0,
+                            "days_overdue": (today - row["due_date"]).days
+                            if row["due_date"]
+                            else 0,
                         }
                         for row in overdue_rows
                     ]
@@ -720,12 +699,12 @@ class DashboardService:
                 "overdue_fees": overdue_fees,
                 "summary": {
                     "deadlines_count": len(deadlines_today),
-                    "urgent_deadlines_count": sum(
-                        1 for d in deadlines_today if d["urgent"]
-                    ),
+                    "urgent_deadlines_count": sum(1 for d in deadlines_today if d["urgent"]),
                     "events_count": len(events_today),
                     "overdue_fees_count": overdue_totals["total"] if overdue_totals else 0,
-                    "overdue_fees_total": float(overdue_totals["total_amount"]) if overdue_totals else 0.0,
+                    "overdue_fees_total": float(overdue_totals["total_amount"])
+                    if overdue_totals
+                    else 0.0,
                 },
             }
 
