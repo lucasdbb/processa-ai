@@ -155,7 +155,7 @@ export default function IAHubPage() {
       {headerContent}
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-3 sm:p-4 flex-1 flex flex-col min-h-0">
-        <div className="flex flex-col gap-3 mb-4 flex-shrink-0">
+        <div className="flex flex-col gap-3 mb-4 sm:mb-5 flex-shrink-0">
           {/* Linha 1: Ícone + Seletor + Créditos + Controles */}
           <div className="flex items-center gap-3">
             <div className="bg-slate-100 dark:bg-slate-800 p-2 sm:p-3 rounded-xl sm:rounded-2xl shadow-sm shrink-0 border border-slate-200 dark:border-slate-700">
@@ -184,18 +184,27 @@ export default function IAHubPage() {
               )}
             </div>
 
+            {currentTool?.variant !== 'chat' && (
+              <ClientSelector
+                value={selectedClientId}
+                onChange={(id) => setSelectedClientId(id)}
+                className="hidden lg:block lg:w-60 lg:ml-auto"
+                label="Cliente"
+              />
+            )}
+
           </div>
 
           {/* Descrição da ferramenta */}
           {currentTool?.description && (
-            <p className="text-muted-foreground text-sm pl-[44px] sm:pl-[60px] -mt-1">
+            <p className="text-muted-foreground text-sm pl-[44px] sm:pl-[60px] mt-0.5">
               {currentTool.description}
             </p>
           )}
 
           {/* Linha 2: Cliente + Layout toggle mobile */}
           {currentTool?.variant !== 'chat' && (
-            <div className="flex items-center gap-2 pl-0 sm:pl-[60px]">
+            <div className="flex items-center gap-2 pl-0 sm:pl-[60px] lg:hidden">
               <ClientSelector
                 value={selectedClientId}
                 onChange={(id) => setSelectedClientId(id)}

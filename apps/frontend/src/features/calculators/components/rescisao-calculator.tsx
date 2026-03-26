@@ -275,7 +275,7 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
   const sectionClass = 'space-y-4'
 
   return (
-    <div className="lg:grid lg:grid-cols-5 lg:gap-4 lg:flex-1 lg:min-h-0">
+    <div className="h-full lg:grid lg:grid-cols-5 lg:gap-4 lg:min-h-0">
       {/* Left: Input form */}
       <div className="lg:col-span-3 flex flex-col lg:min-h-0">
         <div className="bg-card border border-border rounded-xl flex flex-col overflow-hidden lg:h-full">
