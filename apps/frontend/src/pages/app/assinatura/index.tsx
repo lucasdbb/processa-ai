@@ -258,7 +258,7 @@ export default function AssinaturaPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 max-w-5xl pb-10">
+    <div className="space-y-6 max-w-5xl pb-24 lg:pb-10">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
@@ -268,14 +268,14 @@ export default function AssinaturaPage() {
         </div>
 
         {/* Credit balance card */}
-        <div className="bg-slate-900 text-white dark:bg-slate-800 px-5 py-4 rounded-2xl shadow-lg flex items-center gap-4 shrink-0">
-          <div className="p-2.5 bg-white/10 rounded-xl">
-            <Coins className="w-6 h-6 text-yellow-400" />
+        <div className="bg-slate-900 text-white dark:bg-slate-800 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl shadow-lg flex items-center gap-3 sm:gap-4 shrink-0">
+          <div className="p-2 sm:p-2.5 bg-white/10 rounded-xl">
+            <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" />
           </div>
           <div>
-            <p className="text-xs font-medium text-slate-300 uppercase tracking-wide">Saldo disponível</p>
+            <p className="text-[10px] sm:text-xs font-medium text-slate-300 uppercase tracking-wide">Saldo disponível</p>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold">
+              <span className="text-2xl sm:text-3xl font-bold">
                 {loadingCredits && !credits ? '...' : credits?.total_available || 0}
               </span>
               <span className="text-xs font-medium text-slate-400">créditos</span>
@@ -285,22 +285,23 @@ export default function AssinaturaPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="border-b border-border">
-        <nav className="-mb-px flex gap-1" aria-label="Seções de assinatura">
+      <div className="border-b border-border overflow-x-auto overflow-y-hidden -mx-4 px-4 lg:mx-0 lg:px-0">
+        <nav className="-mb-px flex gap-1 w-max min-w-full" aria-label="Seções de assinatura">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
               onClick={() => setActiveTab(id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                'flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                 activeTab === id
                   ? 'border-foreground text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
               )}
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">{label}</span>
+              <span className="sm:hidden">{id === 'creditos' ? 'Créditos' : id === 'historico' ? 'Histórico' : id === 'custos' ? 'Custos' : label}</span>
             </button>
           ))}
         </nav>
@@ -320,7 +321,7 @@ export default function AssinaturaPage() {
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex flex-wrap justify-center gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-6">
               {plans.map((plan, index) => {
                 const IconComponent = plan.icon
                 const isComingSoon = plan.comingSoon === true
@@ -329,7 +330,7 @@ export default function AssinaturaPage() {
                   <div
                     key={index}
                     className={cn(
-                      'relative bg-card rounded-2xl p-5 flex flex-col transition-all duration-300 w-full max-w-[300px]',
+                      'relative bg-card rounded-xl sm:rounded-2xl p-3.5 sm:p-5 flex flex-col transition-all duration-300 w-full',
                       plan.popular ? 'shadow-2xl ring-2 ring-primary z-10' : 'shadow-xl border border-border',
                       isComingSoon || isHidden ? 'opacity-90' : 'hover:scale-[1.01] hover:shadow-2xl hover:border-muted-foreground/50',
                       isHidden ? 'blur-[4px] pointer-events-none' : '',
@@ -353,7 +354,26 @@ export default function AssinaturaPage() {
                     )}
 
                     <div className={cn(isComingSoon ? 'blur-[2px] opacity-60' : '', 'flex flex-col flex-1')}>
-                      <div className="mb-4 shrink-0">
+                      <div className="sm:hidden mb-2.5 shrink-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={cn(
+                              'inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0',
+                              plan.popular ? 'bg-slate-900 text-white' : 'bg-muted text-foreground',
+                            )}>
+                              <IconComponent className="w-4 h-4" strokeWidth={1.5} />
+                            </div>
+                            <h3 className="text-base font-bold text-foreground tracking-tight truncate">{plan.name}</h3>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xl font-bold text-foreground tracking-tight leading-none">{plan.price}</div>
+                            <div className="text-[11px] text-muted-foreground font-medium mt-1">{plan.period}</div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-snug mt-2 line-clamp-2">{plan.description}</p>
+                      </div>
+
+                      <div className="hidden sm:block mb-4 shrink-0">
                         <div className={cn(
                           'inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3',
                           plan.popular ? 'bg-slate-900 text-white' : 'bg-muted text-foreground',
@@ -361,15 +381,28 @@ export default function AssinaturaPage() {
                           <IconComponent className="w-5 h-5" strokeWidth={1.5} />
                         </div>
                         <h3 className="text-xl font-bold text-foreground mb-2 tracking-tight">{plan.name}</h3>
-                        <p className="text-muted-foreground text-sm leading-relaxed">{plan.description}</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{plan.description}</p>
                       </div>
 
-                      <div className="flex items-baseline mb-4 shrink-0">
+                      <div className="hidden sm:flex items-baseline mb-4 shrink-0">
                         <span className="text-3xl font-bold text-foreground tracking-tight">{plan.price}</span>
                         <span className="text-muted-foreground ml-1.5 text-sm font-medium">{plan.period}</span>
                       </div>
 
-                      <ul className="space-y-2.5 mb-6 flex-1">
+                      <div className="border-t border-border/70 pt-2.5 sm:border-0 sm:pt-0">
+                      <ul className="space-y-1.5 mb-3 sm:hidden flex-1">
+                        {plan.features.map((feature, fi) => (
+                          <li key={fi} className="flex items-start">
+                            <div className="shrink-0 w-4 h-4 rounded-full bg-green-500/10 flex items-center justify-center mr-1.5 mt-0.5">
+                              <Check className="w-2.5 h-2.5 text-[hsl(var(--success-strong))]" strokeWidth={3} />
+                            </div>
+                            <span className="text-muted-foreground text-sm font-medium leading-snug">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      </div>
+
+                      <ul className="hidden sm:block sm:space-y-2.5 sm:mb-6 sm:flex-1">
                         {plan.features.map((feature, fi) => (
                           <li key={fi} className="flex items-start">
                             <div className="shrink-0 w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center mr-2.5 mt-0.5">
@@ -385,7 +418,7 @@ export default function AssinaturaPage() {
                           onClick={() => handlePlanClick(plan)}
                           disabled={isComingSoon || plan.isCurrentPlan || loadingPlan === plan.slug}
                           className={cn(
-                            'w-full min-h-[48px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 transform',
+                            'w-full min-h-[38px] sm:min-h-[48px] flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 px-2.5 sm:px-4 rounded-lg sm:rounded-xl text-[11px] sm:text-sm font-bold transition-all duration-200 transform',
                             isComingSoon || plan.isCurrentPlan || loadingPlan === plan.slug
                               ? 'bg-muted text-muted-foreground cursor-not-allowed border-2 border-border'
                               : plan.popular
@@ -480,7 +513,7 @@ export default function AssinaturaPage() {
 
       {/* ── Aba: Histórico ── */}
       {activeTab === 'historico' && (
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <History className="w-4 h-4" />
@@ -539,11 +572,11 @@ export default function AssinaturaPage() {
                     </TableBody>
                   </Table>
                 </div>
-                <div className="flex items-center justify-end space-x-2 py-4 px-4 border-t">
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 py-4 px-4 border-t">
                   <Button variant="outline" size="sm" onClick={() => loadHistory(historyPage - 1)} disabled={historyPage <= 1 || loadingHistory}>
                     Anterior
                   </Button>
-                  <span className="text-sm text-muted-foreground">Página {historyPage}</span>
+                  <span className="text-sm text-muted-foreground min-w-[88px] text-center">Página {historyPage}</span>
                   <Button variant="outline" size="sm" onClick={() => loadHistory(historyPage + 1)} disabled={!historyData || historyData.transactions.length < 20 || loadingHistory}>
                     Próxima
                   </Button>
@@ -568,25 +601,27 @@ export default function AssinaturaPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ferramenta</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="text-right">Custo (Créditos)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {costs.map((item) => (
-                    <TableRow key={item.feature_key}>
-                      <TableCell className="font-medium">{item.display_name}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{item.description}</TableCell>
-                      <TableCell className="text-right font-bold">{item.cost}</TableCell>
+            <div className="rounded-md border overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table className="min-w-[640px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ferramenta</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Custo (Créditos)</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {costs.map((item) => (
+                      <TableRow key={item.feature_key}>
+                        <TableCell className="font-medium">{item.display_name}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{item.description}</TableCell>
+                        <TableCell className="text-right font-bold">{item.cost}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </CardContent>
         </Card>

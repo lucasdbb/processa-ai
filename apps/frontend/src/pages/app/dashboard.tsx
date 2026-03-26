@@ -255,22 +255,20 @@ export default function DashboardPage() {
         )}
 
         {/* Processes Chart */}
-        {processesSummary && processesSummary.by_status.length > 0 && (
-          <div className="bg-card border border-border rounded-xl">
-            <div className="px-5 py-4 border-b border-border">
-              <h2 className="font-semibold text-foreground">Processos por Status</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Distribuição dos seus processos
-              </p>
-            </div>
-            <div className="p-4">
-              <ProcessesChart
-                data={processesSummary.by_status}
-                total={processesSummary.total}
-              />
-            </div>
+        <div className="bg-card border border-border rounded-xl">
+          <div className="px-5 py-4 border-b border-border">
+            <h2 className="font-semibold text-foreground">Processos por Status</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Distribuição dos seus processos
+            </p>
           </div>
-        )}
+          <div className="p-4">
+            <ProcessesChart
+              data={processesSummary?.by_status ?? []}
+              total={processesSummary?.total ?? 0}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Deadlines + Activity Row */}

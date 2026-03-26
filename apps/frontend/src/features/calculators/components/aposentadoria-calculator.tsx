@@ -14,6 +14,67 @@ interface AposentadoriaCalculatorProps {
   selectedClientId: string | null
 }
 
+function ResultadoContent({ resultado }: { resultado: CalculatorResult<AposentadoriaDetalhes> }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+        <FileText className="h-4 w-4 text-primary" />
+        Análise Previdenciária
+      </h2>
+      <div
+        className={cn(
+          'p-4 rounded-xl border',
+          resultado.detalhes.podeAposentar
+            ? 'bg-green-500/10 border-green-500/20'
+            : 'bg-yellow-500/10 border-yellow-500/20'
+        )}
+      >
+        <div
+          className={cn(
+            'font-bold text-base mb-2',
+            resultado.detalhes.podeAposentar
+              ? 'text-green-600 dark:text-green-400'
+              : 'text-yellow-600 dark:text-yellow-400'
+          )}
+        >
+          {resultado.detalhes.podeAposentar ? 'Pode se aposentar' : 'Não pode se aposentar ainda'}
+        </div>
+
+        {!resultado.detalhes.podeAposentar ? (
+          <div className="mt-3 space-y-2 text-xs">
+            <div className="flex justify-between p-2 bg-background/50 rounded-lg">
+              <span className="text-muted-foreground">Faltam (idade)</span>
+              <span className="text-foreground font-medium">{resultado.detalhes.anosRestantes} anos</span>
+            </div>
+            <div className="flex justify-between p-2 bg-background/50 rounded-lg">
+              <span className="text-muted-foreground">Faltam (contribuição)</span>
+              <span className="text-foreground font-medium">{resultado.detalhes.tempoRestante} anos</span>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-4 space-y-2 text-xs border-t border-border/50 pt-3">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Idade mínima exigida</span>
+            <span className="text-foreground font-medium">{resultado.detalhes.idadeMinima} anos</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Tempo mínimo exigido</span>
+            <span className="text-foreground font-medium">{resultado.detalhes.tempoMinimoContrib} anos</span>
+          </div>
+        </div>
+
+        {resultado.detalhes.podeAposentar ? (
+          <div className="mt-4 pt-3 border-t border-border/50 flex justify-between items-center text-foreground font-bold">
+            <span>Benefício estimado</span>
+            <span>R$ {resultado.detalhes.beneficio.toFixed(2)}</span>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalculatorProps) {
   const { user } = useUser()
   const { credits, fetchCredits } = useCreditsStore()
@@ -21,6 +82,7 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
   
   const [resultado, setResultado] = useState<CalculatorResult<AposentadoriaDetalhes> | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
+  const [showResultMobile, setShowResultMobile] = useState(false)
   
   const [formData, setFormData] = useState({
     sexo: 'masculino',
@@ -104,6 +166,7 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
           tempoMinimoContrib: data.detalhes.tempo_minimo_contrib,
         },
       })
+      setShowResultMobile(true)
       
       // Update credits
       fetchCredits()
@@ -128,10 +191,10 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
   }, [formData, selectedClientId, user, credits, fetchCredits, markCalculatorUsed])
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
-      <div className="lg:col-span-3 flex flex-col min-h-0">
-        <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+    <div className="lg:grid lg:grid-cols-5 lg:gap-4 lg:flex-1 lg:min-h-0">
+      <div className="lg:col-span-3 flex flex-col lg:min-h-0">
+        <div className="bg-card border border-border rounded-xl flex flex-col lg:h-full overflow-hidden">
+          <div className="p-4 lg:flex-1 lg:overflow-y-auto lg:custom-scrollbar">
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -218,12 +281,13 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
               </div>
             </div>
           </div>
-          <div className="p-4 border-t border-border bg-muted/10 shrink-0">
+          {/* Botão + resultado mobile */}
+          <div className="p-4 border-t border-border bg-muted/10 shrink-0 space-y-2">
             <button
               type="button"
               onClick={handleCalculate}
               disabled={isCalculating}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center px-8 py-3 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 w-full disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center px-8 py-3 rounded-lg font-semibold text-sm transition-all shadow-sm hover:shadow-md w-full disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isCalculating ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -232,70 +296,27 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
               )}
               <span>{isCalculating ? 'Calculando...' : 'Calcular'}</span>
             </button>
+
+            {resultado && (
+              <button
+                type="button"
+                onClick={() => setShowResultMobile(true)}
+                className="lg:hidden flex items-center justify-center gap-2 w-full py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                <span>Ver resultado da análise</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="lg:col-span-2 flex flex-col min-h-0">
+      {/* Right: Result — desktop only */}
+      <div className="hidden lg:flex lg:col-span-2 flex-col min-h-0">
         {resultado ? (
           <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
-              <div className="space-y-4">
-                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Análise Previdenciária
-                </h2>
-                <div
-                  className={cn(
-                    'p-4 rounded-xl border',
-                    resultado.detalhes.podeAposentar
-                      ? 'bg-green-500/10 border-green-500/20'
-                      : 'bg-yellow-500/10 border-yellow-500/20'
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'font-bold text-base mb-2',
-                      resultado.detalhes.podeAposentar
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-yellow-600 dark:text-yellow-400'
-                    )}
-                  >
-                    {resultado.detalhes.podeAposentar ? 'Pode se aposentar' : 'Não pode se aposentar ainda'}
-                  </div>
-                  
-                  {!resultado.detalhes.podeAposentar ? (
-                    <div className="mt-3 space-y-2 text-xs">
-                      <div className="flex justify-between p-2 bg-background/50 rounded-lg">
-                        <span className="text-muted-foreground">Faltam (idade)</span>
-                        <span className="text-foreground font-medium">{resultado.detalhes.anosRestantes} anos</span>
-                      </div>
-                      <div className="flex justify-between p-2 bg-background/50 rounded-lg">
-                        <span className="text-muted-foreground">Faltam (contribuição)</span>
-                        <span className="text-foreground font-medium">{resultado.detalhes.tempoRestante} anos</span>
-                      </div>
-                    </div>
-                  ) : null}
-                  
-                  <div className="mt-4 space-y-2 text-xs border-t border-border/50 pt-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Idade mínima exigida</span>
-                      <span className="text-foreground font-medium">{resultado.detalhes.idadeMinima} anos</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tempo mínimo exigido</span>
-                      <span className="text-foreground font-medium">{resultado.detalhes.tempoMinimoContrib} anos</span>
-                    </div>
-                  </div>
-                  
-                  {resultado.detalhes.podeAposentar ? (
-                    <div className="mt-4 pt-3 border-t border-border/50 flex justify-between items-center text-foreground font-bold">
-                      <span>Benefício estimado</span>
-                      <span>R$ {resultado.detalhes.beneficio.toFixed(2)}</span>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <ResultadoContent resultado={resultado} />
             </div>
           </div>
         ) : (
@@ -306,6 +327,40 @@ export function AposentadoriaCalculator({ selectedClientId }: AposentadoriaCalcu
           </div>
         )}
       </div>
+
+      {/* Mobile result bottom sheet */}
+      {resultado && showResultMobile && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+            onClick={() => setShowResultMobile(false)}
+          />
+          <div
+            className="lg:hidden fixed inset-x-0 bottom-0 z-50 flex flex-col bg-card border-t border-border rounded-t-2xl shadow-2xl"
+            style={{ maxHeight: '80vh' }}
+          >
+            <div className="flex flex-col items-center pt-2 pb-0 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/30 mb-2" />
+              <div className="w-full flex items-center justify-between px-4 pb-3 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-foreground text-sm">Resultado</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowResultMobile(false)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors text-xs font-medium"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <ResultadoContent resultado={resultado} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -228,7 +228,7 @@ export function AppHeader() {
               <button
                 type="button"
                 data-tour="header-credits"
-                className="hidden sm:flex items-center gap-2 h-10 px-3 rounded-full bg-muted/50 border border-border hover:bg-accent hover:border-foreground/20 transition-colors group"
+                className="flex items-center gap-1.5 sm:gap-2 h-10 px-2.5 sm:px-3 rounded-full bg-muted/50 border border-border hover:bg-accent hover:border-foreground/20 transition-colors group"
                 aria-label="Ver detalhes de créditos"
               >
                 <div className="relative text-amber-500">
@@ -238,10 +238,10 @@ export function AppHeader() {
                 <span className="text-sm font-semibold text-foreground">
                   {credits ? credits.total_available.toLocaleString('pt-BR') : '0'}
                 </span>
-                <span className="text-xs text-muted-foreground">créditos</span>
+                <span className="hidden sm:inline text-xs text-muted-foreground">créditos</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-0">
+            <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-0">
               <div className="px-4 pt-4 pb-3 border-b border-border">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">

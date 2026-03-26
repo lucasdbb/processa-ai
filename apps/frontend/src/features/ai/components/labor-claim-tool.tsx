@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useLayoutEffect, useEffect } from 'react'
-import { FileText, Gavel, Trash2, Upload, Plus } from 'lucide-react'
+import { FileText, Gavel, Trash2, Upload, Plus, History } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { marked } from 'marked'
@@ -20,13 +20,14 @@ const MAX_FILES = 5
 
 import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
+import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
+import { useAnalysisHistory } from '@/features/ai/hooks/use-analysis-history'
 
 interface LaborClaimToolProps {
   selectedClientId?: string | null
-  layoutMode?: 'stack' | 'side-by-side'
 }
 
-export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }: LaborClaimToolProps) {
+export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
   const { user, isAuthenticated } = useUser()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -49,6 +50,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+  const { data: historyJobs } = useAnalysisHistory('labor_claim', selectedClientId, historyRefreshKey)
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -284,10 +286,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
 
   return (
     <div className="h-full flex flex-col gap-4">
-      <div className={cn(
-        "flex-1 min-h-0 grid gap-4 transition-all duration-300 ease-in-out",
-        layoutMode === 'side-by-side' ? "lg:grid-cols-2 lg:items-start" : "grid-cols-1"
-      )}>
+      <div className="flex-1 min-h-0 grid gap-4 grid-cols-1 lg:grid-cols-2 grid-rows-[1fr]">
         {/* Left Column: Inputs */}
         <div className="flex flex-col h-full min-h-0">
           <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl p-4 gap-4">
@@ -296,7 +295,7 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
             <div className="flex-1 overflow-y-auto min-h-0 pr-2 space-y-4">
               <div className="flex-shrink-0">
                 <div className="mb-4">
-                  <label className="block text-sm font-bold text-foreground mb-1">
+                  <label className="block text-sm sm:text-base font-bold text-foreground mb-1">
                     Relato dos Fatos <span className="text-destructive">*</span>
                   </label>
                   <p className="text-sm text-muted-foreground">
@@ -436,12 +435,34 @@ export function LaborClaimTool({ selectedClientId, layoutMode = 'side-by-side' }
                   </>
                 )}
               </button>
+
+              {/* History trigger — mobile only */}
+              <HistoryBottomSheet
+                itemCount={historyJobs?.length ?? 0}
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    onClick={open}
+                    className="lg:hidden flex items-center justify-center gap-2 w-full mt-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <History className="h-4 w-4" />
+                    <span>Ver histórico de reclamações{(historyJobs?.length ?? 0) > 0 ? ` (${historyJobs?.length})` : ''}</span>
+                  </button>
+                )}
+              >
+                <AnalysisHistoryList
+                  functionality="labor_claim"
+                  clientId={selectedClientId}
+                  title="Histórico de Reclamações"
+                  refreshKey={historyRefreshKey}
+                />
+              </HistoryBottomSheet>
             </div>
           </div>
         </div>
 
-        {/* Right Column: History */}
-        <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
+        {/* Right Column: History — desktop only */}
+        <div className="hidden lg:flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
           <AnalysisHistoryList
             functionality="labor_claim"
             clientId={selectedClientId}

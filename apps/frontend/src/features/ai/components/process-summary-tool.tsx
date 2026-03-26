@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { FileSearch, FileText, Plus, Trash2, Upload } from 'lucide-react'
+import { FileSearch, FileText, Plus, Trash2, Upload, History } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
@@ -16,15 +16,16 @@ import { analytics } from '@/lib/analytics'
 
 import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
+import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
+import { useAnalysisHistory } from '@/features/ai/hooks/use-analysis-history'
 
 const MAX_FILES = 5
 
 interface ProcessSummaryToolProps {
   selectedClientId?: string | null
-  layoutMode?: 'stack' | 'side-by-side'
 }
 
-export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-side' }: ProcessSummaryToolProps) {
+export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps) {
   const { user, isAuthenticated } = useUser()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -46,6 +47,7 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+  const { data: historyJobs } = useAnalysisHistory('process_summary', selectedClientId, historyRefreshKey)
 
   // Abort controller for polling cleanup on unmount
   const abortRef = useRef<AbortController | null>(null)
@@ -281,25 +283,22 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
 
   return (
     <div className="h-full flex flex-col gap-4">
-      <div className={cn(
-        "flex-1 min-h-0 grid gap-4 transition-all duration-300 ease-in-out",
-        layoutMode === 'side-by-side' ? "lg:grid-cols-2 lg:items-start" : "grid-cols-1"
-      )}>
+      <div className="flex-1 min-h-0 grid gap-4 grid-cols-1 lg:grid-cols-2 grid-rows-[1fr]">
         {/* Left Column: Input */}
         <div className="flex flex-col h-full min-h-0">
           <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl p-4 gap-4">
-            <div className="flex-shrink-0">
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-foreground mb-1">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2 space-y-4">
+              <div>
+                <label className="block text-sm sm:text-base font-bold text-foreground mb-1">
                   Documentos do Processo <span className="text-destructive">*</span>
                 </label>
                 <p className="text-sm text-muted-foreground">
                   Envie as peças processuais (PDF). A IA identificará partes, pedidos, decisões e pontos de atenção.
                 </p>
               </div>
-            </div>
 
-            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+              <div>
               {files.length > 0 && (
                 <div className="space-y-3 mb-4">
                   {files.map((file, index) => (
@@ -385,20 +384,22 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
                   </label>
                 )}
               </div>
+              </div>
+
+              {isGenerating && (
+                <div className="space-y-2 bg-muted/50 border border-border rounded-lg p-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-foreground">
+                      {progress < 20 ? 'Salvando arquivos...' : 'Processando análise...'}
+                    </span>
+                    <span className="text-muted-foreground font-mono">{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="h-3" />
+                </div>
+              )}
             </div>
 
-            {isGenerating && (
-              <div className="flex-shrink-0 space-y-2 bg-muted/50 border border-border rounded-lg p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-foreground">
-                    {progress < 20 ? 'Salvando arquivos...' : 'Processando análise...'}
-                  </span>
-                  <span className="text-muted-foreground font-mono">{progress}%</span>
-                </div>
-                <Progress value={progress} className="h-3" />
-              </div>
-            )}
-
+            {/* Fixed bottom actions */}
             <div className="flex-shrink-0 pt-4 border-t border-border">
               <button
                 onClick={handleGenerate}
@@ -420,12 +421,34 @@ export function ProcessSummaryTool({ selectedClientId, layoutMode = 'side-by-sid
                   </>
                 )}
               </button>
+
+              {/* History trigger — mobile only */}
+              <HistoryBottomSheet
+                itemCount={historyJobs?.length ?? 0}
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    onClick={open}
+                    className="lg:hidden flex items-center justify-center gap-2 w-full mt-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <History className="h-4 w-4" />
+                    <span>Ver histórico de resumos{(historyJobs?.length ?? 0) > 0 ? ` (${historyJobs?.length})` : ''}</span>
+                  </button>
+                )}
+              >
+                <AnalysisHistoryList
+                  functionality="process_summary"
+                  clientId={selectedClientId}
+                  title="Histórico de Resumos"
+                  refreshKey={historyRefreshKey}
+                />
+              </HistoryBottomSheet>
             </div>
           </div>
         </div>
 
-        {/* Right Column: History */}
-        <div className="flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
+        {/* Right Column: History — desktop only */}
+        <div className="hidden lg:flex flex-col h-full min-h-0 bg-card border border-border rounded-xl overflow-hidden">
           <AnalysisHistoryList
             functionality="process_summary"
             clientId={selectedClientId}

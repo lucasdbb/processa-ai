@@ -131,10 +131,10 @@ export default function BlogPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-4">
+            <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-3 sm:mb-4">
               Fique um passo à frente da legislação.
             </h1>
-            <p className="text-xl text-muted-foreground leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed">
               Análises diretas ao ponto sobre o que muda no direito brasileiro e como isso afeta seus casos.
             </p>
           </div>
@@ -142,23 +142,23 @@ export default function BlogPage() {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 relative z-10">
-        <div className="mb-12">
-          <div className="flex flex-col md:flex-row gap-4 p-2 bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl shadow-lg border border-border max-w-4xl mx-auto">
+        <div className="mb-8 sm:mb-12">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 p-2 sm:p-3 bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-xl sm:rounded-2xl shadow-lg border border-border max-w-4xl mx-auto">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 sm:h-5 w-4 sm:w-5" />
               <input
                 type="text"
                 placeholder="Buscar artigos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground text-base"
+                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm sm:text-base text-foreground placeholder:text-muted-foreground"
               />
             </div>
-            <div className="w-px bg-border hidden md:block" />
+            <div className="w-px bg-border hidden sm:block" />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="md:w-64 px-4 py-3 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-foreground text-base cursor-pointer hover:bg-muted/50 rounded-xl transition-colors"
+              className="sm:w-64 px-3 sm:px-4 py-2.5 sm:py-3 bg-transparent border border-border sm:border-none outline-none focus:outline-none focus:ring-0 text-sm sm:text-base text-foreground cursor-pointer hover:bg-muted/50 rounded-lg sm:rounded-xl transition-colors"
             >
               {categories.map((category) => (
                 <option key={category.id} value={category.id} className="bg-popover text-popover-foreground">
@@ -170,20 +170,20 @@ export default function BlogPage() {
         </div>
 
         {featuredPost && (
-          <div className="mb-16">
-            <div className="flex items-center gap-3 mb-6">
+          <div className="mb-12 sm:mb-16">
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
               <div className="h-px flex-1 bg-border" />
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+              <h2 className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-wider">
                 Destaque
               </h2>
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <div className="group relative bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-[2rem] shadow-xl border border-border overflow-hidden hover:shadow-2xl transition-all duration-500">
-              <div className="md:flex">
+            <div className="group relative bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl sm:rounded-3xl shadow-xl border border-border overflow-hidden hover:shadow-2xl transition-all duration-500">
+              <div className="flex flex-col md:flex-row">
                 <div className="md:w-1/2 relative overflow-hidden">
                   <div className="absolute inset-0 bg-background/10 group-hover:bg-background/0 transition-colors z-10" />
-                  <div className="relative w-full h-64 md:h-full">
+                  <div className="relative w-full h-48 sm:h-56 md:h-full">
                     <img
                       src={
                         featuredPost.cover_image_url ||
@@ -197,48 +197,48 @@ export default function BlogPage() {
                   </div>
                 </div>
 
-                <div className="md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
+                <div className="md:w-1/2 p-4 sm:p-6 md:p-8 lg:p-12 flex flex-col justify-center">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                     {featuredPost.category && (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-muted text-foreground border border-border">
+                      <span className="inline-flex items-center px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground border border-border">
                         {featuredPost.category}
                       </span>
                     )}
                     {(featuredPost.published_at || featuredPost.created_at) && (
                       <span className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1.5" />
+                        <Calendar className="h-3 sm:h-4 w-3 sm:w-4 mr-1.5" />
                         {formatDate(featuredPost.published_at || featuredPost.created_at!)}
                       </span>
                     )}
                     <span className="flex items-center">
-                      <Clock className="h-4 w-4 mr-1.5" />
+                      <Clock className="h-3 sm:h-4 w-3 sm:w-4 mr-1.5" />
                       {estimateReadTime(featuredPost.excerpt || featuredPost.content)}
                     </span>
                   </div>
 
-                  <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight group-hover:text-muted-foreground transition-colors">
+                  <h3 className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-foreground mb-2 sm:mb-4 leading-tight group-hover:text-muted-foreground transition-colors">
                     {featuredPost.title}
                   </h3>
 
                   {featuredPost.excerpt && (
-                    <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+                    <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-4 sm:mb-8 leading-relaxed">
                       {featuredPost.excerpt}
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between mt-auto">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-muted-foreground font-bold border border-border">
-                        <User className="h-5 w-5" />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 mt-auto pt-4 sm:pt-0">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 sm:w-10 h-8 sm:h-10 bg-muted rounded-full flex items-center justify-center text-muted-foreground font-bold border border-border flex-shrink-0">
+                        <User className="h-4 sm:h-5 w-4 sm:w-5" />
                       </div>
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="text-xs sm:text-sm font-medium text-foreground">
                         {featuredPost.author?.name || 'Equipe Processa AI'}
                       </span>
                     </div>
 
                     <Link
                       to={`/blog/${featuredPost.slug}`}
-                      className="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 transform hover:-translate-y-0.5"
+                      className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-slate-900 text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 transform hover:-translate-y-0.5 whitespace-nowrap"
                     >
                       Ler artigo completo
                     </Link>
@@ -250,26 +250,26 @@ export default function BlogPage() {
         )}
 
         <div>
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
               Últimas Publicações
             </h2>
           </div>
 
           {filteredPosts.length === 0 ? (
-            <div className="bg-muted border border-border rounded-2xl p-12 text-center">
-              <p className="text-muted-foreground font-medium">
+            <div className="bg-muted border border-border rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center">
+              <p className="text-sm sm:text-base text-muted-foreground font-medium">
                 Nenhum post encontrado. Ajuste seus filtros ou tente novamente.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
               {regularPosts.map((post) => (
                 <article
                   key={post.id}
-                  className="group flex flex-col bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-[2rem] border border-border overflow-hidden hover:shadow-xl hover:border-muted-foreground/50 hover:scale-[1.02] transition-all duration-300"
+                  className="group flex flex-col bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl sm:rounded-3xl border border-border overflow-hidden hover:shadow-xl hover:border-muted-foreground/50 hover:scale-[1.02] transition-all duration-300"
                 >
-                  <div className="relative h-56 overflow-hidden">
+                  <div className="relative h-40 sm:h-48 md:h-56 overflow-hidden">
                     <div className="absolute inset-0 bg-background/0 group-hover:bg-background/5 transition-colors z-10" />
                     <img
                       src={
@@ -282,47 +282,47 @@ export default function BlogPage() {
                       loading="lazy"
                     />
                     {post.category && (
-                      <span className="absolute top-4 left-4 z-20 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-background/90 backdrop-blur-sm text-foreground shadow-sm">
+                      <span className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20 inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-background/90 backdrop-blur-sm text-foreground shadow-sm">
                         {post.category}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex-1 p-8 flex flex-col">
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                  <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col">
+                    <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-4">
                       {(post.published_at || post.created_at) && (
                         <span className="flex items-center">
-                          <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                          <Calendar className="h-3 w-3 mr-1" />
                           {formatDate(post.published_at || post.created_at!)}
                         </span>
                       )}
                       <span className="flex items-center">
-                        <Clock className="h-3.5 w-3.5 mr-1.5" />
+                        <Clock className="h-3 w-3 mr-1" />
                         {estimateReadTime(post.excerpt || post.content)}
                       </span>
                     </div>
 
-                    <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-muted-foreground transition-colors line-clamp-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-3 group-hover:text-muted-foreground transition-colors line-clamp-2">
                       {post.title}
                     </h3>
 
                     {post.excerpt && (
-                      <p className="text-muted-foreground text-sm mb-6 line-clamp-3 leading-relaxed flex-grow">
+                      <p className="text-muted-foreground text-xs sm:text-sm mb-4 sm:mb-6 line-clamp-3 leading-relaxed flex-grow">
                         {post.excerpt}
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between pt-6 border-t border-border">
-                      <span className="flex items-center text-xs font-medium text-foreground">
-                        <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2 border border-border">
-                          <User className="h-3 w-3 text-muted-foreground" />
+                    <div className="flex items-center justify-between pt-3 sm:pt-4 md:pt-6 border-t border-border gap-2 sm:gap-0">
+                      <span className="flex items-center text-[10px] sm:text-xs font-medium text-foreground min-w-0">
+                        <div className="w-5 sm:w-6 h-5 sm:h-6 bg-muted rounded-full flex items-center justify-center mr-1.5 sm:mr-2 border border-border flex-shrink-0">
+                          <User className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-muted-foreground" />
                         </div>
-                        {post.author?.name || 'Equipe'}
+                        <span className="truncate">{post.author?.name || 'Equipe'}</span>
                       </span>
 
                       <Link
                         to={`/blog/${post.slug}`}
-                        className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+                        className="text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
                       >
                         Continuar lendo
                       </Link>
@@ -334,28 +334,28 @@ export default function BlogPage() {
           )}
         </div>
 
-        <div className="mt-20">
-          <div className="bg-[hsl(var(--card)/var(--newsletter-card-alpha))] border border-border rounded-[2.5rem] p-8 md:p-12 text-center relative overflow-hidden shadow-2xl">
+        <div className="mt-12 sm:mt-16 md:mt-20">
+          <div className="bg-[hsl(var(--card)/var(--newsletter-card-alpha))] border border-border rounded-2xl sm:rounded-3xl lg:rounded-[2.5rem] p-6 sm:p-8 md:p-10 lg:p-12 text-center relative overflow-hidden shadow-2xl">
             <div className="absolute inset-0">
               <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-slate-500/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
               <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-slate-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />
             </div>
 
             <div className="relative z-10 max-w-2xl mx-auto">
-              <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-4 tracking-tight">
+              <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2 sm:mb-4 tracking-tight">
                 Direito muda todo dia. Não fique para trás.
               </h3>
-              <p className="text-lg text-muted-foreground mb-8 leading-relaxed font-light">
+              <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-6 sm:mb-8 leading-relaxed font-light">
                 Uma vez por semana, o que importa no direito brasileiro direto no seu e-mail.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 max-w-1.5xl mx-auto">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 max-w-1.5xl mx-auto">
                 <input
                   type="email"
                   placeholder="Seu melhor e-mail"
-                  className="flex-[2] px-6 py-4 rounded-xl bg-background/50 border border-input text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background transition-all"
+                  className="flex-[2] px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl bg-background/50 border border-input text-sm sm:text-base text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:bg-background transition-all"
                 />
-                <button className="bg-slate-900 text-white hover:bg-slate-800 font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap">
+                <button className="bg-slate-900 text-white hover:bg-slate-800 font-bold py-3 sm:py-4 px-4 sm:px-8 rounded-lg sm:rounded-xl transition-all duration-200 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap text-sm sm:text-base">
                   Quero receber
                 </button>
               </div>

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Calculator, Loader2, ChevronDown, Briefcase, DollarSign, Shield, Moon } from 'lucide-react'
+import { Calculator, Loader2, ChevronDown, Briefcase, DollarSign, Shield, Moon, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -9,6 +9,7 @@ import { useOnboardingStore } from '@/features/onboarding'
 import { analytics } from '@/lib/analytics'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 import { CalculationHistoryList } from './calculation-history-list'
+import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
 
 interface RescisaoCalculatorProps {
   selectedClientId: string | null
@@ -274,11 +275,11 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
   const sectionClass = 'space-y-4'
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1">
+    <div className="lg:grid lg:grid-cols-5 lg:gap-4 lg:flex-1 lg:min-h-0">
       {/* Left: Input form */}
-      <div className="lg:col-span-3 flex flex-col">
-        <div className="bg-card border border-border rounded-xl flex flex-col overflow-hidden">
-          <div className="flex-1 p-5 space-y-6">
+      <div className="lg:col-span-3 flex flex-col lg:min-h-0">
+        <div className="bg-card border border-border rounded-xl flex flex-col overflow-hidden lg:h-full">
+          <div className="p-5 space-y-6 lg:flex-1 lg:overflow-y-auto lg:custom-scrollbar">
 
             {/* Seção 1: Contrato */}
             <div className={sectionClass}>
@@ -522,8 +523,8 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
             </div>
           </div>
 
-          {/* Botão */}
-          <div className="p-4 border-t border-border bg-muted/5">
+          {/* Botão + histórico mobile */}
+          <div className="p-4 border-t border-border bg-muted/5 flex-shrink-0 space-y-2">
             <button
               type="button"
               onClick={handleCalculate}
@@ -533,12 +534,32 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
               {isCalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
               Calcular Rescisão
             </button>
+
+            <HistoryBottomSheet
+              trigger={(open) => (
+                <button
+                  type="button"
+                  onClick={open}
+                  className="lg:hidden flex items-center justify-center gap-2 w-full py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <History className="h-4 w-4" />
+                  <span>Ver histórico de cálculos</span>
+                </button>
+              )}
+            >
+              <CalculationHistoryList
+                calculatorKey="trabalhista.rescisao-trabalhista"
+                clientId={selectedClientId}
+                title="Histórico de Cálculos"
+                refreshKey={historyRefreshKey}
+              />
+            </HistoryBottomSheet>
           </div>
         </div>
       </div>
 
-      {/* Right: History */}
-      <div className="lg:col-span-2 flex flex-col">
+      {/* Right: History — desktop only */}
+      <div className="hidden lg:flex lg:col-span-2 flex-col min-h-0">
         <CalculationHistoryList
           calculatorKey="trabalhista.rescisao-trabalhista"
           clientId={selectedClientId}

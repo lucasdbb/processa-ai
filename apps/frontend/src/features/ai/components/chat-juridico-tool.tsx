@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Bot, Loader2, Send, User, Plus, MessageSquare, Trash2,
   ChevronLeft, BookOpen, ChevronDown, ChevronUp, Scale,
-  AlertCircle, Sparkles,
+  AlertCircle, Sparkles, Coins,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { marked } from 'marked'
@@ -362,8 +362,9 @@ export function ChatJuridicoTool() {
         >
           {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Nova sessão
-          <span className="rounded-full bg-yellow-500/20 text-yellow-300 dark:text-yellow-400 px-2 py-0.5 text-[11px] font-semibold">
-            {sessionCost} cr
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 dark:from-amber-500/25 dark:to-yellow-500/25 border border-amber-400/30 dark:border-amber-400/20 rounded-full shadow-sm shadow-amber-500/10">
+            <Coins className="w-3 h-3 text-amber-500 dark:text-amber-400 drop-shadow-sm" />
+            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{sessionCost}</span>
           </span>
         </button>
       </div>

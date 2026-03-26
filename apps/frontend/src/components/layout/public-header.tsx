@@ -148,6 +148,16 @@ export function PublicHeader({ onLoginClick }: PublicHeaderProps) {
         {mobileMenuOpen && (
           <div className="md:hidden absolute top-20 left-0 right-0 bg-background border-b border-border shadow-xl">
             <nav className="px-4 pt-4 pb-6 space-y-2">
+              {isAuthenticated ? (
+                <Link
+                  to="/app"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full py-3 text-center text-white bg-slate-900 rounded-xl font-semibold mb-2"
+                >
+                  Meu painel
+                </Link>
+              ) : null}
+
               {navigation.map((item) =>
                 item.children ? (
                   <div key={item.name} className="space-y-2">
@@ -183,15 +193,7 @@ export function PublicHeader({ onLoginClick }: PublicHeaderProps) {
               )}
 
               <div className="pt-4 mt-4 border-t border-border space-y-2">
-                {isAuthenticated ? (
-                  <Link
-                    to="/app"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full py-3 text-center text-white bg-slate-900 rounded-xl font-semibold"
-                  >
-                    Acessar App
-                  </Link>
-                ) : (
+                {!isAuthenticated ? (
                   <button
                     onClick={() => {
                       onLoginClick?.()
@@ -201,7 +203,7 @@ export function PublicHeader({ onLoginClick }: PublicHeaderProps) {
                   >
                     Entrar na Plataforma
                   </button>
-                )}
+                ) : null}
               </div>
             </nav>
           </div>

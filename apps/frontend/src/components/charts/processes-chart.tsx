@@ -22,13 +22,17 @@ interface ProcessesChartProps {
 }
 
 export function ProcessesChart({ data, total }: ProcessesChartProps) {
+  const hasData = data.length > 0 && total > 0;
+
+  const emptyData = [{ status: "empty", label: "Sem dados", count: 1 }];
+
   return (
     <div className="w-full flex flex-col items-center gap-4">
       <div className="w-full h-[250px] relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={hasData ? data : emptyData}
               cx="50%"
               cy="50%"
               innerRadius={70}
@@ -38,23 +42,29 @@ export function ProcessesChart({ data, total }: ProcessesChartProps) {
               stroke="hsl(var(--card))"
               strokeWidth={3}
             >
-              {data.map((entry) => (
-                <Cell
-                  key={entry.status}
-                  fill={STATUS_COLORS[entry.status] || "#6b7280"}
-                />
-              ))}
+              {hasData ? (
+                data.map((entry) => (
+                  <Cell
+                    key={entry.status}
+                    fill={STATUS_COLORS[entry.status] || "#6b7280"}
+                  />
+                ))
+              ) : (
+                <Cell fill="hsl(var(--muted))" />
+              )}
             </Pie>
-            <Tooltip
-              formatter={(value: number | undefined, name: string | undefined) => [value ?? 0, name ?? '']}
-              contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                borderColor: "hsl(var(--border))",
-                borderRadius: "8px",
-                fontSize: "12px",
-                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-              }}
-            />
+            {hasData && (
+              <Tooltip
+                formatter={(value: number | undefined, name: string | undefined) => [value ?? 0, name ?? '']}
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  borderColor: "hsl(var(--border))",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                }}
+              />
+            )}
           </PieChart>
         </ResponsiveContainer>
         {/* Center text */}

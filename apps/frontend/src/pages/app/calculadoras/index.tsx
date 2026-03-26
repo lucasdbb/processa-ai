@@ -78,10 +78,10 @@ export default function CalculadorasHubPage() {
     const featureKey = `calculator_${selectedCalculator}`
 
     const costItem = costs.find(c => c.feature_key === featureKey)
-    if (costItem) return costItem.cost === 1 ? '1 crédito' : `${costItem.cost} créditos`
+    if (costItem) return String(costItem.cost)
 
     // Fallback
-    return '1 crédito'
+    return '1'
   }, [selectedCalculator, costs])
 
   const current = useMemo(() => {
@@ -111,12 +111,12 @@ export default function CalculadorasHubPage() {
   }
 
   const tipsButton = (
-    <details className="relative z-[60]">
+    <details className="relative">
       <summary className="cursor-pointer list-none inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background [&::-webkit-details-marker]:hidden">
         <Info className="h-5 w-5" aria-hidden="true" />
         <span className="sr-only">Dicas para melhores resultados</span>
       </summary>
-      <div className="absolute left-0 mt-3 w-[320px] rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-xl p-4 z-[70]">
+      <div className="absolute right-0 sm:left-0 sm:right-auto mt-3 w-[min(320px,calc(100vw-2rem))] rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-xl p-4 z-50">
         <div className="text-sm font-bold text-foreground mb-3">Dicas para cálculos precisos</div>
         <ul className="grid gap-2 text-sm text-muted-foreground">
           <li className="flex items-start">
@@ -160,68 +160,73 @@ export default function CalculadorasHubPage() {
   // Se uma calculadora estiver selecionada, usa o layout "Frame" estilo IA
   if (selectedCalculator && current) {
     return (
-      <div className="min-h-[calc(100vh-160px)] h-auto flex flex-col gap-4">
+      <div className="flex flex-col gap-4 lg:h-[calc(100dvh-160px)]">
         <div className="flex items-start justify-between gap-4 flex-shrink-0">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-foreground">Calculadoras Jurídicas</h1>
               {tipsButton}
             </div>
-            <p className="text-muted-foreground mt-1">Ferramentas de cálculo para auxiliar no seu trabalho jurídico.</p>
+            <p className="text-muted-foreground mt-1 hidden sm:block">Ferramentas de cálculo para auxiliar no seu trabalho jurídico.</p>
           </div>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border shadow-sm p-4 flex-1 flex flex-col">
-          <div className="flex items-center justify-between gap-4 mb-4 flex-shrink-0">
-            <div className="flex items-center space-x-4 min-w-0">
-              <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl shadow-sm shrink-0 border border-slate-200 dark:border-slate-700">
-                <Calculator className={`h-7 w-7 ${isDark ? "text-slate-100" : "!text-[#0d1c34]"}`} strokeWidth={1.5} />
+        {/* Toolbar */}
+        <div className="flex flex-col gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-100 dark:bg-slate-800 p-2 sm:p-3 rounded-xl sm:rounded-2xl shadow-sm shrink-0 border border-slate-200 dark:border-slate-700">
+              <Calculator className={cn("h-5 w-5 sm:h-7 sm:w-7", isDark ? "text-slate-100" : "!text-[#0d1c34]")} strokeWidth={1.5} />
+            </div>
+
+            <div className="flex-1 min-w-0 flex items-center gap-2.5">
+              <div className="relative inline-block">
+                <select
+                  value={selectedCalculator}
+                  onChange={(e) => handleCalculatorChange(e.target.value)}
+                  className="appearance-none pl-3 pr-8 py-1.5 bg-muted border border-border rounded-lg text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer max-w-[220px] sm:max-w-none truncate"
+                >
+                  {calculators.filter((c) => c.available).map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="relative">
-                    <select
-                      value={selectedCalculator}
-                      onChange={(e) => handleCalculatorChange(e.target.value)}
-                      className="appearance-none pl-3 pr-8 py-1.5 bg-muted border border-border rounded-lg text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                    >
-                      {calculators.filter((c) => c.available).map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  </div>
-                  {costDisplay && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs font-medium text-yellow-600 dark:text-yellow-500">
-                      <Coins className="w-3.5 h-3.5" />
-                      <span>{costDisplay}</span>
-                    </div>
-                  )}
+
+              {costDisplay && (
+                <div className="flex items-center gap-1 px-2 py-0.5 sm:gap-1.5 sm:px-3 sm:py-1 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 dark:from-amber-500/25 dark:to-yellow-500/25 border border-amber-400/30 dark:border-amber-400/20 rounded-full shrink-0 shadow-sm shadow-amber-500/10">
+                  <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 dark:text-amber-400 drop-shadow-sm" />
+                  <span className="text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-300">{costDisplay}</span>
                 </div>
-                <p className="text-muted-foreground mt-1 text-sm">{current.description}</p>
-              </div>
-            </div>
-
-            <div className="flex items-end gap-3">
-              <ClientSelector
-                value={selectedClientId}
-                onChange={(id) => setSelectedClientId(id)}
-                className="w-60"
-                label="Cliente"
-              />
+              )}
             </div>
           </div>
 
-          <div className="flex-1 relative">
-            {CalculatorComponent ? (
-              <CalculatorComponent selectedClientId={selectedClientId} />
-            ) : (
-              <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground h-full flex flex-col items-center justify-center">
-                <Calculator className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm font-medium">Calculadora em desenvolvimento</p>
-              </div>
-            )}
+          {current.description && (
+            <p className="text-muted-foreground text-sm pl-[44px] sm:pl-[60px] -mt-1 hidden sm:block">
+              {current.description}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 pl-0 sm:pl-[60px]">
+            <ClientSelector
+              value={selectedClientId}
+              onChange={(id) => setSelectedClientId(id)}
+              className="flex-1 sm:flex-none sm:w-60"
+              label="Cliente"
+            />
           </div>
+        </div>
+
+        {/* Calculator content */}
+        <div className="flex-1 lg:min-h-0">
+          {CalculatorComponent ? (
+            <CalculatorComponent selectedClientId={selectedClientId} />
+          ) : (
+            <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground h-full flex flex-col items-center justify-center">
+              <Calculator className="h-12 w-12 mx-auto mb-3 opacity-20" />
+              <p className="text-sm font-medium">Calculadora em desenvolvimento</p>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -268,7 +273,7 @@ export default function CalculadorasHubPage() {
           <p className="text-muted-foreground">Não foi possível carregar as calculadoras. Tente novamente mais tarde.</p>
         </div>
       ) : (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {calculators.filter((calc) => selectedCategory === 'all' || calc.category === selectedCategory).map((calc) => {
           const Icon = calc.icon
           const inner = (
