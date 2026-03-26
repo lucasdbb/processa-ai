@@ -137,10 +137,10 @@ export default function CalendarioPage() {
           setSyncOverlay({
             visible: true,
             step: 'done',
-            message: 'Sincronizacao concluida!',
+            message: 'Sincronização concluída!',
             detail: total > 0
               ? `${parts.join(', ')} no Google Calendar`
-              : 'Todos os eventos ja estavam sincronizados',
+              : 'Todos os eventos já estavam sincronizados',
             progress: 100,
           })
         } catch {
@@ -148,7 +148,7 @@ export default function CalendarioPage() {
             visible: true,
             step: 'done',
             message: 'Google Calendar conectado!',
-            detail: 'Voce pode sincronizar manualmente a qualquer momento',
+            detail: 'Você pode sincronizar manualmente a qualquer momento',
             progress: 100,
           })
         }
@@ -198,10 +198,10 @@ export default function CalendarioPage() {
       setSyncOverlay({
         visible: true,
         step: 'done',
-        message: 'Sincronizacao concluida!',
+        message: 'Sincronização concluída!',
         detail: total > 0
           ? `${parts.join(', ')} no Google Calendar`
-          : 'Todos os eventos ja estavam sincronizados',
+          : 'Todos os eventos já estavam sincronizados',
         progress: 100,
       })
 
@@ -212,7 +212,7 @@ export default function CalendarioPage() {
       setSyncOverlay({
         visible: true,
         step: 'error',
-        message: 'Erro na sincronizacao',
+        message: 'Erro na sincronização',
         detail: 'Tente novamente mais tarde',
         progress: 100,
       })
@@ -336,8 +336,8 @@ export default function CalendarioPage() {
 
   const formatDaysUntil = (daysUntil: number) => {
     if (daysUntil === 0) return 'Hoje'
-    if (daysUntil === 1) return 'Amanha'
-    if (daysUntil < 0) return `${Math.abs(daysUntil)} dias atras`
+    if (daysUntil === 1) return 'Amanhã'
+    if (daysUntil < 0) return `${Math.abs(daysUntil)} dias atrás`
     return `em ${daysUntil} dias`
   }
 
@@ -446,7 +446,7 @@ export default function CalendarioPage() {
               Desconectar Google Calendar?
             </h3>
             <p className="text-sm text-muted-foreground text-center mt-2">
-              Seus eventos locais nao serao afetados. Voce pode reconectar a qualquer momento.
+              Seus eventos locais não serão afetados. Você pode reconectar a qualquer momento.
             </p>
             <div className="flex gap-3 mt-5">
               <button
@@ -471,7 +471,7 @@ export default function CalendarioPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">Calendário</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Gerencie audiencias, prazos e compromissos.
+            Gerencie audiências, prazos e compromissos.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -561,7 +561,7 @@ export default function CalendarioPage() {
                 {/* Footer note */}
                 <div className="px-4 py-2.5 border-t border-border">
                   <p className="text-[11px] text-muted-foreground">
-                    Sincronizacao unidirecional: eventos locais → Google.
+                    Sincronização unidirecional: eventos locais → Google.
                   </p>
                 </div>
               </div>
@@ -593,10 +593,10 @@ export default function CalendarioPage() {
         <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border border-yellow-500/20 rounded-lg p-3">
           <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
             <CalendarClock className="h-4 w-4" />
-            <span className="font-semibold text-xs">Proximos 3 dias</span>
+            <span className="font-semibold text-xs">Próximos 3 dias</span>
           </div>
           <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-1.5">{prazoStats.next3Days}</p>
-          <p className="text-[11px] text-yellow-600/70 dark:text-yellow-500/70 mt-0.5">Atencao necessaria</p>
+          <p className="text-[11px] text-yellow-600/70 dark:text-yellow-500/70 mt-0.5">Atenção necessária</p>
         </div>
         <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-3">
           <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
@@ -604,7 +604,7 @@ export default function CalendarioPage() {
             <span className="font-semibold text-xs">Esta semana</span>
           </div>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-500 mt-1.5">{prazoStats.weekCount}</p>
-          <p className="text-[11px] text-blue-600/70 dark:text-blue-500/70 mt-0.5">Proximos 7 dias</p>
+          <p className="text-[11px] text-blue-600/70 dark:text-blue-500/70 mt-0.5">Próximos 7 dias</p>
         </div>
         <div className="bg-gradient-to-br from-slate-500/10 to-slate-600/5 border border-border rounded-lg p-3">
           <div className="flex items-center gap-2 text-muted-foreground">

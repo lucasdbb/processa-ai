@@ -14,8 +14,8 @@ import { ClientCreatedDialog } from '@/components/ui/success-action-dialog'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 
 const clientSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter no minimo 2 caracteres'),
-  email: z.string().email('Email invalido').optional().or(z.literal('')),
+  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
+  email: z.email('Email inválido').optional().or(z.literal('')),
   phone: z.string().optional(),
   cpf_cnpj: z.string().optional(),
   address: z.string().optional(),
@@ -33,7 +33,7 @@ export default function ClienteNovoPage() {
   const [loading, setLoading] = useState(false)
   const [loadingCep, setLoadingCep] = useState(false)
 
-  // Fluxo continuo
+  // Fluxo contínuo
   const [createdClient, setCreatedClient] = useState<Client | null>(null)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [showProcessDialog, setShowProcessDialog] = useState(false)
@@ -61,7 +61,7 @@ export default function ClienteNovoPage() {
       const data = await response.json()
 
       if (data.erro) {
-        toast.error('CEP nao encontrado')
+        toast.error('CEP não encontrado')
         return
       }
 
@@ -69,7 +69,7 @@ export default function ClienteNovoPage() {
       if (data.localidade) setValue('city', data.localidade)
       if (data.uf) setValue('state', data.uf)
 
-      toast.success('Endereco preenchido automaticamente')
+      toast.success('Endereço preenchido automaticamente')
     } catch {
       toast.error('Falha ao buscar CEP')
     } finally {
@@ -115,7 +115,7 @@ export default function ClienteNovoPage() {
   }
 
   const handleProcessSaved = () => {
-    // Apos salvar processo, vai para a lista de processos
+    // Após salvar processo, vai para a lista de processos
     navigate('/app/processos')
   }
 
@@ -197,7 +197,7 @@ export default function ClienteNovoPage() {
 
           {/* Address */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Endereco</h3>
+            <h3 className="font-semibold">Endereço</h3>
 
             <div>
               <Label htmlFor="zip_code">CEP</Label>
@@ -214,7 +214,7 @@ export default function ClienteNovoPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Digite o CEP e o endereco sera preenchido automaticamente
+                Digite o CEP e o endereço será preenchido automaticamente
               </p>
             </div>
 

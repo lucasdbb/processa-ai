@@ -123,7 +123,7 @@ export default function AiCostsTab() {
             <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
               <TrendingUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground">Historico</span>
+            <span className="text-xs font-medium text-muted-foreground">Histórico</span>
           </div>
           <p className="text-3xl font-bold text-foreground">{formatUsd(sAll?.cost_usd ?? 0)}</p>
           <p className="text-sm text-muted-foreground mt-1">Custo total acumulado</p>
@@ -134,7 +134,7 @@ export default function AiCostsTab() {
       {stats?.daily_trend && stats.daily_trend.length > 0 ? (
         <Card className="overflow-hidden shadow-sm">
           <CardHeader className="border-b border-border">
-            <CardTitle className="text-base font-semibold">Custo diario (ultimos 30 dias)</CardTitle>
+            <CardTitle className="text-base font-semibold">Custo diário (últimos 30 dias)</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="h-64">
@@ -211,7 +211,7 @@ export default function AiCostsTab() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-muted-foreground text-sm">Nenhum dado disponivel</div>
+              <div className="p-8 text-center text-muted-foreground text-sm">Nenhum dado disponível</div>
             )}
           </CardContent>
         </Card>
@@ -244,7 +244,7 @@ export default function AiCostsTab() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-muted-foreground text-sm">Nenhum dado disponivel</div>
+              <div className="p-8 text-center text-muted-foreground text-sm">Nenhum dado disponível</div>
             )}
           </CardContent>
         </Card>
@@ -260,7 +260,7 @@ export default function AiCostsTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b border-border">
-                  <th className="px-6 py-3 text-left font-medium text-muted-foreground">Periodo</th>
+                  <th className="px-6 py-3 text-left font-medium text-muted-foreground">Período</th>
                   <th className="px-6 py-3 text-right font-medium text-muted-foreground">Jobs</th>
                   <th className="px-6 py-3 text-right font-medium text-muted-foreground">Tokens Input</th>
                   <th className="px-6 py-3 text-right font-medium text-muted-foreground">Tokens Output</th>
@@ -270,7 +270,7 @@ export default function AiCostsTab() {
               </thead>
               <tbody className="divide-y divide-border">
                 <tr className="hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-foreground">Ultimos 30 dias</td>
+                  <td className="px-6 py-4 font-medium text-foreground">Últimos 30 dias</td>
                   <td className="px-6 py-4 text-right text-foreground">{s30?.total_jobs ?? 0}</td>
                   <td className="px-6 py-4 text-right text-foreground">{formatTokens(s30?.prompt_tokens ?? 0)}</td>
                   <td className="px-6 py-4 text-right text-foreground">{formatTokens(s30?.completion_tokens ?? 0)}</td>
@@ -278,7 +278,7 @@ export default function AiCostsTab() {
                   <td className="px-6 py-4 text-right font-bold text-foreground">{formatUsd(s30?.cost_usd ?? 0)}</td>
                 </tr>
                 <tr className="hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-foreground">Historico total</td>
+                  <td className="px-6 py-4 font-medium text-foreground">Histórico total</td>
                   <td className="px-6 py-4 text-right text-foreground">{sAll?.total_jobs ?? 0}</td>
                   <td className="px-6 py-4 text-right text-foreground">{formatTokens(sAll?.prompt_tokens ?? 0)}</td>
                   <td className="px-6 py-4 text-right text-foreground">{formatTokens(sAll?.completion_tokens ?? 0)}</td>

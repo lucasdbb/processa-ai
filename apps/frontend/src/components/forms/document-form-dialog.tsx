@@ -52,7 +52,7 @@ const getFileTypeLabel = (mimeType: string) => {
   if (mimeType === 'application/pdf') return 'PDF'
   if (mimeType.includes('word') || mimeType.includes('document')) return 'Word'
   if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'Planilha'
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'Apresentacao'
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'Apresentação'
   return 'Arquivo'
 }
 
@@ -89,7 +89,7 @@ function DocumentFormDialogBody({
   const validate = () => {
     const newErrors: Record<string, string> = {}
     if (!formData.name.trim()) {
-      newErrors.name = 'Nome do documento e obrigatorio'
+      newErrors.name = 'Nome do documento é obrigatório'
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0

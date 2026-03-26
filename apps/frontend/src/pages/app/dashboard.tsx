@@ -246,7 +246,7 @@ export default function DashboardPage() {
             <div className="px-5 py-4 border-b border-border">
               <h2 className="font-semibold text-foreground">Receita Mensal</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Ultimos 6 meses - Recebido vs Pendente
+                Últimos 6 meses - Recebido vs Pendente
               </p>
             </div>
             <div className="p-4">
@@ -274,7 +274,7 @@ export default function DashboardPage() {
 
       {/* Deadlines + Activity Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Prazos Proximos */}
+        {/* Prazos Próximos */}
         <div data-tour="deadlines" className="bg-card border border-border rounded-xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h2 className="font-semibold text-foreground">Prazos Próximos</h2>
@@ -290,7 +290,7 @@ export default function DashboardPage() {
             {deadlines.length === 0 ? (
               <div className="px-5 py-8 text-center">
                 <CalendarClock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">Nenhum prazo proximo</p>
+                <p className="text-sm text-muted-foreground">Nenhum prazo próximo</p>
               </div>
             ) : (
               deadlines.map((deadline) => (

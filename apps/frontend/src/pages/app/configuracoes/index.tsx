@@ -294,7 +294,7 @@ export default function ConfiguracoesPage() {
               )}
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-foreground truncate">{user?.name || 'Usuario'}</p>
+              <p className="font-semibold text-foreground truncate">{user?.name || 'Usuário'}</p>
               <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
               {subscription && (
                 <span
@@ -322,7 +322,7 @@ export default function ConfiguracoesPage() {
 
       {/* Tab navigation */}
       <div className="border-b border-border">
-        <nav className="-mb-px flex gap-1" aria-label="Secoes de configuracoes">
+        <nav className="-mb-px flex gap-1" aria-label="Seções de configurações">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -364,7 +364,7 @@ export default function ConfiguracoesPage() {
                 <div>
                   <p className="text-sm font-medium text-foreground">Newsletter</p>
                   <p className="text-sm text-muted-foreground">
-                    {user?.newsletter_opt_in ? 'Inscrito para receber novidades' : 'Nao inscrito'}
+                    {user?.newsletter_opt_in ? 'Inscrito para receber novidades' : 'Não inscrito'}
                   </p>
                 </div>
                 <span
@@ -394,12 +394,12 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground pt-2 px-1">
-              Para alterar qualquer dado, clique em "Editar" no cartao acima.
+              Para alterar qualquer dado, clique em "Editar" no cartão acima.
             </p>
           </div>
         )}
 
-        {/* ── Aba: Seguranca ── */}
+        {/* ── Aba: Segurança ── */}
         {activeTab === 'seguranca' && (
           <div className="space-y-6">
             <div className="bg-card border border-border rounded-xl p-5">
@@ -439,7 +439,7 @@ export default function ConfiguracoesPage() {
                     placeholder="Confirme a nova senha"
                   />
                   {confirmPassword && confirmPassword !== newPassword && (
-                    <p className="text-xs text-destructive mt-1">As senhas nao coincidem</p>
+                    <p className="text-xs text-destructive mt-1">As senhas não coincidem</p>
                   )}
                 </div>
                 <button
@@ -510,7 +510,7 @@ export default function ConfiguracoesPage() {
                   </div>
                   {subscription.status === 'active' && subscription.current_period_end && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Proxima renovacao</span>
+                      <span className="text-sm text-muted-foreground">Próxima renovação</span>
                       <span className="text-sm font-medium text-foreground">
                         {new Date(subscription.current_period_end).toLocaleDateString('pt-BR')}
                       </span>
@@ -519,7 +519,7 @@ export default function ConfiguracoesPage() {
                   {subscription.cancel_at_period_end && (
                     <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-4 py-3">
                       <p className="text-xs text-yellow-700 dark:text-yellow-400">
-                        Sua assinatura será cancelada ao final do periodo atual.
+                        Sua assinatura será cancelada ao final do período atual.
                       </p>
                     </div>
                   )}
@@ -548,7 +548,7 @@ export default function ConfiguracoesPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Voce nao possui uma assinatura ativa.</p>
+                  <p className="text-sm text-muted-foreground">Você não possui uma assinatura ativa.</p>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -568,7 +568,7 @@ export default function ConfiguracoesPage() {
                 <div className="p-2 bg-yellow-500/10 rounded-lg">
                   <Coins className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
                 </div>
-                <h2 className="text-sm font-semibold text-foreground">Creditos disponiveis</h2>
+                <h2 className="text-sm font-semibold text-foreground">Créditos disponíveis</h2>
               </div>
 
               <div className="grid grid-cols-3 gap-3 mb-5">
@@ -596,14 +596,14 @@ export default function ConfiguracoesPage() {
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors"
               >
                 <CreditCard className="w-4 h-4" />
-                Comprar creditos
+                Comprar créditos
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Modal de edicao de perfil ── */}
+      {/* ── Modal de edição de perfil ── */}
       <Dialog open={editingProfile} onOpenChange={(open) => { if (!isLoading) setEditingProfile(open) }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -711,7 +711,7 @@ export default function ConfiguracoesPage() {
                   )}
                 />
                 {formData.phone && !isValidPhone(formData.phone) && (
-                  <p className="text-xs text-destructive mt-1">Telefone invalido</p>
+                  <p className="text-xs text-destructive mt-1">Telefone inválido</p>
                 )}
               </div>
 
@@ -736,7 +736,7 @@ export default function ConfiguracoesPage() {
                   )}
                 />
                 {formData.cpf && !isValidCpf(formData.cpf) && (
-                  <p className="text-xs text-destructive mt-1">CPF invalido</p>
+                  <p className="text-xs text-destructive mt-1">CPF inválido</p>
                 )}
               </div>
             </div>
@@ -752,7 +752,7 @@ export default function ConfiguracoesPage() {
                 className="h-4 w-4 text-primary focus:ring-primary border-input rounded cursor-pointer bg-background"
               />
               <label htmlFor="modal-newsletter" className="text-sm font-medium text-foreground cursor-pointer">
-                Receber novidades e atualizacoes por e-mail
+                Receber novidades e atualizações por e-mail
               </label>
             </div>
 
@@ -805,13 +805,13 @@ export default function ConfiguracoesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialogs de confirmacao ── */}
+      {/* ── Dialogs de confirmação ── */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteAccount}
         title="Excluir conta permanentemente?"
-        description="Esta acao e irreversivel. Todos os seus dados, processos, clientes, documentos e configuracoes serao permanentemente excluidos."
+        description="Esta ação é irreversível. Todos os seus dados, processos, clientes, documentos e configurações serão permanentemente excluídos."
         confirmText={isDeletingAccount ? 'Excluindo...' : 'Sim, excluir minha conta'}
         cancelText="Cancelar"
         variant="danger"
@@ -823,7 +823,7 @@ export default function ConfiguracoesPage() {
         onClose={() => setShowPortalConfirm(false)}
         onConfirm={handleOpenPortal}
         title="Gerenciar Assinatura"
-        description="Voce sera redirecionado para o portal de pagamentos seguro do Stripe. Ao alterar seu plano, seus creditos mensais serao redefinidos imediatamente para o limite do novo plano."
+        description="Você será redirecionado para o portal de pagamentos seguro do Stripe. Ao alterar seu plano, seus créditos mensais serão redefinidos imediatamente para o limite do novo plano."
         confirmText={openingPortal ? 'Redirecionando...' : 'Entendi, ir para o portal'}
         cancelText="Cancelar"
         variant="info"

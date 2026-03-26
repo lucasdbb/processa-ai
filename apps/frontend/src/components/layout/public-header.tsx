@@ -16,8 +16,8 @@ const navigation = [
     name: 'Recursos',
     href: '#',
     children: [
-      { name: 'IA Juridica', href: '/app/ia', description: 'Chat e geracao de documentos' },
-      { name: 'Calculadoras', href: '/app/calculadoras', description: 'Trabalhista e previdenciario' },
+      { name: 'IA Jurídica', href: '/app/ia', description: 'Chat e geração de documentos' },
+      { name: 'Calculadoras', href: '/app/calculadoras', description: 'Simulações e cálculos jurídicos' },
       { name: 'Materiais', href: '/app/materiais', description: 'Downloads e modelos' },
     ],
   },
