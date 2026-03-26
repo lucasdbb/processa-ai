@@ -98,6 +98,7 @@ export function AppHeader() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isMacPlatform, setIsMacPlatform] = useState(false)
 
   const isDark = resolvedTheme === 'dark'
 
@@ -120,6 +121,13 @@ export function AppHeader() {
     }, 0)
     return () => clearTimeout(timeout)
   }, [user])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const platform = window.navigator.platform?.toLowerCase() || ''
+    const userAgent = window.navigator.userAgent?.toLowerCase() || ''
+    setIsMacPlatform(platform.includes('mac') || userAgent.includes('mac'))
+  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -207,16 +215,29 @@ export function AppHeader() {
           <button
             onClick={openCommandPalette}
             className="group flex items-center gap-3 h-10 px-3 lg:px-4 rounded-lg bg-muted/50 border border-border text-muted-foreground hover:text-foreground hover:bg-accent hover:border-foreground/20 transition-all w-full max-w-xs lg:max-w-md cursor-pointer"
-            aria-label="Abrir busca (Cmd+K)"
+            aria-label={`Abrir busca (${isMacPlatform ? 'Command+K' : 'Ctrl+K'})`}
           >
             <Search className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform" />
             <span className="text-sm flex-1 text-left truncate">
               <span className="hidden sm:inline">Buscar ou pressione </span>
               <span className="sm:hidden">Buscar</span>
             </span>
-            <kbd className="hidden sm:inline-flex h-6 select-none items-center gap-0.5 rounded bg-background border border-border px-2 font-mono text-[11px] font-medium text-muted-foreground group-hover:border-foreground/30 transition-colors">
-              <span className="text-xs">⌘</span>K
-            </kbd>
+            {isMacPlatform ? (
+              <kbd className="hidden sm:inline-flex h-6 select-none items-center gap-1 rounded bg-background border border-border px-2 font-mono text-[11px] font-medium text-muted-foreground leading-none group-hover:border-foreground/30 transition-colors">
+                <span className="leading-none">⌘</span>
+                <span className="leading-none">K</span>
+              </kbd>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-1">
+                <kbd className="inline-flex h-6 select-none items-center rounded bg-background border border-border px-1.5 font-mono text-[11px] font-medium text-muted-foreground leading-none group-hover:border-foreground/30 transition-colors">
+                  Ctrl
+                </kbd>
+                <span className="text-[11px] font-mono text-muted-foreground/80">+</span>
+                <kbd className="inline-flex h-6 min-w-[1.5rem] select-none items-center justify-center rounded bg-background border border-border px-1.5 font-mono text-[11px] font-medium text-muted-foreground leading-none group-hover:border-foreground/30 transition-colors">
+                  K
+                </kbd>
+              </span>
+            )}
           </button>
         </div>
 

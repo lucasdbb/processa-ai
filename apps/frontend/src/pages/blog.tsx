@@ -28,6 +28,14 @@ type BlogCategory = {
   name: string
 }
 
+type BlogCachePayload = {
+  cachedAt: number
+  posts: Post[]
+}
+
+const BLOG_CACHE_KEY = 'processa_blog_posts_cache_v1'
+const BLOG_CACHE_MAX_AGE_MS = 5 * 60 * 1000
+
 const categories: BlogCategory[] = [
   { id: 'all', name: 'Todas' },
   { id: 'direito-trabalho', name: 'Direito do Trabalho' },
@@ -59,18 +67,52 @@ export default function BlogPage() {
 
   useEffect(() => {
     const loadPosts = async () => {
+      let hasValidCache = false
+
+      try {
+        const cachedRaw = window.sessionStorage.getItem(BLOG_CACHE_KEY)
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw) as BlogCachePayload
+          const isFresh =
+            Number.isFinite(cached.cachedAt) &&
+            Date.now() - cached.cachedAt <= BLOG_CACHE_MAX_AGE_MS
+          if (isFresh && Array.isArray(cached.posts)) {
+            setPosts(cached.posts)
+            setIsLoading(false)
+            hasValidCache = true
+          }
+        }
+      } catch {
+        // Ignore cache parse errors and continue with network request.
+      }
+
       try {
         const response = await fetchWithCredentials(`${API_URL}/blog/posts?published=true`)
         if (!response.ok) {
-          setPosts([])
+          if (!hasValidCache) {
+            setPosts([])
+          }
           return
         }
 
         const payload: unknown = await response.json()
-        setPosts(normalizePosts(payload))
+        const nextPosts = normalizePosts(payload)
+        setPosts(nextPosts)
+
+        try {
+          const cachePayload: BlogCachePayload = {
+            cachedAt: Date.now(),
+            posts: nextPosts,
+          }
+          window.sessionStorage.setItem(BLOG_CACHE_KEY, JSON.stringify(cachePayload))
+        } catch {
+          // Ignore cache write errors.
+        }
       } catch (error) {
         console.error('Error loading posts:', error)
-        setPosts([])
+        if (!hasValidCache) {
+          setPosts([])
+        }
       } finally {
         setIsLoading(false)
       }

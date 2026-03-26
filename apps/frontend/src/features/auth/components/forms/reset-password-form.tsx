@@ -148,10 +148,10 @@ export function ResetPasswordForm({ onSuccess, onLogin }: ResetPasswordFormProps
           type="submit"
           disabled={isSubmitting}
           className={cn(
-            "w-full font-bold py-3 px-4 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm mt-2",
+            "w-full font-bold py-3 px-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm mt-2",
             isDark 
-              ? "bg-white text-black hover:bg-gray-100" 
-              : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/20"
+              ? "bg-white text-black hover:bg-gray-100 hover:shadow-md" 
+              : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/25"
           )}
         >
           {isSubmitting ? (

@@ -17,6 +17,8 @@ import { toast } from 'sonner'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { fetchAiTools } from '@/features/ai/api'
 import type { AiTool } from '@/features/ai/types'
+import { fetchCalculators } from '@/features/calculators/api'
+import type { CalculatorItem } from '@/features/calculators/api'
 
 export default function HomePage() {
   const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
@@ -24,14 +26,16 @@ export default function HomePage() {
   const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [aiTools, setAiTools] = useState<AiTool[]>([])
+  const [calculators, setCalculators] = useState<CalculatorItem[]>([])
   const [latestPost, setLatestPost] = useState<{ title: string; slug: string; category?: string } | null>(null)
 
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Fetch AI tools from backend on mount
+  // Fetch AI tools and calculators from backend on mount
   useEffect(() => {
     fetchAiTools().then((tools) => setAiTools(tools))
+    fetchCalculators().then((items) => setCalculators(items))
   }, [])
 
   // Fetch latest blog post for desktop display
@@ -55,6 +59,7 @@ export default function HomePage() {
   }, [])
 
   const availableAITools = useMemo(() => aiTools.filter((t) => !t.locked).length, [aiTools])
+  const availableCalculators = useMemo(() => calculators.filter((calc) => !calc.locked).length, [calculators])
 
   const featuresRef = useRef<HTMLElement>(null)
   const demoRef = useRef<HTMLElement>(null)
@@ -62,17 +67,17 @@ export default function HomePage() {
   const screenshots = [
     {
       title: 'Gestão do Escritório',
-      description: 'Clientes, processos e prazos organizados em um só painel',
+      description: 'Tudo sob controle em um painel simples, com muito mais para explorar',
       image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop',
     },
 {
       title: 'IA Jurídica',
-      description: 'Análise de CNIS, resumo de processos e extração de documentos',
+      description: 'Respostas, análises e automações em segundos, com recursos além do que você vê aqui',
       image: 'https://images.unsplash.com/photo-1555421689-d68471e189f2?q=80&w=2070&auto=format&fit=crop',
     },
     {
       title: 'Calculadoras',
-      description: 'Cálculos trabalhistas e previdenciários com índices atualizados',
+      description: 'Cálculos confiáveis e rápidos, com possibilidades que vão muito além do básico',
       image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=2068&auto=format&fit=crop',
     },
   ]
@@ -227,10 +232,10 @@ export default function HomePage() {
             
             {/* Gestão do Escritório - Mesmo tamanho de IA e Calculadoras */}
             <div
-              className={`md:col-span-1 md:row-span-1 group relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 flex flex-col justify-between transition-all duration-500 shadow-2xl border ${
+              className={`md:col-span-1 md:row-span-1 group relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] border ${
                 isDark
-                  ? 'bg-slate-50 border-slate-200'
-                  : 'bg-slate-900 border-[#1e293b]'
+                  ? 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div>
@@ -238,44 +243,44 @@ export default function HomePage() {
                   <div
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
                       isDark
-                        ? 'bg-white border-slate-200'
-                        : 'bg-[#1e293b] border-[#334155]'
+                        ? 'bg-slate-700 border-slate-600'
+                        : 'bg-slate-100 border-slate-200'
                     }`}
                   >
                     <Users
                       className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
-                        isDark ? 'text-slate-900' : 'text-[#cbd5e1]'
+                        isDark ? 'text-slate-300' : 'text-slate-700'
                       }`}
                       strokeWidth={1.5}
                     />
                   </div>
                   <h3
                     className={`text-base sm:text-lg font-bold tracking-tight ${
-                      isDark ? 'text-slate-900' : 'text-white'
+                      isDark ? 'text-slate-100' : 'text-slate-900'
                     }`}
                   >
                     Gestão do Escritório
                   </h3>
                 </div>
                 <p
-                  className={`text-xs sm:text-sm leading-relaxed ${
-                    isDark ? 'text-slate-600' : 'text-[#94a3b8]'
+                  className={`text-xs sm:text-sm leading-relaxed mb-4 sm:mb-5 ${
+                    isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  Clientes, processos e prazos em um só lugar. Sem post-its, sem planilhas.
+                  Organize rotinas, acompanhe tudo em tempo real e ganhe clareza para o próximo passo. E isso é só o começo.
                 </p>
               </div>
               <div
                 className={`pt-2 mt-auto border-t ${
-                  isDark ? 'border-slate-200' : 'border-[#1e293b]'
+                  isDark ? 'border-slate-700' : 'border-slate-200'
                 }`}
               >
                 <Link
                   to="/app/clientes"
-                  className={`inline-flex items-center justify-between w-full text-xs sm:text-sm font-semibold transition-colors duration-200 ${
+                  className={`inline-flex items-center justify-between w-full text-xs sm:text-sm font-semibold transition-colors group-hover:translate-x-1 duration-200 ${
                     isDark
-                      ? 'text-slate-700'
-                      : 'text-[#cbd5e1]'
+                      ? 'text-slate-300 hover:text-slate-100'
+                      : 'text-slate-700 hover:text-slate-900'
                   }`}
                 >
                   Organizar meu escritório <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -328,11 +333,11 @@ export default function HomePage() {
                   </span>
                 </div>
                 <p
-                  className={`text-xs sm:text-sm leading-relaxed ${
+                  className={`text-xs sm:text-sm leading-relaxed mb-4 sm:mb-5 ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  Analise CNIS, resuma processos e extraia o essencial de documentos. IA treinada para o direito brasileiro.
+                  Transforme demandas complexas em respostas objetivas em minutos. E tem muito mais para explorar.
                 </p>
               </div>
               <div
@@ -362,35 +367,47 @@ export default function HomePage() {
               }`}
             >
               <div>
-                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                  <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
-                      isDark
-                        ? 'bg-slate-700 border-slate-600'
-                        : 'bg-slate-100 border-slate-200'
-                    }`}
-                  >
-                    <Calculator
-                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
-                        isDark ? 'text-slate-300' : 'text-slate-700'
+                <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <div
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
+                        isDark
+                          ? 'bg-slate-700 border-slate-600'
+                          : 'bg-slate-100 border-slate-200'
                       }`}
-                      strokeWidth={1.5}
-                    />
+                    >
+                      <Calculator
+                        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                          isDark ? 'text-slate-300' : 'text-slate-700'
+                        }`}
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                    <h3
+                      className={`text-base sm:text-lg font-bold tracking-tight truncate ${
+                        isDark ? 'text-slate-100' : 'text-slate-900'
+                      }`}
+                    >
+                      Calculadoras Jurídicas
+                    </h3>
                   </div>
-                  <h3
-                    className={`text-base sm:text-lg font-bold tracking-tight ${
-                      isDark ? 'text-slate-100' : 'text-slate-900'
+                  <span
+                    className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded border flex-shrink-0 ${
+                      isDark
+                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
                     }`}
                   >
-                    Calculadoras Jurídicas
-                  </h3>
+                    <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full animate-pulse ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                    {availableCalculators} ativas
+                  </span>
                 </div>
                 <p
-                  className={`text-xs sm:text-sm leading-relaxed ${
+                  className={`text-xs sm:text-sm leading-relaxed mb-4 sm:mb-5 ${
                     isDark ? 'text-slate-400' : 'text-slate-600'
                   }`}
                 >
-                  Números certos na hora certa. Trabalhista e previdenciário com índices sempre atualizados.
+                  Simule cenários, compare resultados e decida com confiança. O melhor começa depois do primeiro cálculo.
                 </p>
               </div>
               <div

@@ -219,7 +219,7 @@ export function WelcomeModal() {
               <div className="grid grid-cols-1 gap-3">
                 {[
                   { id: 'pecas', label: 'Analisar e resumir peças complexas', icon: Bot, path: '/app/ia' },
-                  { id: 'calculos', label: 'Fazer cálculos tabalhistas e previdenciários', icon: Calculator, path: '/app/calculadoras' },
+                  { id: 'calculos', label: 'Fazer cálculos trabalhistas e previdenciários', icon: Calculator, path: '/app/calculadoras' },
                   { id: 'rag', label: 'Tirar dúvidas e criar argumentações', icon: FileText, path: '/app/ia/chat' },
                   { id: 'gestao', label: 'Organizar meus clientes, processos e prazos', icon: Building2, path: '/app/clientes' },
                 ].map(({ id, label, icon: Icon, path }) => (

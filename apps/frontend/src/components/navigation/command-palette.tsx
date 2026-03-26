@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -36,6 +36,7 @@ export function CommandPalette() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const resultsContainerRef = useRef<HTMLDivElement | null>(null)
   const searchResults = useGlobalSearch(search)
 
   const closeAndReset = useCallback(() => {
@@ -292,6 +293,20 @@ export function CommandPalette() {
     return flatSearchResults.length + filteredCommands.length
   }, [flatSearchResults.length, filteredCommands.length])
 
+  useEffect(() => {
+    if (!isOpen) return
+    const container = resultsContainerRef.current
+    if (!container) return
+
+    const selectedEl = container.querySelector(
+      `[data-cp-index="${selectedIndex}"]`
+    ) as HTMLElement | null
+
+    if (selectedEl) {
+      selectedEl.scrollIntoView({ block: 'nearest' })
+    }
+  }, [isOpen, selectedIndex])
+
   // Has search results
   const hasSearchResults = useMemo(() => {
     return (
@@ -308,6 +323,14 @@ export function CommandPalette() {
     if (!isOpen) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (totalItems === 0) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          closeAndReset()
+        }
+        return
+      }
+
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
@@ -358,6 +381,7 @@ export function CommandPalette() {
           return (
             <button
               key={item.id}
+              data-cp-index={globalIndex}
               onClick={item.action}
               onMouseEnter={() => setSelectedIndex(globalIndex)}
               className={cn(
@@ -396,6 +420,7 @@ export function CommandPalette() {
           return (
             <button
               key={item.id}
+              data-cp-index={globalIndex}
               onClick={() => {
                 navigate(item.href)
                 closeAndReset()
@@ -465,7 +490,7 @@ export function CommandPalette() {
         </div>
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto px-2 py-1">
+        <div ref={resultsContainerRef} className="max-h-80 overflow-y-auto px-2 py-1">
           {!hasSearchResults && filteredCommands.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               Nenhum resultado encontrado

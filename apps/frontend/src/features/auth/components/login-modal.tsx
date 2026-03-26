@@ -83,7 +83,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+          className="absolute top-4 right-4 z-10 text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:scale-105 rounded-full p-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring"
           aria-label="Fechar modal"
         >
           <X className="h-5 w-5" aria-hidden="true" />
@@ -92,7 +92,7 @@ export function LoginModal({ isOpen, onClose, initialView = 'login' }: LoginModa
         {view === 'forgot_password' && (
           <button
             onClick={() => setView('login')}
-            className="absolute top-4 left-4 z-10 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            className="absolute top-4 left-4 z-10 text-muted-foreground hover:text-foreground hover:bg-muted/80 hover:scale-105 rounded-full p-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring"
             aria-label="Voltar para login"
           >
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />

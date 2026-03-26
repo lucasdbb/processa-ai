@@ -178,7 +178,7 @@ export default function MaterialsPage() {
                   type="button"
                   onClick={() => handleDownload(item)}
                   disabled={downloadingSlug === item.slug}
-                  className="text-left rounded-xl border border-border bg-card p-5 hover:bg-muted/30 transition-colors disabled:opacity-60"
+                  className="group text-left rounded-xl border border-border bg-card p-5 hover:bg-muted/30 hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors disabled:opacity-60"
                   title={item.title}
                 >
                   <div className="flex items-start gap-3">
@@ -188,11 +188,11 @@ export default function MaterialsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-3">
                         <h3 className="font-semibold truncate">{item.title}</h3>
-                        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-2 p-1 text-sm text-muted-foreground transition-all duration-200 group-hover:text-primary group-focus-visible:text-primary group-hover:scale-105">
                           {downloadingSlug === item.slug ? (
                             <LoadingSpinner size="sm" />
                           ) : (
-                            <Download className="h-4 w-4" />
+                            <Download className="h-4 w-4 transition-transform duration-200 group-hover:translate-y-0.5 group-hover:scale-110" />
                           )}
                         </span>
                       </div>

@@ -125,7 +125,7 @@ export function PublicHeader({ onLoginClick }: PublicHeaderProps) {
             ) : (
               <button
                 onClick={onLoginClick}
-                className="group relative inline-flex items-center justify-center px-6 py-2 text-sm font-semibold text-white transition-all duration-200 bg-slate-900 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
+                className="group relative inline-flex items-center justify-center px-6 py-2 text-sm font-semibold text-white transition-all duration-200 bg-slate-900 hover:bg-slate-800 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
                 aria-label="Fazer login na plataforma"
               >
                 Entrar
