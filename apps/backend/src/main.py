@@ -12,7 +12,6 @@ from src.core.config import settings
 from src.core.db import close_db, init_db
 from src.core.logging import logger
 from src.core.middleware import SupabaseAuthMiddleware
-from src.core.rate_limit import RateLimitMiddleware
 
 
 @asynccontextmanager
@@ -82,9 +81,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Internal-Token"],
 )
-
-# Rate Limiting (applied before auth to protect against unauthenticated abuse)
-app.add_middleware(RateLimitMiddleware)
 
 # Supabase JWT Auth Middleware
 app.add_middleware(SupabaseAuthMiddleware)
