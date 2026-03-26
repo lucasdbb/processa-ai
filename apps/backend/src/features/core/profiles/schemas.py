@@ -71,6 +71,7 @@ class UserProfile(BaseModel):
     email: EmailStr
     name: str
     role: str = "user"
+    status: str = "active"
     avatar_url: str | None = None
     phone: str | None = None
     cpf: str | None = None
@@ -80,6 +81,8 @@ class UserProfile(BaseModel):
     confirmed_at: str | None = None
     created_at: datetime
     credits: UserCredits | None = None
+    plan_id: str | None = None
+    subscription_status: str | None = None
 
     class Config:
         from_attributes = True
