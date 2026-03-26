@@ -24,7 +24,7 @@ import { feedbackService, type FeedbackResponse } from '@/services/feedback-serv
 
 export default function FeedbacksTab() {
   const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([])
-  const [isFeedbacksLoading, setIsFeedbacksLoading] = useState(false)
+  const [isFeedbacksLoading, setIsFeedbacksLoading] = useState(true)
   const [feedbacksPage, setFeedbacksPage] = useState(1)
   const [feedbacksPageSize, setFeedbacksPageSize] = useState(10)
   const [feedbacksTotal, setFeedbacksTotal] = useState(0)
@@ -133,8 +133,8 @@ export default function FeedbacksTab() {
         <Card className="overflow-hidden shadow-sm">
           <CardContent className="p-0">
             {isFeedbacksLoading ? (
-              <div className="py-12 flex justify-center">
-                <LoadingSpinner size="lg" />
+              <div className="py-16 flex items-center justify-center">
+                <LoadingSpinner size="lg" text="Carregando feedbacks..." />
               </div>
             ) : (
               <div className="overflow-x-auto">

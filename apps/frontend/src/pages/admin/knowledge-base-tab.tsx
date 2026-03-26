@@ -593,7 +593,15 @@ export default function KnowledgeBaseTab() {
 
   // ── Render ─────────────────────────────────────────────
 
-  if (isLoading) return <LoadingSpinner fullScreen size="lg" />
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-16 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Carregando base de conhecimento..." />
+        </CardContent>
+      </Card>
+    )
+  }
 
   const topAreas = stats?.chunks_by_area
     ? Object.entries(stats.chunks_by_area)

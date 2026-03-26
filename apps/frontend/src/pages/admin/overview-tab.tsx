@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { toast } from 'sonner'
 import { creditsService, type AdminCreditsMetrics } from '@/services/credits-service'
@@ -53,7 +54,7 @@ export default function OverviewTab({ isAdmin }: OverviewTabProps) {
   const [posts, setPosts] = useState<AdminPostListItem[]>([])
   const [users, setUsers] = useState<UserListItem[]>([])
   const [creditStats, setCreditStats] = useState<AdminCreditsMetrics | null>(null)
-  const [isReloading, setIsReloading] = useState(false)
+  const [isReloading, setIsReloading] = useState(true)
 
   const extractErrorMessage = useCallback(async (response: Response, fallback: string) => {
     try {
@@ -152,6 +153,16 @@ export default function OverviewTab({ isAdmin }: OverviewTabProps) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     return users.filter((u) => new Date(u.created_at) > sevenDaysAgo).length
   })()
+
+  if (isReloading && posts.length === 0 && (!isAdmin || users.length === 0) && !creditStats) {
+    return (
+      <Card>
+        <CardContent className="py-16 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Carregando visao geral..." />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { toast } from 'sonner'
 import {
   dashboardService,
@@ -52,7 +53,7 @@ function formatDay(day: string): string {
 
 export default function AiCostsTab() {
   const [stats, setStats] = useState<AiCostStats | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   const loadStats = useCallback(async () => {
     setIsLoading(true)
@@ -72,6 +73,16 @@ export default function AiCostsTab() {
 
   const s30 = stats?.last_30d
   const sAll = stats?.all_time
+
+  if (isLoading && !stats) {
+    return (
+      <Card>
+        <CardContent className="py-16 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Carregando custos de IA..." />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">

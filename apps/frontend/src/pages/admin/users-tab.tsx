@@ -81,7 +81,7 @@ const getRoleBadgeClass = (role: UserListItem['role']) => {
 export default function UsersTab() {
   const { user } = useUser()
   const [users, setUsers] = useState<UserListItem[]>([])
-  const [isUsersLoading, setIsUsersLoading] = useState(false)
+  const [isUsersLoading, setIsUsersLoading] = useState(true)
   const [userSearch, setUserSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | UserListItem['role']>('all')
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null)
@@ -267,8 +267,8 @@ export default function UsersTab() {
         </CardHeader>
         <CardContent className="p-0">
           {isUsersLoading ? (
-            <div className="py-12 flex justify-center">
-              <LoadingSpinner size="lg" />
+              <div className="py-16 flex items-center justify-center">
+                <LoadingSpinner size="lg" text="Carregando usuarios..." />
             </div>
           ) : (
             <div className="overflow-x-auto">

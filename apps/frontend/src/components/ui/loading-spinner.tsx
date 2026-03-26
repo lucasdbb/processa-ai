@@ -15,14 +15,14 @@ export function LoadingSpinner({ size = "md", text, fullScreen = false }: Loadin
 
   const spinner = (
     <div className="flex flex-col items-center justify-center gap-4 font-sans">
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-gray-900`} />
-      {text && <p className="text-sm text-gray-500 font-medium">{text}</p>}
+      <Loader2 className={`${sizeClasses[size]} animate-spin text-foreground`} />
+      {text && <p className="text-sm text-muted-foreground font-medium">{text}</p>}
     </div>
   )
 
   if (fullScreen) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
+      <div className="min-h-screen flex items-center justify-center bg-background font-sans">
         {spinner}
       </div>
     )

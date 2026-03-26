@@ -61,7 +61,7 @@ const postStatusBadgeClass: Record<PostStatus, string> = {
 
 export default function PostsTab({ isAdmin }: PostsTabProps) {
   const [posts, setPosts] = useState<AdminPostListItem[]>([])
-  const [isPostsLoading, setIsPostsLoading] = useState(false)
+  const [isPostsLoading, setIsPostsLoading] = useState(true)
   const [postSearch, setPostSearch] = useState('')
   const [postStatusFilter, setPostStatusFilter] = useState<'all' | PostStatus>('all')
   const [archivePostId, setArchivePostId] = useState<string | null>(null)
@@ -244,8 +244,8 @@ export default function PostsTab({ isAdmin }: PostsTabProps) {
           </CardHeader>
           <CardContent className="p-0">
             {isPostsLoading ? (
-              <div className="py-12 flex justify-center">
-                <LoadingSpinner size="lg" />
+              <div className="py-16 flex items-center justify-center">
+                <LoadingSpinner size="lg" text="Carregando posts..." />
               </div>
             ) : (
               <div className="overflow-x-auto">

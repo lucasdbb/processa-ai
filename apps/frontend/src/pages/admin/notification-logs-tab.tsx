@@ -75,7 +75,7 @@ const TYPE_LABELS: Record<string, string> = {
 export default function NotificationLogsTab() {
   const [logs, setLogs] = useState<NotificationLog[]>([])
   const [stats, setStats] = useState<NotificationStats | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [channelFilter, setChannelFilter] = useState('all')
@@ -259,8 +259,8 @@ export default function NotificationLogsTab() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <LoadingSpinner size="lg" />
+            <div className="py-16 flex items-center justify-center">
+              <LoadingSpinner size="lg" text="Carregando logs..." />
             </div>
           ) : logs.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">

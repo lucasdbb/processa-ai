@@ -359,7 +359,7 @@ function MaterialModal({
 
 export default function MaterialsTab({ isAdmin }: MaterialsTabProps) {
   const [materials, setMaterials] = useState<AdminMaterialListItem[]>([])
-  const [isMaterialsLoading, setIsMaterialsLoading] = useState(false)
+  const [isMaterialsLoading, setIsMaterialsLoading] = useState(true)
   const [materialsSearch, setMaterialsSearch] = useState('')
   const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false)
   const [materialModalMode, setMaterialModalMode] = useState<MaterialModalMode>('create')
@@ -546,8 +546,8 @@ export default function MaterialsTab({ isAdmin }: MaterialsTabProps) {
           </CardHeader>
           <CardContent className="p-0">
             {isMaterialsLoading ? (
-              <div className="py-12 flex justify-center">
-                <LoadingSpinner size="lg" />
+              <div className="py-16 flex items-center justify-center">
+                <LoadingSpinner size="lg" text="Carregando materiais..." />
               </div>
             ) : (
               <div className="overflow-x-auto">
