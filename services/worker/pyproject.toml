@@ -15,7 +15,6 @@ dependencies = [
     # Supabase
     "supabase>=2.0.0",
     # AI Providers (replaces n8n)
-    "openai>=1.60.0",
     "mistralai>=2.0.0",
     "google-genai>=1.66.0",
     # Google Integration (for office jobs)

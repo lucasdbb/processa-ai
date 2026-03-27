@@ -8,7 +8,7 @@ O **Worker** é um serviço assíncrono escrito em **Python 3.13** responsável 
 *   **Fila/Cache:** Redis (Consumo via `BLPOP` e `redis-py`)
 *   **Banco de Dados:** PostgreSQL (via Supabase / `psycopg` 3)
 *   **Armazenamento:** Supabase Storage (para download e upload de documentos)
-*   **IA & LLM:** Integração com modelos externos (Gemini, OpenAI, etc.)
+*   **IA & LLM:** Integração com modelos Gemini (análises) e Mistral OCR (fallback)
 *   **Geração de Documentos:** `python-docx` para preenchimento de templates DOCX
 *   **Processamento de Arquivos:** OCR e extração de texto de PDFs
 
@@ -70,7 +70,7 @@ SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
 
 # Provedores de IA
 GEMINI_API_KEY=AI...
-OPENAI_API_KEY=sk-...
+MISTRAL_API_KEY=xxx
 ```
 
 ### 4. Executando o Worker
@@ -88,9 +88,9 @@ uv run python -m src.main
 3. O **Worker** (`src.main.py`) detecta a mensagem via `BLPOP`.
 4. O `pipeline.py` orquestra o processo:
     - Baixa o documento do Supabase Storage (`core/storage.py`).
-    - Extrai o texto via OCR/PDF Parsing (`core/ocr.py`).
-    - Envia o texto e o prompt adequado (`prompts/`) para a API do LLM (`core/llm.py`).
-    - Recebe o JSON/Resposta do LLM.
+    - Extrai o texto via OCR/PDF Parsing quando necessário (`core/ocr.py`) ou envia PDF direto ao Gemini.
+    - Envia o conteúdo e instruções (`prompts/`) para o pipeline Gemini (`handlers/pipeline.py`).
+    - Recebe o JSON/Resposta do modelo.
     - Gera um documento DOCX baseado em templates (`handlers/reports/`).
     - Faz o upload do resultado no Storage e atualiza o banco de dados.
     - Atualiza o status do Job para `completed`.

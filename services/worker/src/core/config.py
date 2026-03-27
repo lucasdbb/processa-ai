@@ -29,7 +29,6 @@ class Settings(BaseSettings):
     TRANSLATION_POLL_INTERVAL_S: float = 0.5
 
     # AI Providers
-    OPENAI_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.1-pro-preview"
