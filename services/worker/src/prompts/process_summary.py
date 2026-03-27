@@ -168,6 +168,19 @@ Retorne EXCLUSIVAMENTE um JSON válido, sem texto antes ou depois, seguindo esta
 5. **Datas** sempre no formato DD/MM/AAAA.
 6. **Valores monetários** sempre no formato "R$ X.XXX,XX".
 7. **Retorne apenas o JSON** — sem markdown, sem explicações adicionais, sem texto antes ou depois do JSON.
+8. **Estrutura fixa obrigatória:** não adicione, renomeie ou remova chaves do JSON definido.
+9. **Tipos obrigatórios por campo:**
+  - Campos textuais: string.
+  - Campos de lista: array.
+  - Campo `identificacao`: objeto.
+10. **Fallback para campos ausentes:**
+  - string ausente => ""
+  - lista ausente => []
+  - objeto ausente => {}
+11. **Hierarquia de confiabilidade (em caso de conflito):** decisões/despachos judiciais > atas/certidões/laudos oficiais > petições das partes.
+12. Se persistir conflito sem prevalência objetiva, use "[CONFLITANTE]" no valor afetado e explique o conflito em `pontos_atencao`.
+13. Evite duplicação de conteúdo entre `fatos_relevantes`, `pedidos`, `pontos_atencao` e `proximos_passos`; cada seção deve agregar informação própria.
+14. **Checklist final obrigatório (antes de responder):** JSON válido, todas as chaves presentes, sem chaves extras, datas e valores monetários no formato exigido.
 """
 
 PROCESS_SUMMARY_GEMINI_PROMPT = GeminiPromptConfig(
