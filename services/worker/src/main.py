@@ -191,13 +191,12 @@ async def _execute_ai_service(
     progress = ProgressReporter(job_id=job_id, job_uuid=job_uuid)
 
     if job_type == "labor_claim":
-        user_prompt = str(payload.get("prompt") or "").strip()
         return await ai_service.analyze_labor_claim(
             file_urls=file_urls,
-            user_prompt=user_prompt,
             user_id=user_id,
             client_id=str(client_id) if client_id is not None else None,
             store_pdf=store_pdf,
+            store_input_pdf=True,
             signed_url_expires_in=expires_in,
             job_id=job_id,
             progress=progress,
@@ -634,9 +633,7 @@ def _render_aposentadoria_markdown(*, input_payload: dict, output_payload: dict)
     lines.append(f"- Sexo: {input_payload.get('sexo', '').capitalize()}")
     lines.append(f"- Idade atual: {input_payload.get('idade')} anos")
     lines.append(f"- Tempo de contribuição: {input_payload.get('tempo_contribuicao')} anos")
-    lines.append(
-        f"- Salário de contribuição: {money(input_payload.get('salario_contribuicao'))}"
-    )
+    lines.append(f"- Salário de contribuição: {money(input_payload.get('salario_contribuicao'))}")
     lines.append("")
     lines.append("## Resultado")
     lines.append("")
@@ -831,8 +828,7 @@ async def _run_health_server() -> None:
 
                     # Get queue stats
                     await cur.execute(
-                        "SELECT status, COUNT(*) AS cnt "
-                        "FROM job_queue GROUP BY status"
+                        "SELECT status, COUNT(*) AS cnt FROM job_queue GROUP BY status"
                     )
                     rows = await cur.fetchall()
                     queue_stats = {row[0]: row[1] for row in rows}

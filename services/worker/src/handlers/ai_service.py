@@ -16,10 +16,11 @@ from src.handlers.pipeline import (
 )
 from src.handlers.reports.brief_scanner import generate_brief_scanner_pdf_from_template
 from src.handlers.reports.cnis import generate_cnis_pdf_from_template
+from src.handlers.reports.labor_claim import generate_labor_claim_pdf_from_template
 from src.handlers.reports.process_summary import generate_process_summary_pdf_from_template
 from src.prompts.brief_scanner import BRIEF_SCANNER_GEMINI_PROMPT
 from src.prompts.cnis import CNIS_GEMINI_PROMPT
-from src.prompts.labor_claim import LABOR_CLAIM_PROMPT
+from src.prompts.labor_claim import LABOR_CLAIM_GEMINI_PROMPT
 from src.prompts.process_summary import PROCESS_SUMMARY_GEMINI_PROMPT
 
 
@@ -566,7 +567,10 @@ class AiService:
 
             query_embedding = await generate_embedding(query[:2000])
             chunks = await search_legal_chunks(
-                query_embedding, area=area, top_k=top_k, similarity_threshold=0.35,
+                query_embedding,
+                area=area,
+                top_k=top_k,
+                similarity_threshold=0.35,
             )
             if not chunks:
                 return ""
@@ -580,7 +584,7 @@ class AiService:
                 if c.legislacao:
                     label_parts.append(c.legislacao)
                 label = ", ".join(label_parts) or f"Fonte {i}"
-                lines.append(f"[{i}] {label}: \"{c.content[:800]}\"")
+                lines.append(f'[{i}] {label}: "{c.content[:800]}"')
 
             return "\n--- LEGISLAÇÃO RELEVANTE (BASE DE CONHECIMENTO) ---\n" + "\n".join(lines)
         except Exception:
@@ -591,36 +595,118 @@ class AiService:
         self,
         *,
         file_urls: list[str],
-        user_prompt: str,
         user_id: str,
         client_id: str | None,
-        store_pdf: bool = True,
+        store_pdf: bool = False,
+        store_input_pdf: bool = True,
         signed_url_expires_in: int = 600,
         job_id: str | None = None,
         progress: ProgressReporter | None = None,
         functionality: str = "ai",
     ) -> dict:
-        # Fetch RAG context for labor law based on user prompt
-        rag_context = await self._fetch_rag_context(
-            query=user_prompt, area="trabalhista",
-        )
-        enriched_prompt = user_prompt
-        if rag_context:
-            enriched_prompt = user_prompt + "\n" + rag_context
+        """Analyze labor claim documents using Gemini (PDF bytes sent inline, no OCR).
 
-        return await self._run_multi_file_pipeline(
-            file_urls=file_urls,
-            endpoint_key="labor_claim",
-            prompt_config=LABOR_CLAIM_PROMPT,
-            user_id=user_id,
-            client_id=client_id,
-            store_pdf=store_pdf,
-            signed_url_expires_in=signed_url_expires_in,
-            job_id=job_id,
+        Accepts multiple PDF files — all are sent to Gemini in a single request.
+
+        Pipeline:
+            1. Download all PDFs
+            2. Store input PDFs if requested
+            3. Send PDF bytes directly to Gemini for analysis (returns JSON)
+            4. Generate DOCX from JSON, convert to PDF via LibreOffice
+            5. Store output PDF if requested
+        """
+        if not file_urls:
+            raise WorkerException(status_code=400, detail="Nenhum arquivo enviado")
+
+        # Download all PDFs
+        pdf_bytes_list: list[bytes] = []
+        for url in file_urls:
+            pdf_bytes = await self.storage.download_pdf_bytes(url)
+            pdf_bytes_list.append(pdf_bytes)
+
+        inferred_filename = self.storage.infer_pdf_filename_from_url(file_urls[0])
+
+        # Store input PDFs for history (first file only, as representative)
+        input_storage = None
+        if store_input_pdf and job_id:
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            input_storage = await self.storage.upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes_list[0],
+                user_id=user_id,
+                client_id=client_id,
+                functionality=functionality,
+                job_uuid=job_uuid_str,
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+                output=False,
+            )
+            if "signed_url" in input_storage:
+                input_storage["download_url"] = input_storage["signed_url"]
+
+        # Run Gemini pipeline (PDF bytes -> Gemini -> JSON)
+        pipeline_result = await run_gemini_multi_pdf_analysis(
+            pdf_bytes_list=pdf_bytes_list,
+            prompt=LABOR_CLAIM_GEMINI_PROMPT,
             progress=progress,
-            user_prompt=enriched_prompt,
-            functionality=functionality,
+            model=get_gemini_model("labor_claim"),
         )
+
+        raw_text = pipeline_result.markdown
+        structured_data = pipeline_result.structured_data
+        token_usage = pipeline_result.token_usage
+
+        if not raw_text:
+            raise WorkerException(status_code=502, detail="Pipeline retornou resposta vazia")
+
+        if not structured_data:
+            raise WorkerException(
+                status_code=502,
+                detail="Gemini não retornou JSON válido para o relatório de reclamação trabalhista",
+            )
+
+        response: dict = {
+            "markdown": raw_text,
+            "structured_data": structured_data,
+        }
+
+        if token_usage:
+            response["token_usage"] = token_usage.to_dict()
+
+        if input_storage:
+            response["input_storage"] = input_storage
+
+        # Generate PDF once from structured JSON (DOCX -> PDF)
+        pdf_bytes_out = generate_labor_claim_pdf_from_template(structured_data)
+
+        if not pdf_bytes_out or not pdf_bytes_out.lstrip().startswith(b"%PDF"):
+            raise WorkerException(
+                status_code=502, detail="Falha ao gerar PDF do relatório de reclamação trabalhista"
+            )
+
+        response["content"] = pdf_bytes_out
+
+        # Upload to Supabase if requested
+        if store_pdf and job_id:
+            if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
+                raise WorkerException(
+                    status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
+                )
+            job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
+            uploaded = await self.storage.upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes_out,
+                user_id=user_id,
+                client_id=client_id,
+                functionality=functionality,
+                job_uuid=job_uuid_str,
+                filename=inferred_filename,
+                expires_in=signed_url_expires_in,
+                output=True,
+            )
+            if "signed_url" in uploaded:
+                uploaded["download_url"] = uploaded["signed_url"]
+            response.update(uploaded)
+
+        return response
 
     async def analyze_brief_scanner(
         self,
