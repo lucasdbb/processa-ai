@@ -12,6 +12,11 @@ Layout strategy — mixed approach (tables + paragraphs) based on content type:
     {{ score_risco }} / 100  ({{ score_label }})
     {{ resumo }}
 
+  SEÇÃO 1 — Pontos Fortes (lista numerada):
+    {%p for pf in pontos_fortes %}
+      {{ pf.numero }}. {{ pf.texto }}
+    {%p endfor %}
+
   SEÇÃO 2 — Teses Frágeis (blocos numerados, texto longo):
     {%p for t in teses_frageis %}
       {{ t.numero }}. {{ t.tese }}
@@ -59,10 +64,10 @@ Layout strategy — mixed approach (tables + paragraphs) based on content type:
     {%tr endfor %}
 
   Condicionais (para ocultar seções vazias no template):
-    {{ tem_teses_frageis }}, {{ tem_pedidos_faltantes }},
-    {{ tem_inconsistencias }}, {{ tem_riscos }},
-    {{ tem_aspectos_formais }}, {{ tem_oportunidades }},
-    {{ tem_quadro_resumo }}
+    {{ tem_pontos_fortes }}, {{ tem_teses_frageis }},
+    {{ tem_pedidos_faltantes }}, {{ tem_inconsistencias }},
+    {{ tem_riscos }}, {{ tem_aspectos_formais }},
+    {{ tem_oportunidades }}, {{ tem_quadro_resumo }}
 """
 
 import io
@@ -78,15 +83,15 @@ ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
 TEMPLATE_PATH = ASSETS_DIR / "templates" / "ia" / "brief_scanner_report.docx"
 
 RISCO_LABEL = {
-    "alto": "🔴 Alto",
-    "medio": "🟡 Médio",
-    "baixo": "🟢 Baixo",
+    "alto": "Alto",
+    "medio": "Médio",
+    "baixo": "Baixo",
 }
 
 STATUS_LABEL = {
-    "adequado": "✅ Adequado",
-    "inadequado": "❌ Inadequado",
-    "ausente": "⚠️ Ausente",
+    "adequado": "Adequado",
+    "inadequado": "Inadequado",
+    "ausente": "Ausente",
 }
 
 TIPO_LABEL = {
@@ -97,9 +102,9 @@ TIPO_LABEL = {
 }
 
 SEVERIDADE_LABEL = {
-    "alto": "🔴 Alto",
-    "medio": "🟡 Médio",
-    "baixo": "🟢 Baixo",
+    "alto": "Alto",
+    "medio": "Médio",
+    "baixo": "Baixo",
 }
 
 
@@ -124,61 +129,121 @@ def _build_context(dados_analise: dict) -> dict:
     """Build the Jinja2 context dict from the Gemini JSON response."""
     resumo_exec = dados_analise.get("resumo_executivo") or {}
 
+    # --- Pontos Fortes (lista de strings) ---
+    pontos_raw = dados_analise.get("pontos_fortes") or []
+    pontos_fortes = []
+    for idx, pf in enumerate(pontos_raw, 1):
+        if isinstance(pf, str):
+            pontos_fortes.append({"numero": idx, "texto": pf})
+        elif isinstance(pf, dict):
+            texto = pf.get("descricao") or pf.get("destaque") or ""
+            if texto:
+                pontos_fortes.append({"numero": idx, "texto": texto})
+
     # --- Teses Frágeis (blocos numerados) ---
     teses_raw = dados_analise.get("teses_frageis") or []
     teses_frageis = []
     for idx, t in enumerate(teses_raw, 1):
+        if isinstance(t, str):
+            teses_frageis.append(
+                {
+                    "numero": idx,
+                    "tese": t,
+                    "fragilidade": "",
+                    "risco_label": RISCO_LABEL["medio"],
+                    "sugestao": "",
+                }
+            )
+            continue
         if not isinstance(t, dict):
             continue
         risco = (t.get("risco") or "medio").lower()
-        teses_frageis.append({
-            "numero": idx,
-            "tese": t.get("tese") or "",
-            "fragilidade": t.get("fragilidade") or "",
-            "risco_label": RISCO_LABEL.get(risco, RISCO_LABEL["medio"]),
-            "sugestao": t.get("sugestao") or "",
-        })
+        teses_frageis.append(
+            {
+                "numero": idx,
+                "tese": t.get("tese") or "",
+                "fragilidade": t.get("fragilidade") or "",
+                "risco_label": RISCO_LABEL.get(risco, RISCO_LABEL["medio"]),
+                "sugestao": t.get("sugestao") or "",
+            }
+        )
 
     # --- Pedidos Faltantes (lista numerada) ---
     pedidos_raw = dados_analise.get("pedidos_faltantes") or []
     pedidos_faltantes = []
     for idx, p in enumerate(pedidos_raw, 1):
-        if not isinstance(p, dict):
+        if isinstance(p, str):
+            pedidos_faltantes.append(
+                {
+                    "numero": idx,
+                    "descricao": p,
+                    "justificativa": "",
+                    "sugestao": "",
+                }
+            )
             continue
-        pedidos_faltantes.append({
-            "numero": idx,
-            "descricao": p.get("descricao") or "",
-            "justificativa": p.get("justificativa") or "",
-            "sugestao": p.get("sugestao") or "",
-        })
+        if isinstance(p, dict):
+            pedidos_faltantes.append(
+                {
+                    "numero": idx,
+                    "descricao": p.get("descricao") or "",
+                    "justificativa": p.get("justificativa") or "",
+                    "sugestao": p.get("sugestao") or "",
+                }
+            )
 
     # --- Inconsistências (lista numerada) ---
     inconsistencias_raw = dados_analise.get("inconsistencias") or []
     inconsistencias = []
     for idx, i in enumerate(inconsistencias_raw, 1):
+        if isinstance(i, str):
+            inconsistencias.append(
+                {
+                    "numero": idx,
+                    "descricao": i,
+                    "impacto": "",
+                    "sugestao": "",
+                }
+            )
+            continue
         if not isinstance(i, dict):
             continue
-        inconsistencias.append({
-            "numero": idx,
-            "descricao": i.get("descricao") or "",
-            "impacto": i.get("impacto") or "",
-            "sugestao": i.get("sugestao") or "",
-        })
+        inconsistencias.append(
+            {
+                "numero": idx,
+                "descricao": i.get("descricao") or "",
+                "impacto": i.get("impacto") or "",
+                "sugestao": i.get("sugestao") or "",
+            }
+        )
 
     # --- Riscos de Improcedência (blocos numerados) ---
     riscos_raw = dados_analise.get("riscos_improcedencia") or []
     riscos_improcedencia = []
     for idx, r in enumerate(riscos_raw, 1):
+        if isinstance(r, str):
+            riscos_improcedencia.append(
+                {
+                    "numero": idx,
+                    "risco": r,
+                    "probabilidade_label": RISCO_LABEL["medio"],
+                    "impacto": "",
+                    "mitigacao": "",
+                }
+            )
+            continue
         if not isinstance(r, dict):
             continue
         prob = (r.get("probabilidade") or "medio").lower()
-        riscos_improcedencia.append({
-            "numero": idx,
-            "risco": r.get("risco") or "",
-            "probabilidade_label": RISCO_LABEL.get(prob, RISCO_LABEL["medio"]),
-            "impacto": r.get("impacto") or "",
-            "mitigacao": r.get("mitigacao") or "",
-        })
+        riscos_improcedencia.append(
+            {
+                "numero": idx,
+                "risco": r.get("risco") or "",
+                "probabilidade_label": RISCO_LABEL.get(prob, RISCO_LABEL["medio"]),
+                "impacto": r.get("impacto") or "",
+                "mitigacao": r.get("mitigacao") or "",
+            }
+        )
 
     # --- Aspectos Formais (tabela — textos curtos) ---
     aspectos_raw = dados_analise.get("aspectos_formais") or []
@@ -187,36 +252,51 @@ def _build_context(dados_analise: dict) -> dict:
         if not isinstance(a, dict):
             continue
         st = (a.get("status") or "adequado").lower()
-        aspectos_formais.append({
-            "aspecto": a.get("aspecto") or "",
-            "status_label": STATUS_LABEL.get(st, STATUS_LABEL["adequado"]),
-            "observacao": a.get("observacao") or "",
-        })
+        aspectos_formais.append(
+            {
+                "aspecto": a.get("aspecto") or "",
+                "status_label": STATUS_LABEL.get(st, STATUS_LABEL["adequado"]),
+                "observacao": a.get("observacao") or "",
+            }
+        )
 
     # --- Oportunidades de Melhoria (lista numerada) ---
     oportunidades_raw = dados_analise.get("oportunidades_melhoria") or []
     oportunidades_melhoria = []
     for idx, o in enumerate(oportunidades_raw, 1):
+        if isinstance(o, str):
+            oportunidades_melhoria.append(
+                {
+                    "numero": idx,
+                    "descricao": o,
+                    "tipo_label": "",
+                    "sugestao": "",
+                }
+            )
+            continue
         if not isinstance(o, dict):
             continue
         tipo = o.get("tipo") or ""
-        oportunidades_melhoria.append({
-            "numero": idx,
-            "descricao": o.get("descricao") or "",
-            "tipo_label": TIPO_LABEL.get(tipo, tipo.replace("_", " ").title() if tipo else ""),
-            "sugestao": o.get("sugestao") or "",
-        })
+        oportunidades_melhoria.append(
+            {
+                "numero": idx,
+                "descricao": o.get("descricao") or "",
+                "tipo_label": TIPO_LABEL.get(tipo, tipo.replace("_", " ").title() if tipo else ""),
+                "sugestao": o.get("sugestao") or "",
+            }
+        )
 
     # --- Quadro Resumo (tabela fixa) ---
     quadro_raw = dados_analise.get("quadro_resumo") or {}
     quadro_resumo = []
     categorias = [
+        ("pontos_fortes", "Pontos Fortes"),
         ("teses_frageis", "Teses Frágeis"),
         ("pedidos_faltantes", "Pedidos Faltantes"),
         ("inconsistencias", "Inconsistências"),
         ("riscos_improcedencia", "Riscos de Improcedência"),
-        ("aspectos_formais", "Aspectos Formais"),
-        ("oportunidades", "Oportunidades"),
+        ("aspectos_formais_inadequados", "Aspectos Formais Inadequados"),
+        ("oportunidades_melhoria", "Oportunidades de Melhoria"),
     ]
     for key, label in categorias:
         item = quadro_raw.get(key) or {}
@@ -225,11 +305,13 @@ def _build_context(dados_analise: dict) -> dict:
         qtd = _safe_int(item.get("quantidade"))
         sev_key = (item.get("severidade_maxima") or "").lower()
         sev = SEVERIDADE_LABEL.get(sev_key, "—") if sev_key else "—"
-        quadro_resumo.append({
-            "categoria": label,
-            "quantidade": qtd,
-            "severidade": sev,
-        })
+        quadro_resumo.append(
+            {
+                "categoria": label,
+                "quantidade": qtd,
+                "severidade": sev,
+            }
+        )
 
     score = _safe_int(resumo_exec.get("score_risco"))
 
@@ -242,6 +324,7 @@ def _build_context(dados_analise: dict) -> dict:
         "score_label": _score_label(score),
         "resumo": resumo_exec.get("resumo") or "",
         # Seções
+        "pontos_fortes": pontos_fortes,
         "teses_frageis": teses_frageis,
         "pedidos_faltantes": pedidos_faltantes,
         "inconsistencias": inconsistencias,
@@ -250,6 +333,7 @@ def _build_context(dados_analise: dict) -> dict:
         "oportunidades_melhoria": oportunidades_melhoria,
         "quadro_resumo": quadro_resumo,
         # Condicionais
+        "tem_pontos_fortes": bool(pontos_fortes),
         "tem_teses_frageis": bool(teses_frageis),
         "tem_pedidos_faltantes": bool(pedidos_faltantes),
         "tem_inconsistencias": bool(inconsistencias),
