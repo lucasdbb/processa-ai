@@ -29,24 +29,12 @@ async def run_gemini_pdf_analysis(
     pdf_bytes: bytes,
     prompt: GeminiPromptConfig,
     progress: ProgressReporter | None = None,
-    model: str | None = None,
+    model: str,
 ) -> PipelineResult:
     """Execute document analysis via Gemini sending PDF bytes directly.
 
     No OCR step — Gemini reads the PDF natively.
     The response is expected to be JSON (possibly wrapped in markdown code fences).
-
-    Args:
-        pdf_bytes: Raw PDF file content.
-        prompt: Gemini prompt configuration with system instruction.
-        progress: Optional progress reporter for real-time updates.
-        model: Optional Gemini model override.
-
-    Returns:
-        PipelineResult with raw text and parsed structured_data.
-
-    Raises:
-        RuntimeError: If the Gemini call fails after retries.
     """
     return await run_gemini_multi_pdf_analysis(
         pdf_bytes_list=[pdf_bytes],
@@ -61,7 +49,7 @@ async def run_gemini_multi_pdf_analysis(
     pdf_bytes_list: list[bytes],
     prompt: GeminiPromptConfig,
     progress: ProgressReporter | None = None,
-    model: str | None = None,
+    model: str,
 ) -> PipelineResult:
     """Execute document analysis via Gemini sending multiple PDF bytes directly.
 
@@ -108,24 +96,11 @@ async def run_gemini_audio_analysis(
     mime_type: str,
     prompt: GeminiPromptConfig,
     progress: ProgressReporter | None = None,
-    model: str | None = None,
+    model: str,
 ) -> PipelineResult:
     """Execute audio transcription via Gemini sending audio bytes directly.
 
     The response is plain text (transcription), not JSON.
-
-    Args:
-        audio_bytes: Raw audio file content.
-        mime_type: MIME type of the audio (e.g. "audio/mpeg").
-        prompt: Gemini prompt configuration with system instruction.
-        progress: Optional progress reporter for real-time updates.
-        model: Optional Gemini model override.
-
-    Returns:
-        PipelineResult with markdown (transcription text) and no structured_data.
-
-    Raises:
-        RuntimeError: If the Gemini call fails after retries.
     """
     from src.core.gemini import analyze_audio
 

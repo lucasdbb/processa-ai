@@ -30,23 +30,11 @@ async def analyze_pdf(
     pdf_bytes: bytes,
     system_instruction: str,
     user_prompt: str = "Analise este documento.",
-    model: str | None = None,
+    model: str,
 ) -> tuple[str, TokenUsage | None]:
     """Send PDF bytes directly to Gemini for analysis.
 
     No OCR step needed — Gemini reads the PDF natively.
-
-    Args:
-        pdf_bytes: Raw PDF file content.
-        system_instruction: System prompt defining the analysis behavior.
-        user_prompt: User-facing instruction for the analysis.
-        model: Optional model override. Falls back to settings.GEMINI_MODEL.
-
-    Returns:
-        Tuple of (text response, token usage or None).
-
-    Raises:
-        RuntimeError: If the call fails after all retries.
     """
     return await analyze_multiple_pdfs(
         pdf_bytes_list=[pdf_bytes],
@@ -61,27 +49,14 @@ async def analyze_multiple_pdfs(
     pdf_bytes_list: list[bytes],
     system_instruction: str,
     user_prompt: str = "Analise estes documentos.",
-    model: str | None = None,
+    model: str,
 ) -> tuple[str, TokenUsage | None]:
     """Send multiple PDF bytes directly to Gemini for analysis.
 
     No OCR step needed — Gemini reads the PDFs natively.
     All PDFs are sent in a single request as separate Parts.
-
-    Args:
-        pdf_bytes_list: List of raw PDF file contents.
-        system_instruction: System prompt defining the analysis behavior.
-        user_prompt: User-facing instruction for the analysis.
-        model: Optional model override. Falls back to settings.GEMINI_MODEL.
-
-    Returns:
-        Tuple of (text response, token usage or None).
-
-    Raises:
-        RuntimeError: If the call fails after all retries.
     """
     client = get_gemini_client()
-    model = model or settings.GEMINI_MODEL
     last_error: Exception | None = None
 
     # Build contents: one Part per PDF, then the user prompt text
@@ -139,27 +114,13 @@ async def analyze_audio(
     mime_type: str,
     system_instruction: str,
     user_prompt: str = "Transcreva este áudio.",
-    model: str | None = None,
+    model: str,
 ) -> tuple[str, TokenUsage | None]:
     """Send audio bytes directly to Gemini for transcription.
 
     Gemini natively supports audio input via Part.from_bytes.
-
-    Args:
-        audio_bytes: Raw audio file content.
-        mime_type: MIME type of the audio (e.g. "audio/mpeg", "audio/wav").
-        system_instruction: System prompt defining the transcription behavior.
-        user_prompt: User-facing instruction for the transcription.
-        model: Optional model override. Falls back to settings.GEMINI_MODEL.
-
-    Returns:
-        Tuple of (text response, token usage or None).
-
-    Raises:
-        RuntimeError: If the call fails after all retries.
     """
     client = get_gemini_client()
-    model = model or settings.GEMINI_MODEL
     last_error: Exception | None = None
 
     contents = [

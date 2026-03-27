@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.core.config import get_model_pricing, settings
+from src.core.config import get_model_pricing
 
 
 @dataclass
@@ -29,9 +29,8 @@ class TokenUsage:
         }
 
 
-def token_usage_from_gemini(usage_metadata: object, model: str | None = None) -> TokenUsage:
+def token_usage_from_gemini(usage_metadata: object, model: str) -> TokenUsage:
     """Build TokenUsage from a Gemini response's usage_metadata."""
-    model = model or settings.GEMINI_MODEL
     prompt_tokens = getattr(usage_metadata, "prompt_token_count", 0) or 0
     completion_tokens = getattr(usage_metadata, "candidates_token_count", 0) or 0
     total_tokens = getattr(usage_metadata, "total_token_count", 0) or 0

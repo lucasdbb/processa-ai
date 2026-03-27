@@ -31,7 +31,6 @@ class Settings(BaseSettings):
     # AI Providers
     MISTRAL_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-3.1-pro-preview"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     GEMINI_ENRICHMENT_MODEL: str = "gemini-3.1-flash-lite-preview"
     GEMINI_TRANSLATION_MODEL: str = "gemini-3.1-flash-lite-preview"
@@ -58,7 +57,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
-# Per-feature Gemini model overrides. Features not listed here use GEMINI_MODEL as fallback.
+# Gemini model for each feature. Every feature MUST be registered here.
 GEMINI_MODEL_MAP: dict[str, str] = {
     "process_summary": "gemini-3.1-flash-lite-preview",
     "cnis_analysis": "gemini-3.1-pro-preview",
@@ -68,8 +67,14 @@ GEMINI_MODEL_MAP: dict[str, str] = {
 
 
 def get_gemini_model(feature: str) -> str:
-    """Get the Gemini model for a specific feature, falling back to GEMINI_MODEL."""
-    return GEMINI_MODEL_MAP.get(feature, settings.GEMINI_MODEL)
+    """Get the Gemini model for a feature. Raises KeyError if not registered."""
+    try:
+        return GEMINI_MODEL_MAP[feature]
+    except KeyError:
+        raise KeyError(
+            f"Feature '{feature}' has no model in GEMINI_MODEL_MAP. "
+            f"Register it in services/worker/src/core/config.py"
+        )
 
 
 def get_model_pricing(model: str, prompt_tokens: int = 0) -> dict[str, float]:

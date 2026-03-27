@@ -100,9 +100,8 @@ services:
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       # AI Providers
       - MISTRAL_API_KEY=${MISTRAL_API_KEY}
-      # Gemini (CNIS analysis + RAG embeddings)
+      # Gemini (modelos por feature definidos em GEMINI_MODEL_MAP no código)
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-pro-preview}
       - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
       - GEMINI_ENRICHMENT_MODEL=${GEMINI_ENRICHMENT_MODEL:-gemini-3.1-flash-lite-preview}
       # Google (for office jobs)
