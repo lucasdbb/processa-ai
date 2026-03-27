@@ -63,6 +63,7 @@ GEMINI_MODEL_MAP: dict[str, str] = {
     "process_summary": "gemini-3.1-flash-lite-preview",
     "cnis_analysis": "gemini-3.1-pro-preview",
     "brief_scanner": "gemini-3.1-pro-preview",
+    "audio_transcription": "gemini-3.1-pro-preview",
 }
 
 

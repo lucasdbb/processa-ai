@@ -1,12 +1,13 @@
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import type { AiTool } from './types'
-import { FileSearch, FileText, MessageSquare, Scale, ScanSearch } from 'lucide-react'
+import { FileSearch, FileText, MessageSquare, Mic, Scale, ScanSearch } from 'lucide-react'
 import { CnisAnalysisTool } from './components/cnis-analysis-tool'
 import { ChatJuridicoTool } from './components/chat-juridico-tool'
 import { PromptTool } from './components/prompt-tool'
 import { LaborClaimTool } from './components/labor-claim-tool'
 import { BriefScannerTool } from './components/brief-scanner-tool'
 import { ProcessSummaryTool } from './components/process-summary-tool'
+import { AudioTranscriptionTool } from './components/audio-transcription-tool'
 
 // Map variant to component
 const COMPONENT_MAP = {
@@ -16,6 +17,7 @@ const COMPONENT_MAP = {
   labor_claim: LaborClaimTool,
   scanner: BriefScannerTool,
   process_summary: ProcessSummaryTool,
+  audio_transcription: AudioTranscriptionTool,
 } as const
 
 // Map icon name to lucide-react component
@@ -23,6 +25,7 @@ const ICON_MAP = {
   FileSearch,
   FileText,
   MessageSquare,
+  Mic,
   Scale,
   ScanSearch,
 } as const

@@ -10,7 +10,7 @@ export const FunctionalityType = {
 
 export type FunctionalityType = typeof FunctionalityType[keyof typeof FunctionalityType];
 
-export type ToolVariant = "chat" | "prompt" | "cnis" | "labor_claim" | "scanner" | "process_summary";
+export type ToolVariant = "chat" | "prompt" | "cnis" | "labor_claim" | "scanner" | "process_summary" | "audio_transcription";
 
 export type ToolTemplate = {
   label: string;

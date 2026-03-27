@@ -1,6 +1,6 @@
-"""Reusable Gemini document analysis pipeline.
+"""Reusable Gemini document/audio analysis pipeline.
 
-Executes analysis by sending one or many PDFs directly to Gemini,
+Executes analysis by sending one or many PDFs (or audio) directly to Gemini,
 returning the raw model response and parsed structured JSON.
 """
 
@@ -100,6 +100,51 @@ async def run_gemini_multi_pdf_analysis(
         await progress.report(95, prompt.progress_analysis_done)
 
     return PipelineResult(markdown=raw_text, structured_data=structured_data, token_usage=token_usage)
+
+
+async def run_gemini_audio_analysis(
+    *,
+    audio_bytes: bytes,
+    mime_type: str,
+    prompt: GeminiPromptConfig,
+    progress: ProgressReporter | None = None,
+    model: str | None = None,
+) -> PipelineResult:
+    """Execute audio transcription via Gemini sending audio bytes directly.
+
+    The response is plain text (transcription), not JSON.
+
+    Args:
+        audio_bytes: Raw audio file content.
+        mime_type: MIME type of the audio (e.g. "audio/mpeg").
+        prompt: Gemini prompt configuration with system instruction.
+        progress: Optional progress reporter for real-time updates.
+        model: Optional Gemini model override.
+
+    Returns:
+        PipelineResult with markdown (transcription text) and no structured_data.
+
+    Raises:
+        RuntimeError: If the Gemini call fails after retries.
+    """
+    from src.core.gemini import analyze_audio
+
+    if progress:
+        await progress.report(10, prompt.progress_analysis_start)
+
+    raw_text, token_usage = await analyze_audio(
+        audio_bytes=audio_bytes,
+        mime_type=mime_type,
+        system_instruction=prompt.system_instruction,
+        user_prompt=prompt.user_prompt,
+        model=model,
+    )
+    logger.info("Gemini audio transcription complete: %d characters generated", len(raw_text))
+
+    if progress:
+        await progress.report(95, prompt.progress_analysis_done)
+
+    return PipelineResult(markdown=raw_text, structured_data=None, token_usage=token_usage)
 
 
 def _parse_json_response(text: str) -> dict | None:

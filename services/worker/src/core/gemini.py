@@ -1,4 +1,4 @@
-"""Google Gemini client for PDF analysis."""
+"""Google Gemini client for PDF and audio analysis."""
 
 from __future__ import annotations
 
@@ -131,6 +131,82 @@ async def analyze_multiple_pdfs(
                 await asyncio.sleep(RETRY_DELAY_S)
 
     raise RuntimeError(f"Gemini call failed after {MAX_RETRIES} attempts: {last_error}")
+
+
+async def analyze_audio(
+    *,
+    audio_bytes: bytes,
+    mime_type: str,
+    system_instruction: str,
+    user_prompt: str = "Transcreva este áudio.",
+    model: str | None = None,
+) -> tuple[str, TokenUsage | None]:
+    """Send audio bytes directly to Gemini for transcription.
+
+    Gemini natively supports audio input via Part.from_bytes.
+
+    Args:
+        audio_bytes: Raw audio file content.
+        mime_type: MIME type of the audio (e.g. "audio/mpeg", "audio/wav").
+        system_instruction: System prompt defining the transcription behavior.
+        user_prompt: User-facing instruction for the transcription.
+        model: Optional model override. Falls back to settings.GEMINI_MODEL.
+
+    Returns:
+        Tuple of (text response, token usage or None).
+
+    Raises:
+        RuntimeError: If the call fails after all retries.
+    """
+    client = get_gemini_client()
+    model = model or settings.GEMINI_MODEL
+    last_error: Exception | None = None
+
+    contents = [
+        Part.from_bytes(data=audio_bytes, mime_type=mime_type),
+        user_prompt,
+    ]
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = await client.aio.models.generate_content(
+                model=model,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                ),
+                contents=contents,
+            )
+
+            text = (response.text or "").strip()
+            if not text:
+                raise ValueError("Resposta vazia do Gemini")
+
+            token_usage: TokenUsage | None = None
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                token_usage = token_usage_from_gemini(response.usage_metadata, model=model)
+                logger.info(
+                    "Gemini token usage: prompt=%d, completion=%d, total=%d, cost=$%.4f",
+                    token_usage.prompt_tokens,
+                    token_usage.completion_tokens,
+                    token_usage.total_tokens,
+                    token_usage.cost_usd,
+                )
+
+            logger.info(
+                "Gemini audio transcription complete: %d characters (model=%s, attempt=%d)",
+                len(text),
+                model,
+                attempt,
+            )
+            return text, token_usage
+
+        except Exception as e:
+            last_error = e
+            logger.warning("Gemini audio call failed (attempt %d/%d): %s", attempt, MAX_RETRIES, e)
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(RETRY_DELAY_S)
+
+    raise RuntimeError(f"Gemini audio call failed after {MAX_RETRIES} attempts: {last_error}")
 
 
 async def generate_text(

@@ -266,6 +266,7 @@ export default function IAHubPage() {
       labor_claim: 'labor_claim',
       scanner: 'brief_scanner',
       prompt: 'ai_chat_session',
+      audio_transcription: 'audio_transcription',
     }
 
     const featureKey = variantToFeatureKey[currentTool.variant] || 'ai_chat_session'

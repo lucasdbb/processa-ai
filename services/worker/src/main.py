@@ -52,6 +52,7 @@ JOB_COSTS = {
     "process_summary": 5,
     "labor_claim": 5,
     "brief_scanner": 3,
+    "audio_transcription": 5,
 }
 
 
@@ -75,7 +76,7 @@ async def _validate_job_basic(job: dict) -> tuple[str, uuid.UUID | None, str, di
         job_uuid = parse_job_uuid(job_id)
 
     job_type = str(job.get("type") or "").strip()
-    if job_type not in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner"):
+    if job_type not in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner", "audio_transcription"):
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Tipo inválido")
@@ -221,6 +222,18 @@ async def _execute_ai_service(
             client_id=str(client_id) if client_id is not None else None,
             store_pdf=store_pdf,
             store_input_pdf=store_input_pdf,
+            signed_url_expires_in=expires_in,
+            job_id=job_id,
+            progress=progress,
+            functionality=functionality,
+        )
+    elif job_type == "audio_transcription":
+        return await ai_service.analyze_audio_transcription(
+            file_url=file_url,
+            user_id=user_id,
+            client_id=str(client_id) if client_id is not None else None,
+            store_pdf=False,
+            store_input_pdf=False,
             signed_url_expires_in=expires_in,
             job_id=job_id,
             progress=progress,

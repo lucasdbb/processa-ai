@@ -20,6 +20,7 @@ from src.features.ai.schemas import (
     AiToolsListResponse,
     AnalysisHistoryItem,
     AnalysisHistoryResponse,
+    AudioTranscriptionRequest,
     BriefScannerRequest,
     CnisAnalysisRequest,
     DocumentDownloadResponse,
@@ -294,6 +295,58 @@ async def brief_scanner_analysis(
         job_uuid=job_uuid,
         signed_url_expires_in=int(data.signed_url_expires_in),
         store_pdf=bool(data.store_pdf),
+    )
+
+    return EnqueueJobResponse(job_id=job_id)
+
+
+@router.post(
+    "/analyses/audio-transcription",
+    response_model=EnqueueJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def audio_transcription_analysis(
+    data: AudioTranscriptionRequest,
+    user_id: str = Depends(get_user_id),
+    _internal=Depends(require_internal_auth),
+):
+    """Transcreve áudio de audiências, depoimentos e reuniões."""
+
+    # Handle single file (like brief scanner)
+    files_list = data.files or []
+    file_url = (data.file_url or "").strip()
+    storage_path = (data.storage_path or "").strip()
+
+    if not files_list:
+        if not file_url and not storage_path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="É necessário fornecer o arquivo de áudio para transcrição",
+            )
+        files_list = [{"bucket": data.bucket, "storage_path": storage_path, "file_url": file_url}]
+
+    job_uuid = None
+    if data.job_uuid:
+        try:
+            job_uuid = uuid.UUID(data.job_uuid)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="job_uuid inválido")
+
+    job_id = await ai_job_service.submit_job(
+        user_id=user_id,
+        feature_key="audio_transcription",
+        endpoint_key="audio_transcription",
+        initial_payload={
+            "functionality": data.functionality,
+            "file_url": file_url,
+            "storage_path": storage_path,
+            "bucket": data.bucket,
+        },
+        files=files_list,
+        client_id=(data.client_id or "").strip() or None,
+        job_uuid=job_uuid,
+        signed_url_expires_in=int(data.signed_url_expires_in),
+        store_pdf=False,
     )
 
     return EnqueueJobResponse(job_id=job_id)

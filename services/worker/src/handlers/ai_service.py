@@ -8,6 +8,7 @@ from src.core.logging import logger
 from src.core.progress import ProgressReporter
 from src.core.storage import StorageService
 from src.handlers.pipeline import (
+    run_gemini_audio_analysis,
     run_gemini_multi_pdf_analysis,
     run_gemini_pdf_analysis,
 )
@@ -15,6 +16,7 @@ from src.handlers.reports.brief_scanner import generate_brief_scanner_pdf_from_t
 from src.handlers.reports.cnis import generate_cnis_pdf_from_template
 from src.handlers.reports.labor_claim import generate_labor_claim_pdf_from_template
 from src.handlers.reports.process_summary import generate_process_summary_pdf_from_template
+from src.prompts.audio_transcription import AUDIO_TRANSCRIPTION_GEMINI_PROMPT
 from src.prompts.brief_scanner import BRIEF_SCANNER_GEMINI_PROMPT
 from src.prompts.cnis import CNIS_GEMINI_PROMPT
 from src.prompts.labor_claim import LABOR_CLAIM_GEMINI_PROMPT
@@ -605,6 +607,110 @@ class AiService:
             if "signed_url" in uploaded:
                 uploaded["download_url"] = uploaded["signed_url"]
             response.update(uploaded)
+
+        return response
+
+    async def _download_file_bytes(self, file_url: str) -> tuple[bytes, str]:
+        """Download any file (not just PDF) from a URL.
+
+        Returns:
+            Tuple of (file_bytes, content_type).
+        """
+        url = (file_url or "").strip()
+        if not url:
+            raise WorkerException(status_code=400, detail="file_url inválido")
+
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.get(url)
+        except httpx.TimeoutException:
+            raise WorkerException(status_code=504, detail="Tempo limite ao baixar o arquivo")
+        except httpx.RequestError:
+            raise WorkerException(status_code=502, detail="Erro ao baixar o arquivo")
+
+        if resp.status_code >= 400:
+            raise WorkerException(status_code=502, detail="Falha ao baixar o arquivo")
+
+        content_type = (resp.headers.get("content-type") or "").split(";")[0].strip().lower()
+        return resp.content, content_type
+
+    @staticmethod
+    def _infer_audio_mime_type(file_url: str, content_type: str) -> str:
+        """Infer the audio MIME type from URL extension or HTTP content-type."""
+        # Trust content-type if it's audio/*
+        if content_type.startswith("audio/"):
+            return content_type
+
+        # Fallback: infer from file extension
+        ext_map = {
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".wav": "audio/wav",
+            ".ogg": "audio/ogg",
+            ".webm": "audio/webm",
+            ".flac": "audio/flac",
+            ".aac": "audio/aac",
+        }
+        url_lower = file_url.lower().split("?")[0]
+        for ext, mime in ext_map.items():
+            if url_lower.endswith(ext):
+                return mime
+
+        # Default fallback
+        return "audio/mpeg"
+
+    async def analyze_audio_transcription(
+        self,
+        *,
+        file_url: str,
+        user_id: str,
+        client_id: str | None,
+        store_pdf: bool = False,
+        store_input_pdf: bool = False,
+        signed_url_expires_in: int = 600,
+        job_id: str | None = None,
+        progress: ProgressReporter | None = None,
+        functionality: str = "ai",
+    ) -> dict:
+        """Transcribe audio using Gemini (audio bytes sent inline).
+
+        Pipeline:
+            1. Download audio file
+            2. Infer MIME type
+            3. Send audio bytes directly to Gemini for transcription
+            4. Return transcription text (no PDF generation)
+        """
+        audio_bytes, content_type = await self._download_file_bytes(file_url)
+        mime_type = self._infer_audio_mime_type(file_url, content_type)
+
+        logger.info(
+            "Audio transcription: %d bytes, mime=%s, content-type=%s",
+            len(audio_bytes),
+            mime_type,
+            content_type,
+        )
+
+        # Run Gemini pipeline (audio bytes -> Gemini -> text)
+        pipeline_result = await run_gemini_audio_analysis(
+            audio_bytes=audio_bytes,
+            mime_type=mime_type,
+            prompt=AUDIO_TRANSCRIPTION_GEMINI_PROMPT,
+            progress=progress,
+            model=get_gemini_model("audio_transcription"),
+        )
+
+        raw_text = pipeline_result.markdown
+        token_usage = pipeline_result.token_usage
+
+        if not raw_text:
+            raise WorkerException(status_code=502, detail="Pipeline retornou transcrição vazia")
+
+        response: dict = {
+            "markdown": raw_text,
+        }
+
+        if token_usage:
+            response["token_usage"] = token_usage.to_dict()
 
         return response
 

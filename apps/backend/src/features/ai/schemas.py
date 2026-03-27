@@ -137,6 +137,24 @@ class BriefScannerRequest(BaseModel):
     signed_url_expires_in: int = 600
 
 
+class AudioTranscriptionRequest(BaseModel):
+    """Request para transcrição de áudio com IA."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    file_url: str | None = None
+    storage_path: str | None = None
+    bucket: str | None = None
+    job_uuid: str | None = None
+    files: list[dict] | None = None  # [{bucket, storage_path, filename}]
+
+    client_id: str | None = None
+    functionality: str = "ai"
+    store_pdf: bool = False
+    store_input_pdf: bool = False
+    signed_url_expires_in: int = 600
+
+
 class ChatRequest(BaseModel):
     message: str
     client_id: str | None = None
