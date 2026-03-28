@@ -712,7 +712,7 @@ async def _handle_job(job: dict) -> None:
     """Route job to appropriate handler based on job type."""
     job_type = str(job.get("type") or "").strip()
 
-    if job_type in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner"):
+    if job_type in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner", "audio_transcription"):
         await _handle_ai_job(job)
         return
 
