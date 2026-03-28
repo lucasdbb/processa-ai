@@ -186,6 +186,10 @@ class CreditsService:
         self, user_id: str, package_id: str, redirect_url: str
     ) -> PurchaseCheckoutResponse:
         """Cria Stripe checkout session para compra de créditos."""
+        # Validar redirect_url para prevenir Open Redirect
+        subscription_service = SubscriptionsService()
+        redirect_url = subscription_service._validate_redirect_url(redirect_url) or redirect_url
+
         # 1. Buscar pacote nas constantes
         package_def = CREDIT_PACKAGES.get(package_id)
         if not package_def:
