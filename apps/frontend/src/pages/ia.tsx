@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Brain } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { fetchAiTools } from '@/features/ai/api'
+import { fetchToolsCatalog } from '@/components/layout/tools-catalog-provider'
 import { ToolsSidebar } from '@/features/ai/components/tools-sidebar'
 import type { AiTool } from '@/features/ai/types'
 import { useUser } from '@/features/auth/hooks/use-user'
@@ -20,8 +20,8 @@ export default function IAPage() {
 
   // Fetch AI tools from backend on mount
   useEffect(() => {
-    fetchAiTools()
-      .then((tools) => setAiTools(tools))
+    fetchToolsCatalog()
+      .then(({ aiTools }) => setAiTools(aiTools))
       .finally(() => setIsLoadingTools(false))
   }, [])
 

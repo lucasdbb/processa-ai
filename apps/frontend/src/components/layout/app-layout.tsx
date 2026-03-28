@@ -12,8 +12,7 @@ import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import { AiToolsProvider } from '@/features/ai/provider'
-import { CalculatorsProvider } from '@/features/calculators/provider'
+import { ToolsCatalogProvider } from './tools-catalog-provider'
 import { useBillingStore } from '@/stores/billing-store'
 import { useCreditsStore } from '@/stores/credits-store'
 
@@ -66,8 +65,7 @@ export function AppLayout() {
   }, [toggleCommandPalette])
 
   return (
-    <AiToolsProvider>
-      <CalculatorsProvider>
+    <ToolsCatalogProvider>
         <div className="min-h-screen bg-background font-sans text-foreground">
           <RouteLoadingBar topClass="top-16" />
           <Sidebar />
@@ -94,7 +92,6 @@ export function AppLayout() {
           <WelcomeModal />
           <SubscriptionSuccessModal />
         </div>
-      </CalculatorsProvider>
-    </AiToolsProvider>
+    </ToolsCatalogProvider>
   )
 }

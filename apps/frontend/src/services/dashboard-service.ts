@@ -10,6 +10,32 @@ export interface DashboardStats {
   calculations_this_month: number;
   calculations_change_percent: number;
   total_deadlines: number;
+  active_services: number;
+}
+
+export interface AiToolRaw {
+  slug: string;
+  name: string;
+  description: string;
+  icon: string;
+  variant: string;
+  locked: boolean;
+  order: number;
+}
+
+export interface CalculatorRaw {
+  slug: string;
+  name: string;
+  description: string;
+  icon: string;
+  path: string;
+  locked: boolean;
+  order: number;
+}
+
+export interface ToolsCatalog {
+  ai_tools: AiToolRaw[];
+  calculators: CalculatorRaw[];
 }
 
 export interface UpcomingDeadline {
@@ -196,6 +222,14 @@ export const dashboardService = {
   async getDailyBriefing(): Promise<DailyBriefing> {
     const res = await fetchWithCredentials(`${API_URL}/dashboard/briefing`);
     if (!res.ok) throw new Error("Failed to get daily briefing");
+    return res.json();
+  },
+
+  async getToolsCatalog(): Promise<ToolsCatalog> {
+    const res = await fetchWithCredentials(
+      `${API_URL}/dashboard/tools-catalog`,
+    );
+    if (!res.ok) throw new Error("Failed to get tools catalog");
     return res.json();
   },
 

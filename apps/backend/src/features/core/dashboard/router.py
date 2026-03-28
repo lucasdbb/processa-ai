@@ -48,6 +48,12 @@ async def get_daily_briefing(user_id: str = Depends(get_user_id)):
     return await dashboard_service.get_daily_briefing(user_id)
 
 
+@router.get("/tools-catalog")
+async def get_tools_catalog():
+    """Get AI tools and calculators in a single request."""
+    return await dashboard_service.get_tools_catalog()
+
+
 @router.get("/ai-costs")
 async def get_ai_cost_stats(_admin=Depends(get_current_admin)):
     """Get AI token usage and cost statistics (admin only)."""

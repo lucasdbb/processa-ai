@@ -18,8 +18,6 @@ from src.features.calculators.schemas import (
     AposentadoriaRequest,
     AposentadoriaResponse,
     CalculationHistoryResponse,
-    CalculatorResponse,
-    CalculatorsListResponse,
     RescisaoTrabalhistaRequest,
     RescisaoTrabalhistaResponse,
 )
@@ -86,41 +84,6 @@ async def _enqueue_calculator_pdf(
     )
 
     return job_id
-
-
-@router.get("/list", response_model=CalculatorsListResponse)
-async def get_calculators(_internal=Depends(require_internal_auth)):
-    """Retorna lista de calculadoras disponíveis."""
-    from src.core.db import get_pool
-
-    pool = await get_pool()
-    async with pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
-                SELECT key, display_name, description, icon, path,
-                       display_order, is_locked
-                FROM public.calculators
-                ORDER BY display_order, display_name
-            """
-            )
-            rows = await cur.fetchall()
-
-    calculators = []
-    for row in rows:
-        calculators.append(
-            CalculatorResponse(
-                slug=row[0],
-                name=row[1],
-                description=row[2] or "",
-                icon=row[3] or "Calculator",
-                path=row[4],
-                locked=bool(row[6]),
-                order=int(row[5]) if row[5] is not None else 0,
-            )
-        )
-
-    return CalculatorsListResponse(calculators=calculators)
 
 
 @router.post(

@@ -15,9 +15,8 @@ import { useTheme } from 'next-themes'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { toast } from 'sonner'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
-import { fetchAiTools } from '@/features/ai/api'
+import { fetchToolsCatalog } from '@/components/layout/tools-catalog-provider'
 import type { AiTool } from '@/features/ai/types'
-import { fetchCalculators } from '@/features/calculators/api'
 import type { CalculatorItem } from '@/features/calculators/api'
 
 export default function HomePage() {
@@ -34,8 +33,10 @@ export default function HomePage() {
 
   // Fetch AI tools and calculators from backend on mount
   useEffect(() => {
-    fetchAiTools().then((tools) => setAiTools(tools))
-    fetchCalculators().then((items) => setCalculators(items))
+    fetchToolsCatalog().then(({ aiTools, calculators }) => {
+      setAiTools(aiTools)
+      setCalculators(calculators)
+    })
   }, [])
 
   // Fetch latest blog post for desktop display

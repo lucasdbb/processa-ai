@@ -16,8 +16,6 @@ from src.core.worker_store import get_worker_job_status
 from src.features.ai.chat.router import router as chat_router
 from src.features.ai.knowledge_base.router import router as kb_router
 from src.features.ai.schemas import (
-    AiToolResponse,
-    AiToolsListResponse,
     AnalysisHistoryItem,
     AnalysisHistoryResponse,
     AudioTranscriptionRequest,
@@ -36,39 +34,6 @@ router = APIRouter()
 router.include_router(chat_router, prefix="/chat", tags=["chat"])
 router.include_router(kb_router, prefix="/knowledge-base", tags=["knowledge-base"])
 ai_job_service = AiJobService()
-
-
-@router.get("/tools", response_model=AiToolsListResponse)
-async def get_ai_tools(_internal=Depends(require_internal_auth)):
-    """Retorna lista de ferramentas de IA disponíveis."""
-    from src.core.db import get_pool
-
-    pool = await get_pool()
-    async with pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("""
-                SELECT key, display_name, description, icon, variant,
-                       display_order, is_locked
-                FROM public.ai_endpoints
-                ORDER BY display_order, display_name
-            """)
-            rows = await cur.fetchall()
-
-    tools = []
-    for row in rows:
-        tools.append(
-            AiToolResponse(
-                slug=row[0],
-                name=row[1],
-                description=row[2] or "",
-                icon=row[3] or "FileText",
-                variant=row[4] or "prompt",
-                locked=bool(row[6]),
-                order=int(row[5]) if row[5] is not None else 0,
-            )
-        )
-
-    return AiToolsListResponse(tools=tools)
 
 
 @router.post(

@@ -679,6 +679,51 @@ class DashboardService:
                 },
             }
 
+    async def get_tools_catalog(self) -> dict:
+        """Get AI tools and calculators in a single query."""
+        try:
+            pool = await get_pool()
+
+            async with pool.connection() as conn:
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    await cur.execute("""
+                        SELECT
+                            (SELECT COALESCE(json_agg(sub ORDER BY sub.display_order, sub.display_name), '[]'::json)
+                             FROM (
+                                SELECT key as slug, display_name as name,
+                                       COALESCE(description, '') as description,
+                                       COALESCE(icon, 'FileText') as icon,
+                                       COALESCE(variant, 'prompt') as variant,
+                                       is_locked as locked,
+                                       COALESCE(display_order, 0) as "order",
+                                       display_order, display_name
+                                FROM public.ai_endpoints
+                             ) sub
+                            ) as ai_tools,
+                            (SELECT COALESCE(json_agg(sub ORDER BY sub.display_order, sub.display_name), '[]'::json)
+                             FROM (
+                                SELECT key as slug, display_name as name,
+                                       COALESCE(description, '') as description,
+                                       COALESCE(icon, 'Calculator') as icon,
+                                       path,
+                                       is_locked as locked,
+                                       COALESCE(display_order, 0) as "order",
+                                       display_order, display_name
+                                FROM public.calculators
+                             ) sub
+                            ) as calculators
+                    """)
+                    row = await cur.fetchone()
+
+                    return {
+                        "ai_tools": row["ai_tools"],
+                        "calculators": row["calculators"],
+                    }
+
+        except Exception as e:
+            logger.error(f"Failed to get tools catalog: {e}")
+            return {"ai_tools": [], "calculators": []}
+
     async def get_ai_cost_stats(self) -> dict:
         """Get AI token usage and cost statistics (admin only)."""
         try:

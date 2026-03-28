@@ -6,9 +6,8 @@ import { UserMenu } from '@/features/auth/components/user-menu'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
-import { fetchAiTools } from '@/features/ai/api'
+import { fetchToolsCatalog } from './tools-catalog-provider'
 import type { AiTool } from '@/features/ai/types'
-import { fetchCalculators } from '@/features/calculators/api'
 import type { CalculatorItem } from '@/features/calculators/api'
 
 type HeaderSubitem = {
@@ -45,14 +44,12 @@ export function Header({ onLoginClick }: HeaderProps) {
   const { user, isAuthenticated, isLoading } = useUser()
   const { resolvedTheme, setTheme } = useTheme()
 
-  // Fetch AI tools from backend on mount
+  // Fetch AI tools and calculators from backend on mount
   useEffect(() => {
-    fetchAiTools().then((tools) => setAiTools(tools))
-  }, [])
-
-  // Fetch calculators from backend on mount
-  useEffect(() => {
-    fetchCalculators().then((items) => setCalculators(items))
+    fetchToolsCatalog().then(({ aiTools, calculators }) => {
+      setAiTools(aiTools)
+      setCalculators(calculators)
+    })
   }, [])
 
   // Recursos principais - o que o usuário pode ACESSAR
