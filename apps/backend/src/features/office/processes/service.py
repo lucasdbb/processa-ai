@@ -14,7 +14,6 @@ from src.features.office.processes.schemas import (
     ProcessResponse,
     ProcessTimelineEvent,
     ProcessUpdate,
-    TimelineDocumentSummary,
 )
 
 
@@ -224,34 +223,112 @@ class ProcessesService:
     ) -> ProcessDetailResponse | None:
         """Get aggregated process detail with client, deadlines, timeline, and documents."""
         pool = await get_pool()
+        uid = str(user_id)
+        pid = str(process_id)
 
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
-                # Get process basic info
-                await cur.execute(
-                    "SELECT * FROM office_api.processes WHERE user_id = %s AND id = %s",
-                    (str(user_id), str(process_id)),
-                )
-                process_row = await cur.fetchone()
-
-                if not process_row:
-                    return None
-
-                # Get client info
                 await cur.execute(
                     """
-                    SELECT id, name, email, phone, cpf_cnpj
-                    FROM office_api.clients
-                    WHERE id = %s AND user_id = %s
+                    SELECT
+                        p.*,
+                        -- Client info as JSON
+                        (SELECT json_build_object(
+                            'id', c.id, 'name', c.name, 'email', c.email,
+                            'phone', c.phone, 'cpf_cnpj', c.cpf_cnpj)
+                         FROM office_api.clients c
+                         WHERE c.id = p.client_id AND c.user_id = %(uid)s
+                        ) as _client,
+                        -- Deadlines (top 10)
+                        (SELECT COALESCE(json_agg(sub), '[]'::json)
+                         FROM (
+                            SELECT e.id, e.title,
+                                   e.start_at::text as due_date,
+                                   e.deadline_status as status,
+                                   e.priority,
+                                   (e.start_at::date - CURRENT_DATE) as days_until
+                            FROM office_api.events e
+                            WHERE e.user_id = %(uid)s AND e.processo_id = p.id
+                              AND e.event_type = 'prazo'
+                            ORDER BY e.start_at ASC
+                            LIMIT 10
+                         ) sub
+                        ) as _deadlines,
+                        -- Deadline counts
+                        (SELECT COUNT(*) FROM office_api.events e
+                         WHERE e.user_id = %(uid)s AND e.processo_id = p.id
+                           AND e.event_type = 'prazo'
+                        ) as _deadlines_count,
+                        (SELECT COUNT(*) FROM office_api.events e
+                         WHERE e.user_id = %(uid)s AND e.processo_id = p.id
+                           AND e.event_type = 'prazo'
+                           AND e.start_at < CURRENT_DATE
+                           AND e.deadline_status != 'completed'
+                        ) as _overdue_deadlines_count,
+                        -- Timeline events (top 20) with embedded documents
+                        (SELECT COALESCE(json_agg(t_sub), '[]'::json)
+                         FROM (
+                            SELECT te.id, te.event_type, te.title,
+                                   te.description, te.event_date, te.created_at,
+                                   COALESCE(
+                                       (SELECT json_agg(json_build_object(
+                                           'id', d.id, 'name', d.name, 'file_url', d.file_url
+                                        ) ORDER BY ted.created_at)
+                                        FROM office_api.timeline_event_documents ted
+                                        JOIN office_api.documents d ON d.id = ted.document_id
+                                        WHERE ted.timeline_event_id = te.id),
+                                       '[]'::json
+                                   ) as documents
+                            FROM office_api.timeline_events te
+                            WHERE te.user_id = %(uid)s AND te.process_id = p.id
+                            ORDER BY te.event_date DESC, te.created_at DESC
+                            LIMIT 20
+                         ) t_sub
+                        ) as _timeline,
+                        -- Timeline count
+                        (SELECT COUNT(*) FROM office_api.timeline_events te
+                         WHERE te.user_id = %(uid)s AND te.process_id = p.id
+                        ) as _timeline_count,
+                        -- Documents (top 10)
+                        (SELECT COALESCE(json_agg(d_sub), '[]'::json)
+                         FROM (
+                            SELECT d.id, d.name, d.mime_type, d.file_size,
+                                   d.file_url, d.visible_to_client, d.created_at
+                            FROM office_api.documents d
+                            WHERE d.user_id = %(uid)s AND d.process_id = p.id
+                            ORDER BY d.created_at DESC
+                            LIMIT 10
+                         ) d_sub
+                        ) as _documents,
+                        -- Documents count
+                        (SELECT COUNT(*) FROM office_api.documents d
+                         WHERE d.user_id = %(uid)s AND d.process_id = p.id
+                        ) as _documents_count
+                    FROM office_api.processes p
+                    WHERE p.user_id = %(uid)s AND p.id = %(pid)s
                     """,
-                    (str(process_row["client_id"]), str(user_id)),
+                    {"uid": uid, "pid": pid},
                 )
-                client_row = await cur.fetchone()
+                row = await cur.fetchone()
+
+                if not row:
+                    return None
+
+                # Extract aggregated fields (prefixed with _) from the row
+                client_data = row.pop("_client")
+                deadlines_data = row.pop("_deadlines") or []
+                deadlines_count = row.pop("_deadlines_count")
+                overdue_deadlines_count = row.pop("_overdue_deadlines_count")
+                timeline_data = row.pop("_timeline") or []
+                timeline_count = row.pop("_timeline_count")
+                documents_data = row.pop("_documents") or []
+                documents_count = row.pop("_documents_count")
+
                 client = (
-                    ProcessClientInfo(**client_row)
-                    if client_row
+                    ProcessClientInfo(**client_data)
+                    if client_data
                     else ProcessClientInfo(
-                        id=process_row["client_id"],
+                        id=row["client_id"],
                         name="Cliente não encontrado",
                         email=None,
                         phone=None,
@@ -259,137 +336,15 @@ class ProcessesService:
                     )
                 )
 
-                # Get deadlines with days_until calculation
-                await cur.execute(
-                    """
-                    SELECT
-                        id,
-                        title,
-                        start_at::text as due_date,
-                        deadline_status as status,
-                        priority,
-                        (start_at::date - CURRENT_DATE) as days_until
-                    FROM office_api.events
-                    WHERE user_id = %s AND processo_id = %s AND event_type = 'prazo'
-                    ORDER BY start_at ASC
-                    LIMIT 10
-                    """,
-                    (str(user_id), str(process_id)),
-                )
-                deadline_rows = await cur.fetchall()
-                deadlines = [ProcessDeadlineSummary(**row) for row in deadline_rows]
-
-                # Get deadline counts
-                await cur.execute(
-                    """
-                    SELECT
-                        COUNT(*) as total,
-                        COUNT(*) FILTER (
-                            WHERE start_at < CURRENT_DATE
-                            AND deadline_status != 'completed'
-                        ) as overdue
-                    FROM office_api.events
-                    WHERE user_id = %s AND processo_id = %s AND event_type = 'prazo'
-                    """,
-                    (str(user_id), str(process_id)),
-                )
-                deadline_counts = await cur.fetchone()
-                deadlines_count = deadline_counts["total"] if deadline_counts else 0
-                overdue_deadlines_count = deadline_counts["overdue"] if deadline_counts else 0
-
-                # Get timeline events
-                await cur.execute(
-                    """
-                    SELECT id, event_type, title, description, event_date, created_at
-                    FROM office_api.timeline_events
-                    WHERE user_id = %s AND process_id = %s
-                    ORDER BY event_date DESC, created_at DESC
-                    LIMIT 20
-                    """,
-                    (str(user_id), str(process_id)),
-                )
-                timeline_rows = await cur.fetchall()
-
-                # Fetch linked documents for all timeline events in one query
-                timeline_event_ids = [str(row["id"]) for row in timeline_rows]
-                docs_by_event: dict[str, list[TimelineDocumentSummary]] = {}
-                if timeline_event_ids:
-                    await cur.execute(
-                        """
-                        SELECT ted.timeline_event_id, d.id, d.name, d.file_url
-                        FROM office_api.timeline_event_documents ted
-                        INNER JOIN office_api.documents d ON d.id = ted.document_id
-                        WHERE ted.timeline_event_id = ANY(%s::uuid[])
-                        ORDER BY ted.created_at ASC
-                        """,
-                        (timeline_event_ids,),
-                    )
-                    doc_rows = await cur.fetchall()
-                    for doc_row in doc_rows:
-                        eid = str(doc_row["timeline_event_id"])
-                        docs_by_event.setdefault(eid, []).append(
-                            TimelineDocumentSummary(
-                                id=doc_row["id"],
-                                name=doc_row["name"],
-                                file_url=doc_row["file_url"],
-                            )
-                        )
-
-                timeline = [
-                    ProcessTimelineEvent(
-                        **row,
-                        documents=docs_by_event.get(str(row["id"]), []),
-                    )
-                    for row in timeline_rows
-                ]
-
-                # Get timeline count
-                await cur.execute(
-                    """
-                    SELECT COUNT(*) as count
-                    FROM office_api.timeline_events
-                    WHERE user_id = %s AND process_id = %s
-                    """,
-                    (str(user_id), str(process_id)),
-                )
-                timeline_count_row = await cur.fetchone()
-                timeline_count = timeline_count_row["count"] if timeline_count_row else 0
-
-                # Get documents
-                await cur.execute(
-                    """
-                    SELECT id, name, mime_type, file_size, file_url, visible_to_client, created_at
-                    FROM office_api.documents
-                    WHERE user_id = %s AND process_id = %s
-                    ORDER BY created_at DESC
-                    LIMIT 10
-                    """,
-                    (str(user_id), str(process_id)),
-                )
-                document_rows = await cur.fetchall()
-                documents = [ProcessDocumentSummary(**row) for row in document_rows]
-
-                # Get documents count
-                await cur.execute(
-                    """
-                    SELECT COUNT(*) as count
-                    FROM office_api.documents
-                    WHERE user_id = %s AND process_id = %s
-                    """,
-                    (str(user_id), str(process_id)),
-                )
-                documents_count_row = await cur.fetchone()
-                documents_count = documents_count_row["count"] if documents_count_row else 0
-
                 return ProcessDetailResponse(
-                    **process_row,
+                    **row,
                     client=client,
-                    deadlines=deadlines,
+                    deadlines=[ProcessDeadlineSummary(**d) for d in deadlines_data],
                     deadlines_count=deadlines_count,
                     overdue_deadlines_count=overdue_deadlines_count,
-                    timeline=timeline,
+                    timeline=[ProcessTimelineEvent(**t) for t in timeline_data],
                     timeline_count=timeline_count,
-                    documents=documents,
+                    documents=[ProcessDocumentSummary(**d) for d in documents_data],
                     documents_count=documents_count,
                 )
 

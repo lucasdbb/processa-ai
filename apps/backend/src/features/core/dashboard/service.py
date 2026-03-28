@@ -12,136 +12,85 @@ class DashboardService:
         self.supabase = get_supabase()
 
     async def get_dashboard_stats(self, user_id: str) -> dict:
-        """Get dashboard statistics for user."""
+        """Get dashboard statistics for user in a single query (consistent snapshot)."""
         try:
             pool = await get_pool()
-            stats = {}
 
             first_day_of_month = datetime.now(timezone.utc).replace(
                 day=1, hour=0, minute=0, second=0, microsecond=0
             )
             first_day_prev_month = (first_day_of_month - timedelta(days=1)).replace(day=1)
-            today_start = datetime.now(timezone.utc).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            today_end = today_start + timedelta(days=1)
+            today = datetime.now(timezone.utc).date()
 
             async with pool.connection() as conn:
                 async with conn.cursor(row_factory=dict_row) as cur:
-                    # Get clients count
-                    await cur.execute(
-                        "SELECT COUNT(*) as total FROM office_api.clients WHERE user_id = %s",
-                        (user_id,),
-                    )
-                    result = await cur.fetchone()
-                    stats["total_clients"] = result["total"] if result else 0
-
-                    # Get new clients this month
                     await cur.execute(
                         """
-                        SELECT COUNT(*) as total FROM office_api.clients
-                        WHERE user_id = %s AND created_at >= %s
+                        SELECT
+                            (SELECT COUNT(*) FROM office_api.clients
+                             WHERE user_id = %(uid)s) as total_clients,
+                            (SELECT COUNT(*) FROM office_api.clients
+                             WHERE user_id = %(uid)s
+                               AND created_at >= %(month_start)s) as new_clients_this_month,
+                            (SELECT COUNT(*) FROM office_api.processes
+                             WHERE user_id = %(uid)s
+                               AND status != 'archived') as active_processes,
+                            (SELECT COUNT(*) FROM office_api.processes
+                             WHERE user_id = %(uid)s
+                               AND created_at >= %(month_start)s) as new_processes_this_month,
+                            (SELECT COUNT(*) FROM office_api.events
+                             WHERE user_id = %(uid)s AND event_type = 'prazo'
+                               AND deadline_status = 'pending'
+                               AND start_at::date = %(today)s) as deadlines_today,
+                            (SELECT COUNT(*) FROM office_api.events
+                             WHERE user_id = %(uid)s AND event_type = 'prazo'
+                               AND deadline_status = 'pending'
+                               AND start_at::date = %(today)s
+                               AND priority = 'high') as urgent_deadlines_today,
+                            (SELECT COUNT(*) FROM office_api.events
+                             WHERE user_id = %(uid)s
+                               AND event_type = 'prazo') as total_deadlines,
+                            (SELECT COUNT(*) FROM public.credit_transactions
+                             WHERE user_id = %(uid)s AND transaction_type = 'consume'
+                               AND reason LIKE %(calc_pattern)s
+                               AND created_at >= %(month_start)s) as calculations_this_month,
+                            (SELECT COUNT(*) FROM public.credit_transactions
+                             WHERE user_id = %(uid)s AND transaction_type = 'consume'
+                               AND reason LIKE %(calc_pattern)s
+                               AND created_at >= %(prev_month_start)s
+                               AND created_at < %(month_start)s) as prev_month_calculations
                         """,
-                        (user_id, first_day_of_month),
+                        {
+                            "uid": user_id,
+                            "month_start": first_day_of_month,
+                            "prev_month_start": first_day_prev_month,
+                            "today": today,
+                            "calc_pattern": "%calculation%",
+                        },
                     )
-                    result = await cur.fetchone()
-                    stats["new_clients_this_month"] = result["total"] if result else 0
+                    row = await cur.fetchone()
 
-                    # Get active processes count
-                    await cur.execute(
-                        """
-                        SELECT COUNT(*) as total FROM office_api.processes
-                        WHERE user_id = %s AND status != 'archived'
-                        """,
-                        (user_id,),
-                    )
-                    result = await cur.fetchone()
-                    stats["active_processes"] = result["total"] if result else 0
-
-                    # Get new processes this month
-                    await cur.execute(
-                        """
-                        SELECT COUNT(*) as total FROM office_api.processes
-                        WHERE user_id = %s AND created_at >= %s
-                        """,
-                        (user_id, first_day_of_month),
-                    )
-                    result = await cur.fetchone()
-                    stats["new_processes_this_month"] = result["total"] if result else 0
-
-                    # Get deadlines for today
-                    await cur.execute(
-                        """
-                        SELECT id, priority FROM office_api.events
-                        WHERE user_id = %s AND event_type = 'prazo' AND deadline_status = 'pending'
-                          AND start_at::date >= %s AND start_at::date < %s
-                        """,
-                        (user_id, today_start.date(), today_end.date()),
-                    )
-                    deadlines_today = await cur.fetchall()
-                    stats["deadlines_today"] = len(deadlines_today)
-                    stats["urgent_deadlines_today"] = sum(
-                        1 for d in deadlines_today if d.get("priority") == "high"
-                    )
-
-                    # Get total deadlines ever created (for onboarding checklist)
-                    await cur.execute(
-                        """
-                        SELECT COUNT(*) as total FROM office_api.events
-                        WHERE user_id = %s AND event_type = 'prazo'
-                        """,
-                        (user_id,),
-                    )
-                    result = await cur.fetchone()
-                    stats["total_deadlines"] = result["total"] if result else 0
-
-                    # Get calculations count this month (from credit transactions)
-                    await cur.execute(
-                        """
-                        SELECT COUNT(*) as total FROM public.credit_transactions
-                        WHERE user_id = %s
-                          AND transaction_type = 'consume'
-                          AND reason LIKE %s
-                          AND created_at >= %s
-                        """,
-                        (user_id, "%calculation%", first_day_of_month),
-                    )
-                    result = await cur.fetchone()
-                    stats["calculations_this_month"] = result["total"] if result else 0
-
-                    # Get previous month calculations for comparison
-                    await cur.execute(
-                        """
-                        SELECT COUNT(*) as total FROM public.credit_transactions
-                        WHERE user_id = %s
-                          AND transaction_type = 'consume'
-                          AND reason LIKE %s
-                          AND created_at >= %s
-                          AND created_at < %s
-                        """,
-                        (user_id, "%calculation%", first_day_prev_month, first_day_of_month),
-                    )
-                    result = await cur.fetchone()
-                    prev_month_calculations = result["total"] if result else 0
-
-                    # Calculate percentage change
-                    if prev_month_calculations > 0:
-                        change_pct = (
-                            (stats["calculations_this_month"] - prev_month_calculations)
-                            / prev_month_calculations
-                            * 100
-                        )
-                        stats["calculations_change_percent"] = round(change_pct, 1)
+                    curr = row["calculations_this_month"]
+                    prev = row["prev_month_calculations"]
+                    if prev > 0:
+                        change_pct = round((curr - prev) / prev * 100, 1)
                     else:
-                        stats["calculations_change_percent"] = (
-                            100 if stats["calculations_this_month"] > 0 else 0
-                        )
+                        change_pct = 100 if curr > 0 else 0
 
-            return stats
+                    return {
+                        "total_clients": row["total_clients"],
+                        "new_clients_this_month": row["new_clients_this_month"],
+                        "active_processes": row["active_processes"],
+                        "new_processes_this_month": row["new_processes_this_month"],
+                        "deadlines_today": row["deadlines_today"],
+                        "urgent_deadlines_today": row["urgent_deadlines_today"],
+                        "total_deadlines": row["total_deadlines"],
+                        "calculations_this_month": curr,
+                        "calculations_change_percent": change_pct,
+                    }
 
         except Exception as e:
             logger.error(f"Failed to get dashboard stats: {e}")
-            # Return default values on error
             return {
                 "total_clients": 0,
                 "new_clients_this_month": 0,
