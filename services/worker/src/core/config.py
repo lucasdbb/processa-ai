@@ -48,6 +48,7 @@ class Settings(BaseSettings):
             "DATABASE_URL": self.DATABASE_URL,
             "SUPABASE_URL": self.SUPABASE_URL,
             "SUPABASE_SERVICE_ROLE_KEY": self.SUPABASE_SERVICE_ROLE_KEY,
+            "GEMINI_API_KEY": self.GEMINI_API_KEY,
         }
         missing = [k for k, v in required.items() if not v]
         if missing:
@@ -62,6 +63,7 @@ GEMINI_MODEL_MAP: dict[str, str] = {
     "process_summary": "gemini-3.1-flash-lite-preview",
     "cnis_analysis": "gemini-3.1-pro-preview",
     "brief_scanner": "gemini-3.1-pro-preview",
+    "labor_claim": "gemini-3.1-pro-preview",
     "audio_transcription": "gemini-3.1-flash-lite-preview",
 }
 
