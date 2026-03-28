@@ -42,7 +42,7 @@ export default function AssinaturaPage() {
   // ── Plans state ──────────────────────────────────────────────────────────────
   const [apiPlans, setApiPlans] = useState<ApiPlan[] | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
-  const { subscription, fetchSubscription } = useBillingStore()
+  const { subscription, invalidate: invalidateSubscription } = useBillingStore()
   const currentPlanId = subscription?.plan_id ?? null
 
   // ── Credits state ─────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ export default function AssinaturaPage() {
     try {
       if (plan.isFree && hasStripeSubscription) {
         await billingService.cancelSubscription()
-        await fetchSubscription()
+        await invalidateSubscription()
         toast.success('Assinatura cancelada. Você terá acesso até o fim do período atual.')
         setLoadingPlan(null)
         return
@@ -208,7 +208,7 @@ export default function AssinaturaPage() {
 
       if (hasStripeSubscription && plan.stripePriceId) {
         await billingService.changePlan(plan.stripePriceId)
-        await fetchSubscription()
+        await invalidateSubscription()
         toast.success(`Plano alterado para ${plan.name} com sucesso!`)
         setLoadingPlan(null)
         return

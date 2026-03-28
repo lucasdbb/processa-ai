@@ -54,9 +54,13 @@ export function AppLayout() {
   // Initialize auth
   const { user } = useAuth()
 
-  // Initialize billing
+  // Initialize billing + re-validate on window focus
   useEffect(() => {
     fetchSubscription()
+
+    const onFocus = () => fetchSubscription()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [fetchSubscription])
 
   // Initialize credits realtime subscription

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { PartyPopper } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { useBillingStore } from '@/stores/billing-store'
 
 function fireConfetti() {
   confetti({
@@ -39,11 +40,14 @@ export function SubscriptionSuccessModal() {
   const location = useLocation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const invalidateSubscription = useBillingStore((s) => s.invalidate)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('subscription') === 'success') {
       setOpen(true)
+      // Re-fetch subscription to reflect the new plan immediately
+      invalidateSubscription()
       // Remove o query param da URL sem reload
       const newSearch = new URLSearchParams(location.search)
       newSearch.delete('subscription')
