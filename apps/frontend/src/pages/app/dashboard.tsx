@@ -98,7 +98,6 @@ export default function DashboardPage() {
     financial,
     processesSummary,
     activity,
-    servicesCount,
     briefing,
     loading,
     errors,
@@ -131,7 +130,7 @@ export default function DashboardPage() {
         },
         {
           name: 'Serviços Ativos',
-          value: servicesCount.toString(),
+          value: (stats.active_services ?? 0).toString(),
           change: undefined,
           changeType: 'neutral',
           icon: Briefcase,
@@ -201,7 +200,7 @@ export default function DashboardPage() {
         data-tour="stats"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
-        {loading.stats || loading.servicesCount ? (
+        {loading.stats ? (
           Array.from({ length: 4 }).map((_, idx) => (
             <div key={idx} className="bg-card border border-border rounded-xl p-5 space-y-3">
               <Skeleton className="h-4 w-24" />
@@ -215,7 +214,6 @@ export default function DashboardPage() {
               title="Indicadores"
               onRetry={() => {
                 void refetch.stats()
-                void refetch.servicesCount()
               }}
             />
           </div>

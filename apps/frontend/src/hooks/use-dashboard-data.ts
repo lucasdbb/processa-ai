@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { dashboardService } from "@/services/dashboard-service";
-import { servicesService } from "@/services/services-service";
 import { useUser } from "@/features/auth/hooks/use-user";
 
 export function useDashboardData() {
@@ -42,13 +41,6 @@ export function useDashboardData() {
     retry: false,
   });
 
-  const servicesCountQuery = useQuery({
-    queryKey: ["dashboard", "services-count"],
-    queryFn: () => servicesService.count(),
-    enabled,
-    retry: false,
-  });
-
   const briefingQuery = useQuery({
     queryKey: ["dashboard", "briefing"],
     queryFn: () => dashboardService.getDailyBriefing(),
@@ -62,7 +54,6 @@ export function useDashboardData() {
     financial: financialQuery.isLoading,
     processesSummary: processesSummaryQuery.isLoading,
     activity: activityQuery.isLoading,
-    servicesCount: servicesCountQuery.isLoading,
     briefing: briefingQuery.isLoading,
   };
 
@@ -72,7 +63,6 @@ export function useDashboardData() {
     financial: financialQuery.isError,
     processesSummary: processesSummaryQuery.isError,
     activity: activityQuery.isError,
-    servicesCount: servicesCountQuery.isError,
     briefing: briefingQuery.isError,
   };
 
@@ -82,7 +72,6 @@ export function useDashboardData() {
     financial: financialQuery.refetch,
     processesSummary: processesSummaryQuery.refetch,
     activity: activityQuery.refetch,
-    servicesCount: servicesCountQuery.refetch,
     briefing: briefingQuery.refetch,
   };
 
@@ -92,7 +81,6 @@ export function useDashboardData() {
     loading.financial ||
     loading.processesSummary ||
     loading.activity ||
-    loading.servicesCount ||
     loading.briefing;
 
   return {
@@ -101,7 +89,6 @@ export function useDashboardData() {
     financial: financialQuery.data ?? null,
     processesSummary: processesSummaryQuery.data ?? null,
     activity: activityQuery.data ?? [],
-    servicesCount: servicesCountQuery.data?.total ?? 0,
     briefing: briefingQuery.data ?? null,
     loading,
     errors,

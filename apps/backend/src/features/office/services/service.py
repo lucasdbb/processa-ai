@@ -80,23 +80,6 @@ class ServicesService:
                 services = [ServiceResponse(**row) for row in rows]
                 return services, total
 
-    async def count_services(self, user_id: UUID) -> dict[str, int]:
-        """Count active services for a user."""
-        pool = await get_pool()
-
-        async with pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                await cur.execute(
-                    """
-                    SELECT COUNT(*) as total
-                    FROM office_api.services
-                    WHERE user_id = %s AND status = 'active'
-                    """,
-                    (str(user_id),),
-                )
-                row = await cur.fetchone()
-                return {"total": row["total"] if row else 0}
-
     async def get_service(self, user_id: UUID, service_id: UUID) -> ServiceResponse | None:
         """Get a single service by ID."""
         pool = await get_pool()

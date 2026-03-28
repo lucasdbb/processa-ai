@@ -49,13 +49,6 @@ async def list_services(
     return ServiceListResponse(services=services, total=total)
 
 
-@router.get("/count")
-async def count_services(
-    user_id: UUID = Depends(get_user_id),
-):
-    """Count active services for the current user."""
-    return await services_service.count_services(user_id)
-
 
 @router.get("/summary/{client_id}", response_model=ServiceSummaryResponse)
 async def get_service_summary(

@@ -123,18 +123,6 @@ export const servicesService = {
     return response.json();
   },
 
-  async count(): Promise<{ total: number }> {
-    const response = await fetchWithCredentials(`${API_URL}/office/services/count`, {
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to count services");
-    }
-
-    return response.json();
-  },
-
   async get(id: string): Promise<Service> {
     const response = await fetchWithCredentials(
       `${API_URL}/office/services/${id}`,

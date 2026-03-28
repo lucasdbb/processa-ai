@@ -58,7 +58,10 @@ class DashboardService:
                              WHERE user_id = %(uid)s AND transaction_type = 'consume'
                                AND reason LIKE %(calc_pattern)s
                                AND created_at >= %(prev_month_start)s
-                               AND created_at < %(month_start)s) as prev_month_calculations
+                               AND created_at < %(month_start)s) as prev_month_calculations,
+                            (SELECT COUNT(*) FROM office_api.services
+                             WHERE user_id = %(uid)s
+                               AND status = 'active') as active_services
                         """,
                         {
                             "uid": user_id,
@@ -87,6 +90,7 @@ class DashboardService:
                         "total_deadlines": row["total_deadlines"],
                         "calculations_this_month": curr,
                         "calculations_change_percent": change_pct,
+                        "active_services": row["active_services"],
                     }
 
         except Exception as e:
@@ -100,6 +104,7 @@ class DashboardService:
                 "urgent_deadlines_today": 0,
                 "calculations_this_month": 0,
                 "calculations_change_percent": 0,
+                "active_services": 0,
             }
 
     async def get_upcoming_deadlines(self, user_id: str, limit: int = 5) -> list:
