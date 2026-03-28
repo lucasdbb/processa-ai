@@ -337,7 +337,9 @@ async def get_user_analysis_history(
                     j.status,
                     j.created_at,
                     j.finished_at,
-                    j.result_payload,
+                    jsonb_build_object(
+                        'audit_score', j.result_payload->>'audit_score'
+                    ) as result_payload,
                     d_input.id as input_doc_id,
                     d_input.filename as input_filename,
                     d_input.size_bytes as input_size,
@@ -404,8 +406,16 @@ async def get_all_user_jobs(
             j.created_at,
             j.status,
             j.endpoint_key,
-            j.request_payload,
-            j.result_payload,
+            jsonb_build_object(
+                'files', j.request_payload->'files',
+                'storage_path', j.request_payload->>'storage_path'
+            ) as request_payload,
+            jsonb_build_object(
+                'download_url', j.result_payload->>'download_url',
+                'pdf_url', j.result_payload->>'pdf_url',
+                'content', j.result_payload->>'content',
+                'text', j.result_payload->>'text'
+            ) as result_payload,
             c.name as client_name,
             c.id as client_id,
             d.bucket as output_bucket,
