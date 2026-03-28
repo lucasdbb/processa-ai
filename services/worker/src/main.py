@@ -21,7 +21,7 @@ from src.core.ai_worker_store import (
     parse_job_uuid,
 )
 from src.core.config import settings
-from src.core.db import init_db
+from src.core.db import close_db, init_db
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
 from src.core.queue import ack_job, dequeue_job, dequeue_translation_job, nack_job, reap_stuck_jobs
@@ -923,6 +923,9 @@ async def run_worker() -> None:
     for name, result in zip(loop_names, results):
         if isinstance(result, Exception):
             logger.error("%s crashed with exception: %s", name, result, exc_info=result)
+
+    # Gracefully close database connection pool
+    await close_db()
 
 
 def main() -> None:
