@@ -52,7 +52,7 @@ JOB_COSTS = {
     "process_summary": 5,
     "labor_claim": 5,
     "brief_scanner": 3,
-    "audio_transcription": 5,
+    "audio_transcription": 3,
 }
 
 

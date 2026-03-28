@@ -5,8 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # max_tokens=None means "unlimited" (catch-all for tokens above previous tier).
 DEFAULT_LLM_PRICING: dict[str, list[tuple[int | None, float, float]]] = {
     "gemini-3.1-pro-preview": [
-        (200_000, 2.0, 12.0),   # <= 200k tokens
-        (None, 4.0, 18.0),      # > 200k tokens
+        (200_000, 2.0, 12.0),  # <= 200k tokens
+        (None, 4.0, 18.0),  # > 200k tokens
     ],
     "gemini-3.1-flash-lite-preview": [
         (None, 0.25, 1.50),
@@ -62,7 +62,7 @@ GEMINI_MODEL_MAP: dict[str, str] = {
     "process_summary": "gemini-3.1-flash-lite-preview",
     "cnis_analysis": "gemini-3.1-pro-preview",
     "brief_scanner": "gemini-3.1-pro-preview",
-    "audio_transcription": "gemini-3.1-pro-preview",
+    "audio_transcription": "gemini-3.1-flash-lite-preview",
 }
 
 
