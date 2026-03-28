@@ -1,3 +1,4 @@
+import asyncio
 import io
 
 import httpx
@@ -264,11 +265,10 @@ class AiService:
         if not file_urls:
             raise WorkerException(status_code=400, detail="Nenhum arquivo enviado")
 
-        # Download all PDFs
-        pdf_bytes_list: list[bytes] = []
-        for url in file_urls:
-            pdf_bytes = await self.storage.download_pdf_bytes(url)
-            pdf_bytes_list.append(pdf_bytes)
+        # Download all PDFs in parallel
+        pdf_bytes_list: list[bytes] = await asyncio.gather(
+            *[self.storage.download_pdf_bytes(url) for url in file_urls]
+        )
 
         inferred_filename = self.storage.infer_pdf_filename_from_url(file_urls[0])
 
@@ -413,11 +413,10 @@ class AiService:
         if not file_urls:
             raise WorkerException(status_code=400, detail="Nenhum arquivo enviado")
 
-        # Download all PDFs
-        pdf_bytes_list: list[bytes] = []
-        for url in file_urls:
-            pdf_bytes = await self.storage.download_pdf_bytes(url)
-            pdf_bytes_list.append(pdf_bytes)
+        # Download all PDFs in parallel
+        pdf_bytes_list: list[bytes] = await asyncio.gather(
+            *[self.storage.download_pdf_bytes(url) for url in file_urls]
+        )
 
         inferred_filename = self.storage.infer_pdf_filename_from_url(file_urls[0])
 
