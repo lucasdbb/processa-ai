@@ -55,48 +55,49 @@ class FeePaymentsService:
         pool = await get_pool()
 
         async with pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                # Verify fee exists and belongs to user
-                await cur.execute(
-                    """
-                    SELECT id, amount, paid_amount, service_id
-                    FROM office_api.fees
-                    WHERE user_id = %s AND id = %s
-                    """,
-                    (str(user_id), str(data.fee_id)),
-                )
-                fee_row = await cur.fetchone()
-                if not fee_row:
-                    raise ValueError("Fee not found")
-
-                # Create payment
-                await cur.execute(
-                    """
-                    INSERT INTO office_api.fee_payments (
-                        user_id, fee_id, amount, payment_date, payment_method, notes
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    # Verify fee exists and belongs to user
+                    await cur.execute(
+                        """
+                        SELECT id, amount, paid_amount, service_id
+                        FROM office_api.fees
+                        WHERE user_id = %s AND id = %s
+                        """,
+                        (str(user_id), str(data.fee_id)),
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    RETURNING *
-                    """,
-                    (
-                        str(user_id),
-                        str(data.fee_id),
-                        data.amount,
-                        data.payment_date or "CURRENT_DATE",
-                        data.payment_method,
-                        data.notes,
-                    ),
-                )
-                payment_row = await cur.fetchone()
+                    fee_row = await cur.fetchone()
+                    if not fee_row:
+                        raise ValueError("Fee not found")
 
-                # Recalculate fee paid_amount and status
-                await self._recalculate_fee_paid_amount(cur, user_id, data.fee_id)
+                    # Create payment
+                    await cur.execute(
+                        """
+                        INSERT INTO office_api.fee_payments (
+                            user_id, fee_id, amount, payment_date, payment_method, notes
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        RETURNING *
+                        """,
+                        (
+                            str(user_id),
+                            str(data.fee_id),
+                            data.amount,
+                            data.payment_date or "CURRENT_DATE",
+                            data.payment_method,
+                            data.notes,
+                        ),
+                    )
+                    payment_row = await cur.fetchone()
 
-                # Sync service paid_amount if fee is linked to a service
-                if fee_row["service_id"]:
-                    await self._sync_service_paid_amount(conn, user_id, fee_row["service_id"])
+                    # Recalculate fee paid_amount and status
+                    await self._recalculate_fee_paid_amount(cur, user_id, data.fee_id)
 
-                return FeePaymentResponse(**payment_row)
+                    # Sync service paid_amount if fee is linked to a service
+                    if fee_row["service_id"]:
+                        await self._sync_service_paid_amount(conn, user_id, fee_row["service_id"])
+
+                    return FeePaymentResponse(**payment_row)
 
     async def update_payment(
         self, user_id: UUID, payment_id: UUID, data: FeePaymentUpdate

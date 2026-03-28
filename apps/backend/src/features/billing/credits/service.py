@@ -242,64 +242,51 @@ class CreditsService:
 
     async def grant_welcome_credits(self, user_id: str, cpf: str, ip: str) -> dict:
         """Concede créditos de boas-vindas."""
-        # 1. Verificar se já reivindicou
-        profile = (
-            self.supabase.table("profiles")
-            .select("welcome_credits_claimed")
-            .eq("id", user_id)
-            .single()
-            .execute()
-        )
-        if profile.data and profile.data.get("welcome_credits_claimed"):
-            raise HTTPException(status_code=400, detail="Créditos de boas-vindas já reivindicados")
-
-        # 2. Validar CPF
+        # 1. Validar CPF (antes de qualquer escrita)
         if not validate_cpf(cpf):
             raise HTTPException(status_code=400, detail="CPF inválido")
 
-        # 3. Verificar CPF duplicado
-        # A constraint unique no banco já cuida disso,
-        # mas podemos checar antes para erro mais amigável
+        # 2. Verificar CPF duplicado (check antecipado para erro amigável)
         cpf_check = self.supabase.table("profiles").select("id").eq("cpf", cpf).execute()
         if cpf_check.data:
             raise HTTPException(status_code=409, detail="CPF já cadastrado em outra conta")
 
-        # 4. Rate limit de IP
+        # 3. Rate limit de IP
         if not await check_ip_rate_limit(self.supabase, ip):
             raise HTTPException(
                 status_code=429, detail="Limite de contas atingido para este dispositivo/IP"
             )
 
-        # 5. Salvar CPF e marcar claimed
+        # 4. UPDATE atômico: seta CPF + claimed=true SOMENTE se claimed=false
+        #    Previne race condition TOCTOU — duas requests concorrentes não conseguem
+        #    ambas ver claimed=false e prosseguir.
         try:
             result = (
                 self.supabase.table("profiles")
                 .update({"cpf": cpf, "welcome_credits_claimed": True})
                 .eq("id", user_id)
+                .eq("welcome_credits_claimed", False)  # Atômico: só atualiza se ainda não reivindicou
                 .execute()
             )
 
             if not result.data:
-                logger.error(f"Failed to update profile for {user_id}. No rows affected.")
+                # Nenhuma row afetada = já reivindicou (ou user não existe)
                 raise HTTPException(
-                    status_code=500, detail="Erro ao atualizar perfil. Tente novamente."
+                    status_code=400, detail="Créditos de boas-vindas já reivindicados"
                 )
 
         except HTTPException:
             raise
         except Exception as e:
-            # Provavelmente violação de constraint unique se passou da checagem anterior
-            # (race condition)
             logger.error(f"Error updating profile cpf: {e}")
             raise HTTPException(
                 status_code=409, detail="Erro ao salvar CPF. Verifique se já não está em uso."
             )
 
-        # 6. Log IP
+        # 5. Log IP
         await log_registration_ip(self.supabase, ip, user_id)
 
-        # 7. Grant credits
-        # Assumindo que existe a RPC grant_credits_to_user
+        # 6. Grant credits
         try:
             self.supabase.rpc(
                 "grant_credits_to_user",
@@ -307,13 +294,13 @@ class CreditsService:
                     "p_user_id": user_id,
                     "p_amount": WELCOME_CREDITS_AMOUNT,
                     "p_reason": "welcome_bonus",
-                    "p_credit_type": "purchased",  # Nunca expira
+                    "p_credit_type": "purchased",
                 },
             ).execute()
         except Exception as e:
             logger.error(f"Error granting welcome credits: {e}")
 
-            # Rollback: desfazer marcação de claimed e limpar CPF para permitir nova tentativa
+            # Rollback: desfazer marcação de claimed para permitir nova tentativa
             try:
                 self.supabase.table("profiles").update({"welcome_credits_claimed": False}).eq(
                     "id", user_id
@@ -333,21 +320,17 @@ class CreditsService:
 
     async def grant_checklist_bonus(self, user_id: str) -> dict:
         """Concede créditos bônus por completar o checklist de onboarding."""
-        # Check if already claimed via profile flag
-        profile = (
+        # UPDATE atômico: marca claimed=true SOMENTE se claimed=false
+        # Previne race condition TOCTOU
+        result = (
             self.supabase.table("profiles")
-            .select("checklist_bonus_claimed")
+            .update({"checklist_bonus_claimed": True})
             .eq("id", user_id)
-            .single()
+            .eq("checklist_bonus_claimed", False)  # Atômico: só atualiza se ainda não reivindicou
             .execute()
         )
-        if profile.data and profile.data.get("checklist_bonus_claimed"):
+        if not result.data:
             raise HTTPException(status_code=400, detail="Bônus do checklist já reivindicado")
-
-        # Mark as claimed
-        self.supabase.table("profiles").update({"checklist_bonus_claimed": True}).eq(
-            "id", user_id
-        ).execute()
 
         # Grant credits
         try:
@@ -363,9 +346,12 @@ class CreditsService:
         except Exception as e:
             logger.error(f"Error granting checklist bonus: {e}")
             # Rollback
-            self.supabase.table("profiles").update({"checklist_bonus_claimed": False}).eq(
-                "id", user_id
-            ).execute()
+            try:
+                self.supabase.table("profiles").update({"checklist_bonus_claimed": False}).eq(
+                    "id", user_id
+                ).execute()
+            except Exception as rollback_error:
+                logger.error(f"Failed to rollback checklist bonus for {user_id}: {rollback_error}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao conceder bônus. Tente novamente.",
