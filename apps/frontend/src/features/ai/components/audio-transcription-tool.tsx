@@ -42,7 +42,7 @@ function isAudioFile(file: File): boolean {
 }
 
 function checkAudioDuration(file: File): Promise<number> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const audio = new Audio()
     audio.preload = 'metadata'

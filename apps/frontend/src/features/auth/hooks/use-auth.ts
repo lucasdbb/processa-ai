@@ -4,11 +4,43 @@ import type {
   LoginCredentials,
   RegisterData,
   UpdateProfileData,
+  UserRole,
+  User,
 } from "../types";
 import { createClient } from "@/lib/supabase/client";
 import { analytics } from "@/lib/analytics";
 import { useBillingStore } from "@/stores/billing-store";
 import { useCreditsStore } from "@/stores/credits-store";
+import { useOnboardingStore } from "@/features/onboarding/store";
+
+function syncOnboardingFromProfile(profile: Record<string, unknown>) {
+  useOnboardingStore.getState().syncFromServer({
+    hasUsedAiTool: !!profile.has_used_ai_tool,
+    hasUsedCalculator: !!profile.has_used_calculator,
+    isChecklistDismissed: !!profile.checklist_dismissed,
+    hasClaimedChecklistBonus: !!profile.checklist_bonus_claimed,
+  })
+}
+
+function buildUser(id: string, email: string, profile: Record<string, unknown>): User {
+  return {
+    id,
+    email,
+    name: profile.name as string,
+    role: profile.role as UserRole,
+    status: profile.status as User['status'],
+    avatar_url: profile.avatar_url as string | undefined,
+    created_at: profile.created_at as string,
+    welcome_credits_claimed: profile.welcome_credits_claimed as boolean | undefined,
+    has_used_ai_tool: profile.has_used_ai_tool as boolean | undefined,
+    has_used_calculator: profile.has_used_calculator as boolean | undefined,
+    checklist_dismissed: profile.checklist_dismissed as boolean | undefined,
+    checklist_bonus_claimed: profile.checklist_bonus_claimed as boolean | undefined,
+    cpf: profile.cpf as string | undefined,
+    phone: profile.phone as string | undefined,
+    newsletter_opt_in: profile.newsletter_opt_in as boolean | undefined,
+  }
+}
 
 export function useAuth() {
   const {
@@ -51,19 +83,8 @@ export function useAuth() {
                 user_status: profile.status,
               });
 
-              setUser({
-                id: session.user.id,
-                email: session.user.email!,
-                name: profile.name,
-                role: profile.role,
-                status: profile.status,
-                avatar_url: profile.avatar_url,
-                created_at: profile.created_at,
-                welcome_credits_claimed: profile.welcome_credits_claimed,
-                cpf: profile.cpf,
-                phone: profile.phone,
-                newsletter_opt_in: profile.newsletter_opt_in,
-              });
+              syncOnboardingFromProfile(profile);
+              setUser(buildUser(session.user.id, session.user.email!, profile));
             } else {
               setUser(null);
             }
@@ -133,19 +154,8 @@ export function useAuth() {
       });
       analytics.track('user_logged_in', { method: 'email' });
 
-      const currentUser = {
-        id: data.user.id,
-        email: data.user.email!,
-        name: profile.name,
-        role: profile.role,
-        status: profile.status,
-        avatar_url: profile.avatar_url,
-        created_at: profile.created_at,
-        welcome_credits_claimed: profile.welcome_credits_claimed,
-        cpf: profile.cpf,
-        phone: profile.phone,
-        newsletter_opt_in: profile.newsletter_opt_in,
-      };
+      syncOnboardingFromProfile(profile);
+      const currentUser = buildUser(data.user.id, data.user.email!, profile);
 
       setUser(currentUser);
       return currentUser;
@@ -200,19 +210,8 @@ export function useAuth() {
           .single();
 
         if (profile) {
-          const currentUser = {
-            id: authData.user.id,
-            email: authData.user.email!,
-            name: profile.name,
-            role: profile.role,
-            status: profile.status,
-            avatar_url: profile.avatar_url,
-            created_at: profile.created_at,
-            welcome_credits_claimed: profile.welcome_credits_claimed,
-            cpf: profile.cpf,
-            phone: profile.phone,
-            newsletter_opt_in: profile.newsletter_opt_in,
-          };
+          syncOnboardingFromProfile(profile);
+          const currentUser = buildUser(authData.user.id, authData.user.email!, profile);
           setUser(currentUser);
           return currentUser;
         }

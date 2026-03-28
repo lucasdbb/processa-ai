@@ -247,7 +247,7 @@ class CreditsService:
             raise HTTPException(status_code=400, detail="CPF inválido")
 
         # 2. Verificar CPF duplicado (check antecipado para erro amigável)
-        cpf_check = self.supabase.table("profiles").select("id").eq("cpf", cpf).execute()
+        cpf_check = self.supabase.table("profiles").select("id").eq("cpf", cpf).neq("id", user_id).execute()
         if cpf_check.data:
             raise HTTPException(status_code=409, detail="CPF já cadastrado em outra conta")
 

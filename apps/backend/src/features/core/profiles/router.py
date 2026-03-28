@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from src.core.auth import get_user_id, get_user_role, verify_internal_token
 from src.features.core.profiles.schemas import (
     AddCreditsRequest,
+    UpdateOnboarding,
     UpdatePlanRequest,
     UpdateProfile,
     UpdateRoleRequest,
@@ -27,6 +28,15 @@ async def update_my_profile(
 ):
     """Update current user's profile."""
     return await profiles_service.update_profile(user_id, data)
+
+
+@router.patch("/me/onboarding")
+async def update_onboarding(
+    data: UpdateOnboarding,
+    user_id: str = Depends(get_user_id),
+):
+    """Update onboarding flags (has_used_ai_tool, has_used_calculator, checklist_dismissed)."""
+    return await profiles_service.update_onboarding(user_id, data.model_dump(exclude_none=True))
 
 
 @router.delete("/me")

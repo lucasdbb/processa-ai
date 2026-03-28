@@ -1,6 +1,17 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { TourId } from "./types";
+import { API_URL, fetchWithCredentials } from "@/lib/fetch";
+
+function persistOnboardingFlag(flags: Record<string, boolean>) {
+  fetchWithCredentials(`${API_URL}/profiles/me/onboarding`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(flags),
+  }).catch(() => {
+    // Fire-and-forget: localStorage is the primary source, server is backup
+  });
+}
 
 interface OnboardingState {
   completedTours: TourId[];
@@ -23,6 +34,8 @@ interface OnboardingState {
   dismissChecklist: () => void;
   resetChecklist: () => void;
   claimChecklistBonus: () => void;
+  /** Sync flags from server profile without triggering API calls back */
+  syncFromServer: (flags: { hasUsedAiTool?: boolean; hasUsedCalculator?: boolean; isChecklistDismissed?: boolean; hasClaimedChecklistBonus?: boolean }) => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -70,15 +83,22 @@ export const useOnboardingStore = create<OnboardingState>()(
       },
 
       markAiToolUsed: () => {
-        set({ hasUsedAiTool: true });
+        if (!get().hasUsedAiTool) {
+          set({ hasUsedAiTool: true });
+          persistOnboardingFlag({ has_used_ai_tool: true });
+        }
       },
 
       markCalculatorUsed: () => {
-        set({ hasUsedCalculator: true });
+        if (!get().hasUsedCalculator) {
+          set({ hasUsedCalculator: true });
+          persistOnboardingFlag({ has_used_calculator: true });
+        }
       },
 
       dismissChecklist: () => {
         set({ isChecklistDismissed: true });
+        persistOnboardingFlag({ checklist_dismissed: true });
       },
 
       resetChecklist: () => {
@@ -87,6 +107,15 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       claimChecklistBonus: () => {
         set({ hasClaimedChecklistBonus: true });
+      },
+
+      syncFromServer: (flags) => {
+        const update: Partial<OnboardingState> = {};
+        if (flags.hasUsedAiTool) update.hasUsedAiTool = true;
+        if (flags.hasUsedCalculator) update.hasUsedCalculator = true;
+        if (flags.isChecklistDismissed) update.isChecklistDismissed = true;
+        if (flags.hasClaimedChecklistBonus) update.hasClaimedChecklistBonus = true;
+        if (Object.keys(update).length > 0) set(update);
       },
     }),
     {

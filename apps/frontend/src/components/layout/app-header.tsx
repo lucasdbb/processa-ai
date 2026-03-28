@@ -25,6 +25,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useBillingStore } from '@/stores/billing-store'
 import { useOnboardingStore } from '@/features/onboarding/store'
 import type { TourId } from '@/features/onboarding/types'
+import { OnboardingProgress } from '@/components/onboarding/OnboardingChecklist'
 
 // Plan badge config
 const PLAN_CONFIG: Record<string, { label: string; icon: typeof Users; className: string }> = {
@@ -243,6 +244,9 @@ export function AppHeader() {
 
         {/* Lado Direito */}
         <div className="flex items-center gap-2">
+          {/* Onboarding Checklist */}
+          <OnboardingProgress />
+
           {/* Credits Display */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>

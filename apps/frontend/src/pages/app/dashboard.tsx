@@ -15,15 +15,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { OnboardingProgress } from '@/components/onboarding/OnboardingChecklist'
+import { WelcomeCard } from '@/components/onboarding/WelcomeCard'
 import { RevenueChart } from '@/components/charts/revenue-chart'
 import { ProcessesChart } from '@/components/charts/processes-chart'
 import { AgingChart } from '@/components/charts/aging-chart'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PartyPopper } from 'lucide-react'
-import { useOnboardingStore } from '@/features/onboarding/store'
 import { useDashboardData } from '@/hooks/use-dashboard-data'
 import { DailyBriefingCard } from '@/components/dashboard/daily-briefing-card'
 
@@ -90,7 +87,6 @@ function WidgetErrorCard({
 export default function DashboardPage() {
   const { user } = useUser()
   const firstName = user?.name?.split(' ')[0] || 'Usuario'
-  const { openWelcomeModal } = useOnboardingStore()
 
   const {
     stats,
@@ -152,28 +148,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Alert */}
-      {user?.welcome_credits_claimed === false && (
-         <Alert className="border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 flex items-center justify-between">
-           <div className="flex items-center gap-4">
-             <PartyPopper className="h-5 w-5" />
-             <div>
-               <AlertTitle>Ganhe 10 créditos grátis!</AlertTitle>
-               <AlertDescription>
-                 Complete seu cadastro para ganhar créditos de boas-vindas.
-               </AlertDescription>
-             </div>
-           </div>
-           <Button 
-             size="sm" 
-             variant="outline" 
-             className="border-yellow-500/50 hover:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 whitespace-nowrap ml-4" 
-             onClick={openWelcomeModal}
-           >
-             Resgatar agora
-           </Button>
-         </Alert>
-       )}
+      {/* Welcome Card */}
+      <WelcomeCard />
 
       {/* Daily Briefing */}
       {loading.briefing ? (
@@ -185,14 +161,11 @@ export default function DashboardPage() {
       )}
 
       {/* Header */}
-      <div data-tour="welcome" className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Olá, {firstName}!</h1>
-          <p className="text-muted-foreground mt-1">
-            Aqui está um resumo da sua atividade.
-          </p>
-        </div>
-        <OnboardingProgress />
+      <div data-tour="welcome">
+        <h1 className="text-2xl font-bold text-foreground">Olá, {firstName}!</h1>
+        <p className="text-muted-foreground mt-1">
+          Aqui está um resumo da sua atividade.
+        </p>
       </div>
 
       {/* Stats Grid */}

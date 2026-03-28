@@ -26,7 +26,7 @@ class ProfilesService:
             profile_response = (
                 self.supabase.table("profiles")
                 .select(
-                    "id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, welcome_credits_claimed, created_at"
+                    "id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, welcome_credits_claimed, has_used_ai_tool, has_used_calculator, checklist_dismissed, checklist_bonus_claimed, created_at"
                 )
                 .eq("id", user_id)
                 .execute()
@@ -75,6 +75,10 @@ class ProfilesService:
                 "newsletter_opt_in": newsletter_opt_in,
                 "whatsapp_opt_in": profile.get("whatsapp_opt_in", False),
                 "welcome_credits_claimed": profile.get("welcome_credits_claimed", False),
+                "has_used_ai_tool": profile.get("has_used_ai_tool", False),
+                "has_used_calculator": profile.get("has_used_calculator", False),
+                "checklist_dismissed": profile.get("checklist_dismissed", False),
+                "checklist_bonus_claimed": profile.get("checklist_bonus_claimed", False),
                 "confirmed_at": confirmed_at,
                 "created_at": profile["created_at"],
             }
@@ -84,6 +88,26 @@ class ProfilesService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Erro ao buscar perfil: {str(e)}",
+            )
+
+    async def update_onboarding(self, user_id: str, flags: dict) -> dict:
+        """Update onboarding flags (only allows setting to True, never back to False)."""
+        allowed = {"has_used_ai_tool", "has_used_calculator", "checklist_dismissed"}
+        db_update = {k: True for k, v in flags.items() if k in allowed and v is True}
+
+        if not db_update:
+            return {"ok": True}
+
+        try:
+            self.supabase.table("profiles").update(db_update).eq("id", user_id).execute()
+            return {"ok": True}
+        except Exception as e:
+            from src.core.logging import logger
+
+            logger.error(f"Error updating onboarding flags: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao atualizar onboarding",
             )
 
     async def update_profile(self, user_id: str, profile_data: UpdateProfile) -> dict:

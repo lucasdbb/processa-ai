@@ -15,7 +15,7 @@ import { useTheme } from 'next-themes'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { toast } from 'sonner'
 import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
-import { fetchToolsCatalog } from '@/components/layout/tools-catalog-provider'
+import { fetchToolsCatalog } from '@/components/layout/tools-catalog-utils'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
 

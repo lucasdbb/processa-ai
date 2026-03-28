@@ -78,6 +78,10 @@ class UserProfile(BaseModel):
     newsletter_opt_in: bool = False
     whatsapp_opt_in: bool = False
     welcome_credits_claimed: bool = False
+    has_used_ai_tool: bool = False
+    has_used_calculator: bool = False
+    checklist_dismissed: bool = False
+    checklist_bonus_claimed: bool = False
     confirmed_at: str | None = None
     created_at: datetime
     credits: UserCredits | None = None
@@ -123,6 +127,14 @@ class UpdateProfile(BaseModel):
             raise ValueError("Telefone inválido. Deve conter 10 ou 11 dígitos.")
         # Return only digits
         return re.sub(r"\D", "", v)
+
+
+class UpdateOnboarding(BaseModel):
+    """Update onboarding flags (only allows setting to True)."""
+
+    has_used_ai_tool: bool | None = None
+    has_used_calculator: bool | None = None
+    checklist_dismissed: bool | None = None
 
 
 class UpdateRoleRequest(BaseModel):

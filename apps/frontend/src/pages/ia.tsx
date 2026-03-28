@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Brain } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { fetchToolsCatalog } from '@/components/layout/tools-catalog-provider'
+import { fetchToolsCatalog } from '@/components/layout/tools-catalog-utils'
 import { ToolsSidebar } from '@/features/ai/components/tools-sidebar'
 import type { AiTool } from '@/features/ai/types'
 import { useUser } from '@/features/auth/hooks/use-user'

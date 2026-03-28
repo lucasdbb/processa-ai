@@ -10,6 +10,10 @@ export interface User {
   company?: string;
   bio?: string;
   welcome_credits_claimed?: boolean;
+  has_used_ai_tool?: boolean;
+  has_used_calculator?: boolean;
+  checklist_dismissed?: boolean;
+  checklist_bonus_claimed?: boolean;
   newsletter_opt_in?: boolean;
   whatsapp_opt_in?: boolean;
   role: UserRole;

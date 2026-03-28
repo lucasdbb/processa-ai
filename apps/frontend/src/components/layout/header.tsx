@@ -6,7 +6,7 @@ import { UserMenu } from '@/features/auth/components/user-menu'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
-import { fetchToolsCatalog } from './tools-catalog-provider'
+import { fetchToolsCatalog } from './tools-catalog-utils'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
 

@@ -14,11 +14,11 @@ import {
   ArrowRight,
   Gift,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { useOnboardingStore } from '@/features/onboarding/store'
 import { useBillingStore } from '@/stores/billing-store'
-import { useDashboardData } from '@/hooks/use-dashboard-data'
 import { useCreditsStore } from '@/stores/credits-store'
 import { cn } from '@/lib/utils'
 import {
@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { creditsService } from '@/services/credits-service'
+import { dashboardService } from '@/services/dashboard-service'
 
 interface ChecklistItem {
   id: string
@@ -48,13 +49,31 @@ const CHECKLIST_ITEM_LABELS: Record<string, string> = {
   calculator: 'Experimentar calculadora',
 }
 
+const CHECKLIST_TOAST_MESSAGES: Record<string, string> = {
+  account: 'Conta criada com sucesso!',
+  profile: 'Perfil completo! Seus créditos de boas-vindas foram liberados.',
+  client: 'Primeiro cliente cadastrado! Seu escritório está tomando forma.',
+  process: 'Primeiro processo adicionado! Agora você pode acompanhar tudo.',
+  deadline: 'Prazo criado! Nunca mais perca uma data importante.',
+  ai: 'IA ativada! Explore as outras ferramentas disponíveis.',
+  calculator: 'Cálculo feito! Experimente os outros simuladores.',
+}
+
 function useChecklistItems() {
   const { user } = useUser()
   const { hasUsedAiTool, hasUsedCalculator } = useOnboardingStore()
   const { isPro } = useBillingStore()
-  const { stats } = useDashboardData()
 
   const isProUser = isPro()
+
+  // Lightweight query: only fetch stats (not full dashboard data)
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: () => dashboardService.getStats(),
+    enabled: !!user && isProUser,
+  })
+
+  const isReady = !statsLoading
 
   const items: ChecklistItem[] = [
     {
@@ -120,40 +139,55 @@ function useChecklistItems() {
   const totalApplicable = applicableItems.length
   const progressPercent = totalApplicable > 0 ? Math.round((completedCount / totalApplicable) * 100) : 0
 
-  return { items, completedCount, totalApplicable, progressPercent }
+  return { items, completedCount, totalApplicable, progressPercent, isReady }
 }
 
 export function OnboardingProgress() {
   const [isOpen, setIsOpen] = useState(false)
   const { isChecklistDismissed, dismissChecklist, hasClaimedChecklistBonus, claimChecklistBonus, openWelcomeModal } = useOnboardingStore()
   const { fetchCredits } = useCreditsStore()
-  const { items, completedCount, totalApplicable, progressPercent } = useChecklistItems()
-  const prevCompletedRef = useRef<Set<string>>(new Set())
+  const { items, completedCount, totalApplicable, progressPercent, isReady } = useChecklistItems()
+  const prevCompletedRef = useRef<Set<string> | null>(null)
   const [isClaimingBonus, setIsClaimingBonus] = useState(false)
 
-  // Track completed items and show toast on new completions
+  // Track completed items and show toast only on real new completions
   useEffect(() => {
+    // Wait until dashboard stats have loaded before taking any snapshot
+    if (!isReady) return
+
     const currentCompleted = new Set(
       items.filter((i) => i.completed && !i.locked).map((i) => i.id)
     )
 
-    // Only show toasts after initial load (prevRef is populated)
-    if (prevCompletedRef.current.size > 0) {
-      for (const id of currentCompleted) {
-        if (!prevCompletedRef.current.has(id)) {
-          const label = CHECKLIST_ITEM_LABELS[id]
-          if (label) {
-            toast.success(`${label}`, {
-              description: 'Item do checklist concluído!',
-              duration: 3000,
-            })
-          }
-        }
+    // First stable snapshot: save state without showing toasts
+    if (prevCompletedRef.current === null) {
+      prevCompletedRef.current = currentCompleted
+      return
+    }
+
+    // Show toast only for items that just transitioned to completed
+    const newlyCompleted: string[] = []
+    for (const id of currentCompleted) {
+      if (!prevCompletedRef.current.has(id)) {
+        newlyCompleted.push(id)
+      }
+    }
+
+    for (const id of newlyCompleted) {
+      const message = CHECKLIST_TOAST_MESSAGES[id] || CHECKLIST_ITEM_LABELS[id]
+      if (message) {
+        const newCount = currentCompleted.size
+        const total = items.filter((i) => !i.locked).length
+        const remaining = total - newCount
+        const description = remaining > 0
+          ? `${newCount}/${total} concluídos — faltam ${remaining}!`
+          : 'Todos os itens concluídos! Resgate seu bônus.'
+        toast.success(message, { description, duration: 4000 })
       }
     }
 
     prevCompletedRef.current = currentCompleted
-  }, [items])
+  }, [items, isReady])
 
   // Check if all items complete → offer bonus
   const allComplete = completedCount === totalApplicable && totalApplicable > 0
