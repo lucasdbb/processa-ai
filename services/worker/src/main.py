@@ -791,10 +791,13 @@ async def _run_translation_worker() -> None:
 
         try:
             if job_type == "translate_timeline_event":
-                await handle_translate_timeline_event(job)
+                await asyncio.wait_for(handle_translate_timeline_event(job), timeout=60)
             else:
                 logger.warning("Unknown translation job type: %s", job_type)
             await ack_job(queue_id)
+        except asyncio.TimeoutError:
+            logger.error("Translation job timed out after 60s: event=%s", event_id)
+            await nack_job(queue_id)
         except Exception:
             logger.exception("Unhandled error processing translation job: event=%s", event_id)
             await nack_job(queue_id)
@@ -907,12 +910,19 @@ async def run_worker() -> None:
         logger.exception("Failed to initialize database — cannot proceed")
         raise
 
-    await asyncio.gather(
+    results = await asyncio.gather(
         _run_ai_worker(),
         _run_translation_worker(),
         _run_reaper(),
         _run_health_server(),
+        return_exceptions=True,
     )
+
+    # Log any unexpected exceptions from worker loops
+    loop_names = ["AI Worker", "Translation Worker", "Reaper", "Health Server"]
+    for name, result in zip(loop_names, results):
+        if isinstance(result, Exception):
+            logger.error("%s crashed with exception: %s", name, result, exc_info=result)
 
 
 def main() -> None:
