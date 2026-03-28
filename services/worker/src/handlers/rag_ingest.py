@@ -191,72 +191,73 @@ async def handle_rag_ingest(job: dict) -> None:
             f"Salvando {len(chunks)} chunks no banco de dados..."
         )
         async with pool.connection() as conn:
-            async with conn.cursor() as cur:
-                # Insert embeddable chunks (with embeddings)
-                for i, chunk in enumerate(embeddable):
-                    embedding_str = "[" + ",".join(str(v) for v in content_embeddings[i]) + "]"
-                    resumo_emb = resumo_embeddings_map.get(i)
-                    resumo_emb_str = (
-                        "[" + ",".join(str(v) for v in resumo_emb) + "]"
-                        if resumo_emb else None
-                    )
+            async with conn.transaction():
+                async with conn.cursor() as cur:
+                    # Insert embeddable chunks (with embeddings)
+                    for i, chunk in enumerate(embeddable):
+                        embedding_str = "[" + ",".join(str(v) for v in content_embeddings[i]) + "]"
+                        resumo_emb = resumo_embeddings_map.get(i)
+                        resumo_emb_str = (
+                            "[" + ",".join(str(v) for v in resumo_emb) + "]"
+                            if resumo_emb else None
+                        )
 
-                    await cur.execute(
-                        """
-                        INSERT INTO public.rag_chunks
-                            (document_id, content, section_title, area, tema,
-                             legislacao, artigo, chunk_index, embedding,
-                             status, revogado_por, resumo, embedding_resumo,
-                             quality, tipo_documento)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s, %s, %s::vector, %s, %s)
-                        """,
-                        (
-                            document_id,
-                            chunk.content,
-                            chunk.section_title,
-                            area,
-                            chunk.tema,
-                            chunk.legislacao,
-                            chunk.artigo,
-                            chunk.chunk_index,
-                            embedding_str,
-                            chunk.status,
-                            chunk.revogado_por,
-                            chunk.resumo,
-                            resumo_emb_str,
-                            chunk.quality,
-                            chunk.tipo_documento,
-                        ),
-                    )
+                        await cur.execute(
+                            """
+                            INSERT INTO public.rag_chunks
+                                (document_id, content, section_title, area, tema,
+                                 legislacao, artigo, chunk_index, embedding,
+                                 status, revogado_por, resumo, embedding_resumo,
+                                 quality, tipo_documento)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s, %s, %s, %s::vector, %s, %s)
+                            """,
+                            (
+                                document_id,
+                                chunk.content,
+                                chunk.section_title,
+                                area,
+                                chunk.tema,
+                                chunk.legislacao,
+                                chunk.artigo,
+                                chunk.chunk_index,
+                                embedding_str,
+                                chunk.status,
+                                chunk.revogado_por,
+                                chunk.resumo,
+                                resumo_emb_str,
+                                chunk.quality,
+                                chunk.tipo_documento,
+                            ),
+                        )
 
-                # Insert non-embeddable chunks (quality=0, no embeddings)
-                non_embeddable = [c for c in chunks if c.quality == 0]
-                for chunk in non_embeddable:
-                    await cur.execute(
-                        """
-                        INSERT INTO public.rag_chunks
-                            (document_id, content, section_title, area, tema,
-                             legislacao, artigo, chunk_index,
-                             status, revogado_por, resumo,
-                             quality, tipo_documento)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        (
-                            document_id,
-                            chunk.content,
-                            chunk.section_title,
-                            area,
-                            chunk.tema,
-                            chunk.legislacao,
-                            chunk.artigo,
-                            chunk.chunk_index,
-                            chunk.status,
-                            chunk.revogado_por,
-                            chunk.resumo,
-                            chunk.quality,
-                            chunk.tipo_documento,
-                        ),
-                    )
+                    # Insert non-embeddable chunks (quality=0, no embeddings)
+                    non_embeddable = [c for c in chunks if c.quality == 0]
+                    for chunk in non_embeddable:
+                        await cur.execute(
+                            """
+                            INSERT INTO public.rag_chunks
+                                (document_id, content, section_title, area, tema,
+                                 legislacao, artigo, chunk_index,
+                                 status, revogado_por, resumo,
+                                 quality, tipo_documento)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (
+                                document_id,
+                                chunk.content,
+                                chunk.section_title,
+                                area,
+                                chunk.tema,
+                                chunk.legislacao,
+                                chunk.artigo,
+                                chunk.chunk_index,
+                                chunk.status,
+                                chunk.revogado_por,
+                                chunk.resumo,
+                                chunk.quality,
+                                chunk.tipo_documento,
+                            ),
+                        )
 
         # ── Step 7: Update document status ───────────────────────────
         async with pool.connection() as conn:
