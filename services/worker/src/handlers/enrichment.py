@@ -78,7 +78,7 @@ async def classify_document(
 
     try:
         client = _get_client()
-        response = client.models.generate_content(
+        response = await client.aio.models.generate_content(
             model=ENRICHMENT_MODEL,
             contents=prompt,
             config=GenerateContentConfig(
@@ -163,7 +163,7 @@ async def enrich_chunks(
 
         try:
             client = _get_client()
-            response = client.models.generate_content(
+            response = await client.aio.models.generate_content(
                 model=ENRICHMENT_MODEL,
                 contents=prompt,
                 config=GenerateContentConfig(
