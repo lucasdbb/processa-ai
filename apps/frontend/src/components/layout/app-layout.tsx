@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { Outlet, useLocation, useNavigation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
+import { RouteLoadingBar } from './route-loading-bar'
 import { Sidebar } from './sidebar'
 import { AppHeader } from './app-header'
 import { BottomNav } from './bottom-nav'
@@ -15,31 +16,6 @@ import { AiToolsProvider } from '@/features/ai/provider'
 import { CalculatorsProvider } from '@/features/calculators/provider'
 import { useBillingStore } from '@/stores/billing-store'
 import { useCreditsStore } from '@/stores/credits-store'
-
-function RouteLoadingBar() {
-  const navigation = useNavigation()
-  const isLoading = navigation.state !== 'idle'
-
-  if (!isLoading) return null
-
-  return (
-    <div className="fixed top-16 left-0 right-0 z-[60] h-1 bg-muted">
-      <div
-        className="h-full bg-slate-900 transition-all duration-300"
-        style={{
-          animation: 'loading 1s ease-in-out infinite',
-        }}
-      />
-      <style>{`
-        @keyframes loading {
-          0% { width: 0%; }
-          50% { width: 70%; }
-          100% { width: 100%; }
-        }
-      `}</style>
-    </div>
-  )
-}
 
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
 import { SubscriptionSuccessModal } from '@/components/billing/SubscriptionSuccessModal'
@@ -93,7 +69,7 @@ export function AppLayout() {
     <AiToolsProvider>
       <CalculatorsProvider>
         <div className="min-h-screen bg-background font-sans text-foreground">
-          <RouteLoadingBar />
+          <RouteLoadingBar topClass="top-16" />
           <Sidebar />
           <AppHeader />
 

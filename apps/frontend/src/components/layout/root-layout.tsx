@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Outlet, useLocation, useNavigation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
+import { RouteLoadingBar } from './route-loading-bar'
 import { Header } from './header'
 import { Footer } from './footer'
 import { PageTransition } from './page-transition'
@@ -35,38 +36,6 @@ function normalizeBlogPosts(payload: unknown): unknown[] {
 type RootLayoutOutletContext = {
   openLoginModal: () => void
   openRegisterModal: () => void
-}
-
-function RouteLoadingBar() {
-  const navigation = useNavigation()
-  const isLoading = navigation.state !== 'idle'
-
-  if (!isLoading) return null
-
-  return (
-    <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200">
-      <div
-        className="h-full bg-gray-900 animate-pulse transition-all duration-300"
-        style={{
-          width: '70%',
-          animation: 'loading 1s ease-in-out infinite',
-        }}
-      />
-      <style>{`
-        @keyframes loading {
-          0% {
-            width: 0%;
-          }
-          50% {
-            width: 70%;
-          }
-          100% {
-            width: 100%;
-          }
-        }
-      `}</style>
-    </div>
-  )
 }
 
 export function RootLayout() {
