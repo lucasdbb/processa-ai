@@ -337,6 +337,11 @@ async def _save_results(
     if structured_data is not None and isinstance(structured_data, dict):
         result_payload["structured_data"] = structured_data
 
+    # Persist markdown content (used by audio transcription and other text-only results)
+    markdown = result.get("markdown")
+    if markdown and isinstance(markdown, str):
+        result_payload["markdown"] = markdown
+
     # Persist token usage and cost
     token_usage = result.get("token_usage")
     if token_usage and isinstance(token_usage, dict):
