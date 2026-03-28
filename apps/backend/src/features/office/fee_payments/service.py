@@ -117,81 +117,34 @@ class FeePaymentsService:
         values = list(update_data.values())
 
         async with pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                # Get fee_id before update
-                await cur.execute(
-                    """
-                    SELECT fee_id FROM office_api.fee_payments
-                    WHERE user_id = %s AND id = %s
-                    """,
-                    (str(user_id), str(payment_id)),
-                )
-                payment_row = await cur.fetchone()
-                if not payment_row:
-                    return None
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    # Get fee_id before update
+                    await cur.execute(
+                        """
+                        SELECT fee_id FROM office_api.fee_payments
+                        WHERE user_id = %s AND id = %s
+                        """,
+                        (str(user_id), str(payment_id)),
+                    )
+                    payment_row = await cur.fetchone()
+                    if not payment_row:
+                        return None
 
-                fee_id = payment_row["fee_id"]
+                    fee_id = payment_row["fee_id"]
 
-                # Update payment
-                await cur.execute(
-                    f"""
-                    UPDATE office_api.fee_payments
-                    SET {set_clause}, updated_at = NOW()
-                    WHERE user_id = %s AND id = %s
-                    RETURNING *
-                    """,
-                    values + [str(user_id), str(payment_id)],
-                )
-                updated_row = await cur.fetchone()
+                    # Update payment
+                    await cur.execute(
+                        f"""
+                        UPDATE office_api.fee_payments
+                        SET {set_clause}, updated_at = NOW()
+                        WHERE user_id = %s AND id = %s
+                        RETURNING *
+                        """,
+                        values + [str(user_id), str(payment_id)],
+                    )
+                    updated_row = await cur.fetchone()
 
-                # Recalculate fee paid_amount
-                await self._recalculate_fee_paid_amount(cur, user_id, fee_id)
-
-                # Get fee's service_id to sync if needed
-                await cur.execute(
-                    """
-                    SELECT service_id FROM office_api.fees
-                    WHERE user_id = %s AND id = %s
-                    """,
-                    (str(user_id), str(fee_id)),
-                )
-                fee_row = await cur.fetchone()
-                if fee_row and fee_row["service_id"]:
-                    await self._sync_service_paid_amount(conn, user_id, fee_row["service_id"])
-
-                return FeePaymentResponse(**updated_row) if updated_row else None
-
-    async def delete_payment(self, user_id: UUID, payment_id: UUID) -> bool:
-        """Delete a payment and recalculate fee paid_amount."""
-        pool = await get_pool()
-
-        async with pool.connection() as conn:
-            async with conn.cursor(row_factory=dict_row) as cur:
-                # Get fee_id before deletion
-                await cur.execute(
-                    """
-                    SELECT fee_id FROM office_api.fee_payments
-                    WHERE user_id = %s AND id = %s
-                    """,
-                    (str(user_id), str(payment_id)),
-                )
-                payment_row = await cur.fetchone()
-                if not payment_row:
-                    return False
-
-                fee_id = payment_row["fee_id"]
-
-                # Delete payment
-                await cur.execute(
-                    """
-                    DELETE FROM office_api.fee_payments
-                    WHERE user_id = %s AND id = %s
-                    """,
-                    (str(user_id), str(payment_id)),
-                )
-                deleted = cur.rowcount > 0
-
-                if deleted:
                     # Recalculate fee paid_amount
                     await self._recalculate_fee_paid_amount(cur, user_id, fee_id)
 
@@ -207,7 +160,58 @@ class FeePaymentsService:
                     if fee_row and fee_row["service_id"]:
                         await self._sync_service_paid_amount(conn, user_id, fee_row["service_id"])
 
-                return deleted
+                    return FeePaymentResponse(**updated_row) if updated_row else None
+
+    async def delete_payment(self, user_id: UUID, payment_id: UUID) -> bool:
+        """Delete a payment and recalculate fee paid_amount."""
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.transaction():
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    # Get fee_id before deletion
+                    await cur.execute(
+                        """
+                        SELECT fee_id FROM office_api.fee_payments
+                        WHERE user_id = %s AND id = %s
+                        """,
+                        (str(user_id), str(payment_id)),
+                    )
+                    payment_row = await cur.fetchone()
+                    if not payment_row:
+                        return False
+
+                    fee_id = payment_row["fee_id"]
+
+                    # Delete payment
+                    await cur.execute(
+                        """
+                        DELETE FROM office_api.fee_payments
+                        WHERE user_id = %s AND id = %s
+                        """,
+                        (str(user_id), str(payment_id)),
+                    )
+                    deleted = cur.rowcount > 0
+
+                    if deleted:
+                        # Recalculate fee paid_amount
+                        await self._recalculate_fee_paid_amount(cur, user_id, fee_id)
+
+                        # Get fee's service_id to sync if needed
+                        await cur.execute(
+                            """
+                            SELECT service_id FROM office_api.fees
+                            WHERE user_id = %s AND id = %s
+                            """,
+                            (str(user_id), str(fee_id)),
+                        )
+                        fee_row = await cur.fetchone()
+                        if fee_row and fee_row["service_id"]:
+                            await self._sync_service_paid_amount(
+                                conn, user_id, fee_row["service_id"]
+                            )
+
+                    return deleted
 
     async def _recalculate_fee_paid_amount(self, cur, user_id: UUID, fee_id: UUID) -> None:
         """Recalculate fee paid_amount from sum of payments and update status."""
