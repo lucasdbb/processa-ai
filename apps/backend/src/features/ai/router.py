@@ -359,6 +359,7 @@ async def audio_transcription_analysis(
 )
 async def get_ai_job(
     job_id: str,
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
     jid = (job_id or "").strip()
@@ -375,6 +376,11 @@ async def get_ai_job(
             else:
                 db_status = await get_job_status_from_db(job_uuid=job_uuid)
             if db_status:
+                # Verificar ownership do job
+                if db_status.get("user_id") and db_status["user_id"] != user_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado"
+                    )
                 current = {
                     "job_id": jid,
                     "status": db_status.get("status"),
@@ -382,6 +388,8 @@ async def get_ai_job(
                     "result": db_status.get("result"),
                     "error": db_status.get("error"),
                 }
+        except HTTPException:
+            raise
         except Exception:
             logger.exception("Failed to load job status from database")
 
@@ -514,6 +522,7 @@ async def get_analysis_history(
 async def download_document(
     document_id: str,
     expires_in: int = Query(600, ge=60, le=3600, description="Tempo de expiração em segundos"),
+    user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
     """Gera signed URL para download de um documento (input ou output)."""
@@ -531,6 +540,12 @@ async def download_document(
 
         doc = await get_document_by_id(document_id=doc_uuid)
         if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado"
+            )
+
+        # Verificar ownership do documento
+        if doc.get("user_id") and doc["user_id"] != user_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado"
             )

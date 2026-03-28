@@ -209,7 +209,8 @@ async def get_worker_job_status(*, job_uuid: uuid.UUID) -> dict | None:
             await cur.execute(
                 """
                     select j.status, j.progress, j.error, j.result_payload,
-                    j.started_at, j.finished_at, d.id as output_doc_id
+                    j.started_at, j.finished_at, j.user_id,
+                    d.id as output_doc_id
                     from public.worker_jobs j
                     left join public.generated_documents d
                     on d.worker_job_id = j.id
@@ -234,4 +235,5 @@ async def get_worker_job_status(*, job_uuid: uuid.UUID) -> dict | None:
                 "result": (result_payload if isinstance(result_payload, dict) else None),
                 "started_at": row.get("started_at"),
                 "finished_at": row.get("finished_at"),
+                "user_id": row.get("user_id"),
             }
