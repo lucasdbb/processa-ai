@@ -12,8 +12,11 @@ import PortalAtivarPage from '@/pages/portal/ativar'
 import { RouterErrorBoundary } from '@/components/router-error-boundary'
 import NotFoundPage from '@/pages/not-found'
 
+import { isWaitlistMode } from '@/lib/waitlist'
+
 // Public pages
 import HomePage from '@/pages/home'
+import WaitlistPage from '@/pages/waitlist'
 import BlogPage from '@/pages/blog'
 import BlogPostPage from '@/pages/blog-post'
 import PlanosPage from '@/pages/planos'
@@ -73,7 +76,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: isWaitlistMode ? <WaitlistPage /> : <HomePage />,
       },
       {
         path: 'blog',
@@ -83,10 +86,14 @@ export const router = createBrowserRouter([
         path: 'blog/:id',
         element: <BlogPostPage />,
       },
-      {
-        path: 'planos',
-        element: <PlanosPage />,
-      },
+      ...(isWaitlistMode
+        ? []
+        : [
+            {
+              path: 'planos',
+              element: <PlanosPage />,
+            },
+          ]),
       {
         path: 'sobre',
         element: <SobrePage />,
@@ -103,23 +110,37 @@ export const router = createBrowserRouter([
         path: 'privacidade',
         element: <PrivacidadePage />,
       },
-      {
-        path: 'auth/callback',
-        element: <CallbackPage />,
-      },
+      ...(isWaitlistMode
+        ? []
+        : [
+            {
+              path: 'auth/callback',
+              element: <CallbackPage />,
+            },
+          ]),
     ],
   },
 
   // App routes (authenticated users)
-  {
-    path: '/app',
-    element: (
-      <AuthGuard>
-        <AppLayout />
-      </AuthGuard>
-    ),
-    errorElement: <RouterErrorBoundary />,
-    children: [
+  ...(isWaitlistMode
+    ? [
+        {
+          path: '/app/*',
+          loader: () => {
+            throw redirect('/')
+          },
+        },
+      ]
+    : [
+        {
+          path: '/app',
+          element: (
+            <AuthGuard>
+              <AppLayout />
+            </AuthGuard>
+          ),
+          errorElement: <RouterErrorBoundary />,
+          children: [
       {
         index: true,
         element: <Suspense fallback={<LoadingFallback />}><DashboardPage /></Suspense>,
@@ -215,6 +236,7 @@ export const router = createBrowserRouter([
       },
     ],
   },
+      ]),
 
   // Portal activation (public — user arrives from invite email with token in URL hash)
   {

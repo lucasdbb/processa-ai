@@ -12,7 +12,7 @@ const team = [
   {
     name: 'Marcelo Cardozo',
     role: 'Fundador & Head de Tecnologia',
-    description: 'Engenheiro de software especialista em Inteligência Artificial e Tecnologia Jurídica.',
+    description: 'Desenvolvedor de software especialista em Inteligência Artificial e Tecnologia Jurídica.',
     image: '/images/founder_marcelo.jpg',
   },
 ]
@@ -76,7 +76,7 @@ export default function SobrePage() {
             <div className="relative group mt-2 sm:mt-0">
               <div className="absolute -inset-3 sm:-inset-4 bg-gradient-to-r from-primary to-secondary rounded-[2rem] sm:rounded-[2.5rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-500" />
               <img
-                src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=600&h=400&fit=crop"
+                src="/images/geometric_dash.png"
                 alt="Equipe da Processa AI trabalhando em conjunto em um ambiente moderno de escritório"
                 className="relative rounded-2xl sm:rounded-[2rem] shadow-2xl w-full object-cover transform transition-transform duration-300 group-hover:-translate-y-2"
                 loading="lazy"
