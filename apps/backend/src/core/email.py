@@ -29,7 +29,9 @@ def _get_pt_day_name() -> str:
 
 def load_email_template(template_name: str, context: dict) -> str:
     """
-    Load an HTML email template and replace placeholders.
+    Load an HTML email template and render it with Jinja2.
+
+    Supports template inheritance ({% extends %}), blocks, and conditionals.
 
     Args:
         template_name: Name of the template file (e.g. 'default.html')
@@ -39,50 +41,36 @@ def load_email_template(template_name: str, context: dict) -> str:
         The rendered HTML string
     """
     try:
-        # Determine the template path
-        base_dir = Path(__file__).parent.parent.parent
-        template_path = base_dir / "src" / "templates" / "emails" / template_name
+        from jinja2 import Environment, FileSystemLoader
 
-        if not template_path.exists():
-            logger.warning(
-                f"Template {template_name} not found, falling back to basic string replacement"
-            )
+        base_dir = Path(__file__).parent.parent.parent
+        templates_dir = base_dir / "src" / "templates" / "emails"
+
+        if not (templates_dir / template_name).exists():
+            logger.warning(f"Template {template_name} not found")
             return ""
 
-        with open(template_path, "r", encoding="utf-8") as f:
-            template = f.read()
-
-        # Replace standard placeholders
-        for key, value in context.items():
-            placeholder = "{{" + key + "}}"
-            if value is None:
-                value = ""
-            template = template.replace(placeholder, str(value))
-
-        # Handle conditional button
-        # If Botao_Link is empty/missing,
-        # remove the button placeholder entirely if it wasn't replaced
-        # But our template logic is simple string replacement.
-        # Ideally, we should pre-process: if Botao_Link is present, generate Botao_HTML.
-
-        # Helper for button logic if using default.html
+        # Pre-process button HTML from Botao_Texto + Botao_Link
         cta_text = context.get("Botao_Texto")
         cta_link = context.get("Botao_Link")
 
         button_html = ""
         if cta_text and cta_link:
-            button_html = f"""
-            <div class="button-container">
-                <a href="{cta_link}" class="button">{cta_text}</a>
-            </div>
-            """
+            button_html = (
+                f'<a href="{cta_link}" class="btn" '
+                f'style="display:inline-block;background-color:#0f3366;color:#ffffff !important;'
+                f'padding:12px 28px;border-radius:6px;font-weight:600;font-size:14px;'
+                f'text-decoration:none;margin-top:10px;">{cta_text}</a>'
+            )
 
-        template = template.replace("{{Botao_HTML}}", button_html)
+        context = {**context, "Botao_HTML": button_html}
 
-        # Cleanup any remaining placeholders? Or leave them?
-        # For now, we assume the caller provides everything needed.
-
-        return template
+        env = Environment(
+            loader=FileSystemLoader(str(templates_dir)),
+            autoescape=False,
+        )
+        template = env.get_template(template_name)
+        return template.render(**context)
     except Exception as e:
         logger.error(f"Error loading email template {template_name}: {e}")
         return ""

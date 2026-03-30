@@ -152,51 +152,39 @@ class WaitlistService:
     ):
         greeting = f"Olá, {name}!" if name else "Olá!"
 
-        content = (
-            f"{greeting}<br><br>"
-            "Recebemos sua inscrição na lista de espera do Processa AI.<br><br>"
-            "Estamos preparando algo especial para advogados como você. "
-            "Assim que estiver pronto, você será um dos primeiros a saber.<br><br>"
-            "<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;'>"
-            "<strong>Indique e ganhe!</strong><br><br>"
-            f"Seu código de indicação: <strong>{referral_code}</strong><br><br>"
-            "Compartilhe este link com colegas:<br>"
-            f"<a href='{referral_link}' style='color: #2563eb; word-break: break-all;'>"
-            f"{referral_link}</a><br><br>"
-            "Para cada pessoa que assinar a plataforma usando seu link, "
-            "você ganha <strong>5 créditos</strong> para usar nos recursos de IA.<br><br>"
-            "Fique de olho no seu e-mail!"
-        )
-
         html_body = load_email_template(
-            "default.html",
+            "waitlist.html",
             {
                 "Titulo": "Você está na lista!",
-                "Conteudo": content,
-                "Botao_Texto": "Compartilhar meu link",
-                "Botao_Link": referral_link,
-                "Rodape": "Vamos te avisar assim que o Processa AI estiver pronto.",
+                "Subtitulo": "Sua vaga foi garantida na lista de espera.",
+                "Mensagem": (
+                    f"{greeting}<br><br>"
+                    "Recebemos sua inscrição na lista de espera do Processa AI.<br><br>"
+                    "Estamos preparando algo especial para advogados como você. "
+                    "Assim que estiver pronto, você será um dos primeiros a saber."
+                ),
+                "Codigo": referral_code,
+                "Link": referral_link,
             },
         )
 
-        plain_body = (
+        body = (
             f"{greeting}\n\n"
             "Recebemos sua inscrição na lista de espera do Processa AI.\n\n"
             "Estamos preparando algo especial para advogados como você. "
             "Assim que estiver pronto, você será um dos primeiros a saber.\n\n"
             "---\n\n"
-            "INDIQUE E GANHE!\n\n"
-            f"Seu código de indicação: {referral_code}\n\n"
-            f"Compartilhe este link: {referral_link}\n\n"
+            "PROMOÇÃO DE PRÉ-LANÇAMENTO: INDIQUE E GANHE!\n\n"
+            f"Seu código de indicação: {referral_code}\n"
+            f"Seu link exclusivo: {referral_link}\n\n"
             "Para cada pessoa que assinar a plataforma usando seu link, "
             "você ganha 5 créditos para usar nos recursos de IA.\n\n"
-            "Fique de olho no seu e-mail!\n\n"
             "Atenciosamente,\nEquipe Processa AI"
         )
 
         await send_email(
             to_email=email,
             subject="Você está na lista! - Processa AI",
-            body=plain_body,
+            body=body,
             html_body=html_body if html_body else None,
         )

@@ -88,7 +88,8 @@ function WaitlistSuccessModal({
           {referralCode && referralLink && (
             <div className="w-full mt-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Indique colegas e ganhe{' '}
+                <strong className="text-foreground">Promoção de pré-lançamento:</strong>{' '}
+                indique colegas e ganhe{' '}
                 <strong className="text-foreground">5 créditos</strong> para
                 cada pessoa que assinar a plataforma.
               </p>
@@ -206,13 +207,13 @@ function WaitlistForm({ id, isDark }: { id?: string; isDark: boolean }) {
   return (
     <>
       <form id={id} onSubmit={handleSubmit} className="w-full max-w-md mx-auto">
-        <div className="flex flex-col gap-2 mb-2">
+        <div className="flex flex-col gap-2.5 sm:gap-2 mb-2">
           <input
             type="text"
             placeholder="Seu nome (opcional)"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+            className={`w-full px-4 py-3.5 sm:py-3 rounded-xl border text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
               isDark
                 ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
                 : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm'
@@ -226,7 +227,7 @@ function WaitlistForm({ id, isDark }: { id?: string; isDark: boolean }) {
             placeholder="Seu melhor e-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+            className={`w-full px-4 py-3.5 sm:py-3 rounded-xl border text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
               isDark
                 ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
                 : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm'
@@ -237,7 +238,7 @@ function WaitlistForm({ id, isDark }: { id?: string; isDark: boolean }) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+            className={`w-full py-3.5 sm:py-3 px-6 rounded-xl font-semibold text-base sm:text-sm transition-all duration-200 shadow-lg hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
               isDark
                 ? 'bg-white text-slate-900 hover:bg-slate-100'
                 : 'bg-slate-900 text-white hover:bg-slate-800'
@@ -254,7 +255,7 @@ function WaitlistForm({ id, isDark }: { id?: string; isDark: boolean }) {
           </button>
         </div>
         <p
-          className={`text-xs text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
+          className={`text-xs text-center mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
         >
           Sem spam. Avisaremos quando estiver pronto.
         </p>
@@ -441,26 +442,26 @@ export default function WaitlistPage() {
   return (
     <main>
       {/* Hero */}
-      <section className="relative min-h-screen flex flex-col justify-center pt-20 overflow-hidden">
+      <section className="relative min-h-screen flex flex-col justify-center pt-16 sm:pt-20 pb-8 sm:pb-0 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-60" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] sm:w-[1000px] h-[400px] sm:h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-60" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex-grow flex flex-col justify-center">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 relative z-10 text-center flex-grow flex flex-col justify-center">
           <div
-            className={`inline-flex items-center gap-2 mx-auto px-4 py-2 rounded-full text-xs font-semibold mb-8 ${
+            className={`inline-flex items-center gap-2 mx-auto px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-semibold mb-6 sm:mb-8 ${
               isDark
                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                 : 'bg-amber-50 text-amber-700 border border-amber-200'
             }`}
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             Vagas limitadas para acesso antecipado
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold tracking-tight text-foreground mb-8 leading-[1.1]">
+          <h1 className="text-[2.25rem] sm:text-5xl md:text-6xl lg:text-8xl font-bold tracking-tight text-foreground mb-5 sm:mb-8 leading-[1.15] sm:leading-[1.1]">
             A inteligência artificial{' '}
-            <br className="hidden md:block" />
+            <br className="hidden sm:block" />
             do{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-foreground via-muted-foreground to-foreground">
               advogado brasileiro
@@ -468,12 +469,12 @@ export default function WaitlistPage() {
             .
           </h1>
 
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2 sm:px-0">
             Gestão do escritório, IA jurídica, calculadoras e muito mais. Tudo
             num só lugar. Garanta seu acesso antecipado.
           </p>
 
-          <div id="waitlist-form">
+          <div id="waitlist-form" className="px-1 sm:px-0">
             <WaitlistForm isDark={isDark} />
           </div>
         </div>
