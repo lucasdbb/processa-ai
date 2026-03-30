@@ -24,4 +24,5 @@ async def join_waitlist(data: WaitlistRequest):
         email=data.email,
         name=data.name,
         utm_source=data.utm_source,
+        ref_code=data.ref_code,
     )

@@ -74,3 +74,6 @@ WELCOME_CREDITS_AMOUNT = 10
 
 # Créditos de bônus por completar o checklist de onboarding
 CHECKLIST_BONUS_AMOUNT = 5
+
+# Créditos por indicação (ganhos quando o indicado assina a plataforma)
+REFERRAL_CREDITS_AMOUNT = 5

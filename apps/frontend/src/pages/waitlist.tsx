@@ -11,17 +11,146 @@ import {
   ChevronDown,
   Check,
   Mail,
+  Gift,
+  Copy,
+  Share2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+
+function WaitlistSuccessModal({
+  open,
+  onClose,
+  referralCode,
+  referralLink,
+  isAlreadyRegistered,
+}: {
+  open: boolean
+  onClose: () => void
+  referralCode: string | null
+  referralLink: string | null
+  isAlreadyRegistered: boolean
+}) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    if (!referralLink) return
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setCopied(true)
+      toast.success('Link copiado!')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('Erro ao copiar')
+    }
+  }
+
+  const handleWhatsAppShare = () => {
+    if (!referralLink) return
+    const text = `Conheça o Processa AI – a plataforma de IA para advogados brasileiros! Use meu link para se inscrever: ${referralLink}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <div className="flex flex-col items-center text-center">
+          <DialogHeader className="items-center">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+              <Gift className="w-8 h-8 text-green-600 dark:text-green-400" />
+            </div>
+            <DialogTitle className="text-2xl">
+              {isAlreadyRegistered
+                ? 'Você já está na lista!'
+                : 'Inscrição confirmada!'}
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              {isAlreadyRegistered
+                ? 'Seu link de indicação continua ativo.'
+                : 'Você está na lista de espera do Processa AI.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {referralCode && referralLink && (
+            <div className="w-full mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Indique colegas e ganhe{' '}
+                <strong className="text-foreground">5 créditos</strong> para
+                cada pessoa que assinar a plataforma.
+              </p>
+
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">Seu código</p>
+                <p className="text-lg font-mono font-bold tracking-wider">
+                  {referralCode}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={referralLink}
+                  className="flex-1 text-xs bg-muted rounded-md px-3 py-2 truncate border border-border"
+                />
+                <Button size="sm" variant="outline" onClick={handleCopy}>
+                  {copied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={handleCopy}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copiar link
+                </Button>
+                <Button className="flex-1" onClick={handleWhatsAppShare}>
+                  <Share2 className="w-4 h-4 mr-2" />
+                  WhatsApp
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="w-full mt-4">
+            <Button variant="ghost" className="w-full" onClick={onClose}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function WaitlistForm({ id, isDark }: { id?: string; isDark: boolean }) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
+  const [referralLink, setReferralLink] = useState<string | null>(null)
+  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,7 +162,10 @@ function WaitlistForm({ id, isDark }: { id?: string; isDark: boolean }) {
 
     setIsSubmitting(true)
     try {
-      const utmSource = new URLSearchParams(window.location.search).get('utm_source')
+      const params = new URLSearchParams(window.location.search)
+      const utmSource = params.get('utm_source')
+      const refCode = params.get('ref')
+
       const response = await fetchWithCredentials(`${API_URL}/waitlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,98 +173,100 @@ function WaitlistForm({ id, isDark }: { id?: string; isDark: boolean }) {
           email: trimmedEmail,
           name: name.trim() || null,
           utm_source: utmSource,
+          ref_code: refCode,
         }),
       })
 
       if (!response.ok) {
-        const error = (await response.json().catch(() => null)) as { detail?: string } | null
+        const error = (await response.json().catch(() => null)) as {
+          detail?: string
+        } | null
         throw new Error(error?.detail || 'Erro ao se inscrever')
       }
 
-      const data = (await response.json()) as { status: string }
-      if (data.status === 'already_registered') {
-        toast.info('Você já está na lista! Fique de olho no seu e-mail.')
-      } else {
-        toast.success('Inscrição confirmada! Verifique seu e-mail.')
+      const data = (await response.json()) as {
+        status: string
+        referral_code?: string
+        referral_link?: string
       }
-      setIsSubmitted(true)
+
+      setReferralCode(data.referral_code || null)
+      setReferralLink(data.referral_link || null)
+      setIsAlreadyRegistered(data.status === 'already_registered')
+      setShowSuccessModal(true)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Erro ao se inscrever')
+      toast.error(
+        error instanceof Error ? error.message : 'Erro ao se inscrever',
+      )
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  if (isSubmitted) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-4">
-        <div
-          className={`w-12 h-12 rounded-full flex items-center justify-center ${
-            isDark ? 'bg-green-500/20' : 'bg-green-100'
-          }`}
-        >
-          <Check className={`w-6 h-6 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
-        </div>
-        <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-          Você está na lista! Vamos te avisar em breve.
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <form id={id} onSubmit={handleSubmit} className="w-full max-w-md mx-auto">
-      <div className="flex flex-col gap-2 mb-2">
-        <input
-          type="text"
-          placeholder="Seu nome (opcional)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-            isDark
-              ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
-              : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm'
-          }`}
-          disabled={isSubmitting}
-        />
-        <input
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          placeholder="Seu melhor e-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-            isDark
-              ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
-              : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm'
-          }`}
-          disabled={isSubmitting}
-          required
-        />
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-            isDark
-              ? 'bg-white text-slate-900 hover:bg-slate-100'
-              : 'bg-slate-900 text-white hover:bg-slate-800'
-          }`}
+    <>
+      <form id={id} onSubmit={handleSubmit} className="w-full max-w-md mx-auto">
+        <div className="flex flex-col gap-2 mb-2">
+          <input
+            type="text"
+            placeholder="Seu nome (opcional)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+              isDark
+                ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
+                : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm'
+            }`}
+            disabled={isSubmitting}
+          />
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="Seu melhor e-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+              isDark
+                ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
+                : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 shadow-sm'
+            }`}
+            disabled={isSubmitting}
+            required
+          />
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+              isDark
+                ? 'bg-white text-slate-900 hover:bg-slate-100'
+                : 'bg-slate-900 text-white hover:bg-slate-800'
+            }`}
+          >
+            {isSubmitting ? (
+              'Inscrevendo...'
+            ) : (
+              <>
+                Garantir minha vaga
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
+        <p
+          className={`text-xs text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
         >
-          {isSubmitting ? (
-            'Inscrevendo...'
-          ) : (
-            <>
-              Garantir minha vaga
-              <ArrowRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
-      </div>
-      <p className={`text-xs text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-        Sem spam. Avisaremos quando estiver pronto.
-      </p>
-    </form>
+          Sem spam. Avisaremos quando estiver pronto.
+        </p>
+      </form>
+      <WaitlistSuccessModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        referralCode={referralCode}
+        referralLink={referralLink}
+        isAlreadyRegistered={isAlreadyRegistered}
+      />
+    </>
   )
 }
 
@@ -195,11 +329,15 @@ function FeatureRow({
   reverse?: boolean
 }) {
   return (
-    <div className={`flex flex-col ${reverse ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-8 md:gap-16`}>
+    <div
+      className={`flex flex-col ${reverse ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-8 md:gap-16`}
+    >
       <div className="flex-1 text-center md:text-left">
         <div
           className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4 ${
-            isDark ? 'bg-slate-800 border border-slate-700' : 'bg-slate-100 border border-slate-200'
+            isDark
+              ? 'bg-slate-800 border border-slate-700'
+              : 'bg-slate-100 border border-slate-200'
           }`}
         >
           <Icon
@@ -210,7 +348,9 @@ function FeatureRow({
         <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-3">
           {title}
         </h3>
-        <p className={`text-sm sm:text-base leading-relaxed max-w-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        <p
+          className={`text-sm sm:text-base leading-relaxed max-w-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}
+        >
           {description}
         </p>
       </div>
@@ -329,8 +469,8 @@ export default function WaitlistPage() {
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Gestão do escritório, IA jurídica, calculadoras e muito mais. Tudo num só
-            lugar. Garanta seu acesso antecipado.
+            Gestão do escritório, IA jurídica, calculadoras e muito mais. Tudo
+            num só lugar. Garanta seu acesso antecipado.
           </p>
 
           <div id="waitlist-form">
@@ -342,24 +482,40 @@ export default function WaitlistPage() {
       {/* Problema / Solução — texto direto, sem card */}
       <section className={`py-24 ${isDark ? '' : 'bg-white'}`}>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className={`text-xl sm:text-2xl md:text-3xl font-medium leading-snug tracking-tight ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+          <p
+            className={`text-xl sm:text-2xl md:text-3xl font-medium leading-snug tracking-tight ${isDark ? 'text-slate-200' : 'text-slate-800'}`}
+          >
             Advogados perdem{' '}
-            <span className={isDark ? 'text-white font-bold' : 'text-slate-900 font-bold'}>
+            <span
+              className={
+                isDark ? 'text-white font-bold' : 'text-slate-900 font-bold'
+              }
+            >
               horas por semana
-            </span>
-            {' '}com tarefas que a tecnologia resolve em minutos.
+            </span>{' '}
+            com tarefas que a tecnologia resolve em minutos.
           </p>
-          <div className={`w-16 h-0.5 my-8 ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
-          <p className={`text-base sm:text-lg leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Planilhas, WhatsApp, sistemas que não se conectam. O Processa AI reúne gestão, inteligência artificial e cálculos jurídicos em uma única plataforma feita para o direito brasileiro.
+          <div
+            className={`w-16 h-0.5 my-8 ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`}
+          />
+          <p
+            className={`text-base sm:text-lg leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}
+          >
+            Planilhas, WhatsApp, sistemas que não se conectam. O Processa AI
+            reúne gestão, inteligência artificial e cálculos jurídicos em uma
+            única plataforma feita para o direito brasileiro.
           </p>
         </div>
       </section>
 
       {/* Features — layout alternado, sem grid de cards */}
-      <section className={`py-24 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
+      <section
+        className={`py-24 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100'}`}
+      >
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className={`text-xs font-semibold uppercase tracking-widest mb-16 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p
+            className={`text-xs font-semibold uppercase tracking-widest mb-16 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
+          >
             O que você terá acesso
           </p>
 
@@ -387,15 +543,22 @@ export default function WaitlistPage() {
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
                 Por que entrar agora?
               </h2>
-              <p className={`text-sm sm:text-base leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                Quem chega primeiro tem vantagens que não estarão disponíveis depois do lançamento.
+              <p
+                className={`text-sm sm:text-base leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}
+              >
+                Quem chega primeiro tem vantagens que não estarão disponíveis
+                depois do lançamento.
               </p>
             </div>
             <ul className="md:flex-1 space-y-4">
               {benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-3">
-                  <Check className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
-                  <span className={`text-sm sm:text-base ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                  <Check
+                    className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`}
+                  />
+                  <span
+                    className={`text-sm sm:text-base ${isDark ? 'text-slate-200' : 'text-slate-800'}`}
+                  >
                     {benefit}
                   </span>
                 </li>
@@ -406,7 +569,9 @@ export default function WaitlistPage() {
       </section>
 
       {/* FAQ — sem card wrapper, direto no fundo */}
-      <section className={`py-24 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
+      <section
+        className={`py-24 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100'}`}
+      >
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-10 text-center">
             Perguntas frequentes
@@ -459,7 +624,8 @@ export default function WaitlistPage() {
                   isDark ? 'text-muted-foreground' : 'text-slate-300'
                 }`}
               >
-                Garanta seu lugar entre os primeiros advogados a usar o Processa AI.
+                Garanta seu lugar entre os primeiros advogados a usar o Processa
+                AI.
               </p>
 
               <WaitlistForm id="waitlist-form-bottom" isDark={!isDark} />
@@ -492,7 +658,9 @@ export default function WaitlistPage() {
       </section>
 
       {/* Blog CTA — inline, sem card */}
-      <section className={`py-10 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
+      <section
+        className={`py-10 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100'}`}
+      >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-muted-foreground text-sm mb-3">
             Enquanto espera, conheça nosso conteúdo jurídico

@@ -324,6 +324,9 @@ class WebhooksService:
 
             logger.info(f"Subscription activated for user {user_id}, plan: {plan_id}")
 
+            # Grant referral credits to whoever referred this user
+            await self._grant_referral_credits(user_id)
+
             # Send welcome email
             user_email = await self._get_user_email(user_id)
             if user_email:
@@ -897,6 +900,74 @@ class WebhooksService:
 
         logger.warning(f"Unknown price_id: {price_id}, defaulting to free")
         return "free"
+
+    async def _grant_referral_credits(self, subscriber_user_id: str) -> None:
+        """Grant referral credits to whoever referred this subscriber via waitlist."""
+        try:
+            # 1. Get subscriber's email
+            user_email = await self._get_user_email(subscriber_user_id)
+            if not user_email:
+                return
+
+            # 2. Check if this email was referred via waitlist
+            waitlist_entry = (
+                self.supabase.table("waitlist")
+                .select("referred_by")
+                .eq("email", user_email)
+                .limit(1)
+                .execute()
+            )
+            if not waitlist_entry.data or not waitlist_entry.data[0].get("referred_by"):
+                return
+
+            referrer_waitlist_id = waitlist_entry.data[0]["referred_by"]
+
+            # 3. Get referrer's email from waitlist
+            referrer_entry = (
+                self.supabase.table("waitlist")
+                .select("email")
+                .eq("id", referrer_waitlist_id)
+                .limit(1)
+                .execute()
+            )
+            if not referrer_entry.data:
+                return
+
+            referrer_email = referrer_entry.data[0]["email"]
+
+            # 4. Look up referrer's user_id in profiles
+            referrer_profile = (
+                self.supabase.table("profiles")
+                .select("id")
+                .eq("email", referrer_email)
+                .limit(1)
+                .execute()
+            )
+            if not referrer_profile.data:
+                logger.info(f"Referrer {referrer_email} has not signed up yet, skipping credit grant")
+                return
+
+            referrer_user_id = referrer_profile.data[0]["id"]
+
+            # 5. Grant credits
+            from src.features.billing.credits.constants import REFERRAL_CREDITS_AMOUNT
+
+            self.supabase.rpc(
+                "grant_credits_to_user",
+                {
+                    "p_user_id": referrer_user_id,
+                    "p_amount": REFERRAL_CREDITS_AMOUNT,
+                    "p_reason": f"referral_{subscriber_user_id}",
+                    "p_credit_type": "purchased",
+                },
+            ).execute()
+
+            logger.info(
+                f"Granted {REFERRAL_CREDITS_AMOUNT} referral credits to user {referrer_user_id} "
+                f"for referring {subscriber_user_id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to grant referral credits: {e}")
 
     async def _get_user_email(self, user_id: str) -> str | None:
         """Get user email from profiles table."""
