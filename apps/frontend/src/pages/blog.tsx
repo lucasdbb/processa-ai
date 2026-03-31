@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Calendar, Clock, Search, User } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -28,13 +28,7 @@ type BlogCategory = {
   name: string
 }
 
-type BlogCachePayload = {
-  cachedAt: number
-  posts: Post[]
-}
-
-const BLOG_CACHE_KEY = 'processa_blog_posts_cache_v1'
-const BLOG_CACHE_MAX_AGE_MS = 5 * 60 * 1000
+const BLOG_PAGE_SIZE = 8
 
 const categories: BlogCategory[] = [
   { id: 'all', name: 'Todas' },
@@ -59,67 +53,119 @@ function normalizePosts(payload: unknown): Post[] {
   return []
 }
 
+function normalizePostCategory(post: Post): Post {
+  const rawCategory = post.category as unknown
+  if (!rawCategory || typeof rawCategory === 'string') return post
+
+  if (typeof rawCategory === 'object') {
+    const categoryObject = rawCategory as Record<string, unknown>
+    const normalizedCategory =
+      (typeof categoryObject.slug === 'string' && categoryObject.slug) ||
+      (typeof categoryObject.name === 'string' && categoryObject.name) ||
+      ''
+
+    return {
+      ...post,
+      category: normalizedCategory,
+    }
+  }
+
+  return {
+    ...post,
+    category: '',
+  }
+}
+
+function extractHasMore(payload: unknown, itemCount: number): boolean {
+  if (!payload || typeof payload !== 'object') return itemCount >= BLOG_PAGE_SIZE
+  const value = payload as Record<string, unknown>
+  if (typeof value.has_more === 'boolean') return value.has_more
+  return itemCount >= BLOG_PAGE_SIZE
+}
+
 export default function BlogPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim())
+    }, 350)
+
+    return () => window.clearTimeout(timer)
+  }, [searchTerm])
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearchTerm, selectedCategory])
 
   useEffect(() => {
     const loadPosts = async () => {
-      let hasValidCache = false
-
-      try {
-        const cachedRaw = window.sessionStorage.getItem(BLOG_CACHE_KEY)
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw) as BlogCachePayload
-          const isFresh =
-            Number.isFinite(cached.cachedAt) &&
-            Date.now() - cached.cachedAt <= BLOG_CACHE_MAX_AGE_MS
-          if (isFresh && Array.isArray(cached.posts)) {
-            setPosts(cached.posts)
-            setIsLoading(false)
-            hasValidCache = true
-          }
-        }
-      } catch {
-        // Ignore cache parse errors and continue with network request.
+      if (page === 1) {
+        setIsLoading(true)
+      } else {
+        setIsLoadingMore(true)
       }
 
       try {
-        const response = await fetchWithCredentials(`${API_URL}/blog/posts?published=true`)
+        const params = new URLSearchParams({
+          published: 'true',
+          page: String(page),
+          page_size: String(BLOG_PAGE_SIZE),
+        })
+
+        if (debouncedSearchTerm) {
+          params.set('search', debouncedSearchTerm)
+        }
+
+        if (selectedCategory !== 'all') {
+          params.set('category_slug', selectedCategory)
+        }
+
+        const response = await fetchWithCredentials(`${API_URL}/blog/posts?${params.toString()}`)
         if (!response.ok) {
-          if (!hasValidCache) {
+          if (page === 1) {
             setPosts([])
           }
+          setHasMore(false)
           return
         }
 
         const payload: unknown = await response.json()
-        const nextPosts = normalizePosts(payload)
-        setPosts(nextPosts)
+        const nextPosts = normalizePosts(payload).map(normalizePostCategory)
 
-        try {
-          const cachePayload: BlogCachePayload = {
-            cachedAt: Date.now(),
-            posts: nextPosts,
-          }
-          window.sessionStorage.setItem(BLOG_CACHE_KEY, JSON.stringify(cachePayload))
-        } catch {
-          // Ignore cache write errors.
-        }
+        setPosts((currentPosts) => {
+          if (page === 1) return nextPosts
+
+          const existingIds = new Set(currentPosts.map((post) => post.id))
+          const newItems = nextPosts.filter((post) => !existingIds.has(post.id))
+          return [...currentPosts, ...newItems]
+        })
+
+        setHasMore(extractHasMore(payload, nextPosts.length))
       } catch (error) {
         console.error('Error loading posts:', error)
-        if (!hasValidCache) {
+        if (page === 1) {
           setPosts([])
         }
+        setHasMore(false)
       } finally {
-        setIsLoading(false)
+        if (page === 1) {
+          setIsLoading(false)
+        } else {
+          setIsLoadingMore(false)
+        }
       }
     }
 
     loadPosts()
-  }, [])
+  }, [page, debouncedSearchTerm, selectedCategory])
 
   const estimateReadTime = (text?: string) => {
     const words = (text || '').trim().split(/\s+/).filter(Boolean).length
@@ -127,20 +173,8 @@ export default function BlogPage() {
     return `${minutes} min`
   }
 
-  const filteredPosts = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase()
-    return posts.filter((post) => {
-      const matchesSearch =
-        !term ||
-        post.title.toLowerCase().includes(term) ||
-        post.excerpt?.toLowerCase().includes(term)
-      const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory
-      return matchesSearch && matchesCategory
-    })
-  }, [posts, searchTerm, selectedCategory])
-
-  const featuredPost = filteredPosts[0]
-  const regularPosts = filteredPosts.slice(1)
+  const featuredPost = posts[0]
+  const regularPosts = posts.slice(1)
 
   if (isLoading) {
     return (
@@ -307,90 +341,105 @@ export default function BlogPage() {
             </h2>
           </div>
 
-          {filteredPosts.length === 0 ? (
+          {posts.length === 0 ? (
             <div className="bg-muted border border-border rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center">
               <p className="text-sm sm:text-base text-muted-foreground font-medium">
                 Nenhum post encontrado. Ajuste seus filtros ou tente novamente.
               </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
-              {regularPosts.map((post) => (
-                <article
-                  key={post.id}
-                  className="group bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:border-muted-foreground/40 transition-all duration-300"
-                >
-                  <div className="flex flex-col sm:flex-row sm:h-[220px]">
-                    <div className="sm:w-56 md:w-64 lg:w-72 sm:flex-shrink-0 relative h-40 sm:h-full overflow-hidden">
-                      <div className="absolute inset-0 bg-background/0 group-hover:bg-background/5 transition-colors z-10" />
-                      <img
-                        src={
-                          post.cover_image_url ||
-                          post.featured_image ||
-                          'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&h=400&fit=crop'
-                        }
-                        alt={`Imagem ilustrativa do artigo: ${post.title}`}
-                        className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                        loading="lazy"
-                      />
-                    </div>
-
-                    <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col h-full">
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground mb-2.5 sm:mb-3">
-                        {post.category && (
-                          <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground border border-border">
-                            {post.category}
-                          </span>
-                        )}
-                        {(post.published_at || post.created_at) && (
-                          <span className="flex items-center">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatDate(post.published_at || post.created_at!)}
-                          </span>
-                        )}
-                        <span className="flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {estimateReadTime(post.excerpt || post.content)}
-                        </span>
+            <>
+              <div className="space-y-3 sm:space-y-4">
+                {regularPosts.map((post) => (
+                  <article
+                    key={post.id}
+                    className="group bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:border-muted-foreground/40 transition-all duration-300"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:h-[220px]">
+                      <div className="sm:w-56 md:w-64 lg:w-72 sm:flex-shrink-0 relative h-40 sm:h-full overflow-hidden">
+                        <div className="absolute inset-0 bg-background/0 group-hover:bg-background/5 transition-colors z-10" />
+                        <img
+                          src={
+                            post.cover_image_url ||
+                            post.featured_image ||
+                            'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&h=400&fit=crop'
+                          }
+                          alt={`Imagem ilustrativa do artigo: ${post.title}`}
+                          className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                          loading="lazy"
+                        />
                       </div>
 
-                      <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 min-h-[3.25rem] text-pretty group-hover:text-muted-foreground transition-colors line-clamp-2">
-                        {post.title}
-                      </h3>
-
-                      <p className="text-muted-foreground text-sm mb-4 min-h-[3rem] line-clamp-2 leading-relaxed md:text-justify hyphens-auto [text-align-last:left] flex-grow">
-                        {post.excerpt || post.content || 'Sem resumo disponível para este post.'}
-                      </p>
-
-                      <div className="flex items-center justify-between pt-3 border-t border-border gap-3">
-                        <span className="flex items-center text-xs font-medium text-foreground min-w-0">
-                          {post.author?.avatar_url ? (
-                            <img
-                              src={post.author.avatar_url}
-                              alt={post.author.name || 'Autor'}
-                              referrerPolicy="no-referrer"
-                              className="w-6 h-6 rounded-full object-cover mr-2 border border-border flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2 border border-border flex-shrink-0">
-                              <User className="h-3 w-3 text-muted-foreground" />
-                            </div>
+                      <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col h-full">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground mb-2.5 sm:mb-3">
+                          {post.category && (
+                            <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground border border-border">
+                              {post.category}
+                            </span>
                           )}
-                          <span className="truncate">{post.author?.name || 'Equipe'}</span>
-                        </span>
+                          {(post.published_at || post.created_at) && (
+                            <span className="flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {formatDate(post.published_at || post.created_at!)}
+                            </span>
+                          )}
+                          <span className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {estimateReadTime(post.excerpt || post.content)}
+                          </span>
+                        </div>
 
-                        <Link
-                          to={`/blog/${post.slug}`}
-                          className="text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
-                        >
-                          Continuar lendo
-                        </Link>
+                        <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 min-h-[3.25rem] text-pretty group-hover:text-muted-foreground transition-colors line-clamp-2">
+                          {post.title}
+                        </h3>
+
+                        <p className="text-muted-foreground text-sm mb-4 min-h-[3rem] line-clamp-2 leading-relaxed md:text-justify hyphens-auto [text-align-last:left] flex-grow">
+                          {post.excerpt || post.content || 'Sem resumo disponível para este post.'}
+                        </p>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-border gap-3">
+                          <span className="flex items-center text-xs font-medium text-foreground min-w-0">
+                            {post.author?.avatar_url ? (
+                              <img
+                                src={post.author.avatar_url}
+                                alt={post.author.name || 'Autor'}
+                                referrerPolicy="no-referrer"
+                                className="w-6 h-6 rounded-full object-cover mr-2 border border-border flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2 border border-border flex-shrink-0">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                              </div>
+                            )}
+                            <span className="truncate">{post.author?.name || 'Equipe'}</span>
+                          </span>
+
+                          <Link
+                            to={`/blog/${post.slug}`}
+                            className="text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                          >
+                            Continuar lendo
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+
+              {hasMore && (
+                <div className="mt-6 sm:mt-8 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setPage((currentPage) => currentPage + 1)}
+                    disabled={isLoadingMore}
+                    className="inline-flex items-center justify-center px-5 sm:px-6 py-2.5 sm:py-3 bg-slate-900 text-white rounded-lg sm:rounded-xl font-semibold text-sm hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isLoadingMore ? 'Carregando...' : 'Carregar mais'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

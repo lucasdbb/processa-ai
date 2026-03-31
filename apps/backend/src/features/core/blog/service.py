@@ -109,6 +109,7 @@ class BlogService:
             self.supabase.table("blog_posts")
             .select(
                 "id,title,slug,excerpt,cover_image_url,category_id,author_id,published_at",
+                count="exact",
             )
             .eq("status", "published")
             .order("published_at", desc=True)
@@ -127,15 +128,27 @@ class BlogService:
             if cats.data:
                 q = q.eq("category_id", cats.data[0]["id"])
             else:
-                return {"items": [], "page": page, "page_size": page_size}
+                return {
+                    "items": [],
+                    "page": page,
+                    "page_size": page_size,
+                    "total": 0,
+                    "has_more": False,
+                }
         res = q.execute()
         data = res.data or []
+        total = int(res.count or 0)
 
         # Fetch authors
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
-            pr = self.supabase.table("profiles").select("id,name,avatar_url").in_("id", author_ids).execute()
+            pr = (
+                self.supabase.table("profiles")
+                .select("id,name,avatar_url")
+                .in_("id", author_ids)
+                .execute()
+            )
             for p in pr.data or []:
                 profiles[p["id"]] = {"name": p.get("name"), "avatar_url": p.get("avatar_url")}
 
@@ -175,7 +188,13 @@ class BlogService:
                     "published_at": row.get("published_at"),
                 }
             )
-        return {"items": items, "page": page, "page_size": page_size}
+        return {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "has_more": start + len(items) < total,
+        }
 
     async def list_all(
         self,
@@ -195,6 +214,7 @@ class BlogService:
             self.supabase.table("blog_posts")
             .select(
                 "id,title,slug,excerpt,cover_image_url,category_id,author_id,published_at,status,created_at",
+                count="exact",
             )
             .order("created_at", desc=True)
             .range(start, end)
@@ -207,10 +227,16 @@ class BlogService:
 
         res = q.execute()
         data = res.data or []
+        total = int(res.count or 0)
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
-            pr = self.supabase.table("profiles").select("id,name,avatar_url").in_("id", author_ids).execute()
+            pr = (
+                self.supabase.table("profiles")
+                .select("id,name,avatar_url")
+                .in_("id", author_ids)
+                .execute()
+            )
             for p in pr.data or []:
                 profiles[p["id"]] = {"name": p.get("name"), "avatar_url": p.get("avatar_url")}
         items = []
@@ -233,7 +259,13 @@ class BlogService:
                     "published_at": row.get("published_at"),
                 }
             )
-        return {"items": items, "page": page, "page_size": page_size}
+        return {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "has_more": start + len(items) < total,
+        }
 
     async def get_admin_post(self, user_id: str, user_role: str, post_id: str):
         if user_role not in {"admin", "author"}:
@@ -306,7 +338,10 @@ class BlogService:
                 .execute()
             )
             profiles = pr.data or []
-        authors = [{"id": str(p["id"]), "name": p.get("name"), "avatar_url": p.get("avatar_url")} for p in profiles]
+        authors = [
+            {"id": str(p["id"]), "name": p.get("name"), "avatar_url": p.get("avatar_url")}
+            for p in profiles
+        ]
 
         return {
             "id": str(post.get("id")),
@@ -392,7 +427,10 @@ class BlogService:
                 .execute()
             )
             profiles = pr.data or []
-        authors = [{"id": str(p["id"]), "name": p.get("name"), "avatar_url": p.get("avatar_url")} for p in profiles]
+        authors = [
+            {"id": str(p["id"]), "name": p.get("name"), "avatar_url": p.get("avatar_url")}
+            for p in profiles
+        ]
 
         return {
             "id": str(post.get("id")),
@@ -502,7 +540,7 @@ class BlogService:
             pass
         return {"id": str(post.get("id")), "slug": post.get("slug")}
 
-    async def update_draft(self, user_id: str, post_id: str, data):
+    async def update_draft(self, user_id: str, user_role: str, post_id: str, data):
         res = (
             self.supabase.table("blog_posts")
             .select("id,author_id,status,slug")
@@ -514,7 +552,12 @@ class BlogService:
         if not rows:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post não encontrado")
         post = rows[0]
-        is_author = post.get("author_id") == user_id
+
+        if user_role == "admin":
+            is_author = True
+        else:
+            is_author = post.get("author_id") == user_id
+
         if not is_author:
             try:
                 co = (
