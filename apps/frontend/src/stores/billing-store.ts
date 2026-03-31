@@ -43,7 +43,6 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         subscription_status: subscription.status,
       })
     } catch (error) {
-      console.error('Failed to fetch subscription:', error)
       set({ error: (error as Error).message, isLoading: false })
     }
   },
@@ -65,7 +64,6 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         subscription_status: subscription.status,
       })
     } catch (error) {
-      console.error('Failed to fetch subscription:', error)
       set({ error: (error as Error).message, isLoading: false })
     }
   },

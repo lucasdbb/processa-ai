@@ -110,7 +110,6 @@ export function AppHeader() {
       setNotifications(response.items.slice(0, 5))
       setUnreadCount(response.unread_count)
     } catch (error) {
-      console.error('Failed to load notifications:', error)
     }
   }
 
@@ -144,7 +143,6 @@ export function AppHeader() {
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
     } catch (error) {
-      console.error('Failed to mark as read:', error)
       toast.error('Erro ao marcar notificação como lida')
     }
   }
@@ -157,7 +155,6 @@ export function AppHeader() {
       setUnreadCount(0)
       toast.success('Todas as notificações foram marcadas como lidas')
     } catch (error) {
-      console.error('Failed to mark all as read:', error)
       toast.error('Erro ao marcar todas como lidas')
     }
   }

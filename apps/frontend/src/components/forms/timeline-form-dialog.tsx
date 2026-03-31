@@ -163,7 +163,6 @@ export function TimelineFormDialog({
             )
             uploadedDocIds.push(doc.id)
           } catch (error) {
-            console.error('Error uploading file:', file.name, error)
             toast.error(`Erro ao enviar ${file.name}`)
           }
         }

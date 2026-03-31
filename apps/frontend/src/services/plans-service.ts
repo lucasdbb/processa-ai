@@ -27,17 +27,12 @@ export async function fetchPlans(): Promise<ApiPlan[]> {
       method: "GET",
     });
     if (!res.ok) {
-      const errorData = await res
-        .json()
-        .catch(() => ({ detail: "Unknown error" }));
-      console.error("Error loading plans:", errorData);
       return [];
     }
 
     const data = (await res.json()) as unknown;
     return Array.isArray(data) ? (data as ApiPlan[]) : [];
-  } catch (error) {
-    console.error("Failed to load plans:", error);
+  } catch {
     return [];
   }
 }

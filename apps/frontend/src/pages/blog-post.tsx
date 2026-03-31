@@ -101,7 +101,6 @@ export default function BlogPostPage() {
           )
         }
       } catch (error) {
-        console.error('Error loading post:', error)
         if (!hasFreshCache) {
           setPost(null)
         }

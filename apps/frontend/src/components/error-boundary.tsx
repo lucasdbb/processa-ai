@@ -73,9 +73,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Console output for local debugging
-    console.error('[ErrorBoundary] Uncaught error:', error, errorInfo)
-
     // Notify the backend — async, non-blocking
     void reportError(error, errorInfo)
   }

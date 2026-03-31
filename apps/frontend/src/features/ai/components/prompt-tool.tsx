@@ -113,7 +113,6 @@ export function PromptTool({ externalPrompt, onPromptChange }: PromptToolProps) 
         response_length: data.response.length
       })
     } catch (error) {
-      console.error(error)
       analytics.track('feature_used', {
         feature: 'prompt_tool',
         action: 'failed',

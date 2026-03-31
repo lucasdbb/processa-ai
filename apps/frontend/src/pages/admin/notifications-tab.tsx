@@ -56,7 +56,6 @@ export default function NotificationsTab() {
       setNotificationRecipient('all')
       setIsNotificationModalOpen(false)
     } catch (error) {
-      console.error('Failed to send notification:', error)
       toast.error('Erro ao enviar notificação')
     } finally {
       setIsSendingNotification(false)
@@ -68,7 +67,6 @@ export default function NotificationsTab() {
       const result = await notificationService.checkDeadlines()
       toast.success(result.message || 'Prazos verificados com sucesso')
     } catch (error) {
-      console.error('Failed to check deadlines:', error)
       toast.error('Erro ao verificar prazos')
     }
   }

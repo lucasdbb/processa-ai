@@ -109,7 +109,6 @@ function DocumentFormDialogBody({
       }
       onClose()
     } catch (error) {
-      console.error('Error saving document:', error)
     } finally {
       setIsSaving(false)
     }

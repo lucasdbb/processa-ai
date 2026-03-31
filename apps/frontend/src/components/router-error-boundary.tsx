@@ -11,9 +11,6 @@ export function RouterErrorBoundary() {
     const id = `err_${Date.now()}`
     setErrorId(id)
 
-    // Log locally
-    console.error('[RouterErrorBoundary] Caught route error:', error)
-
     // Normalize error for reporting
     let errorObj: Error
 

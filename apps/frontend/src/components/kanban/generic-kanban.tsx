@@ -161,7 +161,6 @@ export function GenericKanban<T extends { id: string; status: string }>({
         try {
           await onStatusChange(item, overContainer)
         } catch (error) {
-          console.error('Failed to update status', error)
           // Revert changes implies reloading from props or manual revert
           // For now, we rely on parent to handle error/reload
           // But since we updated local state in DragOver, we might be out of sync if parent doesn't force update

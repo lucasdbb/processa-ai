@@ -83,7 +83,6 @@ export function useGlobalSearch(query: string): GroupedSearchResults {
           )
 
       } catch (error) {
-        console.error('Error fetching global search results:', error)
       }
     }
 

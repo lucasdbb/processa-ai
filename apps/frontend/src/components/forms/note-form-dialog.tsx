@@ -81,7 +81,6 @@ function NoteFormDialogBody({
       }
       onClose()
     } catch (error) {
-      console.error('Error saving note:', error)
     } finally {
       setIsSaving(false)
     }

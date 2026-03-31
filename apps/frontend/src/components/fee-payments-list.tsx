@@ -36,7 +36,6 @@ export function FeePaymentsList({ feeId, onPaymentChange }: FeePaymentsListProps
       const response = await feePaymentsService.listByFee(feeId)
       setPayments(response.payments)
     } catch (error) {
-      console.error('Error loading payments:', error)
       toast.error('Erro ao carregar pagamentos')
     } finally {
       setIsLoading(false)
@@ -56,7 +55,6 @@ export function FeePaymentsList({ feeId, onPaymentChange }: FeePaymentsListProps
       await loadPayments()
       onPaymentChange?.()
     } catch (error) {
-      console.error('Error deleting payment:', error)
       toast.error('Erro ao excluir pagamento')
     }
   }

@@ -81,7 +81,6 @@ export function PaymentFormDialog({
       setNotes('')
       setError('')
     } catch (err) {
-      console.error('Error saving payment:', err)
       setError('Erro ao registrar pagamento')
     } finally {
       setIsSaving(false)

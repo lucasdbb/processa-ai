@@ -317,7 +317,6 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
       window.URL.revokeObjectURL(url)
       document.body.removeChild(element)
     } catch (error) {
-      console.error('Download failed:', error)
       // Fallback to direct link
       window.open(generatedPdfUrl, '_blank')
     }

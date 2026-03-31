@@ -49,7 +49,6 @@ export async function fetchAiTools(): Promise<AiTool[]> {
     const response = await fetchWithCredentials(`${API_URL}/ai/tools`)
 
     if (!response.ok) {
-      console.error('Failed to fetch AI tools from backend')
       return []
     }
 
@@ -67,7 +66,6 @@ export async function fetchAiTools(): Promise<AiTool[]> {
       Component: COMPONENT_MAP[tool.variant as keyof typeof COMPONENT_MAP] || PromptTool,
     }))
   } catch (error) {
-    console.error('Error fetching AI tools:', error)
     return []
   }
 }

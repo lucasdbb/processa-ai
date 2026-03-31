@@ -156,7 +156,6 @@ function FeesFormDialogBody({
       }
       onClose()
     } catch (error) {
-      console.error('Error saving fee:', error)
     } finally {
       setIsSaving(false)
     }

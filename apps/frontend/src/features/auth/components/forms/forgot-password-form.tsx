@@ -52,7 +52,6 @@ export function ForgotPasswordForm({ onLogin }: ForgotPasswordFormProps) {
       toast.success('Email de recuperação enviado!')
       reset()
     } catch (error) {
-      console.error(error)
       let message = error instanceof Error ? error.message : 'Erro ao enviar email de recuperação'
       
       // Handle rate limit error

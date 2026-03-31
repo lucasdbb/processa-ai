@@ -54,7 +54,6 @@ export function AnalysisHistoryList({ functionality, clientId, title = 'Históri
           return
         }
       } catch (error) {
-        console.error('Failed to refresh download URL', error)
       }
     }
 
@@ -85,7 +84,6 @@ export function AnalysisHistoryList({ functionality, clientId, title = 'Históri
       setJobToDelete(null)
       refetch()
     } catch (err) {
-      console.error('Failed to delete job', err)
       toast.error('Erro ao remover análise')
     } finally {
       setIsDeleting(false)

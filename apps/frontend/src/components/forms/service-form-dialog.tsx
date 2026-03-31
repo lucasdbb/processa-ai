@@ -139,7 +139,6 @@ function ServiceFormDialogBody({
       }
       onClose()
     } catch (error) {
-      console.error('Error saving service:', error)
     } finally {
       setIsSaving(false)
     }

@@ -93,8 +93,7 @@ export default function ConfiguracoesPage() {
     billingService
       .getSubscription()
       .then(setSubscription)
-      .catch((error) => {
-        console.error('Error loading subscription:', error)
+      .catch(() => {
       })
       .finally(() => setLoadingBilling(false))
 

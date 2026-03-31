@@ -51,7 +51,6 @@ export default function NotificacoesPage() {
       setNotifications(response.items)
       setUnreadCount(response.unread_count)
     } catch (error) {
-      console.error('Failed to load notifications:', error)
       toast.error('Erro ao carregar notificações')
     } finally {
       setLoading(false)
@@ -76,7 +75,6 @@ export default function NotificacoesPage() {
       setUnreadCount((prev) => Math.max(0, prev - 1))
       toast.success('Notificação marcada como lida')
     } catch (error) {
-      console.error('Failed to mark as read:', error)
       toast.error('Erro ao marcar notificação como lida')
     }
   }
@@ -88,7 +86,6 @@ export default function NotificacoesPage() {
       setUnreadCount(0)
       toast.success('Todas as notificações foram marcadas como lidas')
     } catch (error) {
-      console.error('Failed to mark all as read:', error)
       toast.error('Erro ao marcar todas como lidas')
     }
   }
@@ -104,7 +101,6 @@ export default function NotificacoesPage() {
       setDeleteId(null)
       toast.success('Notificação excluída')
     } catch (error) {
-      console.error('Failed to delete notification:', error)
       toast.error('Erro ao excluir notificação')
     }
   }

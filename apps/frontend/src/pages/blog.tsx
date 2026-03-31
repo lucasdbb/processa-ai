@@ -150,7 +150,6 @@ export default function BlogPage() {
 
         setHasMore(extractHasMore(payload, nextPosts.length))
       } catch (error) {
-        console.error('Error loading posts:', error)
         if (page === 1) {
           setPosts([])
         }

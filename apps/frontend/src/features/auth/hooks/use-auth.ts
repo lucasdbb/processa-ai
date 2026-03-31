@@ -92,7 +92,6 @@ export function useAuth() {
             setUser(null);
           }
         } catch (error) {
-          console.error("Failed to initialize auth:", error);
           setUser(null);
         } finally {
           setLoading(false);
@@ -240,7 +239,6 @@ export function useAuth() {
 
       clearUser();
     } catch (error) {
-      console.error("Logout failed:", error);
       useCreditsStore.getState().reset();
       useBillingStore.setState({ subscription: null, isLoading: false, error: null });
       clearUser();

@@ -66,7 +66,6 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
         set({ credits: null, isLoading: false })
       }
     } catch (error) {
-      console.error('Failed to fetch credits:', error)
       set({ error: (error as Error).message, isLoading: false })
     }
   },
@@ -76,7 +75,6 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
       const costs = await creditsService.getFeatureCosts()
       set({ costs })
     } catch (error) {
-      console.error('Failed to fetch costs:', error)
     }
   },
 
@@ -85,7 +83,6 @@ export const useCreditsStore = create<CreditsState>((set, get) => ({
       const packages = await creditsService.getPackages()
       set({ packages })
     } catch (error) {
-      console.error('Failed to fetch packages:', error)
     }
   },
 

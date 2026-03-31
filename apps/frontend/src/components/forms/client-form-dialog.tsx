@@ -184,7 +184,6 @@ function ClientFormDialogBody({
       await onSave()
       onClose()
     } catch (error) {
-      console.error('Error saving client:', error)
       toast.error(`Erro ao ${isEditing ? 'atualizar' : 'criar'} cliente`)
     } finally {
       setIsSaving(false)
@@ -230,7 +229,6 @@ function ClientFormDialogBody({
           toast.error('CEP não encontrado')
         }
       } catch (error) {
-        console.error('Error fetching CEP:', error)
         toast.error('Erro ao buscar CEP')
       } finally {
         setIsLoadingCEP(false)

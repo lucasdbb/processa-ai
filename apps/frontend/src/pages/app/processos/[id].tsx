@@ -173,8 +173,7 @@ export default function ProcessoDetalhePage() {
       toast.success('Processo concluído com sucesso')
       await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
       setShowActionsMenu(false)
-    } catch (error) {
-      console.error('Error concluding process:', error)
+    } catch {
       toast.error('Erro ao concluir processo')
     }
   }
@@ -188,8 +187,7 @@ export default function ProcessoDetalhePage() {
       toast.success('Processo excluído com sucesso')
       await queryClient.invalidateQueries({ queryKey: ['processes', 'list'] })
       navigate('/app/processos')
-    } catch (error) {
-      console.error('Error deleting process:', error)
+    } catch {
       toast.error('Erro ao excluir processo')
       setShowDeleteModal(false)
     } finally {
@@ -222,8 +220,8 @@ export default function ProcessoDetalhePage() {
         for (const doc of timelineToDelete.documents) {
           try {
             await documentsService.delete(doc.id)
-          } catch (error) {
-            console.error('Error deleting document:', doc.id, error)
+          } catch {
+            // Ignore per-document deletion errors during bulk cleanup.
           }
         }
       }
@@ -233,8 +231,7 @@ export default function ProcessoDetalhePage() {
       setShowDeleteTimelineModal(false)
       setTimelineToDelete(null)
       setDeleteTimelineDocuments(false)
-    } catch (error) {
-      console.error('Error deleting timeline event:', error)
+    } catch {
       toast.error('Erro ao excluir andamento')
     } finally {
       setIsDeletingTimeline(false)
@@ -1015,8 +1012,7 @@ export default function ProcessoDetalhePage() {
                 setShowDocumentDialog(false)
                 setEditingDocument(null)
                 await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
-              } catch (error) {
-                console.error('Error saving document:', error)
+              } catch {
                 toast.error(editingDocument ? 'Erro ao atualizar documento' : 'Erro ao criar documento')
               }
             }}

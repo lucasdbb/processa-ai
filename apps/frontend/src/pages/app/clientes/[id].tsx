@@ -255,7 +255,6 @@ export default function ClienteDetalhePage() {
       setShowFeeDialog(false)
       setEditingFee(null)
     } catch (error) {
-      console.error('Error saving fee:', error)
       toast.error('Erro ao salvar honorário')
     }
   }
@@ -283,7 +282,6 @@ export default function ClienteDetalhePage() {
       setShowFeeDialog(false)
       setEditingFee(null)
     } catch (error) {
-      console.error('Error saving fees:', error)
       toast.error('Erro ao criar parcelas')
     }
   }
@@ -298,7 +296,6 @@ export default function ClienteDetalhePage() {
       await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
       await queryClient.invalidateQueries({ queryKey: ['fees', 'client', id] })
     } catch (error) {
-      console.error('Error deleting fee:', error)
       toast.error('Erro ao excluir honorário')
     }
   }
@@ -312,7 +309,6 @@ export default function ClienteDetalhePage() {
       await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
       await queryClient.invalidateQueries({ queryKey: ['fees', 'client', id] })
     } catch (error) {
-      console.error('Error marking fee as paid:', error)
       toast.error('Erro ao marcar como pago')
     }
   }
@@ -341,7 +337,6 @@ export default function ClienteDetalhePage() {
       setShowServiceDialog(false)
       setEditingService(null)
     } catch (error) {
-      console.error('Error saving service:', error)
       toast.error('Erro ao salvar serviço')
     }
   }
@@ -354,7 +349,6 @@ export default function ClienteDetalhePage() {
       await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
       setShowActionsMenu(false)
     } catch (error) {
-      console.error('Error archiving client:', error)
       toast.error('Erro ao arquivar cliente')
     }
   }
@@ -369,7 +363,6 @@ export default function ClienteDetalhePage() {
       await queryClient.invalidateQueries({ queryKey: ['clients', 'list'] })
       navigate('/app/clientes')
     } catch (error) {
-      console.error('Error deleting client:', error)
       toast.error('Erro ao excluir cliente')
       setShowDeleteModal(false)
     } finally {
@@ -1266,7 +1259,6 @@ export default function ClienteDetalhePage() {
                             setEditingNote(fullNote)
                             setShowNoteDialog(true)
                           } catch (error) {
-                            console.error('Error fetching note:', error)
                             toast.error('Erro ao carregar nota')
                           }
                         }}
@@ -1283,7 +1275,6 @@ export default function ClienteDetalhePage() {
                             toast.success('Nota excluída com sucesso')
                             await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
                           } catch (error) {
-                            console.error('Error deleting note:', error)
                             toast.error('Erro ao excluir nota')
                           }
                         }}
@@ -1404,7 +1395,6 @@ export default function ClienteDetalhePage() {
               setEditingNote(null)
               await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
             } catch (error) {
-              console.error('Error saving note:', error)
               toast.error(editingNote ? 'Erro ao atualizar nota' : 'Erro ao criar nota')
             }
           }}

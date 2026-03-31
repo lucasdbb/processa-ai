@@ -47,7 +47,6 @@ export function UserMenu({ user }: UserMenuProps) {
     try {
       await logout()
     } catch (error) {
-      console.error('Logout error:', error)
     }
   }
 

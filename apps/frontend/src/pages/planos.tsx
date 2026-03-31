@@ -215,7 +215,6 @@ export default function PlanosPage() {
       // Redirecionar para o Stripe Checkout
       window.location.assign(checkout_url)
     } catch (error: unknown) {
-      console.error('Error creating checkout:', error)
       const message = error instanceof Error ? error.message : 'Erro ao iniciar checkout. Tente novamente.'
       toast.error(message)
       setLoadingPlan(null)

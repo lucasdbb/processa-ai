@@ -97,7 +97,6 @@ export function CalculationHistoryList({
 
       throw new Error('Falha ao buscar documento')
     } catch (err) {
-      console.error('Failed to fetch download URL', err)
       toast.error('Erro ao abrir documento')
     }
   }
@@ -125,7 +124,6 @@ export function CalculationHistoryList({
       setCalcToDelete(null)
       refetch()
     } catch (err) {
-      console.error('Failed to delete calculation', err)
       toast.error('Erro ao remover cálculo')
     } finally {
       setIsDeleting(false)

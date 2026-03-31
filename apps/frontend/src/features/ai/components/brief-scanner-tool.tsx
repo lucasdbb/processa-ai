@@ -304,7 +304,6 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
       window.URL.revokeObjectURL(url)
       document.body.removeChild(element)
     } catch (error) {
-      console.error('Download failed:', error)
       window.open(generatedPdfUrl, '_blank')
     }
   }, [generatedPdfUrl, isAuthenticated, openRegisterModal])

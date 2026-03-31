@@ -243,12 +243,10 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
             })
           }
         } catch (error) {
-          console.error('Polling error:', error)
         }
       }, 2000)
 
     } catch (error) {
-      console.error(error)
       analytics.track('feature_used', {
         feature: 'labor_claim',
         action: 'failed',
@@ -279,7 +277,6 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(element)
     } catch (error) {
-      console.error('Download failed:', error)
       window.open(generatedPdfUrl, '_blank')
     }
   }, [generatedPdfUrl])

@@ -120,7 +120,6 @@ export default function ServicoDetalhePage() {
       await queryClient.invalidateQueries({ queryKey: ['services', 'detail', id] })
       setShowEditDialog(false)
     } catch (error) {
-      console.error('Error updating service:', error)
       toast.error('Erro ao atualizar serviço')
     }
   }
@@ -155,7 +154,6 @@ export default function ServicoDetalhePage() {
       setShowDocumentDialog(false)
       setEditingDocument(null)
     } catch (error) {
-      console.error('Error saving document:', error)
       toast.error(editingDocument ? 'Erro ao atualizar documento' : 'Erro ao criar documento')
     }
   }
@@ -176,7 +174,6 @@ export default function ServicoDetalhePage() {
       URL.revokeObjectURL(blobUrl)
       toast.success('Download iniciado')
     } catch (error) {
-      console.error('Error downloading document:', error)
       toast.error('Erro ao baixar documento')
     }
   }
@@ -190,7 +187,6 @@ export default function ServicoDetalhePage() {
       await queryClient.invalidateQueries({ queryKey: ['documents', 'service', id] })
       await queryClient.invalidateQueries({ queryKey: ['services', 'detail', id] })
     } catch (error) {
-      console.error('Error deleting document:', error)
       toast.error('Erro ao excluir documento')
     }
   }
@@ -204,7 +200,6 @@ export default function ServicoDetalhePage() {
       toast.success('Serviço excluído')
       navigate('/app/clientes/' + service.client_id)
     } catch (error) {
-      console.error('Error deleting service:', error)
       toast.error('Erro ao excluir serviço')
     }
   }

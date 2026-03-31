@@ -46,7 +46,6 @@ export async function fetchCalculators(): Promise<CalculatorItem[]> {
     const response = await fetchWithCredentials(`${API_URL}/calculators/list`)
 
     if (!response.ok) {
-      console.error('Failed to fetch calculators from backend')
       return []
     }
 
@@ -62,7 +61,6 @@ export async function fetchCalculators(): Promise<CalculatorItem[]> {
       order: calc.order,
     }))
   } catch (error) {
-    console.error('Error fetching calculators:', error)
     return []
   }
 }
