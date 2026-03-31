@@ -330,7 +330,7 @@ class GoogleCalendarSync:
                     await cur.execute(
                         """
                         SELECT id, google_event_id, title, description, location,
-                               start_at, end_at, all_day, reminder_minutes
+                               start_at, end_at, all_day, reminder_minutes, event_type
                         FROM office_api.events
                         WHERE user_id = %s
                           AND sync_status = 'pending_sync'
@@ -351,14 +351,42 @@ class GoogleCalendarSync:
                         end_at = row[6]
                         all_day = row[7]
                         reminder_minutes = row[8] or []
+                        event_type = row[9]
 
                         try:
+                            # Rich description with link back to app
+                            app_link = f"{settings.FRONTEND_URL}/app/calendario"
+                            rich_description = description or ""
+                            if rich_description:
+                                rich_description += "\n\n---\n"
+                            rich_description += f"🔗 Aberto via Processa AI: {app_link}"
+
+                            # Map event types to Google Calendar colors
+                            # 11: Tomato (Red), 5: Banana (Yellow), 9: Blueberry (Blue)
+                            color_id = None
+                            if event_type == "audiencia":
+                                color_id = "11"
+                            elif event_type == "prazo":
+                                color_id = "5"
+                            elif event_type == "reuniao":
+                                color_id = "9"
+
                             # Build Google Calendar event
                             event_body = {
                                 "summary": title,
-                                "description": description or "",
+                                "description": rich_description,
                                 "location": location or "",
                             }
+                            
+                            if color_id:
+                                event_body["colorId"] = color_id
+
+                            # Handle availability (transparency)
+                            # Deadlines (prazos) and all-day events shouldn't block the lawyer's calendar
+                            if event_type == "prazo" or all_day:
+                                event_body["transparency"] = "transparent" # Free
+                            else:
+                                event_body["transparency"] = "opaque" # Busy
 
                             # Handle all-day events
                             if all_day:
@@ -374,7 +402,7 @@ class GoogleCalendarSync:
                                     "timeZone": "America/Sao_Paulo",
                                 }
 
-                            # Add reminders
+                            # Add smart reminders if custom ones are not provided
                             if reminder_minutes:
                                 event_body["reminders"] = {
                                     "useDefault": False,
@@ -383,6 +411,31 @@ class GoogleCalendarSync:
                                         for minutes in reminder_minutes
                                     ],
                                 }
+                            else:
+                                # Smart defaults based on event type
+                                if event_type == "prazo":
+                                    # Prazos: Email 2 days before, Popup 1 day before, Popup 12 hours before
+                                    event_body["reminders"] = {
+                                        "useDefault": False,
+                                        "overrides": [
+                                            {"method": "email", "minutes": 2 * 24 * 60},
+                                            {"method": "popup", "minutes": 1 * 24 * 60},
+                                            {"method": "popup", "minutes": 12 * 60},
+                                        ],
+                                    }
+                                elif event_type == "audiencia":
+                                    # Audiencias: Email 1 day before, Popup 2 hours before, Popup 30 min before
+                                    event_body["reminders"] = {
+                                        "useDefault": False,
+                                        "overrides": [
+                                            {"method": "email", "minutes": 24 * 60},
+                                            {"method": "popup", "minutes": 2 * 60},
+                                            {"method": "popup", "minutes": 30},
+                                        ],
+                                    }
+                                else:
+                                    # Use Google Calendar default for standard meetings
+                                    event_body["reminders"] = {"useDefault": True}
 
                             # Create or update event in Google Calendar
                             if google_event_id:

@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 
 from src.core.auth import get_user_id, verify_internal_token
@@ -56,10 +56,13 @@ async def list_events(
 )
 async def create_event(
     data: EventCreateRequest,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
 ):
     """Create a new event."""
-    return await calendar_service.create_event(user_id, data)
+    event = await calendar_service.create_event(user_id, data)
+    background_tasks.add_task(google_sync_service.push_events_to_google, user_id)
+    return event
 
 
 @router.get("/events/{event_id}", response_model=EventResponse, dependencies=_auth)
@@ -75,10 +78,13 @@ async def get_event(
 async def update_event(
     event_id: str,
     data: EventUpdateRequest,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
 ):
     """Update an existing event."""
-    return await calendar_service.update_event(user_id, event_id, data)
+    event = await calendar_service.update_event(user_id, event_id, data)
+    background_tasks.add_task(google_sync_service.push_events_to_google, user_id)
+    return event
 
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=_auth)
