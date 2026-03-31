@@ -66,8 +66,9 @@ async def update_post(
     post_id: str,
     data: BlogPostUpdate,
     user_id: str = Depends(get_user_id),
+    user_role: str = Depends(get_user_role),
 ):
-    return await service.update_draft(user_id, post_id, data)
+    return await service.update_draft(user_id, user_role, post_id, data)
 
 
 @router.post("/posts/{post_id}/authors")

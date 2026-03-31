@@ -45,6 +45,8 @@ class BlogPostListResponse(BaseModel):
     items: list[BlogPostItem]
     page: int
     page_size: int
+    total: int
+    has_more: bool
 
 
 class BlogPostDetailResponse(BaseModel):
