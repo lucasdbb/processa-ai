@@ -16,7 +16,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
       "@processa-ai/types": ["./packages/types"],
       "@processa-ai/types/*": ["./packages/types/*"],
