@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { useUser } from '@/features/auth/hooks/use-user'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Button } from '@/components/ui/button'
 import { PostForm } from '@/components/forms/post-form'
 import type { PostFormData } from '@/components/forms/post-form'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
@@ -196,27 +197,27 @@ export default function AdminEditPostPage() {
       headerActions={
         <>
           {isAdmin && post?.status !== 'published' ? (
-            <button
+            <Button
               onClick={() => void handlePublish()}
               disabled={isActing}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
+              variant="secondary"
             >
               <CheckCircle className="w-4 h-4" />
               Publicar
-            </button>
+            </Button>
           ) : null}
 
           {isAdmin ? (
-            <button
+            <Button
               onClick={() => void handleArchive()}
               disabled={isActing}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               type="button"
+              variant="destructive"
             >
               <Archive className="w-4 h-4" />
               Arquivar
-            </button>
+            </Button>
           ) : null}
         </>
       }
