@@ -9,7 +9,7 @@ interface PortalGuardProps {
 
 /**
  * Protects /portal routes: only office_client users can access them.
- * Any other authenticated user is redirected to /app.
+ * All other authenticated users are redirected to /app.
  */
 export function PortalGuard({ children }: PortalGuardProps) {
   useAuth()

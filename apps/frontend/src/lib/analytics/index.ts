@@ -1,5 +1,5 @@
 import { ConsoleAnalyticsService, PostHogAnalyticsService } from './services';
-import { type AnalyticsService } from './types';
+import { type AnalyticsProperties, type AnalyticsService } from './types';
 
 // Singleton para garantir uma única instância
 class Analytics {
@@ -28,13 +28,11 @@ class Analytics {
     return Analytics.instance;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public track(event: string, properties?: Record<string, any>) {
+  public track(event: string, properties?: AnalyticsProperties) {
     this.service.track(event, properties);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public identify(userId: string, traits?: Record<string, any>) {
+  public identify(userId: string, traits?: AnalyticsProperties) {
     this.service.identify(userId, traits);
   }
 
@@ -46,8 +44,7 @@ class Analytics {
     this.service.reset();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public register(properties: Record<string, any>) {
+  public register(properties: AnalyticsProperties) {
     this.service.register(properties);
   }
 

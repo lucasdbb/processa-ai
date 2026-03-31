@@ -1,25 +1,22 @@
+export type AnalyticsProperties = Record<string, unknown>
+
 export interface AnalyticsEvent {
-  name: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  properties?: Record<string, any>;
+  name: string
+  properties?: AnalyticsProperties
 }
 
 export interface AnalyticsUser {
-  id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  traits?: Record<string, any>;
+  id: string
+  traits?: AnalyticsProperties
 }
 
 // Essa interface garante que não importa a ferramenta, o método é o mesmo
 export interface AnalyticsService {
-  init(): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  track(event: string, properties?: Record<string, any>): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  identify(userId: string, traits?: Record<string, any>): void;
-  pageView(path: string): void;
-  reset(): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register(properties: Record<string, any>): void;
-  unregister(property: string): void;
+  init(): void
+  track(event: string, properties?: AnalyticsProperties): void
+  identify(userId: string, traits?: AnalyticsProperties): void
+  pageView(path: string): void
+  reset(): void
+  register(properties: AnalyticsProperties): void
+  unregister(property: string): void
 }

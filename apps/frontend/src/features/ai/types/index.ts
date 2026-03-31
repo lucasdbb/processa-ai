@@ -32,5 +32,5 @@ export type AiTool = {
   locked: boolean;
   order: number;
   templates: ToolTemplate[];
-  Component: ComponentType<any>;
+  Component: ComponentType<Record<string, unknown>>;
 };

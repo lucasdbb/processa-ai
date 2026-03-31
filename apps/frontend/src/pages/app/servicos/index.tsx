@@ -121,14 +121,14 @@ export default function ServicosPage() {
         await servicesService.update(editingService.id, serviceData)
         toast.success('Serviço atualizado com sucesso!')
       } else {
-        const clientIdToUse = (serviceData as { client_id?: string }).client_id ?? selectedClientId
-        const name = (serviceData as any).name as string | undefined
-        const category = (serviceData as any).category as ServiceCategory | undefined
-        const value = (serviceData as any).value as number | null | undefined
-        const notes = (serviceData as any).notes as string | null | undefined
-        const isPartnership = (serviceData as any).is_partnership as boolean | undefined
-        const partnerLawyer = (serviceData as any).partner_lawyer as string | null | undefined
-        const partnerPercentage = (serviceData as any).partner_percentage as number | null | undefined
+        const clientIdToUse = serviceData.client_id ?? selectedClientId
+        const name = serviceData.name
+        const category = serviceData.category
+        const value = serviceData.value
+        const notes = serviceData.notes
+        const isPartnership = serviceData.is_partnership
+        const partnerLawyer = serviceData.partner_lawyer
+        const partnerPercentage = serviceData.partner_percentage
 
         if (!clientIdToUse || !name || !category) return
 

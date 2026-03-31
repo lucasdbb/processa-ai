@@ -152,7 +152,7 @@ export function OnboardingProgress() {
 
   // Track completed items and show toast only on real new completions
   useEffect(() => {
-    // Wait until dashboard stats have loaded before taking any snapshot
+    // Wait until dashboard stats have loaded before taking the first snapshot
     if (!isReady) return
 
     const currentCompleted = new Set(

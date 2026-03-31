@@ -1,4 +1,4 @@
-import { type AnalyticsService } from './types';
+import { type AnalyticsProperties, type AnalyticsService } from './types';
 import posthog from 'posthog-js';
 
 // Implementação "Fake" para desenvolvimento.
@@ -8,13 +8,11 @@ export class ConsoleAnalyticsService implements AnalyticsService {
     console.log('[Analytics] Initialized (Dev Mode)');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  track(event: string, properties?: Record<string, any>) {
+  track(event: string, properties?: AnalyticsProperties) {
     console.log(`[Analytics] Track: ${event}`, properties);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  identify(userId: string, traits?: Record<string, any>) {
+  identify(userId: string, traits?: AnalyticsProperties) {
     console.log(`[Analytics] Identify User: ${userId}`, traits);
   }
 
@@ -26,8 +24,7 @@ export class ConsoleAnalyticsService implements AnalyticsService {
     console.log('[Analytics] Reset (user logged out)');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register(properties: Record<string, any>) {
+  register(properties: AnalyticsProperties) {
     console.log('[Analytics] Register super properties:', properties);
   }
 
@@ -61,13 +58,11 @@ export class PostHogAnalyticsService implements AnalyticsService {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  track(event: string, properties?: Record<string, any>) {
+  track(event: string, properties?: AnalyticsProperties) {
     posthog.capture(event, properties);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  identify(userId: string, traits?: Record<string, any>) {
+  identify(userId: string, traits?: AnalyticsProperties) {
     posthog.identify(userId, traits);
   }
 
@@ -81,8 +76,7 @@ export class PostHogAnalyticsService implements AnalyticsService {
     posthog.reset();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register(properties: Record<string, any>) {
+  register(properties: AnalyticsProperties) {
     posthog.register(properties);
   }
 

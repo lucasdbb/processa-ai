@@ -26,7 +26,7 @@ export function useChatStream() {
       onDone: (messageId: string, sources?: StreamEvent['sources']) => void,
       onError: (error: string) => void,
     ) => {
-      // Abort any ongoing stream
+      // Abort the current ongoing stream
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller

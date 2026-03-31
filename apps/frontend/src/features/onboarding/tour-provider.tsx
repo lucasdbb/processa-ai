@@ -60,8 +60,10 @@ function TourContent({ children }: TourWrapperProps) {
 
       timeoutId = window.setTimeout(() => {
         const steps = getSafeSteps(currentTour)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setSteps?.(steps as any)
+        if (setSteps) {
+          const nextSteps = steps as Parameters<NonNullable<typeof setSteps>>[0]
+          setSteps(nextSteps)
+        }
         setCurrentStep(0)
         setIsOpen(true)
       }, 120)

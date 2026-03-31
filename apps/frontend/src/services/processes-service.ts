@@ -4,7 +4,7 @@ export type ClientRole = "author" | "defendant";
 export type ProcessCategory = "judicial" | "administrative";
 
 export interface Process {
-  next_deadline: any;
+  next_deadline: string | null;
   id: string;
   user_id: string;
   client_id: string;

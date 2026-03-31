@@ -71,10 +71,14 @@ export default function ProcessosPage() {
   const [editingProcess, setEditingProcess] = useState<EditingProcess>(undefined)
   const queryClient = useQueryClient()
 
+  type ProcessStatus = 'active' | 'concluded' | 'cancelled'
+  const isProcessStatus = (value: string): value is ProcessStatus =>
+    value === 'active' || value === 'concluded' || value === 'cancelled'
+
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }: { id: string; status: ProcessStatus }) => {
       // Usando o service correto, já tipado no backend
-      return processesService.update(id, { status: status as any })
+      return processesService.update(id, { status })
     },
     onSuccess: (_, variables) => {
       toast.success(`Processo movido para ${PROCESS_COLUMNS[variables.status]}`)
@@ -274,6 +278,7 @@ export default function ProcessosPage() {
             columns={PROCESS_COLUMNS}
             columnOrder={PROCESS_COLUMN_ORDER}
             onStatusChange={async (item, newStatus) => {
+              if (!isProcessStatus(newStatus)) return
               await updateStatusMutation.mutateAsync({ id: item.id, status: newStatus })
             }}
             renderCard={(item, isDragging) => (

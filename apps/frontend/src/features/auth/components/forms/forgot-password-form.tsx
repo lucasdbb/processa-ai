@@ -53,12 +53,16 @@ export function ForgotPasswordForm({ onLogin }: ForgotPasswordFormProps) {
       reset()
     } catch (error) {
       let message = error instanceof Error ? error.message : 'Erro ao enviar email de recuperação'
+      const errorCode =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code?: unknown }).code ?? '')
+          : ''
       
       // Handle rate limit error
       if (
         message.toLowerCase().includes('rate limit') || 
         message.toLowerCase().includes('too many requests') ||
-        (error as any)?.code === 'over_email_send_rate_limit'
+        errorCode === 'over_email_send_rate_limit'
       ) {
         message = 'Muitas tentativas recentes. Por favor, aguarde 60 segundos antes de tentar novamente.'
       }

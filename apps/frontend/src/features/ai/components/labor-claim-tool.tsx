@@ -150,7 +150,7 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
     })
 
     try {
-      // 1. Upload files if any
+      // 1. Upload files when present
       let uploadedFiles: UploadedFileMetadata[] = []
       let jobUuid = ''
 
