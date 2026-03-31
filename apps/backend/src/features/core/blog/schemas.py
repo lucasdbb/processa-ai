@@ -26,6 +26,7 @@ class BlogPostUpdate(BaseModel):
 class AuthorInfo(BaseModel):
     id: str
     name: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
 class BlogPostItem(BaseModel):

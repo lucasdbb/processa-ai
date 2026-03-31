@@ -166,12 +166,12 @@ export default function BlogPage() {
 
   return (
     <div className="pt-24">
-      <section className="relative py-12 overflow-hidden">
+      <section className="relative min-h-[calc(100vh-6rem)] overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 h-full py-8 sm:py-10 lg:py-12 flex flex-col">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-3 sm:mb-4">
               Fique um passo à frente da legislação.
@@ -180,117 +180,126 @@ export default function BlogPage() {
               Análises diretas ao ponto sobre o que muda no direito brasileiro e como isso afeta seus casos.
             </p>
           </div>
-        </div>
-      </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 relative z-10">
-        <div className="mb-8 sm:mb-12">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 p-2 sm:p-3 bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-xl sm:rounded-2xl shadow-lg border border-border max-w-4xl mx-auto">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 sm:h-5 w-4 sm:w-5" />
-              <input
-                type="text"
-                placeholder="Buscar artigos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm sm:text-base text-foreground placeholder:text-muted-foreground"
-              />
+          <div className="mt-6 sm:mt-8 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 p-1.5 sm:p-2 bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-xl sm:rounded-2xl shadow-lg border border-border max-w-4xl mx-auto">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 sm:h-5 w-4 sm:w-5" />
+                <input
+                  type="text"
+                  placeholder="Buscar artigos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm sm:text-base text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+              <div className="w-px bg-border hidden sm:block" />
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="sm:w-60 px-3 sm:px-4 py-2 sm:py-2.5 bg-transparent border border-border sm:border-none outline-none focus:outline-none focus:ring-0 text-sm sm:text-base text-foreground cursor-pointer hover:bg-muted/50 rounded-lg sm:rounded-xl transition-colors"
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id} className="bg-popover text-popover-foreground">
+                    {category.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="w-px bg-border hidden sm:block" />
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="sm:w-64 px-3 sm:px-4 py-2.5 sm:py-3 bg-transparent border border-border sm:border-none outline-none focus:outline-none focus:ring-0 text-sm sm:text-base text-foreground cursor-pointer hover:bg-muted/50 rounded-lg sm:rounded-xl transition-colors"
-            >
-              {categories.map((category) => (
-                <option key={category.id} value={category.id} className="bg-popover text-popover-foreground">
-                  {category.name}
-                </option>
-              ))}
-            </select>
           </div>
-        </div>
 
-        {featuredPost && (
-          <div className="mb-12 sm:mb-16">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-              <div className="h-px flex-1 bg-border" />
-              <h2 className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Destaque
-              </h2>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+          {featuredPost && (
+            <div className="flex-1 min-h-0">
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
+                <div className="h-px flex-1 bg-border" />
+                <h2 className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                  Destaque
+                </h2>
+                <div className="h-px flex-1 bg-border" />
+              </div>
 
-            <div className="group relative bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl sm:rounded-3xl shadow-xl border border-border overflow-hidden hover:shadow-2xl transition-all duration-500">
-              <div className="flex flex-col md:flex-row">
-                <div className="md:w-1/2 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-background/10 group-hover:bg-background/0 transition-colors z-10" />
-                  <div className="relative w-full h-48 sm:h-56 md:h-full">
-                    <img
-                      src={
-                        featuredPost.cover_image_url ||
-                        featuredPost.featured_image ||
-                        'https://images.unsplash.com/photo-1554224154-26032fced8bd?w=800&h=500&fit=crop'
-                      }
-                      alt={`Imagem ilustrativa do artigo: ${featuredPost.title}`}
-                      className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                      loading="lazy"
-                    />
+              <div className="group relative bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl sm:rounded-3xl shadow-lg border border-border overflow-hidden hover:shadow-xl transition-all duration-500">
+                <div className="flex flex-col md:flex-row">
+                  <div className="md:w-1/2 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-background/10 group-hover:bg-background/0 transition-colors z-10" />
+                    <div className="relative w-full h-40 sm:h-48 md:h-full">
+                      <img
+                        src={
+                          featuredPost.cover_image_url ||
+                          featuredPost.featured_image ||
+                          'https://images.unsplash.com/photo-1554224154-26032fced8bd?w=800&h=500&fit=crop'
+                        }
+                        alt={`Imagem ilustrativa do artigo: ${featuredPost.title}`}
+                        className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                        loading="lazy"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="md:w-1/2 p-4 sm:p-6 md:p-8 lg:p-12 flex flex-col justify-center">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
-                    {featuredPost.category && (
-                      <span className="inline-flex items-center px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground border border-border">
-                        {featuredPost.category}
-                      </span>
-                    )}
-                    {(featuredPost.published_at || featuredPost.created_at) && (
+                  <div className="md:w-1/2 p-4 sm:p-5 md:p-6 lg:p-8 flex flex-col justify-center">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
+                      {featuredPost.category && (
+                        <span className="inline-flex items-center px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground border border-border">
+                          {featuredPost.category}
+                        </span>
+                      )}
+                      {(featuredPost.published_at || featuredPost.created_at) && (
+                        <span className="flex items-center">
+                          <Calendar className="h-3 sm:h-4 w-3 sm:w-4 mr-1.5" />
+                          {formatDate(featuredPost.published_at || featuredPost.created_at!)}
+                        </span>
+                      )}
                       <span className="flex items-center">
-                        <Calendar className="h-3 sm:h-4 w-3 sm:w-4 mr-1.5" />
-                        {formatDate(featuredPost.published_at || featuredPost.created_at!)}
-                      </span>
-                    )}
-                    <span className="flex items-center">
-                      <Clock className="h-3 sm:h-4 w-3 sm:w-4 mr-1.5" />
-                      {estimateReadTime(featuredPost.excerpt || featuredPost.content)}
-                    </span>
-                  </div>
-
-                  <h3 className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-foreground mb-2 sm:mb-4 leading-tight group-hover:text-muted-foreground transition-colors">
-                    {featuredPost.title}
-                  </h3>
-
-                  {featuredPost.excerpt && (
-                    <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-4 sm:mb-8 leading-relaxed">
-                      {featuredPost.excerpt}
-                    </p>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 mt-auto pt-4 sm:pt-0">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-8 sm:w-10 h-8 sm:h-10 bg-muted rounded-full flex items-center justify-center text-muted-foreground font-bold border border-border flex-shrink-0">
-                        <User className="h-4 sm:h-5 w-4 sm:w-5" />
-                      </div>
-                      <span className="text-xs sm:text-sm font-medium text-foreground">
-                        {featuredPost.author?.name || 'Equipe Processa AI'}
+                        <Clock className="h-3 sm:h-4 w-3 sm:w-4 mr-1.5" />
+                        {estimateReadTime(featuredPost.excerpt || featuredPost.content)}
                       </span>
                     </div>
 
-                    <Link
-                      to={`/blog/${featuredPost.slug}`}
-                      className="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-slate-900 text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 transform hover:-translate-y-0.5 whitespace-nowrap"
-                    >
-                      Ler artigo completo
-                    </Link>
+                    <h3 className="text-xl sm:text-2xl md:text-2xl lg:text-3xl font-bold text-foreground mb-2 sm:mb-3 leading-tight text-pretty group-hover:text-muted-foreground transition-colors">
+                      {featuredPost.title}
+                    </h3>
+
+                    {featuredPost.excerpt && (
+                      <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 leading-relaxed line-clamp-3 md:text-justify hyphens-auto [text-align-last:left]">
+                        {featuredPost.excerpt}
+                      </p>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 mt-auto pt-2 sm:pt-0">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        {featuredPost.author?.avatar_url ? (
+                          <img
+                            src={featuredPost.author.avatar_url}
+                            alt={featuredPost.author.name || 'Autor'}
+                            referrerPolicy="no-referrer"
+                            className="w-8 sm:w-9 h-8 sm:h-9 rounded-full object-cover border border-border flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 sm:w-9 h-8 sm:h-9 bg-muted rounded-full flex items-center justify-center text-muted-foreground font-bold border border-border flex-shrink-0">
+                            <User className="h-4 sm:h-5 w-4 sm:w-5" />
+                          </div>
+                        )}
+                        <span className="text-xs sm:text-sm font-medium text-foreground">
+                          {featuredPost.author?.name || 'Equipe Processa AI'}
+                        </span>
+                      </div>
+
+                      <Link
+                        to={`/blog/${featuredPost.slug}`}
+                        className="inline-flex items-center justify-center px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-900 text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 transform hover:-translate-y-0.5 whitespace-nowrap"
+                      >
+                        Ler artigo completo
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </section>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 relative z-10">
         <div>
           <div className="flex items-center justify-between mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
@@ -305,69 +314,80 @@ export default function BlogPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+            <div className="space-y-3 sm:space-y-4">
               {regularPosts.map((post) => (
                 <article
                   key={post.id}
-                  className="group flex flex-col bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl sm:rounded-3xl border border-border overflow-hidden hover:shadow-xl hover:border-muted-foreground/50 hover:scale-[1.02] transition-all duration-300"
+                  className="group bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:border-muted-foreground/40 transition-all duration-300"
                 >
-                  <div className="relative h-40 sm:h-48 md:h-56 overflow-hidden">
-                    <div className="absolute inset-0 bg-background/0 group-hover:bg-background/5 transition-colors z-10" />
-                    <img
-                      src={
-                        post.cover_image_url ||
-                        post.featured_image ||
-                        'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&h=400&fit=crop'
-                      }
-                      alt={`Imagem ilustrativa do artigo: ${post.title}`}
-                      className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
-                      loading="lazy"
-                    />
-                    {post.category && (
-                      <span className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20 inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-background/90 backdrop-blur-sm text-foreground shadow-sm">
-                        {post.category}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col">
-                    <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-4">
-                      {(post.published_at || post.created_at) && (
-                        <span className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(post.published_at || post.created_at!)}
-                        </span>
-                      )}
-                      <span className="flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {estimateReadTime(post.excerpt || post.content)}
-                      </span>
+                  <div className="flex flex-col sm:flex-row">
+                    <div className="sm:w-56 md:w-64 lg:w-72 relative h-40 sm:h-auto overflow-hidden">
+                      <div className="absolute inset-0 bg-background/0 group-hover:bg-background/5 transition-colors z-10" />
+                      <img
+                        src={
+                          post.cover_image_url ||
+                          post.featured_image ||
+                          'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&h=400&fit=crop'
+                        }
+                        alt={`Imagem ilustrativa do artigo: ${post.title}`}
+                        className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                        loading="lazy"
+                      />
                     </div>
 
-                    <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-3 group-hover:text-muted-foreground transition-colors line-clamp-2">
-                      {post.title}
-                    </h3>
+                    <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground mb-2.5 sm:mb-3">
+                        {post.category && (
+                          <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground border border-border">
+                            {post.category}
+                          </span>
+                        )}
+                        {(post.published_at || post.created_at) && (
+                          <span className="flex items-center">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {formatDate(post.published_at || post.created_at!)}
+                          </span>
+                        )}
+                        <span className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {estimateReadTime(post.excerpt || post.content)}
+                        </span>
+                      </div>
 
-                    {post.excerpt && (
-                      <p className="text-muted-foreground text-xs sm:text-sm mb-4 sm:mb-6 line-clamp-3 leading-relaxed flex-grow">
-                        {post.excerpt}
-                      </p>
-                    )}
+                      <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 text-pretty group-hover:text-muted-foreground transition-colors line-clamp-2">
+                        {post.title}
+                      </h3>
 
-                    <div className="flex items-center justify-between pt-3 sm:pt-4 md:pt-6 border-t border-border gap-2 sm:gap-0">
-                      <span className="flex items-center text-[10px] sm:text-xs font-medium text-foreground min-w-0">
-                        <div className="w-5 sm:w-6 h-5 sm:h-6 bg-muted rounded-full flex items-center justify-center mr-1.5 sm:mr-2 border border-border flex-shrink-0">
-                          <User className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-muted-foreground" />
-                        </div>
-                        <span className="truncate">{post.author?.name || 'Equipe'}</span>
-                      </span>
+                      {post.excerpt && (
+                        <p className="text-muted-foreground text-sm mb-4 line-clamp-2 sm:line-clamp-3 leading-relaxed md:text-justify hyphens-auto [text-align-last:left] flex-grow">
+                          {post.excerpt}
+                        </p>
+                      )}
 
-                      <Link
-                        to={`/blog/${post.slug}`}
-                        className="text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
-                      >
-                        Continuar lendo
-                      </Link>
+                      <div className="flex items-center justify-between pt-3 border-t border-border gap-3">
+                        <span className="flex items-center text-xs font-medium text-foreground min-w-0">
+                          {post.author?.avatar_url ? (
+                            <img
+                              src={post.author.avatar_url}
+                              alt={post.author.name || 'Autor'}
+                              referrerPolicy="no-referrer"
+                              className="w-6 h-6 rounded-full object-cover mr-2 border border-border flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center mr-2 border border-border flex-shrink-0">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                          )}
+                          <span className="truncate">{post.author?.name || 'Equipe'}</span>
+                        </span>
+
+                        <Link
+                          to={`/blog/${post.slug}`}
+                          className="text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors whitespace-nowrap"
+                        >
+                          Continuar lendo
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -388,7 +408,7 @@ export default function BlogPage() {
                 Direito muda todo dia. Não fique para trás.
               </h3>
               <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-6 sm:mb-8 leading-relaxed font-light">
-                Uma vez por semana, o que importa no direito brasileiro direto no seu e-mail.
+                O que importa no direito brasileiro direto no seu e-mail.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 max-w-1.5xl mx-auto">

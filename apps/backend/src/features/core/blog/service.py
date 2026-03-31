@@ -135,9 +135,9 @@ class BlogService:
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
-            pr = self.supabase.table("profiles").select("id,name").in_("id", author_ids).execute()
+            pr = self.supabase.table("profiles").select("id,name,avatar_url").in_("id", author_ids).execute()
             for p in pr.data or []:
-                profiles[p["id"]] = p.get("name")
+                profiles[p["id"]] = {"name": p.get("name"), "avatar_url": p.get("avatar_url")}
 
         # Fetch categories
         category_ids = list({row["category_id"] for row in data if row.get("category_id")})
@@ -169,7 +169,8 @@ class BlogService:
                     "category": categories_map.get(category_id) if category_id else None,
                     "author": {
                         "id": str(row.get("author_id")),
-                        "name": profiles.get(row.get("author_id")),
+                        "name": profiles.get(row.get("author_id"), {}).get("name"),
+                        "avatar_url": profiles.get(row.get("author_id"), {}).get("avatar_url"),
                     },
                     "published_at": row.get("published_at"),
                 }
@@ -209,11 +210,12 @@ class BlogService:
         author_ids = list({row["author_id"] for row in data if row.get("author_id")})
         profiles = {}
         if author_ids:
-            pr = self.supabase.table("profiles").select("id,name").in_("id", author_ids).execute()
+            pr = self.supabase.table("profiles").select("id,name,avatar_url").in_("id", author_ids).execute()
             for p in pr.data or []:
-                profiles[p["id"]] = p.get("name")
+                profiles[p["id"]] = {"name": p.get("name"), "avatar_url": p.get("avatar_url")}
         items = []
         for row in data:
+            author_profile = profiles.get(row.get("author_id"), {})
             items.append(
                 {
                     "id": str(row.get("id")),
@@ -224,7 +226,8 @@ class BlogService:
                     "category_id": row.get("category_id"),
                     "author": {
                         "id": str(row.get("author_id")),
-                        "name": profiles.get(row.get("author_id")),
+                        "name": author_profile.get("name"),
+                        "avatar_url": author_profile.get("avatar_url"),
                     },
                     "status": row.get("status"),
                     "published_at": row.get("published_at"),
@@ -298,12 +301,12 @@ class BlogService:
         if authors_ids:
             pr = (
                 self.supabase.table("profiles")
-                .select("id,name")
+                .select("id,name,avatar_url")
                 .in_("id", list(authors_ids))
                 .execute()
             )
             profiles = pr.data or []
-        authors = [{"id": str(p["id"]), "name": p.get("name")} for p in profiles]
+        authors = [{"id": str(p["id"]), "name": p.get("name"), "avatar_url": p.get("avatar_url")} for p in profiles]
 
         return {
             "id": str(post.get("id")),
@@ -384,12 +387,12 @@ class BlogService:
         if authors_ids:
             pr = (
                 self.supabase.table("profiles")
-                .select("id,name")
+                .select("id,name,avatar_url")
                 .in_("id", list(authors_ids))
                 .execute()
             )
             profiles = pr.data or []
-        authors = [{"id": str(p["id"]), "name": p.get("name")} for p in profiles]
+        authors = [{"id": str(p["id"]), "name": p.get("name"), "avatar_url": p.get("avatar_url")} for p in profiles]
 
         return {
             "id": str(post.get("id")),

@@ -28,8 +28,17 @@ interface Post {
   authors?: Array<{
     id?: string
     name?: string
+    avatar_url?: string
   }>
 }
+
+type BlogPostPrefetchPayload = {
+  cachedAt: number
+  post: Post
+}
+
+const BLOG_POST_PREFETCH_KEY_PREFIX = 'processa_blog_post_prefetch_v1_'
+const BLOG_POST_PREFETCH_MAX_AGE_MS = 10 * 60 * 1000
 
 function normalizePost(payload: unknown): Post | null {
   if (!payload || typeof payload !== 'object') return null
@@ -49,6 +58,28 @@ export default function BlogPostPage() {
 
   useEffect(() => {
     const loadPost = async () => {
+      let hasFreshCache = false
+
+      if (id) {
+        try {
+          const cacheRaw = window.sessionStorage.getItem(`${BLOG_POST_PREFETCH_KEY_PREFIX}${id}`)
+          if (cacheRaw) {
+            const cached = JSON.parse(cacheRaw) as BlogPostPrefetchPayload
+            const isFresh =
+              Number.isFinite(cached.cachedAt) &&
+              Date.now() - cached.cachedAt <= BLOG_POST_PREFETCH_MAX_AGE_MS
+
+            if (isFresh && cached.post) {
+              setPost(cached.post)
+              setIsLoading(false)
+              hasFreshCache = true
+            }
+          }
+        } catch {
+          // Ignore invalid cache payloads.
+        }
+      }
+
       try {
         const response = await fetchWithCredentials(`${API_URL}/blog/posts/${id}`)
         if (!response.ok) {
@@ -56,10 +87,24 @@ export default function BlogPostPage() {
           return
         }
         const payload: unknown = await response.json()
-        setPost(normalizePost(payload))
+        const normalizedPost = normalizePost(payload)
+        setPost(normalizedPost)
+
+        if (id && normalizedPost) {
+          const cachePayload: BlogPostPrefetchPayload = {
+            cachedAt: Date.now(),
+            post: normalizedPost,
+          }
+          window.sessionStorage.setItem(
+            `${BLOG_POST_PREFETCH_KEY_PREFIX}${id}`,
+            JSON.stringify(cachePayload)
+          )
+        }
       } catch (error) {
         console.error('Error loading post:', error)
-        setPost(null)
+        if (!hasFreshCache) {
+          setPost(null)
+        }
       } finally {
         setIsLoading(false)
       }
@@ -112,6 +157,7 @@ export default function BlogPostPage() {
   const dateValue = post.published_at || post.created_at
   const hasCover = Boolean(post.cover_image_url || post.featured_image)
   const authorName = post.author?.name || post.authors?.[0]?.name
+  const authorAvatarUrl = post.author?.avatar_url || post.authors?.[0]?.avatar_url
 
   return (
     <main className="pt-24 pb-16 font-sans">
@@ -171,7 +217,7 @@ export default function BlogPostPage() {
                   <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">
                     Resumo
                   </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{post.excerpt}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed text-justify">{post.excerpt}</p>
                 </div>
               )}
 
@@ -196,12 +242,21 @@ export default function BlogPostPage() {
               {authorName && (
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider">
-                    Autor
+                    Autor(a)
                   </h3>
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                      <User className="h-4 w-4 text-foreground" />
-                    </div>
+                    {authorAvatarUrl ? (
+                      <img
+                        src={authorAvatarUrl}
+                        alt={authorName}
+                        referrerPolicy="no-referrer"
+                        className="w-8 h-8 rounded-full object-cover border border-border"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                        <User className="h-4 w-4 text-foreground" />
+                      </div>
+                    )}
                     <span className="text-sm font-semibold text-foreground">{authorName}</span>
                   </div>
                 </div>
@@ -236,7 +291,7 @@ export default function BlogPostPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 pb-8 border-b border-border">
               {post.excerpt && (
                 <div className="lg:col-span-2">
-                  <p className="text-lg text-muted-foreground leading-relaxed">{post.excerpt}</p>
+                  <p className="text-lg text-muted-foreground leading-relaxed text-justify">{post.excerpt}</p>
                 </div>
               )}
 
@@ -263,9 +318,18 @@ export default function BlogPostPage() {
               <div className="mb-10 flex items-center gap-2 text-muted-foreground">
                 <span className="text-sm">Por</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-foreground" />
-                  </div>
+                  {authorAvatarUrl ? (
+                    <img
+                      src={authorAvatarUrl}
+                      alt={authorName}
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                      <User className="h-4 w-4 text-foreground" />
+                    </div>
+                  )}
                   <span className="font-semibold text-foreground">{authorName}</span>
                 </div>
               </div>
@@ -276,7 +340,7 @@ export default function BlogPostPage() {
         <div className="mb-12">
           <MarkdownPreview
             source={post.content}
-            className="prose prose-lg max-w-none dark:prose-invert !bg-transparent"
+            className="prose prose-lg max-w-none dark:prose-invert !bg-transparent text-justify"
             wrapperElement={{ 'data-color-mode': dataColorMode }}
             style={{ backgroundColor: 'transparent' }}
           />
