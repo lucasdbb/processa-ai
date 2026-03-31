@@ -320,8 +320,8 @@ export default function BlogPage() {
                   key={post.id}
                   className="group bg-[hsl(var(--blog-surface)/var(--blog-surface-alpha))] rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:border-muted-foreground/40 transition-all duration-300"
                 >
-                  <div className="flex flex-col sm:flex-row">
-                    <div className="sm:w-56 md:w-64 lg:w-72 relative h-40 sm:h-auto overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:h-[220px]">
+                    <div className="sm:w-56 md:w-64 lg:w-72 sm:flex-shrink-0 relative h-40 sm:h-full overflow-hidden">
                       <div className="absolute inset-0 bg-background/0 group-hover:bg-background/5 transition-colors z-10" />
                       <img
                         src={
@@ -335,7 +335,7 @@ export default function BlogPage() {
                       />
                     </div>
 
-                    <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col">
+                    <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col h-full">
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-muted-foreground mb-2.5 sm:mb-3">
                         {post.category && (
                           <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-muted text-foreground border border-border">
@@ -354,15 +354,13 @@ export default function BlogPage() {
                         </span>
                       </div>
 
-                      <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 text-pretty group-hover:text-muted-foreground transition-colors line-clamp-2">
+                      <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 min-h-[3.25rem] text-pretty group-hover:text-muted-foreground transition-colors line-clamp-2">
                         {post.title}
                       </h3>
 
-                      {post.excerpt && (
-                        <p className="text-muted-foreground text-sm mb-4 line-clamp-2 sm:line-clamp-3 leading-relaxed md:text-justify hyphens-auto [text-align-last:left] flex-grow">
-                          {post.excerpt}
-                        </p>
-                      )}
+                      <p className="text-muted-foreground text-sm mb-4 min-h-[3rem] line-clamp-2 leading-relaxed md:text-justify hyphens-auto [text-align-last:left] flex-grow">
+                        {post.excerpt || post.content || 'Sem resumo disponível para este post.'}
+                      </p>
 
                       <div className="flex items-center justify-between pt-3 border-t border-border gap-3">
                         <span className="flex items-center text-xs font-medium text-foreground min-w-0">
