@@ -61,5 +61,8 @@ class Settings(BaseSettings):
     GEMINI_CHAT_MODEL: str = "gemini-3.1-flash-lite-preview"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
 
+    # DataJUD (API Pública CNJ)
+    DATAJUD_API_KEY: str = ""
+
 
 settings = Settings()

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ClientSelect } from '@/components/ui/client-select'
-import { processesService, type ClientRole, type ProcessCategory, type ProcessCreate, type ProcessUpdate } from '@/services/processes-service'
+import { processesService, type ClientRole, type ProcessCategory, type ProcessCreate, type ProcessUpdate, type ProcessValidationResponse } from '@/services/processes-service'
 import { PROCESS_AREAS, PROCESS_TYPES, TRIBUNALS } from '@/lib/constants'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -102,6 +102,51 @@ function ProcessFormDialogBody({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [selectedClient, setSelectedClient] = useState<Client | null>(preselectedClient ?? null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isValidating, setIsValidating] = useState(false)
+  const validationCache = useRef<Map<string, ProcessValidationResponse>>(new Map())
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const applyValidationResult = useCallback((res: ProcessValidationResponse, currentRole: ClientRole) => {
+    setFormData((prev) => ({
+      ...prev,
+      court: prev.court || res.court || prev.court,
+      tribunal: prev.tribunal || res.tribunal || prev.tribunal,
+      type: prev.type || res.process_class || prev.type,
+      area: prev.area || res.inferred_area || prev.area,
+      start_date: prev.start_date || res.start_date || prev.start_date,
+      value: prev.value || (res.valor_causa ? numberToCurrencyDisplay(res.valor_causa) : prev.value),
+      defendant: prev.defendant || (
+        currentRole === 'author'
+          ? res.defendants.join(', ')
+          : res.plaintiffs.join(', ')
+      ),
+    }))
+  }, [])
+
+  const validateEffect = useCallback(async (processNumber: string, currentRole: ClientRole) => {
+    const cached = validationCache.current.get(processNumber)
+    if (cached) {
+      if (cached.is_valid) applyValidationResult(cached, currentRole)
+      return
+    }
+
+    setIsValidating(true)
+    try {
+      const response = await processesService.validateProcessNumber(processNumber)
+      validationCache.current.set(processNumber, response)
+
+      if (response.is_valid) {
+        applyValidationResult(response, currentRole)
+        toast.success('Processo localizado!')
+      } else {
+        toast.info('Processo não localizado. Preencha os dados manualmente.')
+      }
+    } catch {
+      toast.error('Não foi possível verificar o processo. Tente novamente.')
+    } finally {
+      setIsValidating(false)
+    }
+  }, [applyValidationResult])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -290,6 +335,18 @@ function ProcessFormDialogBody({
       // Aplica máscara CNJ apenas para processos judiciais
       const formatted = formData.process_category === 'judicial' ? formatProcessNumber(value) : value
       setFormData((prev) => ({ ...prev, [field]: formatted }))
+
+      // Dispara busca automática ao completar o número CNJ (25 chars) com debounce
+      if (formData.process_category === 'judicial' && formatted.length === 25) {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current)
+        const currentRole = formData.client_role
+        debounceTimer.current = setTimeout(() => {
+          validateEffect(formatted, currentRole)
+        }, 800)
+      } else {
+        // Cancela busca pendente se usuário apagou dígitos
+        if (debounceTimer.current) clearTimeout(debounceTimer.current)
+      }
     } else if (field === 'value') {
       setFormData((prev) => ({ ...prev, [field]: formatCurrencyInput(value) }))
     } else {
@@ -312,7 +369,11 @@ function ProcessFormDialogBody({
   const initialClient = isEditing ? undefined : preselectedClient
 
   return (
-    <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+    <DialogContent
+      className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
+      onInteractOutside={(e) => e.preventDefault()}
+      onEscapeKeyDown={(e) => e.preventDefault()}
+    >
       <DialogHeader className="p-6 pb-2 shrink-0">
         <DialogTitle>{isEditing ? 'Editar Processo' : 'Novo Processo'}</DialogTitle>
       </DialogHeader>
@@ -382,20 +443,25 @@ function ProcessFormDialogBody({
                 {formData.process_category === 'judicial' ? 'Número do Processo' : 'Número / Protocolo'}{' '}
                 <span className="text-destructive">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.process_number}
-                onChange={(e) => handleChange('process_number', e.target.value)}
-                className={cn(
-                  'w-full px-3 py-2 bg-background border rounded-lg text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                  errors.process_number ? 'border-destructive' : 'border-border'
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.process_number}
+                  onChange={(e) => handleChange('process_number', e.target.value)}
+                  className={cn(
+                    'w-full px-3 py-2 bg-background border rounded-lg text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                    errors.process_number ? 'border-destructive' : 'border-border'
+                  )}
+                  placeholder={
+                    formData.process_category === 'judicial'
+                      ? '0000000-00.0000.0.00.0000'
+                      : 'Ex: 12345/2026, INSS-001/2024'
+                  }
+                />
+                {isValidating && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
                 )}
-                placeholder={
-                  formData.process_category === 'judicial'
-                    ? '0000000-00.0000.0.00.0000'
-                    : 'Ex: 12345/2026, INSS-001/2024'
-                }
-              />
+              </div>
               {errors.process_number && <p className="mt-1 text-xs text-destructive">{errors.process_number}</p>}
             </div>
 

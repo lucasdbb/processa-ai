@@ -12,8 +12,11 @@ from src.features.office.processes.schemas import (
     ProcessResponse,
     ProcessStatus,
     ProcessUpdate,
+    DatajudValidationRequest,
+    DatajudValidationResponse,
 )
 from src.features.office.processes.service import processes_service
+from src.features.office.processes.datajud_service import datajud_service
 
 router = APIRouter(
     dependencies=[Depends(verify_internal_token)],
@@ -122,3 +125,21 @@ async def delete_process(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Process not found",
         )
+
+
+@router.post("/validate-cnj", response_model=DatajudValidationResponse)
+async def validate_cnj(
+    data: DatajudValidationRequest,
+    user_id: UUID = Depends(get_user_id),
+):
+    """Valida e extrai informações prévias de um NUP usando a API Pública do DataJUD."""
+    raw_data = await datajud_service.fetch_process_metadata(data.process_number)
+    
+    if not raw_data:
+        return DatajudValidationResponse(
+            process_number=datajud_service.strip_cnj_mask(data.process_number),
+            is_valid=False
+        )
+        
+    preview = datajud_service.parse_to_internal_preview(data.process_number, raw_data)
+    return DatajudValidationResponse(**preview)

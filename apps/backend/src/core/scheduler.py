@@ -15,6 +15,7 @@ from src.core.cleanup import CleanupService
 from src.core.email import send_email
 from src.core.logging import logger
 from src.features.office.deadlines.notifications import DeadlineNotificationService
+from src.features.office.processes.service import processes_service
 
 
 def create_scheduler() -> AsyncIOScheduler:
@@ -118,6 +119,21 @@ async def cleanup_old_data_job():
         await _notify_admin("cleanup_old_data", "error", error=str(e))
 
 
+async def datajud_sync_job():
+    """Job to sync active processes with DataJUD API to fetch new timeline events."""
+    try:
+        logger.info("Running scheduled job: datajud_sync")
+        await _notify_admin("datajud_sync", "started")
+
+        result = await processes_service.sync_active_processes_with_datajud(batch_size=100)
+
+        logger.info(f"Completed scheduled job: datajud_sync. Result: {result}")
+        await _notify_admin("datajud_sync", "completed")
+    except Exception as e:
+        logger.error(f"Error in datajud_sync job: {e}", exc_info=True)
+        await _notify_admin("datajud_sync", "error", error=str(e))
+
+
 def setup_jobs(scheduler: AsyncIOScheduler):
     """
     Configure all scheduled jobs
@@ -160,6 +176,18 @@ def setup_jobs(scheduler: AsyncIOScheduler):
         id="cleanup_old_data_monthly",
         replace_existing=True,
         name="Cleanup old data (1st of month, 3AM Brazil time)",
+    )
+
+    # Sync with DataJUD API every 12 hours (1AM and 1PM)
+    scheduler.add_job(
+        datajud_sync_job,
+        "cron",
+        hour="1,13",
+        minute=0,
+        timezone=ZoneInfo("America/Sao_Paulo"),
+        id="datajud_sync_twice_daily",
+        replace_existing=True,
+        name="Sync with DataJUD (1AM and 1PM Brazil time)",
     )
 
     logger.info("Scheduled jobs configured:")

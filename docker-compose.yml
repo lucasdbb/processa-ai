@@ -69,6 +69,8 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_CHAT_MODEL=${GEMINI_CHAT_MODEL:-gemini-3.1-flash-lite-preview}
       - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      # DataJUD (API Pública CNJ)
+      - DATAJUD_API_KEY=${DATAJUD_API_KEY}
       # Email
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - SENDGRID_FROM=${SENDGRID_FROM}

@@ -348,5 +348,98 @@ class ProcessesService:
                     documents_count=documents_count,
                 )
 
+    async def sync_active_processes_with_datajud(self, batch_size: int = 50) -> dict[str, Any]:
+        """Sync active processes with external judicial data to find new timeline events."""
+        import asyncio
+        from src.features.office.processes.datajud_service import datajud_service
+        from src.core.logging import logger
+
+        pool = await get_pool()
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT id, user_id, process_number
+                    FROM office_api.processes
+                    WHERE status = 'active'
+                    ORDER BY updated_at ASC
+                    LIMIT %s
+                    """,
+                    (batch_size,),
+                )
+                processes_to_sync = await cur.fetchall()
+
+        if not processes_to_sync:
+            return {"processed": 0, "updates_count": 0}
+
+        updates_count = 0
+
+        for proc in processes_to_sync:
+            cnj = proc["process_number"]
+            if len(datajud_service.strip_cnj_mask(cnj)) != 20:
+                continue
+
+            raw_data = await datajud_service.fetch_process_metadata(cnj)
+            await asyncio.sleep(0.5)  # Rate limiting entre chamadas
+
+            if not raw_data:
+                continue
+
+            movimentos = raw_data.get("movimentos", [])
+            if not movimentos:
+                continue
+
+            async with pool.connection() as conn:
+                async with conn.transaction():
+                    async with conn.cursor() as cur:
+                        for mov in movimentos:
+                            data_hora_str = mov.get("dataHora")
+                            if not data_hora_str:
+                                continue
+
+                            nome = mov.get("nome", "Movimento")
+                            complementos = mov.get("complementosTabelados", [])
+                            desc_parts = [nome] + [
+                                c.get("descricao", "")
+                                for c in complementos
+                                if c.get("descricao")
+                            ]
+                            description = " | ".join(filter(None, desc_parts))[:500]
+
+                            await cur.execute(
+                                """
+                                INSERT INTO office_api.timeline_events
+                                    (process_id, user_id, event_type, title, description, event_date, source)
+                                SELECT %s, %s, 'status', %s, %s, %s::timestamp, 'auto'
+                                WHERE NOT EXISTS (
+                                    SELECT 1 FROM office_api.timeline_events
+                                    WHERE process_id = %s AND title = %s AND event_date = %s::timestamp
+                                )
+                                """,
+                                (
+                                    str(proc["id"]),
+                                    str(proc["user_id"]),
+                                    nome,
+                                    description,
+                                    data_hora_str,
+                                    str(proc["id"]),
+                                    nome,
+                                    data_hora_str,
+                                ),
+                            )
+                            if cur.rowcount and cur.rowcount > 0:
+                                updates_count += 1
+
+                        await cur.execute(
+                            "UPDATE office_api.processes SET updated_at = NOW() WHERE id = %s",
+                            (str(proc["id"]),),
+                        )
+
+        logger.info(
+            f"Sync de processos concluído. Processados: {len(processes_to_sync)}. Novos movimentos: {updates_count}"
+        )
+        return {"processed": len(processes_to_sync), "updates_count": updates_count}
+
 
 processes_service = ProcessesService()

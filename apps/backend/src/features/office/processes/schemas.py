@@ -38,6 +38,27 @@ class ProcessCreate(BaseModel):
         return self
 
 
+class DatajudValidationRequest(BaseModel):
+    process_number: str = Field(..., min_length=20, max_length=25)
+
+
+class DatajudValidationResponse(BaseModel):
+    process_number: str
+    is_valid: bool
+    court: str | None = None
+    tribunal: str | None = None
+    plaintiffs: list[str] = []
+    defendants: list[str] = []
+    subject: str | None = None
+    process_class: str | None = None
+    inferred_area: str | None = None
+    grau: str | None = None
+    start_date: str | None = None
+    valor_causa: float | None = None
+    last_update_date: str | None = None
+    raw_movimentos_count: int = 0
+
+
 class ProcessUpdate(BaseModel):
     process_number: str | None = Field(None, min_length=1, max_length=255)
     process_category: ProcessCategory | None = None

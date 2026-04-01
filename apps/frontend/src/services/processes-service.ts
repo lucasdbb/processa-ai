@@ -124,6 +124,22 @@ export interface ProcessDetail extends Process {
   documents_count: number;
 }
 
+export interface ProcessValidationResponse {
+  process_number: string;
+  is_valid: boolean;
+  court?: string;
+  tribunal?: string;
+  plaintiffs: string[];
+  defendants: string[];
+  subject?: string;
+  process_class?: string;
+  inferred_area?: string;
+  start_date?: string;
+  valor_causa?: number | null;
+  last_update_date?: string;
+  raw_movimentos_count: number;
+}
+
 export const processesService = {
   async list(params?: ProcessListParams): Promise<ProcessListResponse> {
     const searchParams = new URLSearchParams();
@@ -199,5 +215,15 @@ export const processesService = {
       },
     );
     if (!res.ok) throw new Error("Failed to delete process");
+  },
+
+  async validateProcessNumber(processNumber: string): Promise<ProcessValidationResponse> {
+    const res = await fetchWithCredentials(`${API_URL}/office/processes/validate-cnj`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ process_number: processNumber }),
+    });
+    if (!res.ok) throw new Error("Failed to validate process number");
+    return res.json();
   },
 };
