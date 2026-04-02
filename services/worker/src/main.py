@@ -76,7 +76,13 @@ async def _validate_job_basic(job: dict) -> tuple[str, uuid.UUID | None, str, di
         job_uuid = parse_job_uuid(job_id)
 
     job_type = str(job.get("type") or "").strip()
-    if job_type not in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner", "audio_transcription"):
+    if job_type not in (
+        "cnis_analysis",
+        "process_summary",
+        "labor_claim",
+        "brief_scanner",
+        "audio_transcription",
+    ):
         if job_uuid:
             try:
                 await mark_job_failed(job_uuid=job_uuid, error="Tipo inválido")
@@ -526,12 +532,6 @@ async def _handle_calculator_job(job: dict) -> None:
             pdf_bytes = generate_rescisao_pdf_from_template(
                 input_payload=input_payload, output_payload=output_payload
             )
-        elif job_type == "calculator_aposentadoria":
-            # Aposentadoria uses markdown-to-PDF (no docx template yet)
-            md = _render_aposentadoria_markdown(
-                input_payload=input_payload, output_payload=output_payload
-            )
-            pdf_bytes = ai_service._markdown_to_pdf_bytes(md, title="Simulação de Aposentadoria")
         else:
             raise RuntimeError(f"Tipo de calculadora desconhecido: {job_type}")
 
@@ -633,64 +633,6 @@ async def _handle_calculator_job(job: dict) -> None:
                 logger.exception("Failed to persist calculator job failure")
 
 
-def _render_aposentadoria_markdown(*, input_payload: dict, output_payload: dict) -> str:
-    """Render aposentadoria result as markdown for PDF generation."""
-    detalhes = (output_payload.get("detalhes") if isinstance(output_payload, dict) else None) or {}
-
-    def money(v: object) -> str:
-        try:
-            return f"R$ {float(v):.2f}"
-        except Exception:
-            return "-"
-
-    lines: list[str] = []
-    lines.append("# Simulação de Aposentadoria")
-    lines.append("")
-    lines.append("## Parâmetros")
-    lines.append("")
-    lines.append(f"- Sexo: {input_payload.get('sexo', '').capitalize()}")
-    lines.append(f"- Idade atual: {input_payload.get('idade')} anos")
-    lines.append(f"- Tempo de contribuição: {input_payload.get('tempo_contribuicao')} anos")
-    lines.append(f"- Salário de contribuição: {money(input_payload.get('salario_contribuicao'))}")
-    lines.append("")
-    lines.append("## Resultado")
-    lines.append("")
-
-    pode = detalhes.get("pode_aposentar")
-    status_text = (
-        "APROVADO - Requisitos atendidos" if pode else "PENDENTE - Requisitos não atendidos"
-    )
-
-    lines.append(f"**Status: {status_text}**")
-    lines.append("")
-
-    if pode:
-        lines.append(f"### Valor Estimado do Benefício: {money(detalhes.get('beneficio'))}")
-        lines.append("")
-        lines.append("> Nota: Este valor é uma estimativa baseada nas regras gerais.")
-        lines.append(
-            "> O valor real depende do cálculo da média de todos os salários de contribuição."
-        )
-    else:
-        lines.append("### O que falta:")
-        lines.append("")
-        lines.append(
-            f"- Idade mínima exigida: {detalhes.get('idade_minima')} anos "
-            f"(Faltam {detalhes.get('anos_restantes')} anos)"
-        )
-        lines.append(
-            f"- Tempo de contribuição mínimo: {detalhes.get('tempo_minimo_contrib')} anos "
-            f"(Faltam {detalhes.get('tempo_restante')} anos)"
-        )
-
-    lines.append("")
-    lines.append("---")
-    lines.append("Este relatório é uma simulação e não possui valor legal.")
-    lines.append("Consulte um advogado previdenciário.")
-
-    return "\n".join(lines)
-
-
 async def _handle_office_job(job: dict) -> None:
     """Handle Office-related jobs (Google Calendar sync, etc.)."""
     job_id = str(job.get("job_id") or "").strip()
@@ -713,11 +655,598 @@ async def _handle_rag_ingest_job(job: dict) -> None:
         logger.exception("RAG ingest job failed: %s", job_id)
 
 
+async def _handle_previdencia_job(job: dict) -> None:
+    """Handle previdência calculator jobs (parse_cnis, tempo, media, aposentadoria_simulacao).
+
+    Diferente dos calculator jobs tradicionais, estes fazem o cálculo no worker
+    (não recebem output_payload pronto).
+    """
+    job_id = str(job.get("job_id") or "").strip()
+    job_type = str(job.get("type") or "").strip()
+    payload = job.get("payload")
+    if not isinstance(payload, dict):
+        return
+
+    job_uuid: uuid.UUID | None = None
+    raw_uuid = (job.get("job_uuid") or "").strip() if isinstance(job.get("job_uuid"), str) else None
+    if raw_uuid:
+        try:
+            job_uuid = uuid.UUID(raw_uuid)
+        except Exception:
+            pass
+    if job_uuid is None:
+        job_uuid = parse_job_uuid(job_id)
+
+    user_id = str(payload.get("user_id") or "").strip()
+    client_id = payload.get("client_id")
+    calculation_id_str = str(payload.get("calculation_id") or "").strip()
+
+    if job_uuid:
+        try:
+            await mark_worker_job_processing(job_uuid=job_uuid, progress=10)
+            await add_worker_job_event(
+                job_uuid=job_uuid, event_type="processing", payload={"progress": 10}
+            )
+        except Exception:
+            logger.exception("Failed to mark previdencia job processing")
+
+    try:
+        result_payload: dict = {}
+
+        if job_type == "parse_cnis":
+            result_payload = await _handle_parse_cnis(payload, job_uuid)
+
+        elif job_type == "calculator_tempo_contribuicao":
+            result_payload = await _handle_calc_tempo_contribuicao(payload, job_uuid)
+
+        elif job_type == "calculator_media_salarial":
+            result_payload = await _handle_calc_media_salarial(payload, job_uuid)
+
+        elif job_type == "calculator_aposentadoria_simulacao":
+            result_payload = await _handle_calc_aposentadoria_simulacao(
+                payload, job_uuid, user_id, client_id, calculation_id_str
+            )
+
+        # Mark completed
+        if job_uuid:
+            try:
+                await mark_worker_job_completed(job_uuid=job_uuid, result_payload=result_payload)
+                await add_worker_job_event(
+                    job_uuid=job_uuid, event_type="completed", payload={"progress": 100}
+                )
+            except Exception:
+                logger.exception("Failed to mark previdencia job completed")
+
+        # Update calculation status
+        if calculation_id_str:
+            try:
+                from src.core.worker_store import mark_calculation_completed_from_worker
+
+                calc_uuid = uuid.UUID(calculation_id_str)
+                await mark_calculation_completed_from_worker(
+                    calculation_id=calc_uuid, output_payload=result_payload
+                )
+            except Exception:
+                logger.warning("Could not update calculation status for %s", calculation_id_str)
+
+    except Exception as e:
+        err = str(getattr(e, "detail", None) or str(e) or "Erro no cálculo previdenciário")
+        logger.exception("Previdencia job failed: %s", err)
+        if job_uuid:
+            try:
+                await mark_worker_job_failed(job_uuid=job_uuid, error=err)
+                await add_worker_job_event(job_uuid=job_uuid, event_type="failed", message=err)
+            except Exception:
+                logger.exception("Failed to persist previdencia job failure")
+
+
+async def _handle_parse_cnis(payload: dict, job_uuid: uuid.UUID | None) -> dict:
+    """Parse CNIS PDF using pymupdf (deterministic, no AI)."""
+    from src.core.storage import StorageService
+    from src.handlers.previdencia.cnis_parser import parse_cnis_pdf
+
+    file_url = str(payload.get("file_url") or "").strip()
+    if not file_url:
+        raise ValueError("file_url obrigatório para parsing do CNIS")
+
+    if job_uuid:
+        await add_worker_job_event(
+            job_uuid=job_uuid,
+            event_type="processing",
+            payload={"progress": 20, "step": "downloading"},
+        )
+
+    storage = StorageService()
+    pdf_bytes = await storage.download_pdf_bytes(file_url)
+
+    if job_uuid:
+        await add_worker_job_event(
+            job_uuid=job_uuid, event_type="processing", payload={"progress": 50, "step": "parsing"}
+        )
+
+    resultado = parse_cnis_pdf(pdf_bytes)
+
+    # Serializar para JSON
+    return {
+        "segurado": {
+            "nome": resultado.segurado.nome,
+            "cpf": resultado.segurado.cpf,
+            "nit": resultado.segurado.nit,
+            "data_nascimento": resultado.segurado.data_nascimento.isoformat()
+            if resultado.segurado.data_nascimento
+            else None,
+            "nome_mae": resultado.segurado.nome_mae,
+        },
+        "vinculos": [
+            {
+                "sequencia": v.sequencia,
+                "empresa": v.empresa,
+                "cnpj": v.cnpj,
+                "tipo": v.tipo,
+                "data_inicio": v.data_inicio.isoformat() if v.data_inicio else None,
+                "data_fim": v.data_fim.isoformat() if v.data_fim else None,
+                "ultima_remuneracao": float(v.ultima_remuneracao) if v.ultima_remuneracao else None,
+                "indicadores": v.indicadores,
+                "remuneracoes": [
+                    {
+                        "competencia": r.competencia.isoformat(),
+                        "valor": float(r.valor),
+                        "indicadores": r.indicadores,
+                    }
+                    for r in v.remuneracoes
+                ],
+            }
+            for v in resultado.vinculos
+        ],
+        "alertas": resultado.alertas,
+    }
+
+
+async def _handle_calc_tempo_contribuicao(payload: dict, job_uuid: uuid.UUID | None) -> dict:
+    """Calcular tempo de contribuição a partir de vínculos."""
+    from datetime import date as date_type
+
+    from src.handlers.previdencia.tempo_contribuicao import calcular_tempo_contribuicao
+    from src.handlers.previdencia.tipos import TipoVinculo, Vinculo
+
+    vinculos_raw = payload.get("vinculos") or []
+    vinculos = []
+    for v in vinculos_raw:
+        vinculos.append(
+            Vinculo(
+                data_inicio=date_type.fromisoformat(v["data_inicio"]),
+                data_fim=date_type.fromisoformat(v["data_fim"]) if v.get("data_fim") else None,
+                empresa=v.get("empresa"),
+                cnpj=v.get("cnpj"),
+                tipo_vinculo=TipoVinculo(v.get("tipo_vinculo", "Empregado")),
+                atividade_especial=v.get("atividade_especial", False),
+            )
+        )
+
+    resultado = calcular_tempo_contribuicao(vinculos)
+
+    return {
+        "detalhes": {
+            "anos": resultado.anos,
+            "meses": resultado.meses,
+            "dias": resultado.dias,
+            "total_dias": resultado.total_dias,
+            "vinculos_processados": resultado.vinculos_processados,
+            "alertas": resultado.alertas,
+        }
+    }
+
+
+async def _handle_calc_media_salarial(payload: dict, job_uuid: uuid.UUID | None) -> dict:
+    """Calcular média salarial a partir de remunerações."""
+    from datetime import date as date_type
+    from decimal import Decimal
+
+    from src.handlers.previdencia.media_salarial import calcular_media_salarial
+    from src.handlers.previdencia.tipos import Remuneracao
+
+    remuneracoes_raw = payload.get("remuneracoes") or []
+    remuneracoes = [
+        Remuneracao(
+            competencia=date_type.fromisoformat(r["competencia"]),
+            valor=Decimal(str(r["valor"])),
+        )
+        for r in remuneracoes_raw
+    ]
+
+    # Buscar índices INPC e teto do banco
+    indices_inpc = await _buscar_indices_inpc()
+    teto, piso = await _buscar_teto_piso()
+
+    resultado = calcular_media_salarial(
+        remuneracoes, indices_inpc=indices_inpc, teto_atual=teto, piso_atual=piso
+    )
+
+    return {
+        "detalhes": {
+            "media_100": float(resultado.media_100),
+            "media_80": float(resultado.media_80),
+            "qtd_contribuicoes": resultado.qtd_contribuicoes,
+            "maior_contribuicao": float(resultado.maior_contribuicao),
+            "menor_contribuicao": float(resultado.menor_contribuicao),
+        }
+    }
+
+
+def _serializar_cenario_projetado(c) -> dict | None:
+    """Serializa um CenarioProjetado para JSON."""
+    if c is None:
+        return None
+    return {
+        "regra": c.regra.value,
+        "regra_nome": c.regra_nome,
+        "meses_restantes": c.meses_restantes,
+        "data_elegibilidade": c.data_elegibilidade.isoformat(),
+        "tempo_contribuicao_projetado": c.tempo_contribuicao_projetado,
+        "coeficiente_projetado": c.coeficiente_projetado,
+        "beneficio_projetado": float(c.beneficio_projetado) if c.beneficio_projetado else None,
+    }
+
+
+def _serializar_projecao(projecao) -> dict:
+    """Serializa ProjecaoFutura para JSON."""
+    return {
+        "salario_contribuicao": float(projecao.salario_contribuicao),
+        "cenario_mais_proximo": _serializar_cenario_projetado(projecao.cenario_mais_proximo),
+        "cenario_mais_vantajoso": _serializar_cenario_projetado(projecao.cenario_mais_vantajoso),
+        "ganho_mensal_esperar": float(projecao.ganho_mensal_esperar)
+        if projecao.ganho_mensal_esperar
+        else None,
+        "recomendacao": projecao.recomendacao,
+    }
+
+
+async def _handle_calc_aposentadoria_simulacao(
+    payload: dict,
+    job_uuid: uuid.UUID | None,
+    user_id: str,
+    client_id: str | None,
+    calculation_id_str: str,
+) -> dict:
+    """Simulação completa de aposentadoria (6 cenários)."""
+    from datetime import date as date_type
+    from decimal import Decimal
+
+    from src.handlers.previdencia.engine import simular_aposentadoria
+    from src.handlers.previdencia.tipos import (
+        DadosSegurado,
+        Remuneracao,
+        Sexo,
+        TipoVinculo,
+        Vinculo,
+    )
+
+    seg_raw = payload.get("segurado") or {}
+    vinculos_raw = payload.get("vinculos") or []
+    remuneracoes_raw = payload.get("remuneracoes") or []
+
+    segurado = DadosSegurado(
+        data_nascimento=date_type.fromisoformat(seg_raw["data_nascimento"]),
+        sexo=Sexo(seg_raw["sexo"]),
+        nome=seg_raw.get("nome"),
+        cpf=seg_raw.get("cpf"),
+        professor=seg_raw.get("professor", False),
+    )
+
+    vinculos = [
+        Vinculo(
+            data_inicio=date_type.fromisoformat(v["data_inicio"]),
+            data_fim=date_type.fromisoformat(v["data_fim"]) if v.get("data_fim") else None,
+            empresa=v.get("empresa"),
+            cnpj=v.get("cnpj"),
+            tipo_vinculo=TipoVinculo(v.get("tipo_vinculo", "Empregado")),
+            atividade_especial=v.get("atividade_especial", False),
+        )
+        for v in vinculos_raw
+    ]
+
+    remuneracoes = (
+        [
+            Remuneracao(
+                competencia=date_type.fromisoformat(r["competencia"]),
+                valor=Decimal(str(r["valor"])),
+            )
+            for r in remuneracoes_raw
+        ]
+        if remuneracoes_raw
+        else None
+    )
+
+    salario_futuro_raw = payload.get("salario_contribuicao_futuro")
+    salario_futuro_decimal = Decimal(str(salario_futuro_raw)) if salario_futuro_raw else None
+
+    if job_uuid:
+        await add_worker_job_event(
+            job_uuid=job_uuid,
+            event_type="processing",
+            payload={"progress": 30, "step": "calculating"},
+        )
+
+    # Buscar dados de referência do banco
+    indices_inpc = await _buscar_indices_inpc()
+    tabua = await _buscar_tabua_mortalidade()
+    teto, piso = await _buscar_teto_piso()
+
+    resultado = simular_aposentadoria(
+        segurado=segurado,
+        vinculos=vinculos,
+        remuneracoes=remuneracoes,
+        indices_inpc=indices_inpc,
+        tabua_mortalidade=tabua,
+        teto_inss=teto,
+        piso_inss=piso,
+        salario_contribuicao_futuro=salario_futuro_decimal,
+    )
+
+    if job_uuid:
+        await add_worker_job_event(
+            job_uuid=job_uuid,
+            event_type="processing",
+            payload={"progress": 70, "step": "generating_pdf"},
+        )
+
+    # Serializar resultado
+    output = {
+        "detalhes": {
+            "tempo_contribuicao": {
+                "anos": resultado.tempo_contribuicao.anos,
+                "meses": resultado.tempo_contribuicao.meses,
+                "dias": resultado.tempo_contribuicao.dias,
+                "total_dias": resultado.tempo_contribuicao.total_dias,
+                "vinculos_processados": resultado.tempo_contribuicao.vinculos_processados,
+                "alertas": resultado.tempo_contribuicao.alertas,
+            },
+            "media_salarial": {
+                "media_100": float(resultado.media_salarial.media_100),
+                "media_80": float(resultado.media_salarial.media_80),
+                "qtd_contribuicoes": resultado.media_salarial.qtd_contribuicoes,
+                "maior_contribuicao": float(resultado.media_salarial.maior_contribuicao),
+                "menor_contribuicao": float(resultado.media_salarial.menor_contribuicao),
+            }
+            if resultado.media_salarial
+            else None,
+            "cenarios": [
+                {
+                    "regra": c.regra.value,
+                    "regra_nome": c.regra_nome,
+                    "elegivel": c.elegivel,
+                    "data_elegibilidade": c.data_elegibilidade.isoformat()
+                    if c.data_elegibilidade
+                    else None,
+                    "beneficio_estimado": float(c.beneficio_estimado)
+                    if c.beneficio_estimado
+                    else None,
+                    "coeficiente": c.coeficiente,
+                    "fator_previdenciario": c.fator_previdenciario,
+                    "requisitos_faltantes": c.requisitos_faltantes,
+                }
+                for c in resultado.cenarios
+            ],
+            "melhor_cenario": resultado.melhor_cenario.value if resultado.melhor_cenario else None,
+            "alertas": resultado.alertas,
+            "projecao": _serializar_projecao(resultado.projecao) if resultado.projecao else None,
+        }
+    }
+
+    # Gerar PDF (por enquanto markdown, futuro: DOCX template)
+    try:
+        md = _render_aposentadoria_simulacao_markdown(resultado)
+        pdf_bytes = ai_service._markdown_to_pdf_bytes(md, title="Simulação de Aposentadoria INSS")
+
+        if pdf_bytes and pdf_bytes.lstrip().startswith(b"%PDF"):
+            from src.core.storage import StorageService
+
+            storage = StorageService()
+            filename = f"aposentadoria_simulacao_{calculation_id_str or str(job_uuid)}.pdf"
+            uploaded = await storage.upload_pdf_to_supabase(
+                pdf_bytes=pdf_bytes,
+                user_id=user_id,
+                client_id=str(client_id) if client_id else None,
+                functionality="calculators",
+                job_uuid=str(job_uuid) if job_uuid else "unknown",
+                filename=filename,
+                expires_in=3600,
+                output=True,
+            )
+
+            doc_id = None
+            bucket = uploaded.get("bucket", "documents")
+            storage_path = uploaded.get("storage_path", "")
+            download_url = uploaded.get("signed_url") or uploaded.get("download_url") or ""
+
+            if job_uuid and bucket and storage_path:
+                calc_uuid = None
+                if calculation_id_str:
+                    try:
+                        calc_uuid = uuid.UUID(calculation_id_str)
+                    except Exception:
+                        pass
+                checksum = hashlib.sha256(pdf_bytes).hexdigest()
+                try:
+                    doc_id = await create_calculator_document(
+                        worker_job_id=job_uuid,
+                        calculation_id=calc_uuid,
+                        user_id=user_id,
+                        client_id=str(client_id) if client_id else None,
+                        document_type="calculator_aposentadoria_simulacao_pdf",
+                        bucket=bucket,
+                        storage_path=storage_path,
+                        filename=filename,
+                        checksum_sha256=checksum,
+                        size_bytes=len(pdf_bytes),
+                        metadata={"calculator_key": "previdencia.aposentadoria-simulacao"},
+                    )
+                except Exception:
+                    logger.exception("Failed to create aposentadoria_simulacao document")
+
+            if doc_id:
+                output["document_id"] = str(doc_id)
+            if download_url:
+                output["download_url"] = download_url
+    except Exception:
+        logger.exception("Failed to generate aposentadoria_simulacao PDF (calculation succeeded)")
+
+    return output
+
+
+def _render_aposentadoria_simulacao_markdown(resultado) -> str:
+    """Render simulação como markdown para PDF."""
+    from datetime import date
+
+    seg = resultado.segurado
+    tc = resultado.tempo_contribuicao
+
+    lines = [
+        "# Simulação de Aposentadoria INSS",
+        "",
+        "## Dados do Segurado",
+        f"- **Nome**: {seg.nome or 'Não informado'}",
+        f"- **CPF**: {seg.cpf or 'Não informado'}",
+        f"- **Data de Nascimento**: {seg.data_nascimento.strftime('%d/%m/%Y')}",
+        f"- **Sexo**: {'Masculino' if seg.sexo.value == 'M' else 'Feminino'}",
+        f"- **Professor(a)**: {'Sim' if seg.professor else 'Não'}",
+        "",
+        "## Tempo de Contribuição",
+        f"**{tc.anos} anos, {tc.meses} meses e {tc.dias} dias** ({tc.total_dias} dias)",
+        f"- Vínculos processados: {tc.vinculos_processados}",
+        "",
+    ]
+
+    if resultado.media_salarial:
+        ms = resultado.media_salarial
+        lines.extend(
+            [
+                "## Salário de Benefício",
+                f"- Média 100% (pós-reforma): **R$ {float(ms.media_100):,.2f}**",
+                f"- Média 80% melhores (pré-reforma): **R$ {float(ms.media_80):,.2f}**",
+                f"- Contribuições consideradas: {ms.qtd_contribuicoes}",
+                "",
+            ]
+        )
+
+    lines.extend(["## Cenários de Aposentadoria", ""])
+
+    for c in resultado.cenarios:
+        status_icon = "✅" if c.elegivel else "⏳"
+        lines.append(f"### {status_icon} {c.regra_nome}")
+        if c.elegivel:
+            lines.append("**Elegível para aposentadoria.**")
+            if c.beneficio_estimado:
+                lines.append(f"- Benefício estimado: **R$ {float(c.beneficio_estimado):,.2f}**")
+            if c.coeficiente:
+                lines.append(f"- Coeficiente: {c.coeficiente * 100:.0f}%")
+            if c.fator_previdenciario:
+                lines.append(f"- Fator previdenciário: {c.fator_previdenciario:.4f}")
+        else:
+            if c.data_elegibilidade:
+                lines.append(f"- Data estimada: **{c.data_elegibilidade.strftime('%d/%m/%Y')}**")
+            for req in c.requisitos_faltantes:
+                lines.append(f"- {req}")
+        lines.append("")
+
+    if resultado.melhor_cenario:
+        melhor = next((c for c in resultado.cenarios if c.regra == resultado.melhor_cenario), None)
+        if melhor:
+            lines.extend(
+                [
+                    "## 🏆 Cenário Recomendado",
+                    f"**{melhor.regra_nome}**",
+                    "",
+                ]
+            )
+
+    if resultado.alertas:
+        lines.extend(["## Alertas", ""])
+        for a in resultado.alertas:
+            lines.append(f"- ⚠️ {a}")
+        lines.append("")
+
+    lines.extend(
+        [
+            "---",
+            "*Esta simulação tem caráter informativo e não substitui orientação jurídica especializada.*",
+            f"*Gerado em {date.today().strftime('%d/%m/%Y')} por Processa AI*",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+async def _buscar_indices_inpc() -> dict | None:
+    """Busca índices INPC do banco para correção monetária."""
+    try:
+        from decimal import Decimal
+
+        from src.core.db import get_pool
+
+        pool = await get_pool()
+        async with pool.connection() as conn:
+            cursor = await conn.execute(
+                "SELECT competencia, fator_acumulado FROM calc_engine.indices_inpc WHERE fator_acumulado IS NOT NULL"
+            )
+            rows = await cursor.fetchall()
+            if rows:
+                return {row[0]: Decimal(str(row[1])) for row in rows}
+    except Exception:
+        logger.warning("Could not fetch INPC indices from database")
+    return None
+
+
+async def _buscar_tabua_mortalidade() -> dict | None:
+    """Busca tábua de mortalidade IBGE mais recente do banco."""
+    try:
+        from src.core.db import get_pool
+
+        pool = await get_pool()
+        async with pool.connection() as conn:
+            cursor = await conn.execute(
+                """SELECT idade, expectativa_sobrevida FROM calc_engine.tabua_mortalidade
+                   WHERE ano_referencia = (SELECT MAX(ano_referencia) FROM calc_engine.tabua_mortalidade)"""
+            )
+            rows = await cursor.fetchall()
+            if rows:
+                return {int(row[0]): float(row[1]) for row in rows}
+    except Exception:
+        logger.warning("Could not fetch mortality table from database")
+    return None
+
+
+async def _buscar_teto_piso():
+    """Busca teto e piso do INSS mais recente do banco."""
+    from decimal import Decimal
+
+    try:
+        from src.core.db import get_pool
+
+        pool = await get_pool()
+        async with pool.connection() as conn:
+            cursor = await conn.execute(
+                "SELECT salario_minimo, teto_inss FROM calc_engine.parametros_anuais_inss ORDER BY ano DESC LIMIT 1"
+            )
+            row = await cursor.fetchone()
+            if row:
+                return Decimal(str(row[1])), Decimal(str(row[0]))
+    except Exception:
+        logger.warning("Could not fetch INSS parameters from database")
+    return Decimal("8475.55"), Decimal("1621.00")
+
+
 async def _handle_job(job: dict) -> None:
     """Route job to appropriate handler based on job type."""
     job_type = str(job.get("type") or "").strip()
 
-    if job_type in ("cnis_analysis", "process_summary", "labor_claim", "brief_scanner", "audio_transcription"):
+    if job_type in (
+        "cnis_analysis",
+        "process_summary",
+        "labor_claim",
+        "brief_scanner",
+        "audio_transcription",
+    ):
         await _handle_ai_job(job)
         return
 
@@ -725,8 +1254,17 @@ async def _handle_job(job: dict) -> None:
         await _handle_rag_ingest_job(job)
         return
 
-    if job_type in ("calculator_rescisao", "calculator_aposentadoria"):
+    if job_type in ("calculator_rescisao",):
         await _handle_calculator_job(job)
+        return
+
+    if job_type in (
+        "parse_cnis",
+        "calculator_tempo_contribuicao",
+        "calculator_media_salarial",
+        "calculator_aposentadoria_simulacao",
+    ):
+        await _handle_previdencia_job(job)
         return
 
     if job_type.startswith("calendar_") or job_type.startswith("office_"):

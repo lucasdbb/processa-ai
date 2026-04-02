@@ -10,6 +10,9 @@ import type { LucideIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
 import { RescisaoCalculator } from '@/features/calculators/components/rescisao-calculator'
+import { FatorPrevidenciarioCalculator } from '@/features/calculators/components/fator-previdenciario-calculator'
+import { TempoContribuicaoCalculator } from '@/features/calculators/components/tempo-contribuicao-calculator'
+import { MediaSalarialCalculator } from '@/features/calculators/components/media-salarial-calculator'
 import { AposentadoriaCalculator } from '@/features/calculators/components/aposentadoria-calculator'
 
 // Category mapping based on calculator slugs
@@ -17,6 +20,9 @@ const getCategoryForCalculator = (slug: string): string => {
   const categoryMap: Record<string, string> = {
     rescisao: 'trabalhista',
     aposentadoria: 'previdenciario',
+    fator_previdenciario: 'previdenciario',
+    tempo_contribuicao: 'previdenciario',
+    media_salarial: 'previdenciario',
     correcao_monetaria: 'civel',
     honorarios: 'civel',
     juros: 'civel',
@@ -40,6 +46,14 @@ interface CalculatorConfig {
   category: string
   available: boolean
 }
+
+const VALID_CALCULATORS = [
+  'rescisao',
+  'aposentadoria',
+  'fator_previdenciario',
+  'tempo_contribuicao',
+  'media_salarial',
+]
 
 export default function CalculadorasHubPage() {
   const { calculatorId } = useParams<{ calculatorId?: string }>()
@@ -68,17 +82,32 @@ export default function CalculadorasHubPage() {
 
   const selectedCalculator = useMemo(() => {
     if (!calculatorId) return null
-    if (calculatorId === 'rescisao' || calculatorId === 'aposentadoria') return calculatorId
+    if (VALID_CALCULATORS.includes(calculatorId)) return calculatorId
     return null
   }, [calculatorId])
 
   const costDisplay = useMemo(() => {
     if (!selectedCalculator) return null
 
+    // Fator previdenciário is free
+    if (selectedCalculator === 'fator_previdenciario') return 'Grátis'
+
     const featureKey = `calculator_${selectedCalculator}`
 
     const costItem = costs.find(c => c.feature_key === featureKey)
     if (costItem) return String(costItem.cost)
+
+    // Map new calculators to their feature keys
+    const featureKeyMap: Record<string, string> = {
+      aposentadoria: 'calculator_aposentadoria_simulacao',
+      tempo_contribuicao: 'calculator_tempo_contribuicao',
+      media_salarial: 'calculator_media_salarial',
+    }
+    const mappedKey = featureKeyMap[selectedCalculator]
+    if (mappedKey) {
+      const mapped = costs.find(c => c.feature_key === mappedKey)
+      if (mapped) return String(mapped.cost)
+    }
 
     // Fallback
     return '1'
@@ -97,6 +126,9 @@ export default function CalculadorasHubPage() {
   const CalculatorComponent = useMemo(() => {
     if (selectedCalculator === 'rescisao') return RescisaoCalculator
     if (selectedCalculator === 'aposentadoria') return AposentadoriaCalculator
+    if (selectedCalculator === 'fator_previdenciario') return FatorPrevidenciarioCalculator
+    if (selectedCalculator === 'tempo_contribuicao') return TempoContribuicaoCalculator
+    if (selectedCalculator === 'media_salarial') return MediaSalarialCalculator
     return null
   }, [selectedCalculator])
 

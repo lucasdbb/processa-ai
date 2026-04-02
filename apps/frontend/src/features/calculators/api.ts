@@ -5,6 +5,9 @@ import {
   TrendingUp,
   DollarSign,
   Percent,
+  Clock,
+  BarChart3,
+  Shield,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -25,6 +28,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   TrendingUp,
   DollarSign,
   Percent,
+  Clock,
+  BarChart3,
+  Shield,
 }
 
 interface CalculatorResponse {

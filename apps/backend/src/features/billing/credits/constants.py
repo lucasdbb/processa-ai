@@ -53,7 +53,22 @@ FEATURE_COSTS: dict[str, FeatureCost] = {
             "calculator_rescisao", "Calculadora Rescisão", 1, "Cálculo de rescisão trabalhista"
         ),
         FeatureCost(
-            "calculator_aposentadoria", "Calculadora Aposentadoria", 1, "Simulação de aposentadoria"
+            "calculator_tempo_contribuicao",
+            "Tempo de Contribuição",
+            1,
+            "Cálculo de tempo de contribuição previdenciária",
+        ),
+        FeatureCost(
+            "calculator_media_salarial",
+            "Média Salarial",
+            1,
+            "Cálculo de média salarial para benefício previdenciário",
+        ),
+        FeatureCost(
+            "calculator_aposentadoria_simulacao",
+            "Simulação de Aposentadoria",
+            20,
+            "Simulação completa de aposentadoria",
         ),
     ]
 }

@@ -342,39 +342,3 @@ class CalculatorsService:
                 },
             },
         }
-
-    def calculate_aposentadoria(
-        self,
-        *,
-        sexo: str,
-        tipo_aposentadoria: str,
-        idade: int,
-        tempo_contribuicao: int,
-        salario_contribuicao: float,
-    ) -> dict:
-        idade_minima = 65 if sexo == "masculino" else 62
-        tempo_minimo_contrib = 15
-
-        pode_aposentar = (idade >= idade_minima) and (tempo_contribuicao >= tempo_minimo_contrib)
-
-        anos_restantes = max(0, idade_minima - idade)
-        tempo_restante = max(0, tempo_minimo_contrib - tempo_contribuicao)
-
-        coeficiente = 0.60
-        anos_excedentes = max(0, tempo_contribuicao - 15)
-        if anos_excedentes > 0:
-            coeficiente += anos_excedentes * 0.02
-
-        beneficio = salario_contribuicao * coeficiente if pode_aposentar else 0.0
-
-        return {
-            "detalhes": {
-                "pode_aposentar": pode_aposentar,
-                "anos_restantes": anos_restantes,
-                "tempo_restante": tempo_restante,
-                "beneficio": beneficio,
-                "idade_minima": idade_minima,
-                "tempo_minimo_contrib": tempo_minimo_contrib,
-            },
-            "meta": {"coeficiente_calculado": coeficiente},
-        }
