@@ -110,14 +110,10 @@ export const router = createBrowserRouter([
         path: 'privacidade',
         element: <PrivacidadePage />,
       },
-      ...(isWaitlistMode
-        ? []
-        : [
-            {
-              path: 'auth/callback',
-              element: <CallbackPage />,
-            },
-          ]),
+      {
+        path: 'auth/callback',
+        element: <CallbackPage />,
+      },
     ],
   },
 
