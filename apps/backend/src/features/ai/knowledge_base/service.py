@@ -6,7 +6,7 @@ import uuid
 
 from src.core.db import get_pool
 from src.core.logging import logger
-from src.core.queue import enqueue_job
+from src.core.job_store import create_job
 from src.features.core.storage.service import StorageService
 
 
@@ -249,24 +249,25 @@ class KnowledgeBaseService:
                     if area_row:
                         area_slug = area_row[0]
 
-        # Enqueue ingestion job
-        job_id = f"rag:{doc_id}"
-        await enqueue_job(
-            {
-                "job_id": job_id,
-                "type": "rag_ingest",
-                "payload": {
-                    "document_id": doc_id,
-                    "storage_path": storage_path,
-                    "bucket": bucket,
-                    "source_type": "pdf",
-                    "original_filename": filename,
-                    "area_slug": area_slug,
-                },
-            }
+        # Create job in unified jobs table (this IS the enqueue)
+        job_uuid = uuid.uuid4()
+        await create_job(
+            job_uuid=job_uuid,
+            job_type="rag_ingest",
+            user_id=user_id,
+            client_id=None,
+            priority=2,
+            request_payload={
+                "document_id": doc_id,
+                "storage_path": storage_path,
+                "bucket": bucket,
+                "source_type": "pdf",
+                "original_filename": filename,
+                "area_slug": area_slug,
+            },
         )
 
-        logger.info("RAG document created and queued: %s (job: %s)", doc_id, job_id)
+        logger.info("RAG document created and queued: %s (job: %s)", doc_id, job_uuid)
         return self._doc_row_to_dict(row)
 
     async def create_text_document(
@@ -310,21 +311,22 @@ class KnowledgeBaseService:
                 if area_row:
                     area_slug = area_row[0]
 
-        # Enqueue
-        job_id = f"rag:{doc_id}"
-        await enqueue_job(
-            {
-                "job_id": job_id,
-                "type": "rag_ingest",
-                "payload": {
-                    "document_id": doc_id,
-                    "source_type": "text",
-                    "content": content,
-                    "area_slug": area_slug,
-                    "legislacao": legislacao,
-                    "original_filename": title,
-                },
-            }
+        # Create job in unified jobs table
+        job_uuid = uuid.uuid4()
+        await create_job(
+            job_uuid=job_uuid,
+            job_type="rag_ingest",
+            user_id=user_id,
+            client_id=None,
+            priority=2,
+            request_payload={
+                "document_id": doc_id,
+                "source_type": "text",
+                "content": content,
+                "area_slug": area_slug,
+                "legislacao": legislacao,
+                "original_filename": title,
+            },
         )
 
         logger.info("RAG text document created and queued: %s", doc_id)
@@ -370,20 +372,21 @@ class KnowledgeBaseService:
                 if area_row:
                     area_slug = area_row[0]
 
-        # Enqueue
-        job_id = f"rag:{doc_id}"
-        await enqueue_job(
-            {
-                "job_id": job_id,
-                "type": "rag_ingest",
-                "payload": {
-                    "document_id": doc_id,
-                    "source_type": "url",
-                    "url": url,
-                    "area_slug": area_slug,
-                    "original_filename": display_title,
-                },
-            }
+        # Create job in unified jobs table
+        job_uuid = uuid.uuid4()
+        await create_job(
+            job_uuid=job_uuid,
+            job_type="rag_ingest",
+            user_id=user_id,
+            client_id=None,
+            priority=2,
+            request_payload={
+                "document_id": doc_id,
+                "source_type": "url",
+                "url": url,
+                "area_slug": area_slug,
+                "original_filename": display_title,
+            },
         )
 
         logger.info("RAG URL document created and queued: %s", doc_id)

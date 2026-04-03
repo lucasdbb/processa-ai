@@ -204,7 +204,7 @@ export function AposentadoriaCalculator({
         attempts++
         try {
           const statusRes = await fetchWithCredentials(
-            `${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`
+            `${API_URL}/jobs/${encodeURIComponent(jobId)}`
           )
           if (!statusRes.ok) return
 

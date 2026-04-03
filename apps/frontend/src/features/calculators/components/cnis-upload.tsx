@@ -49,7 +49,7 @@ export function CnisUpload({ onParsed, onReset, disabled }: CnisUploadProps) {
 
       try {
         const statusRes = await fetchWithCredentials(
-          `${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`
+          `${API_URL}/jobs/${encodeURIComponent(jobId)}`
         )
         if (!statusRes.ok) continue
 
@@ -115,7 +115,6 @@ export function CnisUpload({ onParsed, onReset, disabled }: CnisUploadProps) {
       if (controller.signal.aborted) return
 
       const fileMeta = uploadMetadata[0]
-      const fileUrl = `${fileMeta.bucket}/${fileMeta.storage_path}`
 
       // 2. Trigger CNIS parsing
       setState('parsing')
@@ -126,7 +125,11 @@ export function CnisUpload({ onParsed, onReset, disabled }: CnisUploadProps) {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file_url: fileUrl }),
+          body: JSON.stringify({
+            file_url: null,
+            bucket: fileMeta.bucket,
+            storage_path: fileMeta.storage_path
+          }),
         }
       )
 

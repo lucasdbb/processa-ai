@@ -10,9 +10,8 @@ from src.core.calc_engine_store import (
     mark_calculation_completed,
     mark_calculation_failed,
 )
+from src.core.job_store import add_job_event, create_job
 from src.core.logging import logger
-from src.core.queue import enqueue_job
-from src.core.worker_store import add_worker_job_event, create_worker_job
 from src.features.billing.credits.service import credits_service
 from src.features.calculators.schemas import (
     AposentadoriaRequest,
@@ -46,16 +45,16 @@ async def _enqueue_calculator_pdf(
     input_payload: dict,
     output_payload: dict,
 ) -> str:
-    """Create a worker_jobs record and enqueue a calculator PDF job.
+    """Create a job in the unified jobs table for calculator PDF generation.
 
-    Returns the job_id string (e.g. "calc:<uuid>").
+    Returns the job_id string (plain UUID).
     """
     job_uuid = uuid.uuid4()
-    job_id = f"calc:{job_uuid}"
+    job_id = str(job_uuid)
 
-    # Create job record in DB
+    # Create job record in unified jobs table (this IS the enqueue)
     try:
-        await create_worker_job(
+        await create_job(
             job_uuid=job_uuid,
             job_type=job_type,
             user_id=user_id,
@@ -64,32 +63,20 @@ async def _enqueue_calculator_pdf(
                 "job_type": job_type,
                 "calculator_key": calculator_key,
                 "calculation_id": str(calculation_id),
+                "user_id": user_id,
+                "client_id": client_id,
+                "input_payload": input_payload,
+                "output_payload": output_payload,
             },
+            priority=8,
         )
-        await add_worker_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
+        await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
     except Exception:
         logger.exception("Failed to create calculator job in database")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao criar job de geração de PDF",
         )
-
-    # Enqueue for worker consumption
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": job_type,
-            "payload": {
-                "user_id": user_id,
-                "client_id": client_id,
-                "calculation_id": str(calculation_id),
-                "calculator_key": calculator_key,
-                "input_payload": input_payload,
-                "output_payload": output_payload,
-            },
-        }
-    )
 
     return job_id
 
@@ -213,12 +200,15 @@ async def _enqueue_previdencia_job(
     calculator_key: str,
     request_payload: dict,
 ) -> str:
-    """Enfileira um job previdenciário no worker (cálculo + PDF)."""
+    """Enfileira um job previdenciário no worker (cálculo + PDF).
+
+    Returns the job_id string (plain UUID).
+    """
     job_uuid = uuid.uuid4()
-    job_id = f"calc:{job_uuid}"
+    job_id = str(job_uuid)
 
     try:
-        await create_worker_job(
+        await create_job(
             job_uuid=job_uuid,
             job_type=job_type,
             user_id=user_id,
@@ -227,30 +217,19 @@ async def _enqueue_previdencia_job(
                 "job_type": job_type,
                 "calculator_key": calculator_key,
                 "calculation_id": str(calculation_id),
+                "user_id": user_id,
+                "client_id": client_id,
+                **request_payload,
             },
+            priority=8,
         )
-        await add_worker_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
+        await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
     except Exception:
         logger.exception("Failed to create previdencia job in database")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao criar job de cálculo",
         )
-
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": job_type,
-            "payload": {
-                "user_id": user_id,
-                "client_id": client_id,
-                "calculation_id": str(calculation_id),
-                "calculator_key": calculator_key,
-                **request_payload,
-            },
-        }
-    )
 
     return job_id
 
@@ -267,32 +246,29 @@ async def parse_cnis(
 ):
     """Envia CNIS PDF para parsing no worker (pymupdf, sem IA)."""
     job_uuid = uuid.uuid4()
-    job_id = f"cnis:{job_uuid}"
+    job_id = str(job_uuid)
 
     try:
-        await create_worker_job(
+        await create_job(
             job_uuid=job_uuid,
             job_type="parse_cnis",
             user_id=user_id,
             client_id=None,
-            request_payload={"file_url": data.file_url},
+            request_payload={
+                "file_url": data.file_url,
+                "bucket": data.bucket,
+                "storage_path": data.storage_path,
+                "user_id": user_id,
+            },
+            priority=8,
         )
-        await add_worker_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
+        await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
     except Exception:
         logger.exception("Failed to create parse_cnis job")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao criar job de parsing do CNIS",
         )
-
-    await enqueue_job(
-        {
-            "job_id": job_id,
-            "job_uuid": str(job_uuid),
-            "type": "parse_cnis",
-            "payload": {"user_id": user_id, "file_url": data.file_url},
-        }
-    )
 
     return {"job_id": job_id, "status": "queued"}
 

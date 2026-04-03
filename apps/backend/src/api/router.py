@@ -12,6 +12,9 @@ from src.features.billing.webhooks.router import router as webhooks_router
 
 # Calculator features
 from src.features.calculators.router import router as calculators_router
+
+# Jobs (unified job status/delete)
+from src.features.jobs.router import router as jobs_router
 from src.features.core.blog.router import router as blog_router
 from src.features.core.dashboard.router import router as dashboard_router
 
@@ -73,6 +76,9 @@ api_router.include_router(calculators_router, prefix="/calculators", tags=["Calc
 
 # AI features
 api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
+
+# Jobs (unified status/delete)
+api_router.include_router(jobs_router, prefix="/jobs", tags=["Jobs"])
 
 # Portal
 api_router.include_router(portal_router, prefix="/portal", tags=["Portal"])

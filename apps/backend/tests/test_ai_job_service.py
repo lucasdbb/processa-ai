@@ -97,7 +97,7 @@ async def test_submit_job_signed_url_generation_failure_marks_failed_and_refunds
         "src.features.ai.service.add_job_event", new=AsyncMock()
     ), patch("src.features.ai.service.create_document", new=AsyncMock(return_value=uuid4())), patch(
         "src.features.ai.service.update_job_payload", new=AsyncMock()
-    ), patch("src.features.ai.service.enqueue_job", new=AsyncMock()), patch(
+    ), patch(
         "src.features.ai.service.mark_job_failed", new=AsyncMock()
     ) as mark_failed:
         with pytest.raises(HTTPException) as exc:
@@ -137,13 +137,13 @@ async def test_submit_job_success_enqueues_payload():
         service = AiJobService()
 
     input_doc_id = uuid4()
-    enqueue_mock = AsyncMock()
+    update_payload_mock = AsyncMock()
 
     with patch("src.features.ai.service.create_job", new=AsyncMock()), patch(
         "src.features.ai.service.add_job_event", new=AsyncMock()
     ), patch("src.features.ai.service.create_document", new=AsyncMock(return_value=input_doc_id)), patch(
-        "src.features.ai.service.update_job_payload", new=AsyncMock()
-    ), patch("src.features.ai.service.enqueue_job", new=enqueue_mock):
+        "src.features.ai.service.update_job_payload", new=update_payload_mock
+    ):
         job_id = await service.submit_job(
             user_id="user-1",
             feature_key="process_summary",
@@ -158,12 +158,12 @@ async def test_submit_job_success_enqueues_payload():
             ],
         )
 
-    assert job_id.startswith("ai:")
-    assert enqueue_mock.await_count == 1
-    enqueue_payload = enqueue_mock.await_args.args[0]
-    assert enqueue_payload["type"] == "process_summary"
-    assert enqueue_payload["payload"]["files"]
-    assert enqueue_payload["payload"]["input_document_id"] == str(input_doc_id)
+    # job_id is now a plain UUID string (no prefix)
+    assert len(job_id) == 36  # UUID format
+    assert update_payload_mock.await_count == 1
+    updated = update_payload_mock.await_args.kwargs.get("request_payload") or {}
+    assert updated.get("files")
+    assert updated.get("input_document_id") == str(input_doc_id)
 
 
 @pytest.mark.asyncio
@@ -186,7 +186,7 @@ async def test_submit_job_with_existing_file_url_skips_signed_url():
         "src.features.ai.service.add_job_event", new=AsyncMock()
     ), patch("src.features.ai.service.create_document", new=AsyncMock(return_value=uuid4())), patch(
         "src.features.ai.service.update_job_payload", new=AsyncMock()
-    ), patch("src.features.ai.service.enqueue_job", new=AsyncMock()):
+    ):
         await service.submit_job(
             user_id="user-1",
             feature_key="brief_scanner",

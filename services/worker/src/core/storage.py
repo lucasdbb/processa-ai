@@ -4,7 +4,7 @@ from urllib.parse import unquote, urlparse
 
 import httpx
 
-from src.core.ai_worker_store import create_document
+from src.core.job_store import create_document
 from src.core.config import settings
 from src.core.logging import logger
 

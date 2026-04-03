@@ -2,17 +2,14 @@ import uuid
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
-from src.core.ai_worker_store import (
-    delete_job,
+from src.core.auth import get_user_id, require_internal_auth
+from src.core.job_store import (
     get_all_user_jobs,
     get_document_by_id,
-    get_job_status_from_db,
     get_user_analysis_history,
     parse_job_uuid,
 )
-from src.core.auth import get_user_id, require_internal_auth
 from src.core.logging import logger
-from src.core.worker_store import get_worker_job_status
 from src.features.ai.chat.router import router as chat_router
 from src.features.ai.knowledge_base.router import router as kb_router
 from src.features.ai.schemas import (
@@ -24,7 +21,6 @@ from src.features.ai.schemas import (
     DocumentDownloadResponse,
     DocumentResponse,
     EnqueueJobResponse,
-    JobStatusResponse,
     ProcessSummaryRequest,
 )
 from src.features.ai.service import AiJobService
@@ -46,12 +42,10 @@ async def cnis_analysis(
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
-    # Handle multiple files or single file (CNIS usually processes single, but we standardize input)
     files_list = data.files or []
     file_url = (data.file_url or "").strip()
     storage_path = (data.storage_path or "").strip()
 
-    # If no files list provided, check for single file params
     if not files_list:
         if not file_url and not storage_path:
             raise HTTPException(
@@ -60,11 +54,8 @@ async def cnis_analysis(
                     "É necessário fornecer arquivos para análise (file_url/storage_path ou files)"
                 ),
             )
-
-        # Create a single file entry for compatibility
         files_list = [{"bucket": data.bucket, "storage_path": storage_path, "file_url": file_url}]
 
-    # Se vier job_uuid do upload, usar. Senão gerar novo.
     job_uuid = None
     if data.job_uuid:
         try:
@@ -72,7 +63,6 @@ async def cnis_analysis(
         except ValueError:
             raise HTTPException(status_code=400, detail="job_uuid inválido")
 
-    # Delegar para o serviço
     job_id = await ai_job_service.submit_job(
         user_id=user_id,
         feature_key="cnis_analysis",
@@ -105,12 +95,10 @@ async def process_summary_analysis(
 ):
     """Análise de resumo de processo via URL ou storage_path."""
 
-    # Handle multiple files or single file
     files_list = data.files or []
     file_url = (data.file_url or "").strip()
     storage_path = (data.storage_path or "").strip()
 
-    # If no files list provided, check for single file params
     if not files_list:
         if not file_url and not storage_path:
             raise HTTPException(
@@ -119,11 +107,8 @@ async def process_summary_analysis(
                     "É necessário fornecer arquivos para análise (file_url/storage_path ou files)"
                 ),
             )
-
-        # Create a single file entry for compatibility
         files_list = [{"bucket": data.bucket, "storage_path": storage_path, "file_url": file_url}]
 
-    # Se vier job_uuid do upload, usar. Senão gerar novo.
     job_uuid = None
     if data.job_uuid:
         try:
@@ -131,7 +116,6 @@ async def process_summary_analysis(
         except ValueError:
             raise HTTPException(status_code=400, detail="job_uuid inválido")
 
-    # Delegar para o serviço
     job_id = await ai_job_service.submit_job(
         user_id=user_id,
         feature_key="process_summary",
@@ -184,7 +168,6 @@ async def labor_claim_analysis(
 
     functionality = data.get("functionality", "ai")
 
-    # Se vier job_uuid do upload, usar. Senão gerar novo.
     job_uuid = None
     if data.get("job_uuid"):
         try:
@@ -192,7 +175,6 @@ async def labor_claim_analysis(
         except ValueError:
             raise HTTPException(status_code=400, detail="job_uuid inválido")
 
-    # Delegar para o serviço
     job_id = await ai_job_service.submit_job(
         user_id=user_id,
         feature_key="labor_claim",
@@ -223,7 +205,6 @@ async def brief_scanner_analysis(
 ):
     """Analisa peça processual para identificar fragilidades."""
 
-    # Handle single file (like CNIS)
     files_list = data.files or []
     file_url = (data.file_url or "").strip()
     storage_path = (data.storage_path or "").strip()
@@ -236,7 +217,6 @@ async def brief_scanner_analysis(
             )
         files_list = [{"bucket": data.bucket, "storage_path": storage_path, "file_url": file_url}]
 
-    # Se vier job_uuid do upload, usar. Senão gerar novo.
     job_uuid = None
     if data.job_uuid:
         try:
@@ -244,7 +224,6 @@ async def brief_scanner_analysis(
         except ValueError:
             raise HTTPException(status_code=400, detail="job_uuid inválido")
 
-    # Delegar para o serviço
     job_id = await ai_job_service.submit_job(
         user_id=user_id,
         feature_key="brief_scanner",
@@ -277,7 +256,6 @@ async def audio_transcription_analysis(
 ):
     """Transcreve áudio de audiências, depoimentos e reuniões."""
 
-    # Handle single file (like brief scanner)
     files_list = data.files or []
     file_url = (data.file_url or "").strip()
     storage_path = (data.storage_path or "").strip()
@@ -315,100 +293,6 @@ async def audio_transcription_analysis(
     )
 
     return EnqueueJobResponse(job_id=job_id)
-
-
-@router.get(
-    "/jobs/{job_id}",
-    response_model=JobStatusResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def get_ai_job(
-    job_id: str,
-    user_id: str = Depends(get_user_id),
-    _internal=Depends(require_internal_auth),
-):
-    jid = (job_id or "").strip()
-    if not jid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="job_id obrigatório")
-
-    current = None
-    is_worker_job = jid.startswith("calc:")
-    job_uuid = parse_job_uuid(jid)
-    if job_uuid:
-        try:
-            if is_worker_job:
-                db_status = await get_worker_job_status(job_uuid=job_uuid)
-            else:
-                db_status = await get_job_status_from_db(job_uuid=job_uuid)
-            if db_status:
-                # Verificar ownership do job
-                if db_status.get("user_id") and db_status["user_id"] != user_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado"
-                    )
-                current = {
-                    "job_id": jid,
-                    "status": db_status.get("status"),
-                    "progress": db_status.get("progress"),
-                    "result": db_status.get("result"),
-                    "error": db_status.get("error"),
-                }
-        except HTTPException:
-            raise
-        except Exception:
-            logger.exception("Failed to load job status from database")
-
-    if not current:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado")
-
-    # Padronizar resultado
-    result = current.get("result")
-    if isinstance(result, dict):
-        if result.get("pdf_url") and not result.get("download_url"):
-            result["download_url"] = result["pdf_url"]
-        elif result.get("download_url") and not result.get("pdf_url"):
-            result["pdf_url"] = result["download_url"]
-
-    return JobStatusResponse(
-        job_id=jid,
-        status=str(current.get("status") or "unknown"),
-        progress=int(current.get("progress") or 0),
-        result=result,
-        error=(str(current.get("error")) if current.get("error") else None),
-    )
-
-
-@router.delete(
-    "/jobs/{job_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-async def delete_ai_job(
-    job_id: str,
-    user_id: str = Depends(get_user_id),
-    _internal=Depends(require_internal_auth),
-):
-    """Remove um job de IA e seus documentos associados."""
-    jid = (job_id or "").strip()
-    if not jid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="job_id obrigatório")
-
-    job_uuid = parse_job_uuid(jid)
-    if not job_uuid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="job_id inválido")
-
-    try:
-        deleted = await delete_job(job_uuid=job_uuid, user_id=user_id)
-    except Exception:
-        logger.exception("Erro ao deletar job %s", jid)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao deletar análise",
-        )
-
-    if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job não encontrado")
-
-    return None
 
 
 @router.get(
@@ -466,7 +350,7 @@ async def get_analysis_history(
 
         items.append(
             AnalysisHistoryItem(
-                job_id=f"ai:{row['job_id']}",
+                job_id=str(row["job_id"]),
                 status=row.get("status") or "unknown",
                 created_at=row["created_at"].isoformat() if row.get("created_at") else "",
                 finished_at=(row["finished_at"].isoformat() if row.get("finished_at") else None),

@@ -1,3 +1,10 @@
+"""Unified job store operating against the public.jobs table.
+
+Replaces ai_worker_store.py (ai_jobs) and worker_store.py (worker_jobs) with a
+single interface backed by public.jobs + public.job_events. The generated_documents
+table uses job_id for all document types (both 'ai' and 'calculator' sources).
+"""
+
 from __future__ import annotations
 
 import re
@@ -7,6 +14,10 @@ from typing import Any
 
 from src.core.db import get_pool
 
+
+# ---------------------------------------------------------------------------
+# JSONB / dict_row helpers (try/except to survive environments without psycopg)
+# ---------------------------------------------------------------------------
 
 def _to_jsonb(value: Any) -> Any:
     try:
@@ -24,12 +35,17 @@ def _get_dict_row():
     return _dict_row
 
 
+# ---------------------------------------------------------------------------
+# UUID helpers
+# ---------------------------------------------------------------------------
+
 _UUID_RE = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
 
 
 def parse_job_uuid(job_id: str) -> uuid.UUID | None:
+    """Extract and parse the first UUID found in *job_id*, returning None on failure."""
     raw = (job_id or "").strip()
     if not raw:
         return None
@@ -44,6 +60,10 @@ def parse_job_uuid(job_id: str) -> uuid.UUID | None:
         return None
 
 
+# ---------------------------------------------------------------------------
+# Endpoint registry
+# ---------------------------------------------------------------------------
+
 async def ensure_endpoint(
     *,
     key: str,
@@ -54,6 +74,7 @@ async def ensure_endpoint(
     n8n_workflow_id: str | None = None,
     is_active: bool = True,
 ) -> None:
+    """Upsert an AI endpoint registration row."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
@@ -75,26 +96,64 @@ async def ensure_endpoint(
             )
 
 
+async def get_endpoint_by_key(key: str) -> dict | None:
+    """Return the ai_endpoints row for *key*, or None if not found."""
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        row_factory = _get_dict_row()
+        if row_factory:
+            cur_cm = conn.cursor(row_factory=row_factory)
+        else:
+            cur_cm = conn.cursor()
+
+        async with cur_cm as cur:
+            await cur.execute(
+                "select key, version, method, path, description, "
+                "n8n_workflow_id, is_active "
+                "from public.ai_endpoints "
+                "where key = %s",
+                (key,),
+            )
+            row = await cur.fetchone()
+            return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# Job CRUD
+# ---------------------------------------------------------------------------
+
 async def create_job(
     *,
     job_uuid: uuid.UUID,
-    endpoint_key: str,
-    user_id: str,
+    job_type: str,
+    user_id: str | None,
     client_id: str | None,
     request_payload: dict,
+    queue: str = "jobs",
     status: str = "queued",
+    priority: int = 0,
 ) -> None:
+    """Insert a new job row into public.jobs. No-op on duplicate id."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "insert into public.ai_jobs (id, endpoint_key, status, progress, user_id, "
-                    "client_id, request_payload) "
-                    "values (%s, %s, %s, 0, %s, %s, %s) "
+                    "insert into public.jobs "
+                    "(id, job_type, queue, status, progress, priority, user_id, client_id, request_payload) "
+                    "values (%s, %s, %s, %s, 0, %s, %s, %s, %s) "
                     "on conflict (id) do nothing"
                 ),
-                (job_uuid, endpoint_key, status, user_id, client_id, _to_jsonb(request_payload)),
+                (
+                    job_uuid,
+                    job_type,
+                    queue,
+                    status,
+                    priority,
+                    user_id,
+                    client_id,
+                    _to_jsonb(request_payload),
+                ),
             )
 
 
@@ -103,15 +162,19 @@ async def update_job_payload(
     job_uuid: uuid.UUID,
     request_payload: dict,
 ) -> None:
-    """Atualiza o payload de requisição de um job existente."""
+    """Replace the request_payload of an existing job."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "update public.ai_jobs set request_payload = %s where id = %s",
+                "update public.jobs set request_payload = %s where id = %s",
                 (_to_jsonb(request_payload), job_uuid),
             )
 
+
+# ---------------------------------------------------------------------------
+# Job events
+# ---------------------------------------------------------------------------
 
 async def add_job_event(
     *,
@@ -120,11 +183,12 @@ async def add_job_event(
     message: str | None = None,
     payload: dict | None = None,
 ) -> None:
+    """Append an event row to public.job_events for the given job."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "insert into public.ai_job_events (job_id, event_type, message, payload) "
+                "insert into public.job_events (job_id, event_type, message, payload) "
                 "values (%s, %s, %s, %s)",
                 (
                     job_uuid,
@@ -135,13 +199,18 @@ async def add_job_event(
             )
 
 
+# ---------------------------------------------------------------------------
+# Status transitions
+# ---------------------------------------------------------------------------
+
 async def mark_job_processing(*, job_uuid: uuid.UUID, progress: int) -> None:
+    """Transition a job to 'processing', recording started_at on the first call."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update public.ai_jobs "
+                    "update public.jobs "
                     "set status = 'processing', progress = %s, "
                     "started_at = coalesce(started_at, now()) "
                     "where id = %s"
@@ -150,24 +219,14 @@ async def mark_job_processing(*, job_uuid: uuid.UUID, progress: int) -> None:
             )
 
 
-async def update_job_progress(*, job_uuid: uuid.UUID, progress: int) -> None:
-    """Atualiza apenas o progresso de um job sem alterar status."""
-    pool = await get_pool()
-    async with pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                "update public.ai_jobs set progress = %s where id = %s",
-                (int(progress), job_uuid),
-            )
-
-
 async def mark_job_completed(*, job_uuid: uuid.UUID, result_payload: dict) -> None:
+    """Transition a job to 'completed' with its final result payload."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update public.ai_jobs "
+                    "update public.jobs "
                     "set status = 'completed', progress = 100, result_payload = %s, "
                     "finished_at = now() "
                     "where id = %s"
@@ -177,18 +236,94 @@ async def mark_job_completed(*, job_uuid: uuid.UUID, result_payload: dict) -> No
 
 
 async def mark_job_failed(*, job_uuid: uuid.UUID, error: str) -> None:
+    """Transition a job to 'failed', recording the error message."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 (
-                    "update public.ai_jobs "
+                    "update public.jobs "
                     "set status = 'failed', progress = 100, error = %s, finished_at = now() "
                     "where id = %s"
                 ),
                 (error, job_uuid),
             )
 
+
+async def update_job_progress(*, job_uuid: uuid.UUID, progress: int) -> None:
+    """Update only the progress field without changing the job status."""
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "update public.jobs set progress = %s where id = %s",
+                (int(progress), job_uuid),
+            )
+
+
+# ---------------------------------------------------------------------------
+# Job status query
+# ---------------------------------------------------------------------------
+
+async def get_job_status(*, job_uuid: uuid.UUID) -> dict | None:
+    """Return the current status of a job, injecting document_id into result if present.
+
+    Queries public.jobs and LEFT JOINs generated_documents on job_id + document_type='output'.
+    Returns None when the job does not exist.
+    """
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        row_factory = _get_dict_row()
+        if row_factory:
+            cur_cm = conn.cursor(row_factory=row_factory)
+        else:
+            cur_cm = conn.cursor()
+
+        async with cur_cm as cur:
+            await cur.execute(
+                """
+                select
+                    j.status,
+                    j.progress,
+                    j.error,
+                    j.result_payload,
+                    j.started_at,
+                    j.finished_at,
+                    j.user_id,
+                    d.id as output_doc_id
+                from public.jobs j
+                left join public.generated_documents d
+                    on d.job_id = j.id
+                    and d.document_type = 'output'
+                where j.id = %s
+                """,
+                (str(job_uuid),),
+            )
+            row = await cur.fetchone()
+            if not row:
+                return None
+
+            result_payload = row.get("result_payload") or {}
+
+            # Inject document_id into the result dict when a linked output document exists
+            if row.get("output_doc_id"):
+                if isinstance(result_payload, dict):
+                    result_payload["document_id"] = str(row.get("output_doc_id"))
+
+            return {
+                "status": str(row.get("status") or "unknown"),
+                "progress": int(row.get("progress") or 0),
+                "error": (str(row.get("error")) if row.get("error") else None),
+                "result": (result_payload if isinstance(result_payload, dict) else None),
+                "started_at": row.get("started_at"),
+                "finished_at": row.get("finished_at"),
+                "user_id": row.get("user_id"),
+            }
+
+
+# ---------------------------------------------------------------------------
+# Document management
+# ---------------------------------------------------------------------------
 
 async def create_document(
     *,
@@ -204,7 +339,14 @@ async def create_document(
     mime_type: str = "application/pdf",
     metadata: dict | None = None,
     linked_document_id: uuid.UUID | None = None,
+    source: str = "ai",
+    calculation_id: uuid.UUID | None = None,
 ) -> uuid.UUID | None:
+    """Upsert a generated_documents row linked to a job via job_id.
+
+    *source* should be 'ai' for AI tool outputs or 'calculator' for PDF reports.
+    *calculation_id* is optional and used only for calculator jobs.
+    """
     pool = await get_pool()
     async with pool.connection() as conn:
         row_factory = _get_dict_row()
@@ -217,12 +359,13 @@ async def create_document(
             await cur.execute(
                 (
                     "insert into public.generated_documents "
-                    "(source, job_id, user_id, client_id, document_type, bucket, storage_path, "
-                    "filename, checksum_sha256, size_bytes, mime_type, metadata, "
-                    "linked_document_id) "
-                    "values ('ai', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "(source, job_id, calculation_id, user_id, client_id, document_type, "
+                    "bucket, storage_path, filename, checksum_sha256, size_bytes, "
+                    "mime_type, metadata, linked_document_id) "
+                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                     "on conflict (bucket, storage_path) do update set "
                     "job_id = excluded.job_id, "
+                    "calculation_id = excluded.calculation_id, "
                     "user_id = excluded.user_id, "
                     "client_id = excluded.client_id, "
                     "document_type = excluded.document_type, "
@@ -235,7 +378,9 @@ async def create_document(
                     "returning id"
                 ),
                 (
+                    source,
                     job_uuid,
+                    calculation_id,
                     user_id,
                     client_id,
                     document_type,
@@ -261,7 +406,8 @@ async def create_document(
                 return None
 
 
-async def get_job_status_from_db(*, job_uuid: uuid.UUID) -> dict | None:
+async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
+    """Fetch a generated_documents row by its primary key."""
     pool = await get_pool()
     async with pool.connection() as conn:
         row_factory = _get_dict_row()
@@ -272,55 +418,33 @@ async def get_job_status_from_db(*, job_uuid: uuid.UUID) -> dict | None:
 
         async with cur_cm as cur:
             await cur.execute(
-                (
-                    """
-                        select j.status, j.progress, j.error, j.result_payload,
-                        j.started_at, j.finished_at, j.user_id,
-                        d.id as output_doc_id
-                        from public.ai_jobs j
-                        left join public.generated_documents d
-                        on d.job_id = j.id
-                        and d.document_type = 'output'
-                        where j.id = %s
-                    """
-                ),
-                (str(job_uuid),),
+                """
+                select id, user_id, document_type, bucket, storage_path,
+                       filename, size_bytes, created_at
+                from public.generated_documents
+                where id = %s
+                """,
+                (document_id,),
             )
             row = await cur.fetchone()
-            if not row:
-                return None
-
-            result_payload = row.get("result_payload") or {}
-
-            # Injetar document_id no result se existir
-            if row.get("output_doc_id"):
-                if isinstance(result_payload, dict):
-                    result_payload["document_id"] = str(row.get("output_doc_id"))
-
-            return {
-                "status": str(row.get("status") or "unknown"),
-                "progress": int(row.get("progress") or 0),
-                "error": (str(row.get("error")) if row.get("error") else None),
-                "result": (result_payload if isinstance(result_payload, dict) else None),
-                "started_at": row.get("started_at"),
-                "finished_at": row.get("finished_at"),
-                "user_id": row.get("user_id"),
-            }
+            return dict(row) if row else None
 
 
-def now_iso(dt: datetime | None) -> str | None:
-    if not dt:
-        return None
-    try:
-        return dt.isoformat()
-    except Exception:
-        return None
-
+# ---------------------------------------------------------------------------
+# History queries
+# ---------------------------------------------------------------------------
 
 async def get_user_analysis_history(
-    *, user_id: str, endpoint_key: str = "cnis_analysis", limit: int = 50, offset: int = 0
+    *,
+    user_id: str,
+    endpoint_key: str = "cnis_analysis",
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[dict]:
-    """Busca histórico de análises de um usuário com input e output documents."""
+    """Return the job + document history for a user filtered by job_type.
+
+    *endpoint_key* maps directly to the job_type column in public.jobs.
+    """
     pool = await get_pool()
     async with pool.connection() as conn:
         row_factory = _get_dict_row()
@@ -352,12 +476,12 @@ async def get_user_analysis_history(
                     d_output.storage_path as output_storage_path,
                     d_output.bucket as output_bucket,
                     d_output.created_at as output_created_at
-                from public.ai_jobs j
+                from public.jobs j
                 left join public.generated_documents d_input
                     on d_input.job_id = j.id and d_input.document_type = 'input'
                 left join public.generated_documents d_output
                     on d_output.job_id = j.id and d_output.document_type = 'output'
-                where j.user_id = %s and j.endpoint_key = %s
+                where j.user_id = %s and j.job_type = %s
                 order by j.created_at desc
                 limit %s offset %s
                 """,
@@ -365,30 +489,6 @@ async def get_user_analysis_history(
             )
             rows = await cur.fetchall()
             return [dict(row) for row in rows] if rows else []
-
-
-async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
-    """Busca documento por ID."""
-    pool = await get_pool()
-    async with pool.connection() as conn:
-        row_factory = _get_dict_row()
-        if row_factory:
-            cur_cm = conn.cursor(row_factory=row_factory)
-        else:
-            cur_cm = conn.cursor()
-
-        async with cur_cm as cur:
-            await cur.execute(
-                """
-                select id, user_id, document_type, bucket, storage_path,
-                       filename, size_bytes, created_at
-                from public.generated_documents
-                where id = %s
-                """,
-                (document_id,),
-            )
-            row = await cur.fetchone()
-            return dict(row) if row else None
 
 
 async def get_all_user_jobs(
@@ -399,13 +499,17 @@ async def get_all_user_jobs(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
+    """Return completed/processing jobs for a user with optional filters.
+
+    *endpoint_key* is matched against the job_type column (kept for API compatibility).
+    """
     pool = await get_pool()
     query = """
         SELECT DISTINCT ON (j.created_at, j.id)
             j.id,
             j.created_at,
             j.status,
-            j.endpoint_key,
+            j.job_type,
             jsonb_build_object(
                 'files', j.request_payload->'files',
                 'storage_path', j.request_payload->>'storage_path'
@@ -421,15 +525,15 @@ async def get_all_user_jobs(
             d.bucket as output_bucket,
             d.storage_path as output_storage_path,
             d.id as output_document_id
-        FROM public.ai_jobs j
+        FROM public.jobs j
         LEFT JOIN office_api.clients c ON j.client_id::text = c.id::text
         LEFT JOIN public.generated_documents d ON d.job_id = j.id AND d.document_type = 'output'
         WHERE j.status IN ('completed', 'processing') AND j.user_id = %s
     """
-    params = [user_id]
+    params: list[Any] = [user_id]
 
     if endpoint_key:
-        query += " AND j.endpoint_key = %s"
+        query += " AND j.job_type = %s"
         params.append(endpoint_key)
 
     if client_id:
@@ -451,7 +555,7 @@ async def get_all_user_jobs(
                         "id": str(row[0]),
                         "created_at": row[1],
                         "status": row[2],
-                        "endpoint_key": row[3],
+                        "endpoint_key": row[3],  # kept as 'endpoint_key' for API compatibility
                         "request_payload": row[4],
                         "result_payload": row[5],
                         "client_name": row[6],
@@ -464,30 +568,48 @@ async def get_all_user_jobs(
             return results
 
 
-async def delete_job(*, job_uuid, user_id: str) -> bool:
-    """Delete an AI job and its associated documents. Returns True if deleted."""
+# ---------------------------------------------------------------------------
+# Delete
+# ---------------------------------------------------------------------------
+
+async def delete_job(*, job_uuid: uuid.UUID, user_id: str) -> bool:
+    """Delete a job and all its generated_documents. Returns True if the job existed."""
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.transaction():
             async with conn.cursor() as cur:
-                # Verify ownership
+                # Verify ownership before touching anything
                 await cur.execute(
-                    "SELECT id FROM public.ai_jobs WHERE id = %s AND user_id = %s",
+                    "select id from public.jobs where id = %s and user_id = %s",
                     (job_uuid, user_id),
                 )
                 row = await cur.fetchone()
                 if not row:
                     return False
 
-                # Delete associated documents first (FK)
+                # Remove linked documents first (FK constraint)
                 await cur.execute(
-                    "DELETE FROM public.generated_documents WHERE job_id = %s",
+                    "delete from public.generated_documents where job_id = %s",
                     (job_uuid,),
                 )
 
-                # Delete the job
+                # Remove the job itself
                 await cur.execute(
-                    "DELETE FROM public.ai_jobs WHERE id = %s AND user_id = %s",
+                    "delete from public.jobs where id = %s and user_id = %s",
                     (job_uuid, user_id),
                 )
                 return True
+
+
+# ---------------------------------------------------------------------------
+# Utility
+# ---------------------------------------------------------------------------
+
+def now_iso(dt: datetime | None) -> str | None:
+    """Serialize a datetime to ISO 8601 string, returning None for falsy input."""
+    if not dt:
+        return None
+    try:
+        return dt.isoformat()
+    except Exception:
+        return None

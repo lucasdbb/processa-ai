@@ -20,7 +20,7 @@ class ProgressReporter:
             return
 
         try:
-            from src.core.ai_worker_store import add_job_event, update_job_progress
+            from src.core.job_store import add_job_event, update_job_progress
 
             await update_job_progress(job_uuid=self.job_uuid, progress=progress)
             await add_job_event(

@@ -72,7 +72,7 @@ export function AnalysisHistoryList({ functionality, clientId, title = 'Históri
 
     setIsDeleting(true)
     try {
-      const response = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobToDelete.id)}`, {
+      const response = await fetchWithCredentials(`${API_URL}/jobs/${encodeURIComponent(jobToDelete.id)}`, {
         method: 'DELETE',
       })
 

@@ -212,7 +212,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
         await new Promise((resolve) => setTimeout(resolve, pollInterval))
         if (controller.signal.aborted) return
 
-        const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+        const statusResponse = await fetchWithCredentials(`${API_URL}/jobs/${encodeURIComponent(jobId)}`)
 
         if (!statusResponse.ok) {
           continue // Retry on error

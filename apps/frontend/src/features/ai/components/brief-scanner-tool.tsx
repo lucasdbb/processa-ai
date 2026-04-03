@@ -213,7 +213,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         await new Promise((resolve) => setTimeout(resolve, pollInterval))
         if (controller.signal.aborted) return
 
-        const statusResponse = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+        const statusResponse = await fetchWithCredentials(`${API_URL}/jobs/${encodeURIComponent(jobId)}`)
         if (!statusResponse.ok) continue
 
         const statusData = (await statusResponse.json()) as {

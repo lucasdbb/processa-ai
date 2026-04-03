@@ -174,7 +174,7 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
         pollIntervalRef.current = setInterval(async () => {
           attempts++
           try {
-            const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(jobId)}`)
+            const statusRes = await fetchWithCredentials(`${API_URL}/jobs/${encodeURIComponent(jobId)}`)
             if (!statusRes.ok) {
               if (attempts >= maxAttempts) {
                 clearInterval(pollIntervalRef.current!)

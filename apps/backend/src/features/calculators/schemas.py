@@ -231,7 +231,9 @@ class AposentadoriaResponse(BaseModel):
 
 
 class ParseCnisRequest(BaseModel):
-    file_url: str
+    file_url: str | None = None
+    bucket: str | None = None
+    storage_path: str | None = None
 
 
 class CnisSeguradoSchema(BaseModel):

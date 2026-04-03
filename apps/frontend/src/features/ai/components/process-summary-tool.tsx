@@ -191,7 +191,7 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
         await new Promise((resolve) => setTimeout(resolve, pollInterval))
         if (controller.signal.aborted) return
 
-        const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${encodeURIComponent(job_id)}`)
+        const statusRes = await fetchWithCredentials(`${API_URL}/jobs/${encodeURIComponent(job_id)}`)
         if (!statusRes.ok) continue
 
         const statusData = (await statusRes.json()) as {

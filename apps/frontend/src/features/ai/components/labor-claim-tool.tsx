@@ -201,7 +201,7 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
       pollIntervalRef.current = setInterval(async () => {
         try {
-          const statusRes = await fetchWithCredentials(`${API_URL}/ai/jobs/${job_id}`)
+          const statusRes = await fetchWithCredentials(`${API_URL}/jobs/${job_id}`)
           if (!statusRes.ok) return
 
           const statusData = await statusRes.json()

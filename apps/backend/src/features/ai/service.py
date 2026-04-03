@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
-from src.core.ai_worker_store import (
+from src.core.job_store import (
     add_job_event,
     create_document,
     create_job,
@@ -11,7 +11,6 @@ from src.core.ai_worker_store import (
     update_job_payload,
 )
 from src.core.logging import logger
-from src.core.queue import enqueue_job
 from src.features.billing.credits.service import CreditsService
 from src.features.core.storage.service import StorageService
 
@@ -35,7 +34,8 @@ class AiJobService:
         store_pdf: bool = True,
     ) -> str:
         """
-        Submete um job de IA: consome créditos, cria job, processa arquivos, enfileira.
+        Submete um job de IA: consome créditos, cria job, processa arquivos.
+        Creating the job in public.jobs IS the enqueue (no separate job_queue).
         """
         if not user_id:
             raise HTTPException(
@@ -53,7 +53,7 @@ class AiJobService:
         # 2. Preparar Job UUID
         if not job_uuid:
             job_uuid = uuid4()
-        job_id = f"ai:{job_uuid}"
+        job_id = str(job_uuid)
 
         # 3. Payload base
         base_payload = {
@@ -71,15 +71,15 @@ class AiJobService:
         base_payload["job_id"] = job_id
         base_payload["user_id"] = user_id
 
-        # 5. Criar Job no Banco
+        # 5. Criar Job no Banco (this IS the enqueue — no separate job_queue)
         try:
             await create_job(
-                status="queued",
                 job_uuid=job_uuid,
-                endpoint_key=endpoint_key,
+                job_type=endpoint_key,
                 user_id=user_id,
                 client_id=client_id,
                 request_payload=base_payload,
+                priority=7,
             )
             await add_job_event(
                 job_uuid=job_uuid,
@@ -171,16 +171,6 @@ class AiJobService:
             }
 
             await update_job_payload(job_uuid=job_uuid, request_payload=final_payload)
-
-            # 8. Enfileirar Job (Worker)
-            await enqueue_job(
-                {
-                    "job_id": job_id,
-                    "job_uuid": str(job_uuid),
-                    "type": endpoint_key,
-                    "payload": final_payload,
-                }
-            )
 
         except Exception as e:
             logger.exception("Error during job processing setup")
