@@ -361,8 +361,16 @@ async def create_document(
                     "insert into public.generated_documents "
                     "(source, job_id, calculation_id, user_id, client_id, document_type, "
                     "bucket, storage_path, filename, checksum_sha256, size_bytes, "
-                    "mime_type, metadata, linked_document_id) "
-                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "mime_type, metadata, linked_document_id, expires_at) "
+                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                    " (select case "
+                    "    when bp.document_retention_days is not null "
+                    "    then now() + (bp.document_retention_days || ' days')::interval "
+                    "    else null "
+                    "  end "
+                    "  from public.subscriptions s "
+                    "  join public.billing_plans bp on bp.slug = s.plan_id "
+                    "  where s.user_id = %s limit 1)) "
                     "on conflict (bucket, storage_path) do update set "
                     "job_id = excluded.job_id, "
                     "calculation_id = excluded.calculation_id, "
@@ -374,7 +382,8 @@ async def create_document(
                     "size_bytes = excluded.size_bytes, "
                     "mime_type = excluded.mime_type, "
                     "metadata = excluded.metadata, "
-                    "linked_document_id = excluded.linked_document_id "
+                    "linked_document_id = excluded.linked_document_id, "
+                    "expires_at = excluded.expires_at "
                     "returning id"
                 ),
                 (
@@ -392,6 +401,7 @@ async def create_document(
                     mime_type,
                     _to_jsonb(metadata) if metadata is not None else None,
                     linked_document_id,
+                    user_id,
                 ),
             )
             row = await cur.fetchone()

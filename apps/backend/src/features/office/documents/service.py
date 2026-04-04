@@ -106,9 +106,21 @@ class DocumentsService:
                     """
                     INSERT INTO office_api.documents (
                         id, user_id, name, type, status, file_url, file_size,
-                        mime_type, process_id, client_id, description, visible_to_client
+                        mime_type, process_id, client_id, description, visible_to_client,
+                        expires_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        (SELECT CASE
+                            WHEN bp.document_retention_days IS NOT NULL
+                            THEN NOW() + (bp.document_retention_days || ' days')::INTERVAL
+                            ELSE NULL
+                        END
+                        FROM public.subscriptions s
+                        JOIN public.billing_plans bp ON bp.slug = s.plan_id
+                        WHERE s.user_id = %s
+                        LIMIT 1)
+                    )
                     RETURNING *
                     """,
                     (
@@ -124,6 +136,7 @@ class DocumentsService:
                         data.client_id,
                         data.description,
                         data.visible_to_client,
+                        user_id,
                     ),
                 )
                 row = await cur.fetchone()
@@ -204,9 +217,21 @@ class DocumentsService:
                     """
                     INSERT INTO office_api.documents (
                         id, user_id, name, type, status, file_url, file_size,
-                        mime_type, process_id, client_id, description, visible_to_client
+                        mime_type, process_id, client_id, description, visible_to_client,
+                        expires_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        (SELECT CASE
+                            WHEN bp.document_retention_days IS NOT NULL
+                            THEN NOW() + (bp.document_retention_days || ' days')::INTERVAL
+                            ELSE NULL
+                        END
+                        FROM public.subscriptions s
+                        JOIN public.billing_plans bp ON bp.slug = s.plan_id
+                        WHERE s.user_id = %s
+                        LIMIT 1)
+                    )
                     RETURNING *
                     """,
                     (
@@ -222,6 +247,7 @@ class DocumentsService:
                         data.client_id,
                         data.description,
                         data.visible_to_client,
+                        user_id,
                     ),
                 )
                 row = await cur.fetchone()

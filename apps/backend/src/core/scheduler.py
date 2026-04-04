@@ -119,6 +119,20 @@ async def cleanup_old_data_job():
         await _notify_admin("cleanup_old_data", "error", error=str(e))
 
 
+async def cleanup_expired_documents_job():
+    """Job to delete documents past their expires_at based on plan retention."""
+    try:
+        logger.info("Running scheduled job: cleanup_expired_documents")
+
+        service = CleanupService()
+        await service.cleanup_expired_documents()
+
+        logger.info("Completed scheduled job: cleanup_expired_documents")
+    except Exception as e:
+        logger.error(f"Error in cleanup_expired_documents job: {e}", exc_info=True)
+        await _notify_admin("cleanup_expired_documents", "error", error=str(e))
+
+
 async def datajud_sync_job():
     """Job to sync active processes with DataJUD API to fetch new timeline events."""
     try:
@@ -176,6 +190,18 @@ def setup_jobs(scheduler: AsyncIOScheduler):
         id="cleanup_old_data_monthly",
         replace_existing=True,
         name="Cleanup old data (1st of month, 3AM Brazil time)",
+    )
+
+    # Cleanup expired documents daily at 4:00 AM Brazil time
+    scheduler.add_job(
+        cleanup_expired_documents_job,
+        "cron",
+        hour=4,
+        minute=0,
+        timezone=ZoneInfo("America/Sao_Paulo"),
+        id="cleanup_expired_documents_daily",
+        replace_existing=True,
+        name="Cleanup expired documents (4AM Brazil time)",
     )
 
     # Sync with DataJUD API every 12 hours (1AM and 1PM)

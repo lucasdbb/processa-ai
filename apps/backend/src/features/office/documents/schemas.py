@@ -53,6 +53,7 @@ class DocumentResponse(BaseModel):
     client_id: str | None
     description: str | None
     visible_to_client: bool
+    expires_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

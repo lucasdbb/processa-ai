@@ -29,6 +29,7 @@ class CleanupService:
         await self.cleanup_old_ai_jobs()
         await self.cleanup_orphan_uploads()
         await self.cleanup_expired_portal_invites()
+        await self.cleanup_expired_documents()
 
     async def cleanup_old_ai_jobs(self):
         """
@@ -194,6 +195,80 @@ class CleanupService:
 
         except Exception as e:
             logger.error(f"Error cleaning up expired portal invites: {e}", exc_info=True)
+
+    async def cleanup_expired_documents(self):
+        """
+        Delete expired documents from both generated_documents and office_api.documents.
+        Documents have expires_at set based on user's plan at creation time.
+        NULL expires_at = permanent (no deletion).
+        """
+        logger.info("Cleaning up expired documents")
+
+        try:
+            pool = await get_pool()
+            async with pool.connection() as conn:
+                async with conn.cursor(row_factory=dict_row) as cur:
+                    # 1. Delete expired generated_documents (AI + calculator outputs)
+                    await cur.execute(
+                        """
+                        SELECT id, bucket, storage_path
+                        FROM public.generated_documents
+                        WHERE expires_at IS NOT NULL AND expires_at < NOW()
+                        """
+                    )
+                    expired_generated = await cur.fetchall()
+
+                    gen_files_deleted = 0
+                    gen_docs_deleted = 0
+                    if expired_generated:
+                        gen_files_deleted = await self._delete_storage_files(expired_generated)
+                        expired_ids = [d["id"] for d in expired_generated]
+                        await cur.execute(
+                            "DELETE FROM public.generated_documents WHERE id = ANY(%s)",
+                            (expired_ids,),
+                        )
+                        gen_docs_deleted = cur.rowcount
+
+                    # 2. Delete expired office documents
+                    await cur.execute(
+                        """
+                        SELECT id, file_url
+                        FROM office_api.documents
+                        WHERE expires_at IS NOT NULL AND expires_at < NOW()
+                        """
+                    )
+                    expired_office = await cur.fetchall()
+
+                    office_files_deleted = 0
+                    office_docs_deleted = 0
+                    if expired_office:
+                        # Convert to the format _delete_storage_files expects
+                        office_files = [
+                            {"bucket": STORAGE_BUCKET, "storage_path": d["file_url"]}
+                            for d in expired_office
+                            if d.get("file_url")
+                        ]
+                        office_files_deleted = await self._delete_storage_files(office_files)
+
+                        expired_ids = [d["id"] for d in expired_office]
+                        await cur.execute(
+                            "DELETE FROM office_api.documents WHERE id = ANY(%s)",
+                            (expired_ids,),
+                        )
+                        office_docs_deleted = cur.rowcount
+
+            total_docs = gen_docs_deleted + office_docs_deleted
+            total_files = gen_files_deleted + office_files_deleted
+            if total_docs:
+                logger.info(
+                    f"Expired documents cleanup: {gen_docs_deleted} generated + "
+                    f"{office_docs_deleted} office documents, {total_files} storage files deleted"
+                )
+            else:
+                logger.info("No expired documents to clean up")
+
+        except Exception as e:
+            logger.error(f"Error cleaning up expired documents: {e}", exc_info=True)
 
     async def _delete_storage_files(self, files: list[dict]) -> int:
         """Delete files from Supabase Storage. Returns count of successfully deleted files."""

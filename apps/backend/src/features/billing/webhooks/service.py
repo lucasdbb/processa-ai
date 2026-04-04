@@ -582,6 +582,9 @@ class WebhooksService:
                 # User gets the new plan's credits (whether upgrade or downgrade).
                 await self._reset_monthly_credits(user_id, new_plan_id)
 
+                # Recalculate expires_at for all user's documents based on new plan
+                await self._recalculate_document_expiration(user_id, new_plan_id)
+
         except Exception as e:
             logger.error(f"Failed to update subscription: {e}")
             raise TransientError(f"Failed to update subscription in database: {e}")
@@ -636,6 +639,9 @@ class WebhooksService:
                         f"Subscription canceled: {subscription_id}. "
                         f"Credits reset to free tier ({free_credits})."
                     )
+
+                    # Recalculate document expiration to free plan retention
+                    await self._recalculate_document_expiration(user_id, "free")
 
             # Send subscription canceled email
             if result.data and len(result.data) > 0:
@@ -884,6 +890,63 @@ class WebhooksService:
                 logger.info(f"Reset monthly credits to {monthly_credits} for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to reset monthly credits: {e}")
+
+    async def _recalculate_document_expiration(self, user_id: str, plan_id: str) -> None:
+        """Recalculate expires_at for all user documents based on new plan retention."""
+        try:
+            plan_result = (
+                self.supabase.table("billing_plans")
+                .select("document_retention_days")
+                .eq("slug", plan_id)
+                .single()
+                .execute()
+            )
+
+            if not plan_result.data:
+                logger.warning(f"Plan not found for document expiration: {plan_id}")
+                return
+
+            retention_days = plan_result.data.get("document_retention_days")
+
+            from src.core.db import get_pool
+
+            pool = await get_pool()
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    if retention_days is None:
+                        # Permanent plan — remove expiration from all documents
+                        await cur.execute(
+                            "UPDATE public.generated_documents SET expires_at = NULL "
+                            "WHERE user_id = %s AND expires_at IS NOT NULL",
+                            (user_id,),
+                        )
+                        await cur.execute(
+                            "UPDATE office_api.documents SET expires_at = NULL "
+                            "WHERE user_id = %s AND expires_at IS NOT NULL",
+                            (user_id,),
+                        )
+                    else:
+                        # Recalculate based on created_at + retention_days
+                        interval = f"{retention_days} days"
+                        await cur.execute(
+                            "UPDATE public.generated_documents "
+                            "SET expires_at = created_at + %s::INTERVAL "
+                            "WHERE user_id = %s",
+                            (interval, user_id),
+                        )
+                        await cur.execute(
+                            "UPDATE office_api.documents "
+                            "SET expires_at = created_at + %s::INTERVAL "
+                            "WHERE user_id = %s",
+                            (interval, user_id),
+                        )
+
+            logger.info(
+                f"Recalculated document expiration for user {user_id}, "
+                f"plan {plan_id} (retention: {retention_days or 'permanent'} days)"
+            )
+        except Exception as e:
+            logger.error(f"Failed to recalculate document expiration: {e}")
 
     def _get_plan_id_from_price(self, price_id: str) -> str:
         """Map Stripe price_id to internal plan_id using database lookup."""

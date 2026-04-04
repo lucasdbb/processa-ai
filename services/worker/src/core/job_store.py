@@ -235,8 +235,16 @@ async def create_document(
                 "INSERT INTO public.generated_documents "
                 "(source, job_id, calculation_id, user_id, client_id, document_type, "
                 " bucket, storage_path, filename, checksum_sha256, size_bytes, "
-                " mime_type, metadata, linked_document_id) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                " mime_type, metadata, linked_document_id, expires_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                " (SELECT CASE "
+                "    WHEN bp.document_retention_days IS NOT NULL "
+                "    THEN NOW() + (bp.document_retention_days || ' days')::INTERVAL "
+                "    ELSE NULL "
+                "  END "
+                "  FROM public.subscriptions s "
+                "  JOIN public.billing_plans bp ON bp.slug = s.plan_id "
+                "  WHERE s.user_id = %s LIMIT 1)) "
                 "ON CONFLICT (bucket, storage_path) DO UPDATE SET "
                 "    job_id             = EXCLUDED.job_id, "
                 "    calculation_id     = EXCLUDED.calculation_id, "
@@ -248,7 +256,8 @@ async def create_document(
                 "    size_bytes         = EXCLUDED.size_bytes, "
                 "    mime_type          = EXCLUDED.mime_type, "
                 "    metadata           = EXCLUDED.metadata, "
-                "    linked_document_id = EXCLUDED.linked_document_id "
+                "    linked_document_id = EXCLUDED.linked_document_id, "
+                "    expires_at         = EXCLUDED.expires_at "
                 "RETURNING id",
                 (
                     source,
@@ -265,6 +274,7 @@ async def create_document(
                     mime_type,
                     _to_jsonb(metadata) if metadata is not None else None,
                     linked_document_id,
+                    user_id,
                 ),
             )
             row = await cur.fetchone()
