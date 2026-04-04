@@ -244,7 +244,14 @@ async def parse_cnis(
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
 ):
-    """Envia CNIS PDF para parsing no worker (pymupdf, sem IA)."""
+    """Envia CNIS PDF para extração estruturada via Gemini no worker."""
+    credit_result = await credits_service.consume_credits(user_id, "parse_cnis")
+    if not credit_result.success:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Créditos insuficientes",
+        )
+
     job_uuid = uuid.uuid4()
     job_id = str(job_uuid)
 
@@ -265,6 +272,9 @@ async def parse_cnis(
         await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
     except Exception:
         logger.exception("Failed to create parse_cnis job")
+        await credits_service.refund_credits(
+            user_id, credit_result.credits_consumed, "refund_parse_cnis_error"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao criar job de parsing do CNIS",

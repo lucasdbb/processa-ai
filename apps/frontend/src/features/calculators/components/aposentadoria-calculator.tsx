@@ -111,6 +111,7 @@ export function AposentadoriaCalculator({
   const [resultado, setResultado] = useState<AposentadoriaResult | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Pré-preencher salário futuro com a média das últimas 12 remunerações
   useEffect(() => {
@@ -130,6 +131,14 @@ export function AposentadoriaCalculator({
       if (pollRef.current) clearInterval(pollRef.current)
     }
   }, [])
+
+  // Scroll to top of the calculator container when step changes
+  useEffect(() => {
+    const scrollParent = containerRef.current?.closest('[class*="overflow-y-auto"]')
+    if (scrollParent) {
+      scrollParent.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [step])
 
   const handleCnisParsed = useCallback((data: CnisParseResult) => {
     setComCnis(true)
@@ -312,7 +321,10 @@ export function AposentadoriaCalculator({
           if (!calc) return
 
           if (calc.status === 'completed' && calc.output_payload) {
-            setResultado(calc.output_payload)
+            // Worker returns {detalhes: {...}} — extract inner object
+            const payload = calc.output_payload as AposentadoriaResult | { detalhes: AposentadoriaResult }
+            const data = 'detalhes' in payload ? payload.detalhes : payload
+            setResultado(data)
             setStep(3)
 
             // If PDF was requested, poll for it separately
@@ -373,7 +385,7 @@ export function AposentadoriaCalculator({
   // ---- RENDER ----
 
   return (
-    <div className="space-y-0">
+    <div ref={containerRef} className="space-y-0">
       <StepIndicator currentStep={step} />
 
       {/* Step 1: Dados Iniciais */}

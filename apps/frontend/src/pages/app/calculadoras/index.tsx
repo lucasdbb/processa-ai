@@ -258,15 +258,17 @@ export default function CalculadorasHubPage() {
           </div>
 
           {/* Calculator content */}
-          <div className="flex-1 min-h-0 relative overflow-hidden">
-            {CalculatorComponent ? (
-              <CalculatorComponent selectedClientId={selectedClientId} />
-            ) : (
-              <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground h-full flex flex-col items-center justify-center">
-                <Calculator className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm font-medium">Calculadora em desenvolvimento</p>
-              </div>
-            )}
+          <div className="flex-1 min-h-0 relative lg:overflow-y-auto lg:scroll-smooth">
+            <div className="pb-6">
+              {CalculatorComponent ? (
+                <CalculatorComponent selectedClientId={selectedClientId} />
+              ) : (
+                <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground h-full flex flex-col items-center justify-center">
+                  <Calculator className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-medium">Calculadora em desenvolvimento</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

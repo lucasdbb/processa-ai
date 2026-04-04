@@ -122,7 +122,10 @@ export function TempoContribuicaoCalculator({ selectedClientId }: TempoContribui
           if (calc.status === 'completed' && calc.output_payload) {
             clearInterval(pollRef.current!)
             pollRef.current = null
-            setResultado(calc.output_payload)
+            // Worker returns {detalhes: {...}} — extract inner object
+            const payload = calc.output_payload as TempoContribuicaoResult | { detalhes: TempoContribuicaoResult }
+            const data = 'detalhes' in payload ? payload.detalhes : payload
+            setResultado(data)
             setLoading(false)
 
             analytics.track('feature_used', {

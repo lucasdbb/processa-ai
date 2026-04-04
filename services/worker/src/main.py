@@ -691,6 +691,16 @@ async def _handle_previdencia_job(job_row: dict) -> None:
         except Exception:
             logger.exception("Failed to persist previdencia job failure")
 
+        # Refund credits for parse_cnis (charged at backend before enqueuing)
+        if job_type == "parse_cnis" and user_id:
+            try:
+                from src.handlers.ai_service import AIService
+                ai_svc = AIService()
+                await ai_svc.refund_credits(user_id, 1, reason=f"refund_parse_cnis_{job_uuid}")
+                logger.info("Refunded 1 credit to user %s for failed parse_cnis", user_id)
+            except Exception:
+                logger.exception("Failed to refund credits for parse_cnis")
+
         # Also fail the calculation
         if calculation_id_str:
             try:
@@ -701,7 +711,7 @@ async def _handle_previdencia_job(job_row: dict) -> None:
 
 
 async def _handle_parse_cnis(payload: dict, job_uuid: uuid.UUID | None) -> dict:
-    """Parse CNIS PDF using pymupdf (deterministic, no AI)."""
+    """Parse CNIS PDF via Gemini structured output."""
     from src.core.storage import StorageService
     from src.handlers.previdencia.cnis_parser import parse_cnis_pdf
 
@@ -734,10 +744,10 @@ async def _handle_parse_cnis(payload: dict, job_uuid: uuid.UUID | None) -> dict:
 
     if job_uuid:
         await add_job_event(
-            job_uuid=job_uuid, event_type="processing", payload={"progress": 50, "step": "parsing"}
+            job_uuid=job_uuid, event_type="processing", payload={"progress": 40, "step": "analyzing"}
         )
 
-    resultado = parse_cnis_pdf(pdf_bytes)
+    resultado = await parse_cnis_pdf(pdf_bytes)
 
     # Serializar para JSON
     return {
@@ -782,6 +792,12 @@ async def _handle_calc_tempo_contribuicao(payload: dict, job_uuid: uuid.UUID | N
     from src.handlers.previdencia.tempo_contribuicao import calcular_tempo_contribuicao
     from src.handlers.previdencia.tipos import TipoVinculo, Vinculo
 
+    def _safe_tipo_vinculo(raw: str) -> TipoVinculo:
+        try:
+            return TipoVinculo(raw)
+        except ValueError:
+            return TipoVinculo.EMPREGADO
+
     vinculos_raw = payload.get("vinculos") or []
     vinculos = []
     for v in vinculos_raw:
@@ -791,7 +807,7 @@ async def _handle_calc_tempo_contribuicao(payload: dict, job_uuid: uuid.UUID | N
                 data_fim=date_type.fromisoformat(v["data_fim"]) if v.get("data_fim") else None,
                 empresa=v.get("empresa"),
                 cnpj=v.get("cnpj"),
-                tipo_vinculo=TipoVinculo(v.get("tipo_vinculo", "Empregado")),
+                tipo_vinculo=_safe_tipo_vinculo(v.get("tipo_vinculo", "Empregado")),
                 atividade_especial=v.get("atividade_especial", False),
             )
         )
@@ -894,6 +910,12 @@ async def _handle_calc_aposentadoria_simulacao(
         Vinculo,
     )
 
+    def _safe_tipo_vinculo(raw: str) -> TipoVinculo:
+        try:
+            return TipoVinculo(raw)
+        except ValueError:
+            return TipoVinculo.EMPREGADO
+
     seg_raw = payload.get("segurado") or {}
     vinculos_raw = payload.get("vinculos") or []
     remuneracoes_raw = payload.get("remuneracoes") or []
@@ -912,7 +934,7 @@ async def _handle_calc_aposentadoria_simulacao(
             data_fim=date_type.fromisoformat(v["data_fim"]) if v.get("data_fim") else None,
             empresa=v.get("empresa"),
             cnpj=v.get("cnpj"),
-            tipo_vinculo=TipoVinculo(v.get("tipo_vinculo", "Empregado")),
+            tipo_vinculo=_safe_tipo_vinculo(v.get("tipo_vinculo", "Empregado")),
             atividade_especial=v.get("atividade_especial", False),
         )
         for v in vinculos_raw

@@ -15,7 +15,8 @@ interface MediaSalarialCalculatorProps {
 
 type InputMode = 'manual' | 'cnis'
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number | null | undefined): string {
+  if (value == null) return 'R$ 0,00'
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
@@ -120,7 +121,10 @@ export function MediaSalarialCalculator({ selectedClientId }: MediaSalarialCalcu
           if (calc.status === 'completed' && calc.output_payload) {
             clearInterval(pollRef.current!)
             pollRef.current = null
-            setResultado(calc.output_payload)
+            // Worker returns {detalhes: {...}} — extract inner object
+            const payload = calc.output_payload as MediaSalarialResult | { detalhes: MediaSalarialResult }
+            const data = 'detalhes' in payload ? payload.detalhes : payload
+            setResultado(data)
             setLoading(false)
 
             analytics.track('feature_used', {

@@ -70,6 +70,12 @@ FEATURE_COSTS: dict[str, FeatureCost] = {
             20,
             "Simulação completa de aposentadoria",
         ),
+        FeatureCost(
+            "parse_cnis",
+            "Importação de CNIS",
+            1,
+            "Extração de dados do CNIS via IA",
+        ),
     ]
 }
 

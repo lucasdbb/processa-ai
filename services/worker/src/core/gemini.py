@@ -31,6 +31,7 @@ async def analyze_pdf(
     system_instruction: str,
     user_prompt: str = "Analise este documento.",
     model: str,
+    response_mime_type: str | None = None,
 ) -> tuple[str, TokenUsage | None]:
     """Send PDF bytes directly to Gemini for analysis.
 
@@ -41,6 +42,7 @@ async def analyze_pdf(
         system_instruction=system_instruction,
         user_prompt=user_prompt,
         model=model,
+        response_mime_type=response_mime_type,
     )
 
 
@@ -50,6 +52,7 @@ async def analyze_multiple_pdfs(
     system_instruction: str,
     user_prompt: str = "Analise estes documentos.",
     model: str,
+    response_mime_type: str | None = None,
 ) -> tuple[str, TokenUsage | None]:
     """Send multiple PDF bytes directly to Gemini for analysis.
 
@@ -66,13 +69,15 @@ async def analyze_multiple_pdfs(
     ]
     contents.append(user_prompt)
 
+    config_kwargs: dict = {"system_instruction": system_instruction}
+    if response_mime_type:
+        config_kwargs["response_mime_type"] = response_mime_type
+
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = await client.aio.models.generate_content(
                 model=model,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                ),
+                config=types.GenerateContentConfig(**config_kwargs),
                 contents=contents,
             )
 
