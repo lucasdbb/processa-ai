@@ -68,18 +68,23 @@ export default function HomePage() {
   const screenshots = [
     {
       title: 'Gestão do Escritório',
-      description: 'Tudo sob controle em um painel simples, com muito mais para explorar',
-      image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop',
+      description: 'Clientes, processos, prazos, honorários e muito mais. Tudo sob controle num painel simples.',
+      image: '/images/waitlist/painel_gestao.png',
     },
-{
+    {
       title: 'IA Jurídica',
-      description: 'Respostas, análises e automações em segundos, com recursos além do que você vê aqui',
-      image: 'https://images.unsplash.com/photo-1555421689-d68471e189f2?q=80&w=2070&auto=format&fit=crop',
+      description: 'Análise de CNIS, resumos e automações em minutos para o direito brasileiro.',
+      image: '/images/waitlist/analise_cnis.png',
     },
     {
       title: 'Calculadoras',
-      description: 'Cálculos confiáveis e rápidos, com possibilidades que vão muito além do básico',
-      image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=2068&auto=format&fit=crop',
+      description: 'Cálculos confiáveis de rescisão ou previdência com relatórios em PDF.',
+      image: '/images/waitlist/calculadora_rescisao.png',
+    },
+    {
+      title: 'Biblioteca de Materiais',
+      description: 'E-books, guias e petições de alta qualidade para você não começar do zero.',
+      image: '/images/waitlist/materiais.png',
     },
   ]
 
@@ -663,10 +668,10 @@ export default function HomePage() {
                 <img
                   src={screenshots[currentSlide].image}
                   alt={screenshots[currentSlide].title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain bg-background"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               </div>
 
               {/* Caption */}
