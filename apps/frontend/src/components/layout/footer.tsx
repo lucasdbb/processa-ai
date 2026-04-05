@@ -47,6 +47,13 @@ export function Footer() {
             >
               Privacidade
             </Link>
+            <Link
+              to="/transparencia-ia"
+              onClick={scrollToTop}
+              className="hover:text-foreground transition-colors"
+            >
+              Transparência de IA
+            </Link>
           </div>
         </div>
       </div>

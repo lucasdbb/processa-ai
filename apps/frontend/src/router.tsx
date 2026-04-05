@@ -25,6 +25,7 @@ import MaterialsPage from '@/pages/materials'
 import CallbackPage from '@/pages/auth/CallbackPage'
 import TermosPage from '@/pages/termos'
 import PrivacidadePage from '@/pages/privacidade'
+import TransparenciaIAPage from '@/pages/transparencia-ia'
 
 // App pages (lazy loading for code splitting)
 const DashboardPage = lazy(() => import('@/pages/app/dashboard'))
@@ -109,6 +110,10 @@ export const router = createBrowserRouter([
       {
         path: 'privacidade',
         element: <PrivacidadePage />,
+      },
+      {
+        path: 'transparencia-ia',
+        element: <TransparenciaIAPage />,
       },
       {
         path: 'auth/callback',
