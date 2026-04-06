@@ -19,9 +19,11 @@ import type { RootLayoutOutletContext } from '@/components/layout/root-layout'
 import { fetchToolsCatalog } from '@/components/layout/tools-catalog-utils'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
+import { useAuth } from '@/features/auth/hooks/use-auth'
 
 export default function HomePage() {
-  const { openRegisterModal } = useOutletContext<RootLayoutOutletContext>()
+  const { openRegisterModal, openLoginModal } = useOutletContext<RootLayoutOutletContext>()
+  const { isAuthenticated } = useAuth()
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -162,6 +164,12 @@ export default function HomePage() {
     }
   }
 
+  const handleProtectedFeatureClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isAuthenticated) return
+    event.preventDefault()
+    openLoginModal()
+  }
+
   return (
     <main>
       <SEO ogUrl="https://processai.app.br" />
@@ -285,6 +293,7 @@ export default function HomePage() {
               >
                 <Link
                   to="/app/clientes"
+                  onClick={handleProtectedFeatureClick}
                   className={`inline-flex items-center justify-between w-full text-xs sm:text-sm font-semibold transition-colors group-hover:translate-x-1 duration-200 ${
                     isDark
                       ? 'text-slate-300 hover:text-slate-100'
@@ -355,6 +364,7 @@ export default function HomePage() {
               >
                 <Link
                   to="/app/ia"
+                  onClick={handleProtectedFeatureClick}
                   className={`inline-flex items-center justify-between w-full text-xs sm:text-sm font-semibold transition-colors group-hover:translate-x-1 duration-200 ${
                     isDark
                       ? 'text-slate-300 hover:text-slate-100'
@@ -425,6 +435,7 @@ export default function HomePage() {
               >
                 <Link
                   to="/app/calculadoras"
+                  onClick={handleProtectedFeatureClick}
                   className={`inline-flex items-center justify-between w-full text-xs sm:text-sm font-semibold transition-colors group-hover:translate-x-1 duration-200 ${
                     isDark
                       ? 'text-slate-300 hover:text-slate-100'

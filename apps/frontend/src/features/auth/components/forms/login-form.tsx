@@ -169,10 +169,10 @@ export function LoginForm({ onSuccess, onForgotPassword, onRegister }: LoginForm
           type="submit"
           disabled={isSubmitting}
           className={cn(
-            "w-full font-bold py-3 px-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm mt-2",
+            "w-full font-semibold py-3 px-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm mt-2",
             isDark 
-              ? "bg-white text-black hover:bg-gray-100 hover:shadow-md" 
-              : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/25"
+              ? "bg-white text-gray-900 hover:bg-gray-100 shadow-black/10"
+              : "bg-gray-900 text-white hover:bg-gray-800 shadow-gray-900/10"
           )}
         >
           {isSubmitting ? (
@@ -226,7 +226,10 @@ export function LoginForm({ onSuccess, onForgotPassword, onRegister }: LoginForm
             Ainda não tem uma conta?
             <button 
               onClick={onRegister}
-              className="text-primary hover:text-primary/80 font-bold ml-1.5 transition-colors"
+              className={cn(
+                'font-bold ml-1.5 transition-colors',
+                isDark ? 'text-gray-100 hover:text-gray-300' : 'text-gray-900 hover:text-gray-700'
+              )}
             >
               Cadastre-se gratuitamente
             </button>
