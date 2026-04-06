@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FileText, Search, Filter, Download, X, Eye } from 'lucide-react'
+import { SEO } from '@/components/seo'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -148,6 +149,7 @@ export default function DocumentosPage() {
 
   return (
     <div className="space-y-6">
+      <SEO title="Documentos" noindex />
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Meus Documentos</h1>

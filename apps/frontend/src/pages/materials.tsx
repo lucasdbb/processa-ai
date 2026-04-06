@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Download, FileSpreadsheet, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -215,6 +216,7 @@ export default function MaterialsPage() {
   if (isAppRoute) {
     return (
       <div className="space-y-6">
+        <SEO title="Materiais Jurídicos" noindex />
         <div>
           <h1 className="text-2xl font-bold text-foreground">Materiais</h1>
           <p className="text-muted-foreground mt-1">
@@ -229,6 +231,7 @@ export default function MaterialsPage() {
 
   return (
     <div className="pt-24">
+      <SEO title="Materiais Jurídicos" description="Biblioteca de materiais jurídicos gratuitos para advogados." ogUrl="https://processai.app.br/materiais" />
       <section className="relative py-12 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />

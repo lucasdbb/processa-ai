@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Calendar, Clock, Search, User } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
@@ -199,6 +200,11 @@ export default function BlogPage() {
 
   return (
     <div className="pt-24">
+      <SEO
+        title="Blog Jurídico"
+        description="Artigos, dicas e novidades sobre direito trabalhista, previdenciário e tecnologia jurídica."
+        ogUrl="https://processai.app.br/blog"
+      />
       <section className="relative min-h-[calc(100vh-6rem)] overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />

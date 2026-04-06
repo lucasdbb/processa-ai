@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Check, ChevronDown, Crown, GraduationCap, Loader2, Star, Users, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -223,6 +224,11 @@ export default function PlanosPage() {
 
   return (
     <div className="pt-24">
+      <SEO
+        title="Planos e Preços"
+        description="Escolha o plano ideal para seu escritório de advocacia. Ferramentas de IA jurídica, gestão de processos e calculadoras legais."
+        ogUrl="https://processai.app.br/planos"
+      />
       <section className="relative py-12 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />

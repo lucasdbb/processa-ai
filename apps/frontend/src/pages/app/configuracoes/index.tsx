@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { useUser } from '@/features/auth/hooks/use-user'
 import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -274,6 +275,7 @@ export default function ConfiguracoesPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
+      <SEO title="Configurações" noindex />
 
       {/* Page header */}
       <div>

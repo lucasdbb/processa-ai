@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { ArrowLeft, Clock, User } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
@@ -160,6 +161,12 @@ export default function BlogPostPage() {
 
   return (
     <main className="pt-24 pb-16 font-sans">
+      <SEO
+        title={post.title}
+        description={post.excerpt || post.content.slice(0, 160).replace(/[#*_\n]/g, '')}
+        ogImage={post.cover_image_url || post.featured_image}
+        ogUrl={`https://processai.app.br/blog/${post.slug}`}
+      />
       <article className="mx-auto max-w-6xl px-6 lg:px-8">
         <div className="mb-8">
           <Button

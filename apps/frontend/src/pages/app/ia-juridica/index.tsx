@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Brain, Lock, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAiTools } from '@/features/ai/context'
@@ -43,6 +44,7 @@ export default function IAJuridicaHubPage() {
 
   return (
     <div className="space-y-6">
+      <SEO title="IA Jurídica" noindex />
       <div>
         <h1 className="text-2xl font-bold text-foreground">Ferramentas de IA Jurídica</h1>
         <p className="text-muted-foreground mt-1">

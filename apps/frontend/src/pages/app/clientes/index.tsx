@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Search, Plus, Mail, Phone, MapPin, User, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { phoneMask, cpfMask, cnpjMask, removeDocumentMask } from '@/lib/masks'
@@ -46,6 +47,7 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-6">
+      <SEO title="Clientes" noindex />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

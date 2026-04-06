@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Brain, BookOpen, ChevronDown, ChevronRight, Coins, FileText, Globe, GraduationCap, Info, Layers, Type } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
@@ -359,6 +360,7 @@ export default function IAHubPage() {
 
   return (
     <div className="h-[calc(100dvh-220px)] lg:h-[calc(100dvh-160px)] flex flex-col gap-4">
+      <SEO title="Ferramentas de IA" noindex />
       {headerContent}
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-3 sm:p-4 flex-1 flex flex-col min-h-0">

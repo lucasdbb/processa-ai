@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -349,6 +350,7 @@ export default function CalendarioPage() {
 
   return (
     <div className="space-y-4">
+      <SEO title="Calendário" noindex />
       {/* Sync Overlay */}
       {syncOverlay.visible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

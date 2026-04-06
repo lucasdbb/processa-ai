@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo, useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import {
   ArrowRight,
   BrainCircuit,
@@ -163,6 +164,7 @@ export default function HomePage() {
 
   return (
     <main>
+      <SEO ogUrl="https://processai.app.br" />
       <section className="relative min-h-screen flex flex-col justify-center pt-20 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-60" />

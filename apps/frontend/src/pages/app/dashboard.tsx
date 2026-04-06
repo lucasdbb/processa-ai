@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import {
   Users,
   FolderKanban,
@@ -148,6 +149,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <SEO title="Painel" noindex />
       {/* Welcome Card */}
       <WelcomeCard />
 

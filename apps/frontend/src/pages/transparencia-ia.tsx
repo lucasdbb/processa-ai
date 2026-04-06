@@ -1,6 +1,9 @@
+import { SEO } from '@/components/seo'
+
 export default function TransparenciaIAPage() {
   return (
     <div className="pt-24">
+      <SEO title="Transparência de IA" />
       <section className="relative py-12 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[520px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />

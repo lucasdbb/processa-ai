@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { AlertCircle, FolderKanban, Calculator, Check, Filter, Trash2, Bell, FileText, Sparkles, Info } from 'lucide-react'
+import { SEO } from '@/components/seo'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -115,6 +116,7 @@ export default function NotificacoesPage() {
 
   return (
     <div className="space-y-6">
+      <SEO title="Notificações" noindex />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

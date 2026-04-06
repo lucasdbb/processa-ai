@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Check, Crown, GraduationCap, Loader2, Star, Users, Zap, Coins, CreditCard, History, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -259,6 +260,7 @@ export default function AssinaturaPage() {
 
   return (
     <div className="space-y-6 max-w-5xl pb-24 lg:pb-10">
+      <SEO title="Assinatura" noindex />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">

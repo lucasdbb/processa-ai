@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Calculator, Loader2, Coins, ChevronDown, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCalculators } from '@/features/calculators/context'
@@ -175,6 +176,7 @@ export default function CalculadorasHubPage() {
   if (calculatorId && !selectedCalculator) {
     return (
       <div className="space-y-6">
+        <SEO title="Calculadoras" noindex />
         <div>
           <h1 className="text-2xl font-bold text-foreground">Calculadora não encontrada</h1>
           <p className="text-muted-foreground mt-1">Volte para a lista e selecione uma calculadora disponível.</p>
@@ -193,6 +195,7 @@ export default function CalculadorasHubPage() {
   if (selectedCalculator && current) {
     return (
       <div className="flex flex-col gap-4 lg:h-[calc(100dvh-160px)]">
+        <SEO title="Calculadoras" noindex />
         <div className="flex items-start justify-between gap-4 flex-shrink-0">
           <div>
             <div className="flex items-center gap-3">
@@ -278,6 +281,7 @@ export default function CalculadorasHubPage() {
   // Layout Grid padrão para quando nenhuma calculadora está selecionada
   return (
     <div className="space-y-6">
+      <SEO title="Calculadoras" noindex />
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Calculadoras</h1>

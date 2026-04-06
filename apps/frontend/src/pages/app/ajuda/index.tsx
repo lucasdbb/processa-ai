@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Search, ChevronDown, ChevronUp, Book, Mail } from 'lucide-react'
+import { SEO } from '@/components/seo'
 import { cn } from '@/lib/utils'
 
 interface FAQItem {
@@ -163,6 +164,7 @@ export default function AjudaPage() {
 
   return (
     <div className="space-y-6">
+      <SEO title="Ajuda" noindex />
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Central de Ajuda</h1>

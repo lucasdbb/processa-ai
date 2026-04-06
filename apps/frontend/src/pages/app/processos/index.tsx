@@ -1,5 +1,6 @@
 import { useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Search, Plus, Filter, FolderKanban, ChevronDown, Scale, Building2, Handshake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ProcessListSkeleton } from '@/components/skeletons/process-list-skeleton'
@@ -127,6 +128,8 @@ export default function ProcessosPage() {
   }
 
   return (
+    <>
+    <SEO title="Processos" noindex />
     <PageLayout
       title="Processos"
       description="Acompanhe seus processos e prazos."
@@ -393,5 +396,6 @@ export default function ProcessosPage() {
         onSave={handleSaveProcess}
       />
     </PageLayout>
+    </>
   )
 }

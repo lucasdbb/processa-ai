@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Eye, Heart, Mail, Target } from 'lucide-react'
+import { SEO } from '@/components/seo'
 
 
 const team = [
@@ -36,6 +37,11 @@ export default function SobrePage() {
 
   return (
     <div className="pt-24">
+      <SEO
+        title="Sobre Nós"
+        description="Conheça a equipe por trás do Processa AI. Tecnologia jurídica feita por quem entende de direito."
+        ogUrl="https://processai.app.br/sobre"
+      />
       <section className="relative py-12 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-muted to-transparent rounded-full blur-3xl opacity-[var(--hero-glow-opacity)]" />

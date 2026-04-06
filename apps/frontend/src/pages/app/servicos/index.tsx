@@ -1,5 +1,6 @@
 import { useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
+import { SEO } from '@/components/seo'
 import { Search, Plus, Filter, Briefcase, ChevronDown, Handshake } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -169,6 +170,8 @@ export default function ServicosPage() {
   const filteredServices = services
 
   return (
+    <>
+    <SEO title="Serviços" noindex />
     <PageLayout
       title="Serviços"
       description="Gerencie seus serviços extrajudiciais e consultorias."
@@ -407,5 +410,6 @@ export default function ServicosPage() {
         onSave={handleSaveService}
       />
     </PageLayout>
+    </>
   )
 }
