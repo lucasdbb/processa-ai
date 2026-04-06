@@ -15,6 +15,8 @@ import os
 import signal
 import uuid
 
+from src.core.config import settings
+from src.core.db import close_db, init_db
 from src.core.job_store import (
     add_job_event,
     create_document,
@@ -23,11 +25,7 @@ from src.core.job_store import (
     mark_job_completed,
     mark_job_failed,
     mark_job_processing,
-    parse_job_uuid,
-    update_job_progress,
 )
-from src.core.config import settings
-from src.core.db import close_db, init_db
 from src.core.logging import logger
 from src.core.progress import ProgressReporter
 from src.core.queue import dequeue_job, dequeue_translation_job, nack_job, reap_stuck_jobs
@@ -40,9 +38,14 @@ _shutdown_event = asyncio.Event()
 
 
 def _handle_signal(sig, frame):
-    """Signal handler for graceful shutdown."""
+    """Signal handler for graceful shutdown (thread-safe with asyncio)."""
     logger.info("Received signal %s, initiating graceful shutdown...", sig)
-    _shutdown_event.set()
+    try:
+        loop = asyncio.get_running_loop()
+        loop.call_soon_threadsafe(_shutdown_event.set)
+    except RuntimeError:
+        # No running loop (shouldn't happen, but be safe)
+        _shutdown_event.set()
 
 
 # Costs mapping (must match backend/src/features/billing/credits/constants.py)
