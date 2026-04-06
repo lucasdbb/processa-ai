@@ -20,7 +20,7 @@ interface BillingState {
 
 export const useBillingStore = create<BillingState>((set, get) => ({
   subscription: null,
-  isLoading: false,
+  isLoading: true,
   error: null,
   lastFetchedAt: null,
 
