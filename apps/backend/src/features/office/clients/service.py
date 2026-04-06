@@ -71,6 +71,40 @@ class ClientsService:
                 clients = [ClientResponse(**row) for row in rows]
                 return clients, total
 
+    async def export_clients(self, user_id: UUID) -> str:
+        """Export all clients as CSV."""
+        from src.shared.csv_export import rows_to_csv
+
+        pool = await get_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT name, email, phone, cpf_cnpj, address, city, state,
+                           zip_code, status, created_at
+                    FROM office_api.clients
+                    WHERE user_id = %s
+                    ORDER BY name ASC
+                    """,
+                    (str(user_id),),
+                )
+                rows = await cur.fetchall()
+
+        headers = [
+            "Nome", "Email", "Telefone", "CPF/CNPJ", "Endereço",
+            "Cidade", "Estado", "CEP", "Status", "Cadastrado em",
+        ]
+        data = [
+            [
+                r["name"], r["email"] or "", r["phone"] or "",
+                r["cpf_cnpj"] or "", r["address"] or "",
+                r["city"] or "", r["state"] or "", r["zip_code"] or "",
+                r["status"], r["created_at"].strftime("%d/%m/%Y") if r["created_at"] else "",
+            ]
+            for r in rows
+        ]
+        return rows_to_csv(headers, data)
+
     async def count_clients(self, user_id: UUID) -> dict[str, int]:
         """Count active clients for a user."""
         pool = await get_pool()

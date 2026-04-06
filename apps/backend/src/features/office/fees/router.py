@@ -4,6 +4,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.fees.schemas import (
@@ -46,6 +47,19 @@ async def list_fees(
     )
     fees, total = await fees_service.list_fees(user_id, params)
     return FeeListResponse(fees=fees, total=total)
+
+
+@router.get("/export")
+async def export_fees(
+    user_id: UUID = Depends(get_user_id),
+):
+    """Export all fees as CSV."""
+    csv_content = await fees_service.export_fees(user_id)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=honorarios.csv"},
+    )
 
 
 @router.get("/summary/{client_id}", response_model=FeeSummaryResponse)

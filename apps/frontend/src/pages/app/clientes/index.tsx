@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SEO } from '@/components/seo'
-import { Search, Plus, Mail, Phone, MapPin, User, SlidersHorizontal } from 'lucide-react'
+import { Search, Plus, Mail, Phone, MapPin, User, SlidersHorizontal, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { phoneMask, cpfMask, cnpjMask, removeDocumentMask } from '@/lib/masks'
 import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -29,8 +30,29 @@ export default function ClientesPage() {
     offset: 0,
   })
 
+  const [exporting, setExporting] = useState(false)
+
   const clients = data?.clients ?? []
   const total = data?.total ?? 0
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await fetchWithCredentials(`${API_URL}/office/clients/export`)
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'clientes.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Erro ao exportar clientes.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('pt-BR')
@@ -54,14 +76,24 @@ export default function ClientesPage() {
           <h1 className="text-3xl font-bold text-foreground tracking-tight">Clientes</h1>
           <p className="text-muted-foreground mt-1">Gerencie seus clientes e seus dados.</p>
         </div>
-        <button
-          onClick={() => setShowClientDialog(true)}
-          data-tour="new-client-btn"
-          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Novo Cliente
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || total === 0}
+            className="hidden sm:inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground border border-border rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Exportar
+          </button>
+          <button
+            onClick={() => setShowClientDialog(true)}
+            data-tour="new-client-btn"
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Cliente
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

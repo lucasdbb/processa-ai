@@ -88,6 +88,52 @@ class ProcessesService:
                 processes = [ProcessResponse(**row) for row in rows]
                 return processes, total
 
+    async def export_processes(self, user_id: UUID) -> str:
+        """Export all processes as CSV."""
+        from src.shared.csv_export import rows_to_csv
+
+        pool = await get_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT p.process_number, p.type, p.area, p.subject,
+                           p.court, p.tribunal, p.defendant, p.client_role,
+                           p.status, p.value, p.start_date, p.end_date,
+                           c.name as client_name, p.process_category,
+                           p.is_partnership, p.partner_lawyer, p.partner_percentage
+                    FROM office_api.processes p
+                    LEFT JOIN office_api.clients c ON p.client_id = c.id
+                    WHERE p.user_id = %s
+                    ORDER BY p.created_at DESC
+                    """,
+                    (str(user_id),),
+                )
+                rows = await cur.fetchall()
+
+        headers = [
+            "Número", "Tipo", "Área", "Assunto", "Vara/Órgão", "Tribunal",
+            "Réu", "Polo do Cliente", "Status", "Valor da Causa",
+            "Data Início", "Data Fim", "Cliente", "Categoria",
+            "Parceria", "Advogado Parceiro", "% Parceiro",
+        ]
+        data = [
+            [
+                r["process_number"], r["type"], r["area"] or "",
+                r["subject"] or "", r["court"] or "", r["tribunal"] or "",
+                r["defendant"] or "", r["client_role"],
+                r["status"], str(r["value"]) if r["value"] else "",
+                r["start_date"].strftime("%d/%m/%Y") if r["start_date"] else "",
+                r["end_date"].strftime("%d/%m/%Y") if r["end_date"] else "",
+                r["client_name"] or "", r["process_category"],
+                "Sim" if r["is_partnership"] else "Não",
+                r["partner_lawyer"] or "",
+                str(r["partner_percentage"]) if r["partner_percentage"] else "",
+            ]
+            for r in rows
+        ]
+        return rows_to_csv(headers, data)
+
     async def count_processes(self, user_id: UUID) -> dict[str, int]:
         """Count active processes for a user."""
         pool = await get_pool()

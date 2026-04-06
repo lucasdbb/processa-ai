@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.clients.schemas import (
@@ -38,6 +39,19 @@ async def list_clients(
     )
     clients, total = await clients_service.list_clients(user_id, params)
     return ClientListResponse(clients=clients, total=total)
+
+
+@router.get("/export")
+async def export_clients(
+    user_id: UUID = Depends(get_user_id),
+):
+    """Export all clients as CSV."""
+    csv_content = await clients_service.export_clients(user_id)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=clientes.csv"},
+    )
 
 
 @router.get("/count")

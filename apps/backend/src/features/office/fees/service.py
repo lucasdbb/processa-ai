@@ -78,6 +78,57 @@ class FeesService:
                 fees = [FeeResponse(**row) for row in rows]
                 return fees, total
 
+    async def export_fees(self, user_id: UUID) -> str:
+        """Export all fees as CSV."""
+        from src.shared.csv_export import rows_to_csv
+
+        pool = await get_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT f.description, f.fee_type, f.amount, f.status,
+                           f.due_date, f.paid_date, f.notes,
+                           c.name as client_name,
+                           p.process_number
+                    FROM office_api.fees f
+                    LEFT JOIN office_api.clients c ON f.client_id = c.id
+                    LEFT JOIN office_api.processes p ON f.process_id = p.id
+                    WHERE f.user_id = %s
+                    ORDER BY f.created_at DESC
+                    """,
+                    (str(user_id),),
+                )
+                rows = await cur.fetchall()
+
+        fee_type_labels = {
+            "initial": "Entrada", "success": "Êxito", "monthly": "Mensalidade",
+            "hourly": "Hora", "hearing": "Audiência", "petition": "Petição", "other": "Outro",
+        }
+        status_labels = {
+            "pending": "Pendente", "paid": "Pago", "overdue": "Atrasado", "cancelled": "Cancelado",
+        }
+
+        headers = [
+            "Descrição", "Tipo", "Valor (R$)", "Status",
+            "Vencimento", "Data Pagamento", "Cliente", "Processo", "Observações",
+        ]
+        data = [
+            [
+                r["description"],
+                fee_type_labels.get(r["fee_type"], r["fee_type"]),
+                str(r["amount"]),
+                status_labels.get(r["status"], r["status"]),
+                r["due_date"].strftime("%d/%m/%Y") if r["due_date"] else "",
+                r["paid_date"].strftime("%d/%m/%Y") if r["paid_date"] else "",
+                r["client_name"] or "",
+                r["process_number"] or "",
+                r["notes"] or "",
+            ]
+            for r in rows
+        ]
+        return rows_to_csv(headers, data)
+
     async def get_fee(self, user_id: UUID, fee_id: UUID) -> FeeResponse | None:
         """Get a single fee by ID."""
         pool = await get_pool()

@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.features.office.processes.schemas import (
@@ -48,6 +49,19 @@ async def list_processes(
     )
     processes, total = await processes_service.list_processes(user_id, params)
     return ProcessListResponse(processes=processes, total=total)
+
+
+@router.get("/export")
+async def export_processes(
+    user_id: UUID = Depends(get_user_id),
+):
+    """Export all processes as CSV."""
+    csv_content = await processes_service.export_processes(user_id)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=processos.csv"},
+    )
 
 
 @router.get("/count")
