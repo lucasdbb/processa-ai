@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from src.core.auth import get_user_id, verify_internal_token
+from src.core.rate_limit import limiter
 from src.features.core.newsletter.schemas import (
     PreferencesUpdate,
     SubscribeRequest,
@@ -14,7 +15,8 @@ service = NewsletterService()
 
 
 @router.post("/subscribe", status_code=status.HTTP_201_CREATED, response_model=SubscribeResponse)
-async def subscribe(data: SubscribeRequest):
+@limiter.limit("5/minute")
+async def subscribe(request: Request, data: SubscribeRequest):
     user_id = None
     return await service.subscribe(
         email=data.email,

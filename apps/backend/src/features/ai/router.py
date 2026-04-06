@@ -1,8 +1,9 @@
 import uuid
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 
 from src.core.auth import get_user_id, require_internal_auth
+from src.core.rate_limit import limiter
 from src.core.job_store import (
     get_all_user_jobs,
     get_document_by_id,
@@ -37,7 +38,9 @@ ai_job_service = AiJobService()
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("10/minute")
 async def cnis_analysis(
+    request: Request,
     data: CnisAnalysisRequest,
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
@@ -88,7 +91,9 @@ async def cnis_analysis(
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("10/minute")
 async def process_summary_analysis(
+    request: Request,
     data: ProcessSummaryRequest,
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
@@ -141,7 +146,9 @@ async def process_summary_analysis(
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("10/minute")
 async def labor_claim_analysis(
+    request: Request,
     data: dict = Body(...),
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
@@ -198,7 +205,9 @@ async def labor_claim_analysis(
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("10/minute")
 async def brief_scanner_analysis(
+    request: Request,
     data: BriefScannerRequest,
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
@@ -249,7 +258,9 @@ async def brief_scanner_analysis(
     response_model=EnqueueJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("10/minute")
 async def audio_transcription_analysis(
+    request: Request,
     data: AudioTranscriptionRequest,
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),

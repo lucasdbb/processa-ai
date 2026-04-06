@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from src.core.auth import get_user_id, require_internal_auth
+from src.core.rate_limit import limiter
 from src.core.logging import logger
 from src.features.ai.chat.schemas import (
     ChatMessageRequest,
@@ -24,7 +25,9 @@ credits_service = CreditsService()
     response_model=SessionResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("10/minute")
 async def create_session(
+    request: Request,
     _data: CreateSessionRequest,
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
@@ -119,7 +122,9 @@ async def delete_session(
     "/sessions/{session_id}/messages",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit("20/minute")
 async def send_message(
+    request: Request,
     session_id: str,
     data: ChatMessageRequest,
     user_id: str = Depends(get_user_id),

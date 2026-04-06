@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
 from src.core.auth import verify_internal_token
+from src.core.rate_limit import limiter
 from src.features.core.waitlist.schemas import (
     WaitlistCountResponse,
     WaitlistRequest,
@@ -19,7 +20,8 @@ async def get_waitlist_count():
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=WaitlistResponse)
-async def join_waitlist(data: WaitlistRequest):
+@limiter.limit("5/minute")
+async def join_waitlist(request: Request, data: WaitlistRequest):
     return await service.join(
         email=data.email,
         name=data.name,
