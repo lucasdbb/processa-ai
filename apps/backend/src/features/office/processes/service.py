@@ -411,7 +411,7 @@ class ProcessesService:
                                 """
                                 INSERT INTO office_api.timeline_events
                                     (process_id, user_id, event_type, title, description, event_date, source)
-                                SELECT %s, %s, 'status', %s, %s, %s::timestamp, 'auto'
+                                SELECT %s, %s, 'other', %s, %s, %s::timestamp, 'auto'
                                 WHERE NOT EXISTS (
                                     SELECT 1 FROM office_api.timeline_events
                                     WHERE process_id = %s AND title = %s AND event_date = %s::timestamp
