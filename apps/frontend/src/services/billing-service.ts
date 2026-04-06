@@ -28,6 +28,7 @@ export interface SubscriptionStatus {
     | "incomplete"
     | "trialing"
     | "paused"
+    | "incomplete_expired"
     | "none";
   current_period_start: string | null;
   current_period_end: string | null;
@@ -103,6 +104,20 @@ export const billingService = {
       const err = await res.json().catch(() => ({}));
       throw new Error(
         (err as { detail?: string }).detail || "Failed to change plan",
+      );
+    }
+    return res.json();
+  },
+
+  async retryPayment(): Promise<{ success: boolean; already_paid: boolean }> {
+    const res = await fetchWithCredentials(
+      `${API_URL}/billing/subscriptions/retry`,
+      { method: "POST" },
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(
+        (err as { detail?: string }).detail || "Erro ao tentar cobrar novamente",
       );
     }
     return res.json();

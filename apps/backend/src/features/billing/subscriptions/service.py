@@ -26,6 +26,12 @@ from src.core.stripe_client import (
     modify_subscription as stripe_modify_subscription,
 )
 from src.core.stripe_client import (
+    pay_invoice as stripe_pay_invoice,
+)
+from src.core.stripe_client import (
+    retrieve_latest_invoice as stripe_retrieve_latest_invoice,
+)
+from src.core.stripe_client import (
     retrieve_subscription as stripe_retrieve_subscription,
 )
 from src.core.supabase import get_supabase
@@ -497,6 +503,61 @@ class SubscriptionsService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao atualizar assinatura",
             )
+
+    async def retry_payment(self, user_id: str) -> dict:
+        """Retry payment for a past_due or incomplete subscription."""
+        existing_sub = await self.get_subscription(user_id)
+        stripe_sub_id = existing_sub.get("stripe_subscription_id")
+
+        if not stripe_sub_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nenhuma assinatura encontrada.",
+            )
+
+        if existing_sub.get("status") not in ("past_due", "incomplete"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Sua assinatura não possui pagamento pendente.",
+            )
+
+        try:
+            invoice = stripe_retrieve_latest_invoice(stripe_sub_id)
+            if not invoice:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Nenhuma fatura encontrada para esta assinatura.",
+                )
+
+            if invoice.status == "paid":
+                # Already paid — trigger a sync to reconcile local state
+                await self.sync_subscription(user_id)
+                return {"success": True, "already_paid": True}
+
+            if invoice.status not in ("open", "past_due"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A fatura não pode ser cobrada novamente. Entre em contato com o suporte.",
+                )
+
+            stripe_pay_invoice(invoice.id)
+        except HTTPException:
+            raise
+        except stripe.CardError as e:
+            logger.warning(f"Card error retrying payment for user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Pagamento recusado. Verifique os dados do cartão no portal de billing.",
+            )
+        except stripe.StripeError as e:
+            logger.error(f"Stripe error retrying payment for user {user_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Erro ao tentar cobrar novamente. Tente mais tarde.",
+            )
+
+        logger.info(f"Payment retry successful for user {user_id}")
+        return {"success": True, "already_paid": False}
 
     def _get_plan_id_from_stripe_price(self, price_id: str) -> str:
         """Map Stripe price_id to internal plan_id using database lookup."""

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { SEO } from '@/components/seo'
-import { Check, Crown, GraduationCap, Loader2, Star, Users, Zap, Coins, CreditCard, History, AlertCircle } from 'lucide-react'
+import { Check, Crown, GraduationCap, Loader2, Star, Users, Zap, Coins, CreditCard, History, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -54,6 +54,27 @@ export default function AssinaturaPage() {
   const [historyPage, setHistoryPage] = useState(1)
   const [historyData, setHistoryData] = useState<CreditHistoryResponse | null>(null)
   const [loadingHistory, setLoadingHistory] = useState(false)
+
+  // ── Retry payment state ────────────────────────────────────────────────────────
+  const [retrying, setRetrying] = useState(false)
+  const isPastDue = subscription?.status === 'past_due' || subscription?.status === 'incomplete'
+
+  const handleRetryPayment = async () => {
+    setRetrying(true)
+    try {
+      const result = await billingService.retryPayment()
+      if (result.already_paid) {
+        toast.success('O pagamento já foi processado! Sincronizando...')
+      } else {
+        toast.success('Pagamento processado com sucesso!')
+      }
+      await invalidateSubscription()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao tentar cobrar novamente.')
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   // ── Effects ───────────────────────────────────────────────────────────────────
 
@@ -308,6 +329,38 @@ export default function AssinaturaPage() {
           ))}
         </nav>
       </div>
+
+      {/* ── Payment alert banner ── */}
+      {isPastDue && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-destructive/50 bg-destructive/5 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive mt-0.5">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Pagamento pendente</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {subscription?.status === 'past_due'
+                  ? 'Houve uma falha no pagamento da sua assinatura. Tente novamente para manter o acesso.'
+                  : 'Sua assinatura está incompleta. Conclua o pagamento para ativar o plano.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleRetryPayment}
+            disabled={retrying}
+            variant="destructive"
+            size="sm"
+            className="shrink-0"
+          >
+            {retrying ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Processando...</>
+            ) : (
+              <><RefreshCw className="h-4 w-4 mr-1.5" />Tentar novamente</>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* ── Aba: Planos ── */}
       {activeTab === 'planos' && (

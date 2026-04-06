@@ -8,6 +8,7 @@ from src.features.billing.subscriptions.schemas import (
     CreateCheckoutRequest,
     InvoiceListResponse,
     PortalResponse,
+    RetryPaymentResponse,
     SubscriptionStatus,
     SyncResponse,
 )
@@ -64,6 +65,12 @@ async def change_plan(
 async def cancel_subscription(user_id: str = Depends(get_user_id)):
     """Cancel the active Stripe subscription at the end of the billing period."""
     return await subscriptions_service.cancel_subscription(user_id)
+
+
+@router.post("/retry", response_model=RetryPaymentResponse)
+async def retry_payment(user_id: str = Depends(get_user_id)):
+    """Retry payment for a past_due or incomplete subscription."""
+    return await subscriptions_service.retry_payment(user_id)
 
 
 @router.post("/sync", response_model=SyncResponse)

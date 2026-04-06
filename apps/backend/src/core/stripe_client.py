@@ -153,6 +153,22 @@ def cancel_subscription_at_period_end(subscription_id: str) -> stripe.Subscripti
     )
 
 
+@stripe_retry
+def pay_invoice(invoice_id: str) -> stripe.Invoice:
+    """Attempt to pay an open/past_due invoice."""
+    return stripe.Invoice.pay(invoice_id)
+
+
+@stripe_retry
+def retrieve_latest_invoice(subscription_id: str) -> stripe.Invoice | None:
+    """Retrieve the latest invoice for a subscription."""
+    invoices = stripe.Invoice.list(
+        subscription=subscription_id,
+        limit=1,
+    )
+    return invoices.data[0] if invoices.data else None
+
+
 def get_subscription_period(subscription) -> dict:
     """Extract billing period from subscription's first item.
 
