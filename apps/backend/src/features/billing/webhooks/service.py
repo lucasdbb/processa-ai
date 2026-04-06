@@ -683,12 +683,12 @@ class WebhooksService:
                 .execute()
             )
 
-            # Grant credits when subscription is resumed
+            # Reset credits when subscription is resumed (use reset, not grant, to prevent accumulation)
             if result.data and len(result.data) > 0:
                 user_id = result.data[0].get("user_id")
                 plan_id = result.data[0].get("plan_id")
                 if user_id and plan_id:
-                    await self._grant_plan_credits(user_id, plan_id)
+                    await self._reset_monthly_credits(user_id, plan_id)
 
             logger.info(f"Subscription resumed: {subscription_id}")
         except Exception as e:
@@ -882,12 +882,11 @@ class WebhooksService:
 
             monthly_credits = plan_result.data.get("monthly_credits", 0)
 
-            if monthly_credits > 0:
-                # Use PostgreSQL function to reset credits
-                self.supabase.rpc(
-                    "reset_monthly_credits", {"p_user_id": user_id, "p_new_amount": monthly_credits}
-                ).execute()
-                logger.info(f"Reset monthly credits to {monthly_credits} for user {user_id}")
+            # Always reset credits (including to 0 on cancellation to free plan)
+            self.supabase.rpc(
+                "reset_monthly_credits", {"p_user_id": user_id, "p_new_amount": monthly_credits}
+            ).execute()
+            logger.info(f"Reset monthly credits to {monthly_credits} for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to reset monthly credits: {e}")
 
