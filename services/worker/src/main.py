@@ -1293,13 +1293,8 @@ async def _run_ai_worker() -> None:
             logger.info("Job %s completed", job_uuid)
         except asyncio.TimeoutError:
             logger.error("Job %s timed out after 600 seconds", job_uuid)
-            # Return to queue for retry via nack
+            # Return to queue for retry (nack increments retries and sets status=queued)
             await nack_job(job_uuid)
-            try:
-                if isinstance(job_uuid, uuid.UUID):
-                    await mark_job_failed(job_uuid=job_uuid, error="Job timed out after 10 minutes")
-            except Exception:
-                logger.exception("Failed to mark timed-out job %s as failed", job_uuid)
         except Exception:
             logger.exception("Unhandled error processing job: %s", job_uuid)
             # Return to queue for retry via nack
