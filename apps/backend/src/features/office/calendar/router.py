@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 
 from src.core.auth import get_user_id, verify_internal_token
 from src.core.config import settings
+from src.core.logging import logger
 from src.features.office.calendar.google_sync import google_sync_service
 from src.features.office.calendar.schemas import (
     EventCreateRequest,
@@ -126,8 +127,9 @@ async def google_calendar_callback(
             return RedirectResponse(url=redirect_url)
 
     except Exception as e:
+        logger.error(f"Google OAuth callback failed: {e}")
         redirect_url = (
-            f"{settings.FRONTEND_URL}/app/calendario?google_connected=false&error={str(e)}"
+            f"{settings.FRONTEND_URL}/app/calendario?google_connected=false&error=oauth_failed"
         )
         return RedirectResponse(url=redirect_url)
 
