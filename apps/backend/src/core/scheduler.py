@@ -133,6 +133,19 @@ async def cleanup_expired_documents_job():
         await _notify_admin("cleanup_expired_documents", "error", error=str(e))
 
 
+async def cleanup_incomplete_subscriptions_job():
+    """Job to clean up subscriptions stuck in incomplete status for >7 days."""
+    try:
+        logger.info("Running scheduled job: cleanup_incomplete_subscriptions")
+
+        service = CleanupService()
+        await service.cleanup_incomplete_subscriptions()
+
+        logger.info("Completed scheduled job: cleanup_incomplete_subscriptions")
+    except Exception as e:
+        logger.error(f"Error in cleanup_incomplete_subscriptions job: {e}", exc_info=True)
+
+
 async def datajud_sync_job():
     """Job to sync active processes with DataJUD API to fetch new timeline events."""
     try:
@@ -202,6 +215,18 @@ def setup_jobs(scheduler: AsyncIOScheduler):
         id="cleanup_expired_documents_daily",
         replace_existing=True,
         name="Cleanup expired documents (4AM Brazil time)",
+    )
+
+    # Cleanup incomplete subscriptions daily at 5:00 AM Brazil time
+    scheduler.add_job(
+        cleanup_incomplete_subscriptions_job,
+        "cron",
+        hour=5,
+        minute=0,
+        timezone=ZoneInfo("America/Sao_Paulo"),
+        id="cleanup_incomplete_subscriptions_daily",
+        replace_existing=True,
+        name="Cleanup incomplete subscriptions (5AM Brazil time)",
     )
 
     # Sync with DataJUD API every 12 hours (1AM and 1PM)

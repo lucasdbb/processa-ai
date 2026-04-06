@@ -1,6 +1,6 @@
 """
 Cleanup service for periodic data maintenance.
-Removes old AI jobs, orphan uploads, and expired portal invites.
+Removes old AI jobs, orphan uploads, expired portal invites, and stale subscriptions.
 """
 
 from datetime import datetime, timedelta
@@ -17,6 +17,7 @@ COMPLETED_JOBS_RETENTION_DAYS = 90
 FAILED_JOBS_RETENTION_DAYS = 30
 ORPHAN_UPLOADS_RETENTION_DAYS = 7
 EXPIRED_INVITE_DAYS = 30
+INCOMPLETE_SUBSCRIPTION_DAYS = 7
 
 STORAGE_BUCKET = "documents"
 
@@ -30,6 +31,7 @@ class CleanupService:
         await self.cleanup_orphan_uploads()
         await self.cleanup_expired_portal_invites()
         await self.cleanup_expired_documents()
+        await self.cleanup_incomplete_subscriptions()
 
     async def cleanup_old_ai_jobs(self):
         """
@@ -269,6 +271,75 @@ class CleanupService:
 
         except Exception as e:
             logger.error(f"Error cleaning up expired documents: {e}", exc_info=True)
+
+    async def cleanup_incomplete_subscriptions(self):
+        """
+        Clean up subscriptions stuck in 'incomplete' status for more than 7 days.
+        Safety net for missed Stripe webhooks (incomplete_expired).
+        Resets the subscription to free plan and removes Stripe references.
+        """
+        brazil_tz = ZoneInfo("America/Sao_Paulo")
+        cutoff = datetime.now(brazil_tz) - timedelta(days=INCOMPLETE_SUBSCRIPTION_DAYS)
+
+        logger.info(f"Cleaning up incomplete subscriptions older than {cutoff.date()}")
+
+        try:
+            supabase = get_supabase()
+
+            # Find subscriptions stuck in incomplete for >7 days
+            result = (
+                supabase.table("subscriptions")
+                .select("id, user_id, stripe_subscription_id, updated_at")
+                .in_("status", ["incomplete", "incomplete_expired"])
+                .lt("updated_at", cutoff.isoformat())
+                .execute()
+            )
+
+            if not result.data:
+                logger.info("No stale incomplete subscriptions to clean up")
+                return
+
+            count = 0
+            for sub in result.data:
+                try:
+                    supabase.table("subscriptions").update(
+                        {
+                            "status": "canceled",
+                            "plan_id": "free",
+                            "stripe_subscription_id": None,
+                        }
+                    ).eq("id", sub["id"]).execute()
+
+                    # Reset credits to free tier
+                    free_plan_res = (
+                        supabase.table("billing_plans")
+                        .select("monthly_credits")
+                        .eq("slug", "free")
+                        .single()
+                        .execute()
+                    )
+                    free_credits = (
+                        free_plan_res.data.get("monthly_credits", 0) if free_plan_res.data else 0
+                    )
+                    supabase.rpc(
+                        "reset_monthly_credits",
+                        {"p_user_id": sub["user_id"], "p_new_amount": free_credits},
+                    ).execute()
+
+                    count += 1
+                    logger.info(
+                        f"Cleaned up incomplete subscription for user {sub['user_id']} "
+                        f"(stripe_sub: {sub.get('stripe_subscription_id')})"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to clean up subscription {sub['id']}: {e}", exc_info=True
+                    )
+
+            logger.info(f"Incomplete subscriptions cleanup: {count} subscriptions reset")
+
+        except Exception as e:
+            logger.error(f"Error cleaning up incomplete subscriptions: {e}", exc_info=True)
 
     async def _delete_storage_files(self, files: list[dict]) -> int:
         """Delete files from Supabase Storage. Returns count of successfully deleted files."""
