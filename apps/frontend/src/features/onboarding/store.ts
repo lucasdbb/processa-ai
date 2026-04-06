@@ -22,7 +22,7 @@ interface OnboardingState {
   hasUsedCalculator: boolean;
   isChecklistDismissed: boolean;
   hasClaimedChecklistBonus: boolean;
-  startTour: (tourId: TourId) => void;
+  startTour: (tourId: TourId, options?: { force?: boolean }) => void;
   completeTour: (tourId: TourId) => void;
   closeTour: () => void;
   resetTours: () => void;
@@ -35,7 +35,12 @@ interface OnboardingState {
   resetChecklist: () => void;
   claimChecklistBonus: () => void;
   /** Sync flags from server profile without triggering API calls back */
-  syncFromServer: (flags: { hasUsedAiTool?: boolean; hasUsedCalculator?: boolean; isChecklistDismissed?: boolean; hasClaimedChecklistBonus?: boolean }) => void;
+  syncFromServer: (flags: {
+    hasUsedAiTool?: boolean;
+    hasUsedCalculator?: boolean;
+    isChecklistDismissed?: boolean;
+    hasClaimedChecklistBonus?: boolean;
+  }) => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -50,8 +55,14 @@ export const useOnboardingStore = create<OnboardingState>()(
       isChecklistDismissed: false,
       hasClaimedChecklistBonus: false,
 
-      startTour: (tourId) => {
-        set({ currentTour: tourId, isOpen: true });
+      startTour: (tourId, options) => {
+        set((state) => {
+          if (!options?.force && state.completedTours.includes(tourId)) {
+            return state;
+          }
+
+          return { currentTour: tourId, isOpen: true };
+        });
       },
 
       completeTour: (tourId) => {
@@ -114,7 +125,8 @@ export const useOnboardingStore = create<OnboardingState>()(
         if (flags.hasUsedAiTool) update.hasUsedAiTool = true;
         if (flags.hasUsedCalculator) update.hasUsedCalculator = true;
         if (flags.isChecklistDismissed) update.isChecklistDismissed = true;
-        if (flags.hasClaimedChecklistBonus) update.hasClaimedChecklistBonus = true;
+        if (flags.hasClaimedChecklistBonus)
+          update.hasClaimedChecklistBonus = true;
         if (Object.keys(update).length > 0) set(update);
       },
     }),

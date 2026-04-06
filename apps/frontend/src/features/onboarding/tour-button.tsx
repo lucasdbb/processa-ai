@@ -19,7 +19,7 @@ export function TourButton({ tourId, label = 'Iniciar Tour', className, forceSho
 
   return (
     <button
-      onClick={() => startTour(tourId)}
+      onClick={() => startTour(tourId, { force: !!forceShow })}
       className={
         className ||
         'flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-sm font-medium transition-colors'

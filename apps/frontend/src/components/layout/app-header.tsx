@@ -27,6 +27,27 @@ import { useOnboardingStore } from '@/features/onboarding/store'
 import type { TourId } from '@/features/onboarding/types'
 import { OnboardingProgress } from '@/components/onboarding/OnboardingChecklist'
 
+const TOUR_STEP_EVENT = 'processa:onboarding-step'
+
+const CREDITS_STEP_SELECTORS = new Set([
+  '[data-tour="header-credits"]',
+  '[data-tour="credits-dropdown"]',
+])
+
+const NOTIFICATIONS_STEP_SELECTORS = new Set([
+  '[data-tour="header-notifications"]',
+  '[data-tour="notifications-dropdown"]',
+])
+
+const USER_MENU_STEP_SELECTORS = new Set([
+  '[data-tour="user-menu"]',
+  '[data-tour="user-menu-dropdown"]',
+  '[data-tour="user-menu-feedback"]',
+  '[data-tour="user-menu-guided-mission"]',
+  '[data-tour="user-menu-profile"]',
+  '[data-tour="user-menu-logout"]',
+])
+
 // Plan badge config
 const PLAN_CONFIG: Record<string, { label: string; icon: typeof Users; className: string }> = {
   basico:    { label: 'Básico',     icon: Users,         className: 'bg-muted text-muted-foreground hover:bg-muted/80' },
@@ -97,6 +118,10 @@ export function AppHeader() {
   const { subscription } = useBillingStore()
   const { startTour } = useOnboardingStore()
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [tourPinnedMenu, setTourPinnedMenu] = useState<'credits' | 'notifications' | 'user' | null>(null)
+  const [isCreditsMenuOpen, setIsCreditsMenuOpen] = useState(false)
+  const [isNotificationsMenuOpen, setIsNotificationsMenuOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isMacPlatform, setIsMacPlatform] = useState(false)
@@ -109,7 +134,8 @@ export function AppHeader() {
       // Show only first 5 in dropdown
       setNotifications(response.items.slice(0, 5))
       setUnreadCount(response.unread_count)
-    } catch (error) {
+    } catch {
+      // Ignore notification fetch failures to avoid blocking header render.
     }
   }
 
@@ -129,6 +155,64 @@ export function AppHeader() {
     setIsMacPlatform(platform.includes('mac') || userAgent.includes('mac'))
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const onTourStep = (event: Event) => {
+      const selector =
+        (event as CustomEvent<{ selector?: string | null }>).detail?.selector ?? null
+
+      if (selector && CREDITS_STEP_SELECTORS.has(selector)) {
+        setTourPinnedMenu('credits')
+        setIsCreditsMenuOpen(true)
+        setIsNotificationsMenuOpen(false)
+        setIsUserMenuOpen(false)
+        return
+      }
+
+      if (selector && NOTIFICATIONS_STEP_SELECTORS.has(selector)) {
+        setTourPinnedMenu('notifications')
+        setIsNotificationsMenuOpen(true)
+        setIsCreditsMenuOpen(false)
+        setIsUserMenuOpen(false)
+        return
+      }
+
+      if (selector && USER_MENU_STEP_SELECTORS.has(selector)) {
+        setTourPinnedMenu('user')
+        setIsUserMenuOpen(true)
+        setIsCreditsMenuOpen(false)
+        setIsNotificationsMenuOpen(false)
+        return
+      }
+
+      setTourPinnedMenu(null)
+      setIsCreditsMenuOpen(false)
+      setIsNotificationsMenuOpen(false)
+      setIsUserMenuOpen(false)
+    }
+
+    window.addEventListener(TOUR_STEP_EVENT, onTourStep)
+    return () => {
+      window.removeEventListener(TOUR_STEP_EVENT, onTourStep)
+    }
+  }, [])
+
+  const handleCreditsMenuOpenChange = (open: boolean) => {
+    if (tourPinnedMenu === 'credits' && !open) return
+    setIsCreditsMenuOpen(open)
+  }
+
+  const handleNotificationsMenuOpenChange = (open: boolean) => {
+    if (tourPinnedMenu === 'notifications' && !open) return
+    setIsNotificationsMenuOpen(open)
+  }
+
+  const handleUserMenuOpenChange = (open: boolean) => {
+    if (tourPinnedMenu === 'user' && !open) return
+    setIsUserMenuOpen(open)
+  }
+
   const handleLogout = async () => {
     await logout()
     navigate('/')
@@ -142,7 +226,7 @@ export function AppHeader() {
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
-    } catch (error) {
+    } catch {
       toast.error('Erro ao marcar notificação como lida')
     }
   }
@@ -154,7 +238,7 @@ export function AppHeader() {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
       setUnreadCount(0)
       toast.success('Todas as notificações foram marcadas como lidas')
-    } catch (error) {
+    } catch {
       toast.error('Erro ao marcar todas como lidas')
     }
   }
@@ -170,7 +254,7 @@ export function AppHeader() {
   const handleStartTour = () => {
     const tourId = getRecommendedTour(location.pathname)
     window.setTimeout(() => {
-      startTour(tourId)
+      startTour(tourId, { force: true })
     }, 120)
   }
 
@@ -212,6 +296,7 @@ export function AppHeader() {
           {/* Busca Global - Abre Command Palette */}
           <button
             onClick={openCommandPalette}
+            data-tour="header-search"
             className="group flex items-center gap-3 h-10 px-3 lg:px-4 rounded-lg bg-muted/50 border border-border text-muted-foreground hover:text-foreground hover:bg-accent hover:border-foreground/20 transition-all w-full max-w-xs lg:max-w-md cursor-pointer"
             aria-label={`Abrir busca (${isMacPlatform ? 'Command+K' : 'Ctrl+K'})`}
           >
@@ -245,7 +330,11 @@ export function AppHeader() {
           <OnboardingProgress />
 
           {/* Credits Display */}
-          <DropdownMenu modal={false}>
+          <DropdownMenu
+            modal={false}
+            open={isCreditsMenuOpen}
+            onOpenChange={handleCreditsMenuOpenChange}
+          >
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
@@ -263,7 +352,11 @@ export function AppHeader() {
                 <span className="hidden sm:inline text-xs text-muted-foreground">créditos</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-0">
+            <DropdownMenuContent
+              align="end"
+              className="w-[calc(100vw-2rem)] sm:w-80 max-w-80 p-0"
+              data-tour="credits-dropdown"
+            >
               <div className="px-4 pt-4 pb-3 border-b border-border">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
@@ -334,6 +427,7 @@ export function AppHeader() {
           {/* Toggle Tema */}
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            data-tour="header-theme-toggle"
             className="h-10 w-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Alternar tema"
           >
@@ -341,9 +435,14 @@ export function AppHeader() {
           </button>
 
           {/* Notificações */}
-          <DropdownMenu modal={false}>
+          <DropdownMenu
+            modal={false}
+            open={isNotificationsMenuOpen}
+            onOpenChange={handleNotificationsMenuOpenChange}
+          >
             <DropdownMenuTrigger asChild>
               <button
+                data-tour="header-notifications"
                 className="relative h-10 w-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 aria-label="Notificações"
               >
@@ -353,7 +452,7 @@ export function AppHeader() {
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-96">
+            <DropdownMenuContent align="end" className="w-96" data-tour="notifications-dropdown">
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
                   <h3 className="font-semibold text-sm">Notificações</h3>
@@ -445,7 +544,11 @@ export function AppHeader() {
           </DropdownMenu>
 
           {/* Menu Usuario */}
-          <DropdownMenu modal={false}>
+          <DropdownMenu
+            modal={false}
+            open={isUserMenuOpen}
+            onOpenChange={handleUserMenuOpenChange}
+          >
             <DropdownMenuTrigger asChild>
               <button
                 data-tour="user-menu"
@@ -465,8 +568,8 @@ export function AppHeader() {
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-56" data-tour="user-menu-dropdown">
+              <DropdownMenuLabel data-tour="user-menu-profile">
                 <div className="flex flex-col">
                   <span className="font-medium">{user?.name || 'Usuario'}</span>
                   <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
@@ -487,17 +590,18 @@ export function AppHeader() {
                   <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem onClick={() => setIsFeedbackOpen(true)}>
+              <DropdownMenuItem onClick={() => setIsFeedbackOpen(true)} data-tour="user-menu-feedback">
                 <MessageSquarePlus className="mr-2 h-4 w-4" />
                 <span>Enviar Sugestão</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleStartTour}>
+              <DropdownMenuItem onClick={handleStartTour} data-tour="user-menu-guided-mission">
                 <Play className="mr-2 h-4 w-4" />
                 <span>Iniciar missão guiada</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleLogout}
+                data-tour="user-menu-logout"
                 className={cn(
                   "flex items-center w-full cursor-pointer",
                   isDark

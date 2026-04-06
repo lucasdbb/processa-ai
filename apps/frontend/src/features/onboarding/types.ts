@@ -4,6 +4,9 @@ export interface TourStep {
   selector: string;
   content: ReactNode;
   action?: () => void;
+  placement?: "auto" | "center" | "top" | "right" | "bottom" | "left";
+  spotlightPadding?: number;
+  offset?: number;
 }
 
 export type TourId =
