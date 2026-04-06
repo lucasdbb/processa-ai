@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { ToolsCatalogProvider } from './tools-catalog-provider'
 import { useBillingStore } from '@/stores/billing-store'
 import { useCreditsStore } from '@/stores/credits-store'
+import { usePageTracking } from '@/lib/analytics/hooks'
 
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
 import { SubscriptionSuccessModal } from '@/components/billing/SubscriptionSuccessModal'
@@ -25,6 +26,9 @@ export function AppLayout() {
   const { toggle: toggleCommandPalette } = useCommandPaletteStore()
   const { fetchSubscription } = useBillingStore()
   const { subscribeToCredits, unsubscribeFromCredits, fetchCredits } = useCreditsStore()
+
+  // Track page views for authenticated routes
+  usePageTracking()
 
   // Initialize auth
   const { user } = useAuth()
