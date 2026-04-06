@@ -222,6 +222,7 @@ class SubscriptionsService:
                 success_url=success,
                 cancel_url=cancel,
                 metadata={"user_id": user_id},
+                allow_promotion_codes=True,
             )
         except stripe.StripeError as e:
             logger.error(f"Stripe error creating checkout: {e}")

@@ -83,6 +83,7 @@ def create_checkout_session(
     metadata: dict | None = None,
     mode: str = "subscription",
     line_items: list[dict] | None = None,
+    allow_promotion_codes: bool = False,
 ) -> stripe.checkout.Session:
     """Create a Stripe checkout session with retry."""
     if line_items is None and price_id:
@@ -95,6 +96,7 @@ def create_checkout_session(
         success_url=success_url,
         cancel_url=cancel_url,
         metadata=metadata or {},
+        allow_promotion_codes=allow_promotion_codes,
     )
 
 
