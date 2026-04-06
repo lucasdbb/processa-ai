@@ -465,21 +465,20 @@ async def _send_export_ready_email(
 ) -> bool:
     api_key = (settings.BREVO_API_KEY or "").strip()
     sender = (settings.BREVO_FROM or "").strip()
-    frontend_url = (settings.FRONTEND_URL or "http://localhost:5173").rstrip("/")
+    sender_name = (settings.BREVO_FROM_NAME or "Contato - Processa AI").strip()
 
     if not api_key or not sender or not to_email:
         return False
 
     greeting_name = user_name.strip() if isinstance(user_name, str) and user_name.strip() else ""
     greeting = f"Olá, {greeting_name}!" if greeting_name else "Olá!"
-    app_link = f"{frontend_url}/app/documentos"
 
     plain_body = (
         f"{greeting}\n\n"
         "Sua exportação de dados foi concluída com sucesso.\n"
         f"Arquivo: {filename}\n"
         + (f"Download direto: {download_url}\n" if download_url else "")
-        + f"Acesse também em: {app_link}\n\n"
+        + "\n"
         "Equipe Processa AI"
     )
 
@@ -487,11 +486,10 @@ async def _send_export_ready_email(
         greeting=greeting,
         filename=filename,
         download_url=download_url,
-        app_link=app_link,
     )
 
     payload = {
-        "sender": {"email": sender},
+        "sender": {"email": sender, "name": sender_name},
         "to": [{"email": to_email}],
         "subject": "Seu arquivo de exportação está pronto",
         "textContent": plain_body,
@@ -520,12 +518,10 @@ def _render_export_ready_email_html(
     greeting: str,
     filename: str,
     download_url: str | None,
-    app_link: str,
 ) -> str:
     """Render export-ready email using the same visual language as global templates."""
     safe_greeting = escape(greeting)
     safe_filename = escape(filename)
-    safe_app_link = escape(app_link, quote=True)
 
     download_cta = ""
     if download_url:
@@ -536,6 +532,10 @@ def _render_export_ready_email_html(
             "padding:12px 28px;border-radius:6px;font-weight:600;font-size:14px;"
             'text-decoration:none;margin-top:10px;">Baixar agora</a>'
         )
+
+    logo_url = escape(
+        settings.EMAIL_LOGO_URL or "https://www.processai.app.br/logo_light.png", quote=True
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -609,7 +609,7 @@ def _render_export_ready_email_html(
             <tr>
                 <td class="header">
                     <a href="https://www.processai.app.br">
-                        <img src="https://www.processai.app.br/images/og-image.png" alt="Processa AI" width="220" style="margin:0 auto;border:0;display:block;max-width:100%;height:auto;" />
+                        <img src="{logo_url}" alt="Processa AI" width="220" style="margin:0 auto;border:0;display:block;max-width:100%;height:auto;" />
                     </a>
                 </td>
             </tr>
@@ -619,7 +619,6 @@ def _render_export_ready_email_html(
                     <p>{safe_greeting}</p>
                     <p>Sua exportação de dados foi concluída com sucesso.</p>
                     <p><strong>Arquivo:</strong> {safe_filename}</p>
-                    <p>Você também pode acessar seus arquivos em <a href="{safe_app_link}" style="color:#0f3366;text-decoration:none;">Documentos</a>.</p>
                     <div class="cta">{download_cta}</div>
                 </td>
             </tr>

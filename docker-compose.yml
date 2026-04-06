@@ -74,6 +74,8 @@ services:
       # Email
       - BREVO_API_KEY=${BREVO_API_KEY}
       - BREVO_FROM=${BREVO_FROM}
+      - BREVO_FROM_NAME=${BREVO_FROM_NAME:-Contato - Processa AI}
+      - EMAIL_LOGO_URL=${EMAIL_LOGO_URL:-https://www.processai.app.br/logo_light.png}
       - SUPPORT_EMAIL=${SUPPORT_EMAIL}
     networks:
       - processa-network
@@ -112,6 +114,8 @@ services:
       # Email
       - BREVO_API_KEY=${BREVO_API_KEY}
       - BREVO_FROM=${BREVO_FROM}
+      - BREVO_FROM_NAME=${BREVO_FROM_NAME:-Contato - Processa AI}
+      - EMAIL_LOGO_URL=${EMAIL_LOGO_URL:-https://www.processai.app.br/logo_light.png}
       - PORT=8001
     networks:
       - processa-network

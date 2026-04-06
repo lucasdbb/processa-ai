@@ -71,11 +71,16 @@ def load_email_template(template_name: str, context: dict) -> str:
             button_html = (
                 f'<a href="{cta_link}" class="btn" '
                 f'style="display:inline-block;background-color:#0f3366;color:#ffffff !important;'
-                f'padding:12px 28px;border-radius:6px;font-weight:600;font-size:14px;'
+                f"padding:12px 28px;border-radius:6px;font-weight:600;font-size:14px;"
                 f'text-decoration:none;margin-top:10px;">{cta_text}</a>'
             )
 
-        context = {**context, "Botao_HTML": button_html}
+        context = {
+            "EMAIL_LOGO_URL": settings.EMAIL_LOGO_URL
+            or "https://www.processai.app.br/logo_light.png",
+            **context,
+            "Botao_HTML": button_html,
+        }
 
         env = Environment(
             loader=FileSystemLoader(str(templates_dir)),
@@ -119,9 +124,10 @@ async def send_email(
     if not sender:
         logger.warning("No sender email configured, skipping email")
         return False
+    sender_name = (settings.BREVO_FROM_NAME or "Contato - Processa AI").strip()
 
     payload: dict[str, object] = {
-        "sender": {"email": sender},
+        "sender": {"email": sender, "name": sender_name},
         "to": [{"email": to_email}],
         "subject": subject,
         "textContent": body,

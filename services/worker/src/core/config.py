@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     BREVO_API_KEY: str = ""
     BREVO_FROM: str = ""
+    BREVO_FROM_NAME: str = "Contato - Processa AI"
+    EMAIL_LOGO_URL: str = "https://www.processai.app.br/logo_light.png"
 
     # Queue polling
     POLL_INTERVAL_S: float = 1.0

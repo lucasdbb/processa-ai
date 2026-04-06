@@ -28,13 +28,19 @@ class Settings(BaseSettings):
             if not self.SUPABASE_URL:
                 raise ValueError("SUPABASE_URL must be set in non-development environments")
             if not self.SUPABASE_SERVICE_ROLE_KEY:
-                raise ValueError("SUPABASE_SERVICE_ROLE_KEY must be set in non-development environments")
+                raise ValueError(
+                    "SUPABASE_SERVICE_ROLE_KEY must be set in non-development environments"
+                )
             if not self.STRIPE_SECRET_KEY:
                 raise ValueError("STRIPE_SECRET_KEY must be set in non-development environments")
             if not self.STRIPE_WEBHOOK_SECRET:
-                raise ValueError("STRIPE_WEBHOOK_SECRET must be set in non-development environments")
+                raise ValueError(
+                    "STRIPE_WEBHOOK_SECRET must be set in non-development environments"
+                )
             if "localhost" in self.ALLOWED_ORIGINS:
-                raise ValueError("ALLOWED_ORIGINS must not contain localhost in non-development environments")
+                raise ValueError(
+                    "ALLOWED_ORIGINS must not contain localhost in non-development environments"
+                )
         return self
 
     # Database
@@ -62,6 +68,8 @@ class Settings(BaseSettings):
     # Email
     BREVO_API_KEY: str = ""
     BREVO_FROM: str = ""
+    BREVO_FROM_NAME: str = "Contato - Processa AI"
+    EMAIL_LOGO_URL: str = "https://www.processai.app.br/logo_light.png"
     SUPPORT_EMAIL: str = ""
 
     # WhatsApp (Twilio)
