@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Queue polling
     POLL_INTERVAL_S: float = 1.0
     TRANSLATION_POLL_INTERVAL_S: float = 0.5
+    CLEANUP_INTERVAL_S: int = 6 * 3600  # 6 hours
 
     # AI Providers
     MISTRAL_API_KEY: str = ""

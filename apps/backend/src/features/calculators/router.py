@@ -10,7 +10,7 @@ from src.core.calc_engine_store import (
     mark_calculation_completed,
     mark_calculation_failed,
 )
-from src.core.job_store import add_job_event, create_job
+from src.core.job_store import add_job_event, create_document, create_job
 from src.core.logging import logger
 from src.features.billing.credits.service import credits_service
 from src.features.calculators.schemas import (
@@ -279,6 +279,26 @@ async def parse_cnis(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao criar job de parsing do CNIS",
         )
+
+    # Registrar o arquivo de input em generated_documents para lifecycle tracking
+    if data.bucket and data.storage_path:
+        filename = data.storage_path.rsplit("/", 1)[-1] if "/" in data.storage_path else data.storage_path
+        try:
+            await create_document(
+                job_uuid=job_uuid,
+                user_id=user_id,
+                client_id=None,
+                document_type="input",
+                bucket=data.bucket,
+                storage_path=data.storage_path,
+                filename=filename,
+                checksum_sha256=None,
+                size_bytes=None,
+                metadata={"endpoint": "parse_cnis"},
+                source="calculator",
+            )
+        except Exception:
+            logger.warning("Failed to register CNIS input in generated_documents — lifecycle tracking skipped")
 
     return {"job_id": job_id, "status": "queued"}
 

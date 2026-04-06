@@ -1374,6 +1374,113 @@ async def _run_reaper() -> None:
     logger.info("Reaper stopped (shutdown requested)")
 
 
+async def _cleanup_expired_documents() -> int:
+    """Delete one batch of expired documents from DB and Supabase Storage.
+
+    Returns the total number of records deleted across both tables.
+    """
+    from src.core.db import get_pool
+    from src.core.storage import StorageService
+
+    BATCH_SIZE = 100
+    storage = StorageService()
+    pool = await get_pool()
+    total_deleted = 0
+
+    # --- 1. public.generated_documents ---
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT id, bucket, storage_path
+                FROM public.generated_documents
+                WHERE expires_at IS NOT NULL AND expires_at < NOW()
+                LIMIT %s
+                """,
+                (BATCH_SIZE,),
+            )
+            rows = await cur.fetchall()
+
+    for doc_id, bucket, storage_path in rows:
+        if bucket and storage_path:
+            deleted = await storage.delete_file(bucket=bucket, storage_path=storage_path)
+            if not deleted:
+                logger.warning(
+                    "Storage file not deleted (may already be gone): %s/%s", bucket, storage_path
+                )
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM public.generated_documents WHERE id = %s", (doc_id,)
+                )
+        total_deleted += 1
+
+    # --- 2. office_api.documents ---
+    # file_url stores the storage_path relative to the "documents" bucket
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT id, file_url
+                FROM office_api.documents
+                WHERE expires_at IS NOT NULL AND expires_at < NOW()
+                LIMIT %s
+                """,
+                (BATCH_SIZE,),
+            )
+            rows = await cur.fetchall()
+
+    for doc_id, file_url in rows:
+        if file_url:
+            deleted = await storage.delete_file(bucket="documents", storage_path=file_url)
+            if not deleted:
+                logger.warning(
+                    "Office storage file not deleted (may already be gone): %s", file_url
+                )
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM office_api.documents WHERE id = %s", (doc_id,)
+                )
+        total_deleted += 1
+
+    return total_deleted
+
+
+async def _run_cleanup_worker() -> None:
+    """Periodically delete expired documents from DB and Supabase Storage.
+
+    Waits 60 seconds on startup (let the worker warm up), then runs every
+    CLEANUP_INTERVAL_S (default 6 hours). Processes up to 100 records per pass
+    from both public.generated_documents and office_api.documents.
+    """
+    logger.info(
+        "Cleanup Worker started - will run every %d seconds", settings.CLEANUP_INTERVAL_S
+    )
+
+    # Initial delay so the worker is fully up before the first pass
+    for _ in range(60):
+        if _shutdown_event.is_set():
+            return
+        await asyncio.sleep(1)
+
+    while not _shutdown_event.is_set():
+        try:
+            deleted = await _cleanup_expired_documents()
+            if deleted > 0:
+                logger.info("Cleanup Worker: deleted %d expired document(s)", deleted)
+        except Exception:
+            logger.exception("Cleanup Worker encountered an error during cleanup pass")
+
+        # Sleep CLEANUP_INTERVAL_S, checking for shutdown every second
+        for _ in range(settings.CLEANUP_INTERVAL_S):
+            if _shutdown_event.is_set():
+                break
+            await asyncio.sleep(1)
+
+    logger.info("Cleanup Worker stopped (shutdown requested)")
+
+
 async def _run_health_server() -> None:
     """HTTP health check server with DB connectivity and queue status."""
 
@@ -1457,12 +1564,13 @@ async def run_worker() -> None:
         _run_ai_worker(),
         _run_translation_worker(),
         _run_reaper(),
+        _run_cleanup_worker(),
         _run_health_server(),
         return_exceptions=True,
     )
 
     # Log any unexpected exceptions from worker loops
-    loop_names = ["AI Worker", "Translation Worker", "Reaper", "Health Server"]
+    loop_names = ["AI Worker", "Translation Worker", "Reaper", "Cleanup Worker", "Health Server"]
     for name, result in zip(loop_names, results):
         if isinstance(result, Exception):
             logger.error("%s crashed with exception: %s", name, result, exc_info=result)
