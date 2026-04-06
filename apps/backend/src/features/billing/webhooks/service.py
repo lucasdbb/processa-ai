@@ -41,7 +41,10 @@ class WebhooksService:
     def _is_event_processed(self, event_id: str) -> bool:
         """Check if event was already successfully processed (idempotency check).
 
-        Only considers events with status 'processed' or 'skipped' as done.
+        Considers events with status 'processed', 'skipped', or 'processing'
+        as done. The 'processing' status is set at the start of handler
+        execution to prevent duplicate side-effects when Stripe retries
+        a webhook whose handler crashed mid-execution.
         Events with status 'failed' are allowed to be retried.
         """
         try:
@@ -49,7 +52,7 @@ class WebhooksService:
                 self.supabase.table("stripe_webhook_events")
                 .select("event_id, status")
                 .eq("event_id", event_id)
-                .in_("status", ["processed", "skipped"])
+                .in_("status", ["processed", "skipped", "processing"])
                 .limit(1)
                 .execute()
             )
@@ -145,6 +148,13 @@ class WebhooksService:
         logger.info(f"Processing Stripe webhook: {event_type} (ID: {event_id})")
 
         try:
+            # Record event as "processing" BEFORE executing handler to prevent
+            # duplicate side-effects (e.g. double credit grants) if the handler
+            # crashes mid-execution and Stripe retries the webhook.
+            self._record_event(
+                event_id, event_type, event_status="processing", metadata=event_metadata
+            )
+
             # Checkout events
             if event_type == "checkout.session.completed":
                 await self._handle_checkout_completed(data)
@@ -186,7 +196,7 @@ class WebhooksService:
                 )
                 return {"received": True}
 
-            # Record successful processing
+            # Mark as successfully processed
             self._record_event(
                 event_id, event_type, event_status="processed", metadata=event_metadata
             )
