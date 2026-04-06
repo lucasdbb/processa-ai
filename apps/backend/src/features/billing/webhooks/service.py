@@ -726,13 +726,17 @@ class WebhooksService:
             if result.data and len(result.data) > 0:
                 user_id = result.data[0]["user_id"]
 
-                # If fully refunded, revoke credits
                 if refunded:
+                    # Full refund: reset credits to 0
                     logger.warning(
                         f"Full refund for subscription {subscription_id}, "
-                        f"user {user_id}. Consider revoking credits."
+                        f"user {user_id}. Revoking subscription credits."
                     )
-                    # TODO: Implement credit revocation if needed
+                    self.supabase.rpc(
+                        "reset_monthly_credits",
+                        {"p_user_id": user_id, "p_new_amount": 0},
+                    ).execute()
+                    logger.info(f"Credits revoked for user {user_id} after full refund")
                 else:
                     logger.info(
                         f"Partial refund ({amount_refunded}) for subscription {subscription_id}"
