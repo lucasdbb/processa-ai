@@ -619,6 +619,13 @@ async def _handle_rag_ingest_job(job_row: dict) -> None:
         logger.exception("RAG ingest job failed: %s", job_uuid)
 
 
+async def _handle_user_data_export_job(job_row: dict) -> None:
+    """Handle async full user data export jobs."""
+    from src.handlers.data_export import handle_user_data_export_job
+
+    await handle_user_data_export_job(job_row)
+
+
 async def _handle_previdencia_job(job_row: dict) -> None:
     """Handle previdência calculator jobs (parse_cnis, tempo, media, aposentadoria_simulacao).
 
@@ -1251,6 +1258,10 @@ async def _handle_job(job_row: dict) -> None:
 
     if job_type == "rag_ingest":
         await _handle_rag_ingest_job(job_row)
+        return
+
+    if job_type == "user_data_export":
+        await _handle_user_data_export_job(job_row)
         return
 
     if job_type in ("calculator_rescisao",):

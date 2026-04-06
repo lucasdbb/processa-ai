@@ -175,3 +175,11 @@ class UpdatePlanRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     plan_id: str = Field(..., description="Plan ID (free, student, autonomo)")
+
+
+class DataExportRequestResponse(BaseModel):
+    """Response for async user data export request."""
+
+    job_id: str
+    status: str = "queued"
+    message: str

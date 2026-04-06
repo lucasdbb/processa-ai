@@ -1,11 +1,12 @@
 import hashlib
+import os
 import re
 from urllib.parse import unquote, urlparse
 
 import httpx
 
-from src.core.job_store import create_document
 from src.core.config import settings
+from src.core.job_store import create_document
 from src.core.logging import logger
 
 
@@ -262,6 +263,86 @@ class StorageService:
             "filename": storage_filename,
         }
 
+    async def upload_bytes_to_supabase(
+        self,
+        *,
+        file_bytes: bytes,
+        user_id: str,
+        client_id: str | None,
+        functionality: str,
+        job_uuid: str,
+        filename: str,
+        content_type: str,
+        expires_in: int,
+        output: bool = True,
+    ) -> dict:
+        """Upload arbitrary bytes (e.g., XLSX) to Supabase Storage."""
+        base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
+        api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
+        func_lower = functionality.lower().strip()
+        bucket = "blog-images" if func_lower in ("blog", "media") else "documents"
+
+        if not base_url or not api_key:
+            raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
+
+        sha = hashlib.sha256(file_bytes).hexdigest()[:32]
+        folder = "output" if output else "input"
+        ext = (os.path.splitext(filename or "")[1] or ".bin").lower()
+        storage_filename = f"{sha}{ext}"
+
+        uid = self.sanitize_path_segment(user_id, default="unknown-user")
+        func = self.sanitize_path_segment(functionality, default="exports")
+        cid = self.sanitize_path_segment(client_id, default="no-client")
+        jid = self.sanitize_path_segment(job_uuid, default="unknown-job")
+
+        storage_path = f"{uid}/{func}/{cid}/{jid}/{folder}/{storage_filename}"
+        upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
+
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    upload_url,
+                    headers={
+                        "apikey": api_key,
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": content_type,
+                        "x-upsert": "true",
+                    },
+                    content=file_bytes,
+                )
+        except httpx.TimeoutException:
+            raise WorkerException(
+                status_code=504, detail="Tempo limite ao subir arquivo para storage"
+            )
+        except httpx.RequestError:
+            raise WorkerException(
+                status_code=502, detail="Erro de conexão ao subir arquivo para storage"
+            )
+
+        if resp.status_code >= 400:
+            body = (resp.text or "").strip()
+            raise WorkerException(
+                status_code=502,
+                detail=(
+                    "Falha ao subir arquivo para storage"
+                    + (f" (status {resp.status_code})" if resp.status_code else "")
+                    + (f": {body[:200]}" if body else "")
+                ),
+            )
+
+        signed_url = await self.generate_signed_url(
+            bucket=bucket,
+            storage_path=storage_path,
+            expires_in=expires_in,
+        )
+
+        return {
+            "bucket": bucket,
+            "storage_path": storage_path,
+            "signed_url": signed_url,
+            "filename": filename,
+        }
+
     async def download_pdf_bytes(self, file_url: str) -> bytes:
         url = (file_url or "").strip()
         if not url:
@@ -285,7 +366,7 @@ class StorageService:
         if len(pdf_bytes) > max_pdf_bytes:
             raise WorkerException(
                 status_code=413,
-                detail=f"Arquivo muito grande ({len(pdf_bytes) // (1024*1024)} MB). Limite: 50 MB",
+                detail=f"Arquivo muito grande ({len(pdf_bytes) // (1024 * 1024)} MB). Limite: 50 MB",
             )
         content_type = (resp.headers.get("content-type") or "").lower()
         looks_like_pdf = pdf_bytes.lstrip().startswith(b"%PDF")

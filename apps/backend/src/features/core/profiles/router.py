@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, Query
 
 from src.core.auth import get_user_id, get_user_role, verify_internal_token
+from src.features.core.profiles.data_export_service import data_export_service
 from src.features.core.profiles.schemas import (
     AddCreditsRequest,
+    DataExportRequestResponse,
     UpdateOnboarding,
     UpdatePlanRequest,
     UpdateProfile,
@@ -37,6 +39,16 @@ async def update_onboarding(
 ):
     """Update onboarding flags (has_used_ai_tool, has_used_calculator, checklist_dismissed)."""
     return await profiles_service.update_onboarding(user_id, data.model_dump(exclude_none=True))
+
+
+@router.post("/me/export-data", response_model=DataExportRequestResponse, status_code=202)
+async def request_my_data_export(user_id: str = Depends(get_user_id)):
+    """Request async export of all user data (1 request per 24h)."""
+    job_id = await data_export_service.request_user_data_export(user_id)
+    return DataExportRequestResponse(
+        job_id=job_id,
+        message="Sua exportação foi iniciada. Você receberá um e-mail quando estiver pronta.",
+    )
 
 
 @router.delete("/me")

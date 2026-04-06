@@ -1,9 +1,8 @@
 import { useState, type ComponentProps } from 'react'
 import { Link } from 'react-router-dom'
 import { SEO } from '@/components/seo'
-import { Search, Plus, Filter, FolderKanban, ChevronDown, Scale, Building2, Handshake, Download } from 'lucide-react'
+import { Search, Plus, Filter, FolderKanban, ChevronDown, Scale, Building2, Handshake } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { API_URL, fetchWithCredentials } from '@/lib/fetch'
 import { ProcessListSkeleton } from '@/components/skeletons/process-list-skeleton'
 import { ProcessFormDialog } from '@/components/forms/process-form-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -106,29 +105,8 @@ export default function ProcessosPage() {
     offset: 0,
   })
 
-  const [exporting, setExporting] = useState(false)
-
   const processes = data?.processes ?? []
   const total = data?.total ?? 0
-
-  const handleExport = async () => {
-    setExporting(true)
-    try {
-      const res = await fetchWithCredentials(`${API_URL}/office/processes/export`)
-      if (!res.ok) throw new Error()
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'processos.csv'
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      toast.error('Erro ao exportar processos.')
-    } finally {
-      setExporting(false)
-    }
-  }
 
   const handleSaveProcess = async () => {
     setIsFormOpen(false)
@@ -160,14 +138,6 @@ export default function ProcessosPage() {
       onViewModeChange={setViewMode}
       actions={
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting || total === 0}
-            className="hidden sm:inline-flex items-center gap-2 px-3 py-2 bg-muted text-foreground border border-border rounded-md text-sm font-medium hover:bg-muted/80 transition-colors disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            Exportar
-          </button>
           <button
             onClick={handleNewProcess}
             data-tour="new-process-btn"

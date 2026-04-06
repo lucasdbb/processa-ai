@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SEO } from '@/components/seo'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle } from 'lucide-react'
+import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle, FileSpreadsheet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -19,6 +19,7 @@ import { authService } from '@/features/auth/services/auth-service'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
 import { billingService, type SubscriptionStatus } from '@/services/billing-service'
+import { dataExportService } from '@/services/data-export-service'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Dialog,
@@ -77,6 +78,7 @@ export default function ConfiguracoesPage() {
   // Delete account
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [isRequestingDataExport, setIsRequestingDataExport] = useState(false)
 
 
   // const isAutonomo = subscription?.plan_id === 'autonomo' && subscription?.status === 'active'
@@ -243,6 +245,19 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  const handleRequestDataExport = async () => {
+    setIsRequestingDataExport(true)
+    try {
+      const response = await dataExportService.requestMyDataExport()
+      toast.success(response.message || 'Solicitação enviada! Você receberá por e-mail quando estiver pronto.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível solicitar exportação agora.'
+      toast.error(message)
+    } finally {
+      setIsRequestingDataExport(false)
+    }
+  }
+
   const getStatusLabel = (status: SubscriptionStatus['status']) => {
     const labels: Record<string, { text: string; color: string; bg: string }> = {
       active: { text: 'Ativa', color: 'text-green-700 dark:text-green-400', bg: 'bg-green-500/10' },
@@ -348,7 +363,7 @@ export default function ConfiguracoesPage() {
 
         {/* ── Aba: Perfil ── */}
         {activeTab === 'perfil' && (
-          <div className="space-y-1">
+          <div className="space-y-4">
             <div className="bg-card border border-border rounded-xl divide-y divide-border">
               <DataRow label="Nome completo" value={user?.name || 'Não informado'} />
               <DataRow label="Escritório" value={user?.company || 'Não informado'} />
@@ -394,6 +409,34 @@ export default function ConfiguracoesPage() {
                 </span>
               </div>
             </div>
+
+            <div className="bg-card border border-border rounded-xl p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <h2 className="text-sm font-semibold text-foreground">Exportar meus dados</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Geramos um arquivo Excel com seus dados e enviamos para o seu e-mail quando estiver pronto.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Limite: 1 solicitação a cada 24 horas.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRequestDataExport}
+                  disabled={isRequestingDataExport}
+                  className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isRequestingDataExport ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                  Exportar dados
+                </button>
+              </div>
+            </div>
+
             <p className="text-xs text-muted-foreground pt-2 px-1">
               Para alterar qualquer dado, clique em "Editar" no cartão acima.
             </p>
