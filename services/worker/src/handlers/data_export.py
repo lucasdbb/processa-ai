@@ -5,6 +5,7 @@ import json
 import uuid
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
+from html import escape
 from io import BytesIO
 from typing import Any
 
@@ -26,7 +27,7 @@ from src.core.job_store import (
 from src.core.logging import logger
 from src.core.storage import StorageService
 
-SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 # Keep sheet names short (Excel limit: 31 chars) and stable.
 TABLE_EXPORTS: list[tuple[str, str]] = [
@@ -462,8 +463,8 @@ async def _send_export_ready_email(
     filename: str,
     download_url: str | None,
 ) -> bool:
-    api_key = (settings.SENDGRID_API_KEY or "").strip()
-    sender = (settings.SENDGRID_FROM or "").strip()
+    api_key = (settings.BREVO_API_KEY or "").strip()
+    sender = (settings.BREVO_FROM or "").strip()
     frontend_url = (settings.FRONTEND_URL or "http://localhost:5173").rstrip("/")
 
     if not api_key or not sender or not to_email:
@@ -482,44 +483,157 @@ async def _send_export_ready_email(
         "Equipe Processa AI"
     )
 
-    html_body = (
-        f"<p>{greeting}</p>"
-        "<p>Sua exportação de dados foi concluída com sucesso.</p>"
-        f"<p><strong>Arquivo:</strong> {filename}</p>"
-        + (
-            f'<p><a href="{download_url}">Clique aqui para baixar agora</a></p>'
-            if download_url
-            else ""
-        )
-        + f'<p>Você também pode acessar em <a href="{app_link}">Documentos</a>.</p>'
-        "<p>Equipe Processa AI</p>"
+    html_body = _render_export_ready_email_html(
+        greeting=greeting,
+        filename=filename,
+        download_url=download_url,
+        app_link=app_link,
     )
 
     payload = {
-        "personalizations": [
-            {"to": [{"email": to_email}], "subject": "Seu arquivo de exportação está pronto"}
-        ],
-        "from": {"email": sender},
-        "content": [
-            {"type": "text/plain", "value": plain_body},
-            {"type": "text/html", "value": html_body},
-        ],
+        "sender": {"email": sender},
+        "to": [{"email": to_email}],
+        "subject": "Seu arquivo de exportação está pronto",
+        "textContent": plain_body,
+        "htmlContent": html_body,
     }
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
-                SENDGRID_API_URL,
+                BREVO_API_URL,
                 json=payload,
                 headers={
-                    "Authorization": f"Bearer {api_key}",
+                    "api-key": api_key,
+                    "Accept": "application/json",
                     "Content-Type": "application/json",
                 },
             )
-            return resp.status_code in (200, 201, 202)
+            return 200 <= resp.status_code < 300
     except Exception:
         logger.exception("Failed sending export-ready email")
         return False
+
+
+def _render_export_ready_email_html(
+    *,
+    greeting: str,
+    filename: str,
+    download_url: str | None,
+    app_link: str,
+) -> str:
+    """Render export-ready email using the same visual language as global templates."""
+    safe_greeting = escape(greeting)
+    safe_filename = escape(filename)
+    safe_app_link = escape(app_link, quote=True)
+
+    download_cta = ""
+    if download_url:
+        safe_download_url = escape(download_url, quote=True)
+        download_cta = (
+            f'<a href="{safe_download_url}" '
+            'style="display:inline-block;background-color:#0f3366;color:#ffffff !important;'
+            "padding:12px 28px;border-radius:6px;font-weight:600;font-size:14px;"
+            'text-decoration:none;margin-top:10px;">Baixar agora</a>'
+        )
+
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exportação de Dados Pronta</title>
+    <style>
+        body {{
+            margin:0;
+            padding:0;
+            background-color:#f4f4f5;
+            font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color:#334155;
+            line-height:1.6;
+        }}
+        .wrapper {{
+            width:100%;
+            table-layout:fixed;
+            background-color:#f4f4f5;
+            padding:0 0 40px 0;
+        }}
+        .main {{
+            background-color:#ffffff;
+            margin:0 auto;
+            width:100%;
+            max-width:600px;
+            border-radius:8px;
+            overflow:hidden;
+            box-shadow:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }}
+        .header {{
+            padding:40px 20px 20px 20px;
+            text-align:center;
+            background-color:#ffffff;
+        }}
+        .content {{
+            padding:20px 40px 40px 40px;
+            color:#475569;
+            font-size:16px;
+        }}
+        h1 {{
+            color:#0f3366;
+            font-size:24px;
+            margin:0 0 16px 0;
+            font-weight:800;
+            text-align:center;
+            letter-spacing:-0.5px;
+        }}
+        p {{ margin:0 0 16px 0; }}
+        .cta {{ text-align:center; margin-top:28px; }}
+        .footer {{
+            background-color:#f8fafc;
+            padding:40px;
+            text-align:center;
+            border-top:1px solid #e2e8f0;
+            color:#94a3b8;
+            font-size:13px;
+        }}
+        @media screen and (max-width: 600px) {{
+            .main {{ width:100% !important; border-radius:0; }}
+            .content {{ padding:20px 20px 40px 20px; }}
+            .header {{ padding:30px 20px 10px 20px; }}
+            h1 {{ font-size:22px; }}
+        }}
+    </style>
+</head>
+<body>
+    <center class="wrapper">
+        <table class="main" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+            <tr>
+                <td class="header">
+                    <a href="https://www.processai.app.br">
+                        <img src="https://www.processai.app.br/images/og-image.png" alt="Processa AI" width="220" style="margin:0 auto;border:0;display:block;max-width:100%;height:auto;" />
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td class="content">
+                    <h1>Exportação de dados pronta</h1>
+                    <p>{safe_greeting}</p>
+                    <p>Sua exportação de dados foi concluída com sucesso.</p>
+                    <p><strong>Arquivo:</strong> {safe_filename}</p>
+                    <p>Você também pode acessar seus arquivos em <a href="{safe_app_link}" style="color:#0f3366;text-decoration:none;">Documentos</a>.</p>
+                    <div class="cta">{download_cta}</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="footer">
+                    <p style="margin-bottom:8px;color:#64748b;">Atenciosamente,</p>
+                    <p style="font-weight:700;color:#334155;margin-bottom:24px;">Equipe Processa AI</p>
+                    <p style="font-size:11px;margin-bottom:0;">&copy; 2026 Processa AI. Todos os direitos reservados.</p>
+                </td>
+            </tr>
+        </table>
+    </center>
+</body>
+</html>"""
 
 
 async def handle_user_data_export_job(job_row: dict) -> None:

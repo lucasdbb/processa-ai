@@ -1,10 +1,10 @@
 import secrets
 from datetime import datetime, timezone
 
-import httpx
 from fastapi import HTTPException, status
 
 from src.core.config import settings
+from src.core.email import send_email
 from src.core.supabase import get_supabase
 
 
@@ -53,28 +53,18 @@ class NewsletterService:
             )
 
         try:
-            if settings.SENDGRID_API_KEY:
-                confirm_url = f"{settings.FRONTEND_URL}/blog?newsletter_token={token}"
-                subject = "Confirme sua assinatura de notícias jurídicas"
-                body = (
-                    f"Confirme sua assinatura clicando no link:\n{confirm_url}\n\n"
-                    f"Se você não solicitou esta assinatura, ignore este e-mail."
-                )
-                payload_email = {
-                    "personalizations": [{"to": [{"email": email}], "subject": subject}],
-                    "from": {"email": settings.SENDGRID_FROM or email},
-                    "content": [{"type": "text/plain", "value": body}],
-                }
-                headers = {
-                    "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
-                    "Content-Type": "application/json",
-                }
-                async with httpx.AsyncClient(timeout=10) as client:
-                    await client.post(
-                        "https://api.sendgrid.com/v3/mail/send",
-                        json=payload_email,
-                        headers=headers,
-                    )
+            confirm_url = f"{settings.FRONTEND_URL}/blog?newsletter_token={token}"
+            subject = "Confirme sua assinatura de notícias jurídicas"
+            body = (
+                f"Confirme sua assinatura clicando no link:\n{confirm_url}\n\n"
+                f"Se você não solicitou esta assinatura, ignore este e-mail."
+            )
+            await send_email(
+                to_email=email,
+                subject=subject,
+                body=body,
+                from_email=settings.BREVO_FROM or email,
+            )
         except Exception:
             pass
 

@@ -1,7 +1,7 @@
-import httpx
 from fastapi import HTTPException, status
 
 from src.core.config import settings
+from src.core.email import send_email
 from src.core.supabase import get_supabase
 from src.features.core.support.schemas import SupportContactRequest
 
@@ -46,9 +46,9 @@ class SupportService:
                 detail="Erro ao salvar solicitação",
             )
 
-        # Send notification email via SendGrid if configured
+        # Send notification email if configured
         try:
-            if settings.SUPPORT_EMAIL and settings.SENDGRID_API_KEY:
+            if settings.SUPPORT_EMAIL:
                 body = (
                     f"Nome: {data.name}\n"
                     f"Email: {data.email}\n"
@@ -60,28 +60,11 @@ class SupportService:
                     f"ID: {record.get('id')}\n"
                 )
 
-                payload = {
-                    "personalizations": [
-                        {
-                            "to": [{"email": settings.SUPPORT_EMAIL}],
-                            "subject": f"Novo contato: {data.subject}",
-                        }
-                    ],
-                    "from": {"email": settings.SENDGRID_FROM},
-                    "content": [{"type": "text/plain", "value": body}],
-                }
-
-                headers = {
-                    "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
-                    "Content-Type": "application/json",
-                }
-
-                async with httpx.AsyncClient(timeout=10) as client:
-                    await client.post(
-                        "https://api.sendgrid.com/v3/mail/send",
-                        json=payload,
-                        headers=headers,
-                    )
+                await send_email(
+                    to_email=settings.SUPPORT_EMAIL,
+                    subject=f"Novo contato: {data.subject}",
+                    body=body,
+                )
         except Exception:
             # Silently ignore email failures; the request is saved already
             pass
@@ -108,28 +91,9 @@ class SupportService:
             body += f"\nComponent stack:\n{data.component_stack}\n"
 
         try:
-            if settings.SENDGRID_API_KEY and settings.SENDGRID_FROM:
+            if admin_email:
                 subject = f"[Processa AI] Erro critico — {data.error_message[:80]}"
-                email_payload = {
-                    "personalizations": [
-                        {
-                            "to": [{"email": admin_email}],
-                            "subject": subject,
-                        }
-                    ],
-                    "from": {"email": settings.SENDGRID_FROM},
-                    "content": [{"type": "text/plain", "value": body}],
-                }
-                email_headers = {
-                    "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
-                    "Content-Type": "application/json",
-                }
-                async with httpx.AsyncClient(timeout=10) as client:
-                    await client.post(
-                        "https://api.sendgrid.com/v3/mail/send",
-                        json=email_payload,
-                        headers=email_headers,
-                    )
+                await send_email(to_email=admin_email, subject=subject, body=body)
         except Exception as e:
             logger.warning(f"Error report email failed: {e}")
 

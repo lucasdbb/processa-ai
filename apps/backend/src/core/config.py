@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     # Email
-    SENDGRID_API_KEY: str = ""
-    SENDGRID_FROM: str = ""
+    BREVO_API_KEY: str = ""
+    BREVO_FROM: str = ""
     SUPPORT_EMAIL: str = ""
 
     # WhatsApp (Twilio)

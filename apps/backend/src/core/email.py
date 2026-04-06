@@ -1,5 +1,5 @@
 """
-Email service using SendGrid.
+Email service using Brevo.
 """
 
 from datetime import datetime
@@ -10,7 +10,19 @@ import httpx
 from src.core.config import settings
 from src.core.logging import logger
 
-SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+def _resolve_email_api_key() -> str:
+    """Resolve Brevo API key."""
+    return (settings.BREVO_API_KEY or "").strip()
+
+
+def _resolve_sender_email(from_email: str | None = None) -> str:
+    """Resolve sender email preferring explicit sender, then default Brevo sender."""
+    if from_email and from_email.strip():
+        return from_email.strip()
+    return (settings.BREVO_FROM or "").strip()
 
 
 def _get_pt_day_name() -> str:
@@ -85,64 +97,71 @@ async def send_email(
     bcc_emails: list[str] | None = None,
 ) -> bool:
     """
-    Send an email using SendGrid.
+    Send an email using Brevo.
 
     Args:
         to_email: Recipient email address
         subject: Email subject
         body: Plain text body
         html_body: Optional HTML body
-        from_email: Optional sender email (defaults to SENDGRID_FROM)
+        from_email: Optional sender email (defaults to BREVO_FROM)
         bcc_emails: Optional list of BCC recipients
 
     Returns:
         True if email was sent successfully, False otherwise
     """
-    if not settings.SENDGRID_API_KEY:
-        logger.warning("SendGrid API key not configured, skipping email")
+    api_key = _resolve_email_api_key()
+    if not api_key:
+        logger.warning("Brevo API key not configured, skipping email")
         return False
 
-    sender = from_email or settings.SENDGRID_FROM
+    sender = _resolve_sender_email(from_email)
     if not sender:
         logger.warning("No sender email configured, skipping email")
         return False
 
-    content = [{"type": "text/plain", "value": body}]
-    if html_body:
-        content.append({"type": "text/html", "value": html_body})
-
-    personalization = {
+    payload: dict[str, object] = {
+        "sender": {"email": sender},
         "to": [{"email": to_email}],
         "subject": subject,
+        "textContent": body,
     }
 
-    # Add BCC recipients if provided
+    if html_body:
+        payload["htmlContent"] = html_body
+
     if bcc_emails:
-        personalization["bcc"] = [{"email": email} for email in bcc_emails]
-
-    payload = {
-        "personalizations": [personalization],
-        "from": {"email": sender},
-        "content": content,
-    }
+        bcc_list = []
+        for email in bcc_emails:
+            if not isinstance(email, str):
+                continue
+            normalized = email.strip()
+            if not normalized:
+                continue
+            if normalized.lower() == to_email.lower():
+                continue
+            bcc_list.append({"email": normalized})
+        if bcc_list:
+            payload["bcc"] = bcc_list
 
     headers = {
-        "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
+        "api-key": api_key,
+        "Accept": "application/json",
         "Content-Type": "application/json",
     }
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
-                SENDGRID_API_URL,
+                BREVO_API_URL,
                 json=payload,
                 headers=headers,
             )
-            if response.status_code in (200, 201, 202):
+            if 200 <= response.status_code < 300:
                 logger.info(f"Email sent to {to_email}: {subject}")
                 return True
             else:
-                logger.error(f"SendGrid error: {response.status_code} - {response.text}")
+                logger.error(f"Brevo error: {response.status_code} - {response.text}")
                 return False
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
@@ -474,7 +493,7 @@ Acesse o dashboard do Stripe para mais detalhes e responder à disputa."""
     # Mas não vejo definição de send_admin_notification no trecho.
     # I will assume I should use send_email to the admin email.
 
-    admin_email = settings.ADMIN_EMAIL or settings.SENDGRID_FROM
+    admin_email = settings.ADMIN_EMAIL or _resolve_sender_email()
     return await send_email(to_email=admin_email, subject=subject, body=body, html_body=html_body)
 
 
@@ -608,16 +627,15 @@ Equipe Processa AI
     )
 
     # Use sender as TO and all subscribers as BCC
-    sender = settings.SENDGRID_FROM
+    sender = _resolve_sender_email()
     if not sender:
         logger.error("No sender email configured")
         return False
 
-    # Remove sender from subscriber list to avoid duplication
-    # (SendGrid requires unique emails between to, cc, and bcc)
+    # Remove sender from subscriber list to avoid duplication in recipients.
     unique_subscribers = [email for email in subscriber_emails if email.lower() != sender.lower()]
 
-    # SendGrid BCC limit is 1000 per request, split if needed
+    # Brevo supports batching recipients; keep chunking conservative.
     batch_size = 1000
     all_success = True
 

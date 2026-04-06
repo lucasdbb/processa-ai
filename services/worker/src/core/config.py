@@ -26,8 +26,8 @@ class Settings(BaseSettings):
 
     # Frontend + Email
     FRONTEND_URL: str = "http://localhost:5173"
-    SENDGRID_API_KEY: str = ""
-    SENDGRID_FROM: str = ""
+    BREVO_API_KEY: str = ""
+    BREVO_FROM: str = ""
 
     # Queue polling
     POLL_INTERVAL_S: float = 1.0

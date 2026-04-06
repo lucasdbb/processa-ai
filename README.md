@@ -67,7 +67,7 @@ processa-ai/
 | Supabase | Database + Auth + Storage |
 | Stripe | Pagamentos e assinaturas |
 | Google Gemini | Chat jurídico com RAG (streaming SSE) |
-| SendGrid | Envio de e-mails |
+| Brevo | Envio de e-mails |
 | uv | Package manager |
 | Ruff | Linter e formatter |
 
@@ -137,8 +137,8 @@ GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=...
 ENCRYPTION_KEY=chave-fernet-base64
 GEMINI_API_KEY=...
-SENDGRID_API_KEY=SG....
-SENDGRID_FROM=email@dominio.com
+BREVO_API_KEY=xkeysib-...
+BREVO_FROM=email@dominio.com
 ```
 
 **Worker** (`services/worker/.env`):

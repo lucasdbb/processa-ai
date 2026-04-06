@@ -72,8 +72,8 @@ services:
       # DataJUD (API Pública CNJ)
       - DATAJUD_API_KEY=${DATAJUD_API_KEY}
       # Email
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-      - SENDGRID_FROM=${SENDGRID_FROM}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_FROM=${BREVO_FROM}
       - SUPPORT_EMAIL=${SUPPORT_EMAIL}
     networks:
       - processa-network
@@ -109,6 +109,9 @@ services:
       # Google (for office jobs)
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # Email
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_FROM=${BREVO_FROM}
       - PORT=8001
     networks:
       - processa-network

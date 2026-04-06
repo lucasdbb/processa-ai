@@ -170,7 +170,7 @@ class DeadlineNotificationService:
                         notification_type="deadline_reminder",
                         subject=subject,
                         status="sent" if sent else "failed",
-                        error_message=None if sent else "SendGrid send failed",
+                        error_message=None if sent else "Brevo send failed",
                         metadata={"deadline_count": len(data["deadlines"])},
                     )
                     if sent:
@@ -307,7 +307,7 @@ class DeadlineNotificationService:
                         notification_type="weekly_summary",
                         subject=subject,
                         status="sent" if sent else "failed",
-                        error_message=None if sent else "SendGrid send failed",
+                        error_message=None if sent else "Brevo send failed",
                         metadata={"deadline_count": len(data["deadlines"])},
                     )
                     if sent:
