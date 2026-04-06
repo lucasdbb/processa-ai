@@ -267,6 +267,8 @@ class StorageService:
         if not url:
             raise WorkerException(status_code=400, detail="file_url inválido")
 
+        max_pdf_bytes = 50 * 1024 * 1024  # 50 MB
+
         try:
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.get(url)
@@ -279,6 +281,12 @@ class StorageService:
             raise WorkerException(status_code=502, detail="Falha ao baixar o arquivo")
 
         pdf_bytes = resp.content
+
+        if len(pdf_bytes) > max_pdf_bytes:
+            raise WorkerException(
+                status_code=413,
+                detail=f"Arquivo muito grande ({len(pdf_bytes) // (1024*1024)} MB). Limite: 50 MB",
+            )
         content_type = (resp.headers.get("content-type") or "").lower()
         looks_like_pdf = pdf_bytes.lstrip().startswith(b"%PDF")
         if "application/pdf" not in content_type and not looks_like_pdf:
