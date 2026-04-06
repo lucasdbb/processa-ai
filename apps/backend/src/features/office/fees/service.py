@@ -1,5 +1,6 @@
 """Fees/Honorários service."""
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -140,6 +141,7 @@ class FeesService:
             "fee_type",
             "description",
             "amount",
+            "paid_amount",
             "due_date",
             "paid_at",
             "status",
@@ -155,25 +157,58 @@ class FeesService:
         if "paid_at" in update_data:
             update_data["paid_date"] = update_data.pop("paid_at")
 
-        set_clauses = [f"{k} = %s" for k in update_data.keys()]
-        set_clause = ", ".join(set_clauses)
-        values = list(update_data.values())
-
         async with pool.connection() as conn:
             async with conn.transaction():
                 async with conn.cursor(row_factory=dict_row) as cur:
-                    # Get old service_id before update
+                    # Get previous values for consistency and service sync decisions.
                     await cur.execute(
                         """
-                        SELECT service_id FROM office_api.fees
+                        SELECT service_id, status, amount
+                        FROM office_api.fees
                         WHERE user_id = %s AND id = %s
                         """,
                         (str(user_id), str(fee_id)),
                     )
                     old_fee = await cur.fetchone()
+                    if not old_fee:
+                        return None
+
                     old_service_id = (
                         old_fee["service_id"] if old_fee and old_fee["service_id"] else None
                     )
+
+                    current_status = old_fee["status"]
+                    current_amount = Decimal(old_fee["amount"])
+
+                    # Keep status/paid_amount coherent when fee is marked as paid.
+                    target_status = update_data.get("status", current_status)
+                    if target_status == "paid" and "paid_amount" not in update_data:
+                        target_amount = Decimal(update_data.get("amount", current_amount))
+                        update_data["paid_amount"] = target_amount
+                    if target_status == "paid" and "paid_date" not in update_data:
+                        update_data["paid_date"] = date.today()
+                    if (
+                        "status" in update_data
+                        and target_status != "paid"
+                        and "paid_date" not in update_data
+                    ):
+                        update_data["paid_date"] = None
+
+                    # If amount changes on an already-paid fee, keep it fully settled.
+                    if (
+                        "amount" in update_data
+                        and target_status == "paid"
+                        and "paid_amount" not in update_data
+                    ):
+                        update_data["paid_amount"] = Decimal(update_data["amount"])
+
+                    payment_related_change = any(
+                        field in update_data for field in ("status", "paid_amount", "amount")
+                    )
+
+                    set_clauses = [f"{k} = %s" for k in update_data.keys()]
+                    set_clause = ", ".join(set_clauses)
+                    values = list(update_data.values())
 
                     await cur.execute(
                         f"""
@@ -191,15 +226,15 @@ class FeesService:
                         data.service_id if "service_id" in update_data else old_service_id
                     )
 
-                    # Sync old service if it changed or if status changed
+                    # Sync old service if link changed or payment state changed.
                     if old_service_id and (
-                        old_service_id != new_service_id or "status" in update_data
+                        old_service_id != new_service_id or payment_related_change
                     ):
                         await self._sync_service_paid_amount(conn, user_id, old_service_id)
 
-                    # Sync new service if it's different from old or if status changed
+                    # Sync new service if link changed or payment state changed.
                     if new_service_id and (
-                        new_service_id != old_service_id or "status" in update_data
+                        new_service_id != old_service_id or payment_related_change
                     ):
                         await self._sync_service_paid_amount(conn, user_id, new_service_id)
 
@@ -239,14 +274,14 @@ class FeesService:
                     return deleted
 
     async def _sync_service_paid_amount(self, conn: Any, user_id: UUID, service_id: UUID) -> None:
-        """Sync service paid_amount with sum of linked fees that are paid."""
+        """Sync service paid_amount with sum of linked fees' paid_amount."""
         async with conn.cursor(row_factory=dict_row) as cur:
-            # Calculate total paid from fees linked to this service with status='paid'
+            # Calculate total paid from all linked fee settlements.
             await cur.execute(
                 """
-                SELECT COALESCE(SUM(amount), 0) as total_paid
+                SELECT COALESCE(SUM(paid_amount), 0) as total_paid
                 FROM office_api.fees
-                WHERE user_id = %s AND service_id = %s AND status = 'paid'
+                WHERE user_id = %s AND service_id = %s
                 """,
                 (str(user_id), str(service_id)),
             )
@@ -273,11 +308,17 @@ class FeesService:
                     """
                     SELECT
                         COALESCE(SUM(amount), 0) as total_amount,
-                        COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0)
+                        COALESCE(SUM(paid_amount), 0)
                             as total_paid,
-                        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0)
+                        COALESCE(SUM(CASE
+                            WHEN status = 'pending' THEN amount - COALESCE(paid_amount, 0)
+                            ELSE 0
+                        END), 0)
                             as total_pending,
-                        COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END), 0)
+                        COALESCE(SUM(CASE
+                            WHEN status = 'overdue' THEN amount - COALESCE(paid_amount, 0)
+                            ELSE 0
+                        END), 0)
                             as total_overdue,
                         COUNT(*) as fees_count,
                         COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_count,
@@ -304,8 +345,10 @@ class FeesService:
 
                 return FeeSummaryResponse(**row)
 
-    async def mark_as_paid(self, user_id: UUID, fee_id: UUID) -> FeeResponse | None:
-        """Mark a fee as paid."""
+    async def mark_as_paid(
+        self, user_id: UUID, fee_id: UUID, amount: Decimal | None = None
+    ) -> FeeResponse | None:
+        """Settle a fee fully or partially and keep status/paid_amount consistent."""
         pool = await get_pool()
 
         async with pool.connection() as conn:
@@ -314,11 +357,25 @@ class FeesService:
                     await cur.execute(
                         """
                         UPDATE office_api.fees
-                        SET status = 'paid', paid_date = NOW(), updated_at = NOW()
+                        SET
+                            paid_amount = LEAST(GREATEST(COALESCE(%s, amount), 0), amount),
+                            status = CASE
+                                WHEN LEAST(GREATEST(COALESCE(%s, amount), 0), amount) >= amount
+                                    THEN 'paid'
+                                WHEN due_date IS NOT NULL AND due_date < CURRENT_DATE
+                                    THEN 'overdue'
+                                ELSE 'pending'
+                            END,
+                            paid_date = CASE
+                                WHEN LEAST(GREATEST(COALESCE(%s, amount), 0), amount) >= amount
+                                    THEN CURRENT_DATE
+                                ELSE NULL
+                            END,
+                            updated_at = NOW()
                         WHERE user_id = %s AND id = %s
                         RETURNING *, paid_date as paid_at
                         """,
-                        (str(user_id), str(fee_id)),
+                        (amount, amount, amount, str(user_id), str(fee_id)),
                     )
                     row = await cur.fetchone()
 

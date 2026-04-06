@@ -1,5 +1,6 @@
 """Fee payments service."""
 
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -76,14 +77,14 @@ class FeePaymentsService:
                         INSERT INTO office_api.fee_payments (
                             user_id, fee_id, amount, payment_date, payment_method, notes
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, COALESCE(%s, CURRENT_DATE), %s, %s)
                         RETURNING *
                         """,
                         (
                             str(user_id),
                             str(data.fee_id),
                             data.amount,
-                            data.payment_date or "CURRENT_DATE",
+                            data.payment_date,
                             data.payment_method,
                             data.notes,
                         ),
@@ -227,10 +228,11 @@ class FeePaymentsService:
         row = await cur.fetchone()
         total_paid = Decimal(row["total_paid"]) if row else Decimal(0)
 
-        # Get fee amount to determine status
+        # Get fee details to determine status
         await cur.execute(
             """
-            SELECT amount FROM office_api.fees
+            SELECT amount, due_date, status
+            FROM office_api.fees
             WHERE user_id = %s AND id = %s
             """,
             (str(user_id), str(fee_id)),
@@ -240,23 +242,30 @@ class FeePaymentsService:
             return
 
         fee_amount = Decimal(fee_row["amount"])
+        due_date = fee_row["due_date"]
+        current_status = fee_row["status"]
+        clamped_paid = min(total_paid, fee_amount)
 
         # Determine new status
-        if total_paid >= fee_amount:
+        if clamped_paid >= fee_amount:
             new_status = "paid"
-        elif total_paid > 0:
-            new_status = "partial"
+        elif current_status == "cancelled":
+            new_status = "cancelled"
+        elif due_date is not None and due_date < date.today():
+            new_status = "overdue"
         else:
             new_status = "pending"
+
+        paid_date = date.today() if new_status == "paid" else None
 
         # Update fee
         await cur.execute(
             """
             UPDATE office_api.fees
-            SET paid_amount = %s, status = %s, updated_at = NOW()
+            SET paid_amount = %s, status = %s, paid_date = %s, updated_at = NOW()
             WHERE user_id = %s AND id = %s
             """,
-            (total_paid, new_status, str(user_id), str(fee_id)),
+            (clamped_paid, new_status, paid_date, str(user_id), str(fee_id)),
         )
 
     async def _sync_service_paid_amount(self, conn, user_id: UUID, service_id: UUID) -> None:

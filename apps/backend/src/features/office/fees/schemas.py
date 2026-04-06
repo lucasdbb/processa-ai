@@ -55,6 +55,7 @@ class FeeUpdate(BaseModel):
     fee_type: FeeType | None = None
     description: str | None = Field(None, min_length=1, max_length=255)
     amount: Decimal | None = Field(None, gt=0)
+    paid_amount: Decimal | None = Field(None, ge=0)
     due_date: date | None = None
     paid_at: date | None = None
     status: FeeStatus | None = None
@@ -72,6 +73,7 @@ class FeeResponse(BaseModel):
     fee_type: FeeType
     description: str
     amount: Decimal
+    paid_amount: Decimal
     due_date: date | None
     paid_at: date | None
     status: FeeStatus

@@ -126,7 +126,7 @@ function FeesFormDialogBody({
         fee_type: formData.fee_type,
         description: formData.description,
         amount: parseCurrency(formData.amount),
-        status: isInstallment ? 'pending' : formData.status,
+        status: isEditing ? formData.status : 'pending',
         due_date: isInstallment ? null : (formData.due_date || null),
         process_id: formData.linkType === 'process' ? (formData.process_id || null) : null,
         service_id: formData.linkType === 'service' ? (formData.service_id || null) : null,
@@ -155,8 +155,8 @@ function FeesFormDialogBody({
         analytics.track('office_action', { entity: 'fee', action: 'created', fee_type: formData.fee_type })
       }
       onClose()
-    } catch (error) {
-    } finally {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) { /* empty */ } finally {
       setIsSaving(false)
     }
   }
@@ -352,7 +352,7 @@ function FeesFormDialogBody({
               {errors.amount && <p className="mt-1 text-xs text-destructive">{errors.amount}</p>}
             </div>
 
-            {!isInstallment && (
+            {isEditing && !isInstallment && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                   Status <span className="text-destructive">*</span>

@@ -24,6 +24,7 @@ export interface Fee {
   fee_type: FeeType;
   description: string;
   amount: number;
+  paid_amount: number;
   due_date: string | null;
   paid_at: string | null;
   status: FeeStatus;
@@ -49,6 +50,7 @@ export interface FeeUpdate {
   fee_type?: FeeType;
   description?: string;
   amount?: number;
+  paid_amount?: number;
   due_date?: string | null;
   paid_at?: string | null;
   status?: FeeStatus;
@@ -69,11 +71,19 @@ export interface FeesListResponse {
 }
 
 export const feesService = {
-  async list(clientId?: string, processId?: string, serviceId?: string): Promise<FeesListResponse> {
+  async list(
+    clientId?: string,
+    processId?: string,
+    serviceId?: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<FeesListResponse> {
     const params = new URLSearchParams();
     if (clientId) params.append("client_id", clientId);
     if (processId) params.append("process_id", processId);
     if (serviceId) params.append("service_id", serviceId);
+    if (limit !== undefined) params.append("limit", String(limit));
+    if (offset !== undefined) params.append("offset", String(offset));
 
     const url = `${API_URL}/office/fees${params.toString() ? `?${params.toString()}` : ""}`;
     const response = await fetchWithCredentials(url, {
@@ -136,6 +146,25 @@ export const feesService = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.detail || "Failed to update fee");
+    }
+
+    return response.json();
+  },
+
+  async markAsPaid(id: string, amount?: number): Promise<Fee> {
+    const params = new URLSearchParams();
+    if (amount !== undefined) params.append("amount", String(amount));
+
+    const response = await fetchWithCredentials(
+      `${API_URL}/office/fees/${id}/pay${params.toString() ? `?${params.toString()}` : ""}`,
+      {
+        method: "POST",
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to mark fee as paid");
     }
 
     return response.json();

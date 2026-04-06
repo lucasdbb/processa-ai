@@ -100,7 +100,11 @@ async def update_fee(
 @router.post("/{fee_id}/pay", response_model=FeeResponse)
 async def mark_fee_as_paid(
     fee_id: UUID,
-    amount: Decimal | None = Query(None, description="Amount paid (defaults to full amount)"),
+    amount: Decimal | None = Query(
+        None,
+        ge=0,
+        description="Amount paid (defaults to full amount)",
+    ),
     user_id: UUID = Depends(get_user_id),
 ):
     """Mark a fee as paid."""

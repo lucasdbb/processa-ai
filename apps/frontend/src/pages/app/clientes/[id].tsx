@@ -75,6 +75,7 @@ export default function ClienteDetalhePage() {
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [showFabMenu, setShowFabMenu] = useState(false)
+  const [financeStatusFilter, setFinanceStatusFilter] = useState<'all' | Fee['status']>('all')
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const fabMenuRef = useRef<HTMLDivElement>(null)
 
@@ -93,12 +94,29 @@ export default function ClienteDetalhePage() {
     }
   }, [isError, navigate])
 
-  const { data: feesResponse, isLoading: isLoadingFees } = useQuery({
+  const { data: fees = [], isLoading: isLoadingFees } = useQuery({
     queryKey: ['fees', 'client', id],
-    queryFn: () => feesService.list(id!),
+    queryFn: async () => {
+      const pageSize = 100
+      let offset = 0
+      let allFees: Fee[] = []
+      let total = 0
+
+      do {
+        const response = await feesService.list(id!, undefined, undefined, pageSize, offset)
+        total = response.total
+        allFees = [...allFees, ...response.fees]
+        offset += response.fees.length
+
+        if (response.fees.length === 0) {
+          break
+        }
+      } while (allFees.length < total)
+
+      return allFees
+    },
     enabled: !!id && activeTab === 'financeiro',
   })
-  const fees = feesResponse?.fees ?? []
 
   const { data: servicesResponse, isLoading: isLoadingServices } = useQuery({
     queryKey: ['services', 'client', id],
@@ -186,10 +204,10 @@ export default function ClienteDetalhePage() {
 
   type FeeGroupRef = ClientDetail['processes'][number] | Service | undefined
 
-  const groupFeesBySource = () => {
-    const groups = new Map<string, { type: 'process' | 'service'; ref: FeeGroupRef; fees: Fee[] }>()
+  const groupFeesBySource = (sourceFees: Fee[]) => {
+    const groups = new Map<string, { type: 'process' | 'service' | 'unlinked'; ref: FeeGroupRef; fees: Fee[] }>()
 
-    fees.forEach((fee) => {
+    sourceFees.forEach((fee) => {
       if (fee.process_id) {
         const key = `process-${fee.process_id}`
         if (!groups.has(key)) {
@@ -204,27 +222,61 @@ export default function ClienteDetalhePage() {
           groups.set(key, { type: 'service', ref: service, fees: [] })
         }
         groups.get(key)!.fees.push(fee)
+      } else {
+        const key = 'unlinked'
+        if (!groups.has(key)) {
+          groups.set(key, { type: 'unlinked', ref: undefined, fees: [] })
+        }
+        groups.get(key)!.fees.push(fee)
       }
     })
 
-    return Array.from(groups.entries()).map(([key, value]) => ({ key, ...value }))
+    const getRefLabel = (type: 'process' | 'service' | 'unlinked', ref: FeeGroupRef) => {
+      if (type === 'process') return (ref as ClientDetail['processes'][number] | undefined)?.number || 'Processo desconhecido'
+      if (type === 'service') return (ref as Service | undefined)?.name || 'Serviço desconhecido'
+      return 'Sem vínculo'
+    }
+
+    const typeOrder: Record<'process' | 'service' | 'unlinked', number> = {
+      process: 0,
+      service: 1,
+      unlinked: 2,
+    }
+
+    return Array.from(groups.entries())
+      .map(([key, value]) => ({
+        key,
+        ...value,
+        fees: [...value.fees].sort((a, b) => {
+          const aDue = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER
+          const bDue = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER
+          if (aDue !== bDue) return aDue - bDue
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        }),
+      }))
+      .sort((a, b) => {
+        if (typeOrder[a.type] !== typeOrder[b.type]) {
+          return typeOrder[a.type] - typeOrder[b.type]
+        }
+        return getRefLabel(a.type, a.ref).localeCompare(getRefLabel(b.type, b.ref), 'pt-BR')
+      })
   }
 
   const getProcessFeeStats = (processId: string) => {
     const processFees = fees.filter((f) => f.process_id === processId)
     const total = processFees.length
-    const paid = processFees.filter((f) => f.status === 'paid').length
+    const paid = processFees.filter((f) => Number(f.paid_amount ?? 0) >= Number(f.amount)).length
     const totalAmount = processFees.reduce((sum, f) => sum + Number(f.amount), 0)
-    const paidAmount = processFees.filter((f) => f.status === 'paid').reduce((sum, f) => sum + Number(f.amount), 0)
+    const paidAmount = processFees.reduce((sum, f) => sum + Number(f.paid_amount ?? 0), 0)
     return { total, paid, totalAmount, paidAmount }
   }
 
   const getServiceFeeStats = (serviceId: string) => {
     const serviceFees = fees.filter((f) => f.service_id === serviceId)
     const total = serviceFees.length
-    const paid = serviceFees.filter((f) => f.status === 'paid').length
+    const paid = serviceFees.filter((f) => Number(f.paid_amount ?? 0) >= Number(f.amount)).length
     const totalAmount = serviceFees.reduce((sum, f) => sum + Number(f.amount), 0)
-    const paidAmount = serviceFees.filter((f) => f.status === 'paid').reduce((sum, f) => sum + Number(f.amount), 0)
+    const paidAmount = serviceFees.reduce((sum, f) => sum + Number(f.paid_amount ?? 0), 0)
     return { total, paid, totalAmount, paidAmount }
   }
 
@@ -302,9 +354,7 @@ export default function ClienteDetalhePage() {
 
   const handleMarkAsPaid = async (fee: Fee) => {
     try {
-      await feesService.update(fee.id, {
-        status: 'paid',
-      })
+      await feesService.markAsPaid(fee.id)
       toast.success('Honorário marcado como pago')
       await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
       await queryClient.invalidateQueries({ queryKey: ['fees', 'client', id] })
@@ -561,7 +611,11 @@ export default function ClienteDetalhePage() {
 
   const fullAddress = [client.address, client.city, client.state].filter(Boolean).join(', ')
 
-  const feeGroups = groupFeesBySource()
+  const filteredFees = financeStatusFilter === 'all'
+    ? fees
+    : fees.filter((fee) => fee.status === financeStatusFilter)
+
+  const feeGroups = groupFeesBySource(filteredFees)
 
   return (
     <div className="space-y-4">
@@ -1079,9 +1133,29 @@ export default function ClienteDetalhePage() {
             </div>
 
             {/* Summary count */}
-            <p className="text-sm text-muted-foreground">
-              Total de {client.fees_summary.fees_count} honorário(s) cadastrado(s)
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                Total de {client.fees_summary.fees_count} honorário(s) cadastrado(s)
+              </p>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="fees-status-filter" className="text-sm text-muted-foreground">
+                  Status:
+                </label>
+                <select
+                  id="fees-status-filter"
+                  value={financeStatusFilter}
+                  onChange={(e) => setFinanceStatusFilter(e.target.value as 'all' | Fee['status'])}
+                  className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                >
+                  <option value="all">Todos</option>
+                  <option value="pending">Pendente</option>
+                  <option value="overdue">Vencido</option>
+                  <option value="paid">Pago</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+              </div>
+            </div>
 
             {/* Lista de Honorários Agrupados */}
             {isLoadingFees ? (
@@ -1094,24 +1168,34 @@ export default function ClienteDetalhePage() {
                 <p>Nenhum honorário cadastrado</p>
                 <p className="text-sm mt-2">Use o botão Adicionar acima para criar honorários</p>
               </div>
+            ) : filteredFees.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>Nenhum honorário encontrado para o filtro selecionado</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {feeGroups.map((group) => {
                   const isCollapsed = collapsedGroups.has(group.key)
                   const total = group.fees.reduce((sum, fee) => sum + Number(fee.amount), 0)
-                  const paid = group.fees.filter((f) => f.status === 'paid').reduce((sum, fee) => sum + Number(fee.amount), 0)
-                  const paidCount = group.fees.filter((f) => f.status === 'paid').length
+                  const paid = group.fees.reduce((sum, fee) => sum + Number(fee.paid_amount ?? 0), 0)
+                  const settledCount = group.fees.filter((f) => Number(f.paid_amount ?? 0) > 0).length
                   const totalCount = group.fees.length
+                  const progressByValue = total > 0 ? Math.min((paid / total) * 100, 100) : 0
 
                   const badgeConfig =
                     group.type === 'process'
                       ? { label: 'Processo', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' }
-                      : { label: 'Serviço', className: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' }
+                      : group.type === 'service'
+                        ? { label: 'Serviço', className: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' }
+                        : { label: 'Sem vínculo', className: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20' }
 
                   const groupName =
                     group.type === 'process'
                       ? (group.ref as ClientDetail['processes'][number] | undefined)?.number || 'Processo desconhecido'
-                      : (group.ref as Service | undefined)?.name || 'Serviço desconhecido'
+                      : group.type === 'service'
+                        ? (group.ref as Service | undefined)?.name || 'Serviço desconhecido'
+                        : 'Honorários sem processo/serviço'
 
                   return (
                     <div key={group.key} className="rounded-lg border border-border bg-card overflow-hidden">
@@ -1134,7 +1218,7 @@ export default function ClienteDetalhePage() {
                           <div className="flex-1 text-left">
                             <h4 className="font-semibold text-foreground">{groupName}</h4>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {paidCount}/{totalCount} parcelas pagas
+                              {settledCount}/{totalCount} com recebimento
                             </p>
                           </div>
                         </div>
@@ -1157,7 +1241,7 @@ export default function ClienteDetalhePage() {
                           <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
                               className="h-full bg-green-500 transition-all"
-                              style={{ width: `${totalCount > 0 ? (paidCount / totalCount) * 100 : 0}%` }}
+                              style={{ width: `${progressByValue}%` }}
                             />
                           </div>
                         </div>
@@ -1166,7 +1250,12 @@ export default function ClienteDetalhePage() {
                       {/* Fees List */}
                       {!isCollapsed && (
                         <div className="border-t border-border bg-muted/20">
-                          {group.fees.map((fee) => (
+                          {group.fees.map((fee) => {
+                            const feeAmount = Number(fee.amount)
+                            const feePaid = Number(fee.paid_amount ?? 0)
+                            const feeRemaining = Math.max(feeAmount - feePaid, 0)
+
+                            return (
                             <div
                               key={fee.id}
                               className="p-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
@@ -1180,8 +1269,11 @@ export default function ClienteDetalhePage() {
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                    <span className="font-semibold text-foreground">{formatCurrency(Number(fee.amount))}</span>
+                                    <span className="font-semibold text-foreground">{formatCurrency(feeAmount)}</span>
                                     {fee.due_date && <span>Venc.: {formatShortDate(fee.due_date)}</span>}
+                                    {feePaid > 0 && fee.status !== 'paid' && (
+                                      <span>Pago: {formatCurrency(feePaid)} • Saldo: {formatCurrency(feeRemaining)}</span>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1 ml-3">
@@ -1214,7 +1306,8 @@ export default function ClienteDetalhePage() {
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </div>
