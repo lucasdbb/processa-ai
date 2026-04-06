@@ -62,18 +62,19 @@ const CHECKLIST_TOAST_MESSAGES: Record<string, string> = {
 function useChecklistItems() {
   const { user } = useUser()
   const { hasUsedAiTool, hasUsedCalculator } = useOnboardingStore()
-  const { isPro } = useBillingStore()
+  const { isPro, isLoading: isBillingLoading } = useBillingStore()
 
   const isProUser = isPro()
+  const shouldLoadStats = !!user && isProUser
 
   // Lightweight query: only fetch stats (not full dashboard data)
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard', 'stats'],
     queryFn: () => dashboardService.getStats(),
-    enabled: !!user && isProUser,
+    enabled: shouldLoadStats,
   })
 
-  const isReady = !statsLoading
+  const isReady = !isBillingLoading && (!shouldLoadStats || !statsLoading)
 
   const items: ChecklistItem[] = [
     {
