@@ -10,6 +10,8 @@ from typing import Any
 
 import httpx
 from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
 from psycopg.rows import dict_row
 
 from src.core.config import settings
@@ -81,6 +83,119 @@ TABLE_EXPORTS: list[tuple[str, str]] = [
     ("Jobs", "SELECT to_jsonb(j) AS row_data FROM public.jobs j WHERE j.user_id::text = %s"),
 ]
 
+PROFILE_METADATA_COLUMNS = [
+    "whatsapp_opt_in",
+    "has_used_ai_tool",
+    "checklist_dismissed",
+    "has_used_calculator",
+    "checklist_bonus_claimed",
+    "welcome_credits_claimed",
+]
+
+SHEET_COLUMN_ORDER: dict[str, list[str]] = {
+    "Perfil": [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "cpf",
+        "role",
+        "avatar_url",
+        "created_at",
+        "updated_at",
+    ],
+    "PerfilMetadados": [
+        "profile_id",
+        "whatsapp_opt_in",
+        "has_used_ai_tool",
+        "has_used_calculator",
+        "checklist_dismissed",
+        "checklist_bonus_claimed",
+        "welcome_credits_claimed",
+        "created_at",
+        "updated_at",
+    ],
+    "Clientes": ["id", "name", "email", "phone", "cpf_cnpj", "status", "created_at"],
+    "Processos": [
+        "id",
+        "process_number",
+        "subject",
+        "status",
+        "client_id",
+        "created_at",
+    ],
+    "Servicos": ["id", "title", "status", "client_id", "created_at"],
+    "Honorarios": ["id", "description", "fee_type", "status", "amount", "due_date", "paid_date"],
+    "Pagamentos": ["id", "fee_id", "amount", "payment_date", "method", "created_at"],
+    "Notificacoes": ["id", "type", "title", "description", "is_read", "created_at"],
+    "Jobs": ["id", "job_type", "status", "progress", "created_at", "completed_at"],
+}
+
+SHEET_COLUMN_LABELS: dict[str, dict[str, str]] = {
+    "PerfilMetadados": {
+        "profile_id": "ID do perfil",
+        "whatsapp_opt_in": "Consentimento WhatsApp",
+        "has_used_ai_tool": "Ja usou IA",
+        "has_used_calculator": "Ja usou calculadora",
+        "checklist_dismissed": "Checklist dispensado",
+        "checklist_bonus_claimed": "Bonus checklist resgatado",
+        "welcome_credits_claimed": "Creditos boas-vindas resgatados",
+        "created_at": "Criado em",
+        "updated_at": "Atualizado em",
+    }
+}
+
+GLOBAL_COLUMN_LABELS: dict[str, str] = {
+    "id": "ID",
+    "user_id": "ID do usuario",
+    "client_id": "ID do cliente",
+    "process_id": "ID do processo",
+    "job_id": "ID do job",
+    "name": "Nome",
+    "title": "Titulo",
+    "description": "Descricao",
+    "email": "E-mail",
+    "phone": "Telefone",
+    "cpf": "CPF",
+    "cpf_cnpj": "CPF/CNPJ",
+    "role": "Perfil",
+    "status": "Status",
+    "amount": "Valor",
+    "type": "Tipo",
+    "subject": "Assunto",
+    "process_number": "Numero do processo",
+    "fee_type": "Tipo de honorario",
+    "progress": "Progresso",
+    "message": "Mensagem",
+    "metadata": "Metadados",
+    "request_payload": "Payload da solicitacao",
+    "result_payload": "Payload de resultado",
+    "created_at": "Criado em",
+    "updated_at": "Atualizado em",
+    "started_at": "Iniciado em",
+    "completed_at": "Concluido em",
+    "is_read": "Lida",
+}
+
+SHEET_DESCRIPTIONS: dict[str, str] = {
+    "Perfil": "Dados principais da conta",
+    "PerfilMetadados": "Sinais de uso/onboarding do produto",
+    "Assinaturas": "Plano e status de assinatura",
+    "Clientes": "Clientes cadastrados",
+    "Processos": "Processos cadastrados",
+    "Servicos": "Servicos cadastrados",
+    "Honorarios": "Honorarios e cobrancas",
+    "Pagamentos": "Pagamentos de honorarios",
+    "Notas": "Notas internas",
+    "Timeline": "Eventos de timeline dos processos",
+    "Calendario": "Eventos de calendario",
+    "DocsEscritorio": "Documentos do escritorio",
+    "DocumentosGerados": "Documentos gerados pela plataforma",
+    "Notificacoes": "Notificacoes no aplicativo",
+    "Calculos": "Historico de calculadoras",
+    "Jobs": "Historico de jobs assinc",
+}
+
 
 def _to_jsonb(value: Any) -> Any:
     try:
@@ -93,7 +208,9 @@ def _to_jsonb(value: Any) -> Any:
 def _safe_cell_value(value: Any) -> Any:
     if value is None:
         return ""
-    if isinstance(value, (str, int, float, bool)):
+    if isinstance(value, bool):
+        return "Sim" if value else "Nao"
+    if isinstance(value, (str, int, float)):
         text = value if isinstance(value, str) else value
         if isinstance(text, str) and len(text) > 32000:
             return text[:32000] + "...[truncated]"
@@ -111,26 +228,101 @@ def _safe_cell_value(value: Any) -> Any:
     return text
 
 
-def _append_dataset_sheet(wb: Workbook, sheet_name: str, rows: list[dict[str, Any]]) -> None:
-    ws = wb.create_sheet(title=sheet_name[:31])
-    if not rows:
-        ws.append(["info"])
-        ws.append(["Sem registros"])
-        return
+def _humanize_column_name(column_name: str) -> str:
+    if column_name in GLOBAL_COLUMN_LABELS:
+        return GLOBAL_COLUMN_LABELS[column_name]
+    normalized = column_name.replace("_", " ").strip()
+    if not normalized:
+        return column_name
+    return normalized[:1].upper() + normalized[1:]
 
-    headers: list[str] = []
+
+def _ordered_headers(sheet_name: str, rows: list[dict[str, Any]]) -> list[str]:
+    discovered: list[str] = []
     seen: set[str] = set()
     for row in rows:
         for key in row.keys():
             if key not in seen:
                 seen.add(key)
-                headers.append(key)
+                discovered.append(key)
 
-    ws.append(headers)
+    preferred = SHEET_COLUMN_ORDER.get(sheet_name, [])
+    ordered = [column for column in preferred if column in seen]
+    ordered.extend([column for column in discovered if column not in ordered])
+    return ordered
+
+
+def _column_labels(sheet_name: str, headers: list[str]) -> list[str]:
+    sheet_labels = SHEET_COLUMN_LABELS.get(sheet_name, {})
+    return [sheet_labels.get(header) or _humanize_column_name(header) for header in headers]
+
+
+def _style_header_row(ws: Any, total_columns: int) -> None:
+    header_fill = PatternFill(fill_type="solid", fgColor="1E293B")
+    header_font = Font(color="FFFFFF", bold=True)
+    for idx in range(1, total_columns + 1):
+        cell = ws.cell(row=1, column=idx)
+        cell.fill = header_fill
+        cell.font = header_font
+
+
+def _append_dataset_sheet(wb: Workbook, sheet_name: str, rows: list[dict[str, Any]]) -> None:
+    ws = wb.create_sheet(title=sheet_name[:31])
+    if not rows:
+        ws.append(["Info"])
+        ws.append(["Sem registros"])
+        ws.column_dimensions["A"].width = 28
+        return
+
+    headers = _ordered_headers(sheet_name, rows)
+    labels = _column_labels(sheet_name, headers)
+
+    ws.append(labels)
+    _style_header_row(ws, len(labels))
+
+    max_lens = [len(label) for label in labels]
     for row in rows:
-        ws.append([_safe_cell_value(row.get(header)) for header in headers])
+        values = [_safe_cell_value(row.get(header)) for header in headers]
+        ws.append(values)
+        for idx, value in enumerate(values):
+            value_len = len(str(value)) if value is not None else 0
+            if value_len > max_lens[idx]:
+                max_lens[idx] = value_len
+
+    for idx, max_len in enumerate(max_lens, start=1):
+        width = min(max(max_len + 2, 12), 48)
+        ws.column_dimensions[get_column_letter(idx)].width = width
+
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{ws.max_row}"
 
     ws.freeze_panes = "A2"
+
+
+def _split_profile_rows(
+    rows: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    profile_rows: list[dict[str, Any]] = []
+    metadata_rows: list[dict[str, Any]] = []
+
+    for row in rows:
+        core = dict(row)
+        metadata: dict[str, Any] = {
+            "profile_id": row.get("id"),
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+
+        has_any_metadata = False
+        for key in PROFILE_METADATA_COLUMNS:
+            if key in core:
+                metadata[key] = core.pop(key)
+                has_any_metadata = True
+
+        profile_rows.append(core)
+        if has_any_metadata:
+            metadata_rows.append(metadata)
+
+    return profile_rows, metadata_rows
 
 
 def _build_workbook(
@@ -142,16 +334,39 @@ def _build_workbook(
     wb.remove(wb.active)
 
     meta_sheet = wb.create_sheet(title="Meta")
-    meta_sheet.append(["field", "value"])
-    meta_sheet.append(["user_id", user_id])
-    meta_sheet.append(["generated_at", datetime.now(UTC).isoformat()])
-    meta_sheet.append(["format", "xlsx"])
+    meta_sheet.append(["Campo", "Valor"])
+    meta_sheet.append(["ID do usuario", user_id])
+    meta_sheet.append(["Gerado em", datetime.now(UTC).isoformat()])
+    meta_sheet.append(["Formato", "xlsx"])
+    _style_header_row(meta_sheet, 2)
+    meta_sheet.freeze_panes = "A2"
+    meta_sheet.column_dimensions["A"].width = 18
+    meta_sheet.column_dimensions["B"].width = 46
+
+    summary_sheet = wb.create_sheet(title="Resumo")
+    summary_sheet.append(["Aba", "Registros", "Descricao"])
+    for sheet_name, rows in datasets:
+        summary_sheet.append(
+            [
+                sheet_name,
+                len(rows),
+                SHEET_DESCRIPTIONS.get(sheet_name, "Dados exportados"),
+            ]
+        )
+    _style_header_row(summary_sheet, 3)
+    summary_sheet.freeze_panes = "A2"
+    summary_sheet.column_dimensions["A"].width = 26
+    summary_sheet.column_dimensions["B"].width = 12
+    summary_sheet.column_dimensions["C"].width = 46
 
     if errors:
         errors_sheet = wb.create_sheet(title="Erros")
-        errors_sheet.append(["erro"])
+        errors_sheet.append(["Erro"])
         for err in errors:
             errors_sheet.append([err])
+        _style_header_row(errors_sheet, 1)
+        errors_sheet.freeze_panes = "A2"
+        errors_sheet.column_dimensions["A"].width = 80
 
     for sheet_name, rows in datasets:
         _append_dataset_sheet(wb, sheet_name, rows)
@@ -190,7 +405,14 @@ async def _collect_datasets(
                         data = row.get("row_data") if isinstance(row, dict) else None
                         if isinstance(data, dict):
                             normalized_rows.append(data)
-                    datasets.append((sheet_name, normalized_rows))
+
+                    if sheet_name == "Perfil":
+                        profile_rows, metadata_rows = _split_profile_rows(normalized_rows)
+                        datasets.append((sheet_name, profile_rows))
+                        if metadata_rows:
+                            datasets.append(("PerfilMetadados", metadata_rows))
+                    else:
+                        datasets.append((sheet_name, normalized_rows))
                 except Exception as exc:
                     logger.exception(
                         "Failed collecting dataset %s for user %s", sheet_name, user_id
