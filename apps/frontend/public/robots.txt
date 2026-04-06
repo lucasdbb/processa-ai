@@ -3,3 +3,5 @@ Allow: /
 Disallow: /app
 Disallow: /admin
 Disallow: /portal
+
+Sitemap: https://processai.app.br/sitemap.xml
