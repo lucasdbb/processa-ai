@@ -1,9 +1,37 @@
+import base64
+import hashlib
+import hmac
+
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from src.core.auth import get_current_admin, verify_internal_token
+from src.core.config import settings
 from src.core.logging import logger
 from src.features.core.notification_logs.service import notification_log_service
+
+
+def _verify_twilio_signature(url: str, params: dict, signature: str) -> bool:
+    """Verify Twilio X-Twilio-Signature using HMAC-SHA1."""
+    if not settings.TWILIO_AUTH_TOKEN:
+        logger.warning("TWILIO_AUTH_TOKEN not set, skipping signature verification")
+        return True
+
+    # Build the data string: URL + sorted POST params concatenated
+    data = url
+    for key in sorted(params.keys()):
+        data += key + params[key]
+
+    # HMAC-SHA1 with auth token
+    computed = base64.b64encode(
+        hmac.new(
+            settings.TWILIO_AUTH_TOKEN.encode("utf-8"),
+            data.encode("utf-8"),
+            hashlib.sha1,
+        ).digest()
+    ).decode("utf-8")
+
+    return hmac.compare_digest(computed, signature)
 
 router = APIRouter()
 
@@ -42,10 +70,20 @@ async def twilio_status_webhook(request: Request):
     """
     Twilio delivery status webhook.
     Receives status updates for WhatsApp messages.
-    No auth required — Twilio sends these directly.
+    Verifies X-Twilio-Signature to prevent forged payloads.
     """
     try:
         form = await request.form()
+
+        # Verify Twilio signature
+        twilio_signature = request.headers.get("X-Twilio-Signature", "")
+        request_url = str(request.url)
+        form_params = {k: str(v) for k, v in form.items()}
+
+        if not _verify_twilio_signature(request_url, form_params, twilio_signature):
+            logger.warning("Invalid Twilio signature on webhook request")
+            return JSONResponse(status_code=403, content={"detail": "Invalid signature"})
+
         message_sid = form.get("MessageSid")
         message_status = form.get("MessageStatus")
         error_code = form.get("ErrorCode")
