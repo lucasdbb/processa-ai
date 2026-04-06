@@ -44,11 +44,11 @@ TABLE_EXPORTS: list[tuple[str, str]] = [
         "SELECT to_jsonb(p) AS row_data FROM office_api.processes p WHERE p.user_id::text = %s",
     ),
     (
-        "Servicos",
+        "Serviços",
         "SELECT to_jsonb(s) AS row_data FROM office_api.services s WHERE s.user_id::text = %s",
     ),
     (
-        "Honorarios",
+        "Honorários",
         "SELECT to_jsonb(f) AS row_data FROM office_api.fees f WHERE f.user_id::text = %s",
     ),
     (
@@ -61,11 +61,11 @@ TABLE_EXPORTS: list[tuple[str, str]] = [
         "SELECT to_jsonb(t) AS row_data FROM office_api.timeline_events t WHERE t.user_id::text = %s",
     ),
     (
-        "Calendario",
+        "Calendário",
         "SELECT to_jsonb(e) AS row_data FROM office_api.events e WHERE e.user_id::text = %s",
     ),
     (
-        "DocsEscritorio",
+        "DocsEscritório",
         "SELECT to_jsonb(d) AS row_data FROM office_api.documents d WHERE d.user_id::text = %s",
     ),
     (
@@ -73,11 +73,11 @@ TABLE_EXPORTS: list[tuple[str, str]] = [
         "SELECT to_jsonb(gd) AS row_data FROM public.generated_documents gd WHERE gd.user_id::text = %s",
     ),
     (
-        "Notificacoes",
+        "Notificações",
         "SELECT to_jsonb(n) AS row_data FROM public.notifications n WHERE n.user_id::text = %s",
     ),
     (
-        "Calculos",
+        "Cálculos",
         "SELECT to_jsonb(c) AS row_data FROM public.calculations c WHERE c.user_id::text = %s",
     ),
     ("Jobs", "SELECT to_jsonb(j) AS row_data FROM public.jobs j WHERE j.user_id::text = %s"),
@@ -124,10 +124,10 @@ SHEET_COLUMN_ORDER: dict[str, list[str]] = {
         "client_id",
         "created_at",
     ],
-    "Servicos": ["id", "title", "status", "client_id", "created_at"],
-    "Honorarios": ["id", "description", "fee_type", "status", "amount", "due_date", "paid_date"],
+    "Serviços": ["id", "title", "status", "client_id", "created_at"],
+    "Honorários": ["id", "description", "fee_type", "status", "amount", "due_date", "paid_date"],
     "Pagamentos": ["id", "fee_id", "amount", "payment_date", "method", "created_at"],
-    "Notificacoes": ["id", "type", "title", "description", "is_read", "created_at"],
+    "Notificações": ["id", "type", "title", "description", "is_read", "created_at"],
     "Jobs": ["id", "job_type", "status", "progress", "created_at", "completed_at"],
 }
 
@@ -135,11 +135,11 @@ SHEET_COLUMN_LABELS: dict[str, dict[str, str]] = {
     "PerfilMetadados": {
         "profile_id": "ID do perfil",
         "whatsapp_opt_in": "Consentimento WhatsApp",
-        "has_used_ai_tool": "Ja usou IA",
-        "has_used_calculator": "Ja usou calculadora",
+        "has_used_ai_tool": "Já usou IA",
+        "has_used_calculator": "Já usou calculadora",
         "checklist_dismissed": "Checklist dispensado",
-        "checklist_bonus_claimed": "Bonus checklist resgatado",
-        "welcome_credits_claimed": "Creditos boas-vindas resgatados",
+        "checklist_bonus_claimed": "Bônus checklist resgatado",
+        "welcome_credits_claimed": "Créditos boas-vindas resgatados",
         "created_at": "Criado em",
         "updated_at": "Atualizado em",
     }
@@ -147,13 +147,13 @@ SHEET_COLUMN_LABELS: dict[str, dict[str, str]] = {
 
 GLOBAL_COLUMN_LABELS: dict[str, str] = {
     "id": "ID",
-    "user_id": "ID do usuario",
+    "user_id": "ID do usuário",
     "client_id": "ID do cliente",
     "process_id": "ID do processo",
     "job_id": "ID do job",
     "name": "Nome",
-    "title": "Titulo",
-    "description": "Descricao",
+    "title": "Título",
+    "description": "Descrição",
     "email": "E-mail",
     "phone": "Telefone",
     "cpf": "CPF",
@@ -163,17 +163,17 @@ GLOBAL_COLUMN_LABELS: dict[str, str] = {
     "amount": "Valor",
     "type": "Tipo",
     "subject": "Assunto",
-    "process_number": "Numero do processo",
-    "fee_type": "Tipo de honorario",
+    "process_number": "Número do processo",
+    "fee_type": "Tipo de honorário",
     "progress": "Progresso",
     "message": "Mensagem",
     "metadata": "Metadados",
-    "request_payload": "Payload da solicitacao",
+    "request_payload": "Payload da solicitação",
     "result_payload": "Payload de resultado",
     "created_at": "Criado em",
     "updated_at": "Atualizado em",
     "started_at": "Iniciado em",
-    "completed_at": "Concluido em",
+    "completed_at": "Concluído em",
     "is_read": "Lida",
 }
 
@@ -183,17 +183,17 @@ SHEET_DESCRIPTIONS: dict[str, str] = {
     "Assinaturas": "Plano e status de assinatura",
     "Clientes": "Clientes cadastrados",
     "Processos": "Processos cadastrados",
-    "Servicos": "Servicos cadastrados",
-    "Honorarios": "Honorarios e cobrancas",
-    "Pagamentos": "Pagamentos de honorarios",
+    "Serviços": "Serviços cadastrados",
+    "Honorários": "Honorários e cobranças",
+    "Pagamentos": "Pagamentos de honorários",
     "Notas": "Notas internas",
     "Timeline": "Eventos de timeline dos processos",
-    "Calendario": "Eventos de calendario",
-    "DocsEscritorio": "Documentos do escritorio",
+    "Calendário": "Eventos de calendário",
+    "DocsEscritório": "Documentos do escritório",
     "DocumentosGerados": "Documentos gerados pela plataforma",
-    "Notificacoes": "Notificacoes no aplicativo",
-    "Calculos": "Historico de calculadoras",
-    "Jobs": "Historico de jobs assinc",
+    "Notificações": "Notificações no aplicativo",
+    "Cálculos": "Histórico de calculadoras",
+    "Jobs": "Histórico de jobs assíncronos",
 }
 
 
@@ -209,7 +209,7 @@ def _safe_cell_value(value: Any) -> Any:
     if value is None:
         return ""
     if isinstance(value, bool):
-        return "Sim" if value else "Nao"
+        return "Sim" if value else "Não"
     if isinstance(value, (str, int, float)):
         text = value if isinstance(value, str) else value
         if isinstance(text, str) and len(text) > 32000:
@@ -335,7 +335,7 @@ def _build_workbook(
 
     meta_sheet = wb.create_sheet(title="Meta")
     meta_sheet.append(["Campo", "Valor"])
-    meta_sheet.append(["ID do usuario", user_id])
+    meta_sheet.append(["ID do usuário", user_id])
     meta_sheet.append(["Gerado em", datetime.now(UTC).isoformat()])
     meta_sheet.append(["Formato", "xlsx"])
     _style_header_row(meta_sheet, 2)
@@ -344,7 +344,7 @@ def _build_workbook(
     meta_sheet.column_dimensions["B"].width = 46
 
     summary_sheet = wb.create_sheet(title="Resumo")
-    summary_sheet.append(["Aba", "Registros", "Descricao"])
+    summary_sheet.append(["Aba", "Registros", "Descrição"])
     for sheet_name, rows in datasets:
         summary_sheet.append(
             [
@@ -448,7 +448,7 @@ async def _create_export_notification(
                 (
                     user_id,
                     "system",
-                    "Exportacao de dados pronta",
+                    "Exportação de dados pronta",
                     "Seu arquivo Excel esta pronto para download.",
                     _to_jsonb(metadata),
                 ),
@@ -470,34 +470,34 @@ async def _send_export_ready_email(
         return False
 
     greeting_name = user_name.strip() if isinstance(user_name, str) and user_name.strip() else ""
-    greeting = f"Ola, {greeting_name}!" if greeting_name else "Ola!"
+    greeting = f"Olá, {greeting_name}!" if greeting_name else "Olá!"
     app_link = f"{frontend_url}/app/documentos"
 
     plain_body = (
         f"{greeting}\n\n"
-        "Sua exportacao de dados foi concluida com sucesso.\n"
+        "Sua exportação de dados foi concluída com sucesso.\n"
         f"Arquivo: {filename}\n"
         + (f"Download direto: {download_url}\n" if download_url else "")
-        + f"Acesse tambem em: {app_link}\n\n"
+        + f"Acesse também em: {app_link}\n\n"
         "Equipe Processa AI"
     )
 
     html_body = (
         f"<p>{greeting}</p>"
-        "<p>Sua exportacao de dados foi concluida com sucesso.</p>"
+        "<p>Sua exportação de dados foi concluída com sucesso.</p>"
         f"<p><strong>Arquivo:</strong> {filename}</p>"
         + (
             f'<p><a href="{download_url}">Clique aqui para baixar agora</a></p>'
             if download_url
             else ""
         )
-        + f'<p>Voce tambem pode acessar em <a href="{app_link}">Documentos</a>.</p>'
+        + f'<p>Você também pode acessar em <a href="{app_link}">Documentos</a>.</p>'
         "<p>Equipe Processa AI</p>"
     )
 
     payload = {
         "personalizations": [
-            {"to": [{"email": to_email}], "subject": "Seu arquivo de exportacao esta pronto"}
+            {"to": [{"email": to_email}], "subject": "Seu arquivo de exportação está pronto"}
         ],
         "from": {"email": sender},
         "content": [
@@ -537,8 +537,8 @@ async def handle_user_data_export_job(job_row: dict) -> None:
 
     user_id = str(payload.get("user_id") or "").strip()
     if not user_id:
-        await mark_job_failed(job_uuid=job_uuid, error="user_id obrigatorio")
-        await add_job_event(job_uuid=job_uuid, event_type="failed", message="user_id obrigatorio")
+        await mark_job_failed(job_uuid=job_uuid, error="user_id obrigatório")
+        await add_job_event(job_uuid=job_uuid, event_type="failed", message="user_id obrigatório")
         return
 
     try:
@@ -546,7 +546,7 @@ async def handle_user_data_export_job(job_row: dict) -> None:
         await add_job_event(
             job_uuid=job_uuid,
             event_type="processing",
-            message="Iniciando exportacao de dados",
+            message="Iniciando exportação de dados",
             payload={"progress": 10},
         )
 
@@ -618,7 +618,7 @@ async def handle_user_data_export_job(job_row: dict) -> None:
         await add_job_event(
             job_uuid=job_uuid,
             event_type="completed",
-            message="Exportacao concluida",
+            message="Exportação concluída",
             payload={"progress": 100},
         )
 
