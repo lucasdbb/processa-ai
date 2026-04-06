@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
-from src.core.auth import get_user_id, require_internal_auth
+from src.core.auth import get_current_admin, get_user_id, require_internal_auth
 from src.core.logging import logger
 from src.features.ai.knowledge_base.schemas import (
     CreateAreaRequest,
@@ -44,18 +44,18 @@ async def get_taxonomy(_internal=Depends(require_internal_auth)):
 async def create_area(
     data: CreateAreaRequest,
     _internal=Depends(require_internal_auth),
-    user_id: str = Depends(get_user_id),
+    _admin=Depends(get_current_admin),
 ):
     """Criar nova área jurídica (admin-only)."""
 
     try:
         result = await kb_service.create_area(data.name, data.slug, data.description)
         return LegalAreaResponse(**result)
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to create area")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erro ao criar área: {e}",
+            detail="Erro ao criar área",
         )
 
 
@@ -67,16 +67,17 @@ async def create_area(
 async def create_topic(
     data: CreateTopicRequest,
     _internal=Depends(require_internal_auth),
+    _admin=Depends(get_current_admin),
 ):
     """Criar novo tópico jurídico (admin-only)."""
     try:
         result = await kb_service.create_topic(data.area_id, data.name, data.slug, data.keywords)
         return LegalTopicResponse(**result)
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to create topic")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erro ao criar tópico: {e}",
+            detail="Erro ao criar tópico",
         )
 
 
@@ -84,6 +85,7 @@ async def create_topic(
 async def delete_area(
     area_id: str,
     _internal=Depends(require_internal_auth),
+    _admin=Depends(get_current_admin),
 ):
     """Deletar área jurídica (falha se tiver documentos vinculados)."""
     deleted = await kb_service.delete_area(area_id)
@@ -99,6 +101,7 @@ async def delete_area(
 async def delete_topic(
     topic_id: str,
     _internal=Depends(require_internal_auth),
+    _admin=Depends(get_current_admin),
 ):
     """Deletar tópico jurídico."""
     deleted = await kb_service.delete_topic(topic_id)
@@ -144,6 +147,7 @@ async def upload_document(
     topic_id: str | None = Form(None),
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
+    _admin=Depends(get_current_admin),
 ):
     """Upload PDF para a base de conhecimento."""
     if not file.filename:
@@ -188,6 +192,7 @@ async def create_text_document(
     data: TextDocumentRequest,
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
+    _admin=Depends(get_current_admin),
 ):
     """Inserir documento de texto puro na base de conhecimento."""
     result = await kb_service.create_text_document(
@@ -210,6 +215,7 @@ async def create_url_document(
     data: UrlDocumentRequest,
     user_id: str = Depends(get_user_id),
     _internal=Depends(require_internal_auth),
+    _admin=Depends(get_current_admin),
 ):
     """Importar documento de URL para a base de conhecimento."""
     result = await kb_service.create_url_document(
@@ -244,6 +250,7 @@ async def get_document(
 async def delete_document(
     document_id: str,
     _internal=Depends(require_internal_auth),
+    _admin=Depends(get_current_admin),
 ):
     """Deletar documento + chunks (CASCADE) + arquivo do Storage."""
     deleted = await kb_service.delete_document(document_id)
