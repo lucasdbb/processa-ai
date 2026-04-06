@@ -23,6 +23,18 @@ class Settings(BaseSettings):
                 raise ValueError("INTERNAL_TOKEN must be set in non-development environments")
             if not self.SUPABASE_JWT_SECRET:
                 raise ValueError("SUPABASE_JWT_SECRET must be set in non-development environments")
+            if not self.DATABASE_URL:
+                raise ValueError("DATABASE_URL must be set in non-development environments")
+            if not self.SUPABASE_URL:
+                raise ValueError("SUPABASE_URL must be set in non-development environments")
+            if not self.SUPABASE_SERVICE_ROLE_KEY:
+                raise ValueError("SUPABASE_SERVICE_ROLE_KEY must be set in non-development environments")
+            if not self.STRIPE_SECRET_KEY:
+                raise ValueError("STRIPE_SECRET_KEY must be set in non-development environments")
+            if not self.STRIPE_WEBHOOK_SECRET:
+                raise ValueError("STRIPE_WEBHOOK_SECRET must be set in non-development environments")
+            if "localhost" in self.ALLOWED_ORIGINS:
+                raise ValueError("ALLOWED_ORIGINS must not contain localhost in non-development environments")
         return self
 
     # Database
@@ -42,8 +54,9 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = ""
     ENCRYPTION_KEY: str = ""
 
-    # Frontend
+    # URLs
     FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = "http://localhost:8000"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     # Email

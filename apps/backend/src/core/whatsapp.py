@@ -70,7 +70,7 @@ async def send_whatsapp(to_phone: str, body: str) -> WhatsAppResult:
                     "From": settings.TWILIO_WHATSAPP_FROM,
                     "To": to_formatted,
                     "Body": body,
-                    "StatusCallback": f"{settings.FRONTEND_URL.replace('localhost:5173', 'localhost:8000')}/api/notification-logs/webhooks/twilio",
+                    "StatusCallback": f"{settings.BACKEND_URL}/api/notification-logs/webhooks/twilio",
                 },
             )
 
