@@ -380,10 +380,8 @@ export function ChatJuridicoTool() {
         ) : (
           <div className="p-1.5 space-y-0.5">
             {sessions.map((session) => (
-              <button
+              <div
                 key={session.id}
-                type="button"
-                onClick={() => void handleSelectSession(session.id)}
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm rounded-lg transition-colors group',
                   activeSession?.id === session.id
@@ -391,45 +389,51 @@ export function ChatJuridicoTool() {
                     : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                 )}
               >
-                <MessageSquare className={cn(
-                  'h-4 w-4 flex-shrink-0',
-                  activeSession?.id === session.id ? 'text-primary' : 'text-muted-foreground/50',
-                )} />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate font-medium text-[13px]">
-                    {session.title || 'Nova sessão'}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] text-muted-foreground/60">
-                      {session.message_count} msg{session.message_count !== 1 ? 's' : ''}
-                    </span>
-                    {session.status !== 'active' ? (
-                      <>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="text-[11px] text-amber-500/80">
-                          {session.status === 'expired' ? 'expirada' : 'encerrada'}
-                        </span>
-                      </>
-                    ) : null}
-                    {session.created_at ? (
-                      <>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="text-[11px] text-muted-foreground/50">
-                          {formatTime(session.created_at)}
-                        </span>
-                      </>
-                    ) : null}
+                <button
+                  type="button"
+                  onClick={() => void handleSelectSession(session.id)}
+                  className="flex flex-1 min-w-0 items-center gap-2.5 text-left"
+                >
+                  <MessageSquare className={cn(
+                    'h-4 w-4 flex-shrink-0',
+                    activeSession?.id === session.id ? 'text-primary' : 'text-muted-foreground/50',
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-medium text-[13px]">
+                      {session.title || 'Nova sessão'}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[11px] text-muted-foreground/60">
+                        {session.message_count} msg{session.message_count !== 1 ? 's' : ''}
+                      </span>
+                      {session.status !== 'active' ? (
+                        <>
+                          <span className="text-muted-foreground/30">·</span>
+                          <span className="text-[11px] text-amber-500/80">
+                            {session.status === 'expired' ? 'expirada' : 'encerrada'}
+                          </span>
+                        </>
+                      ) : null}
+                      {session.created_at ? (
+                        <>
+                          <span className="text-muted-foreground/30">·</span>
+                          <span className="text-[11px] text-muted-foreground/50">
+                            {formatTime(session.created_at)}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                </button>
                 <button
                   type="button"
                   onClick={(e) => void handleDeleteSession(e, session.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 rounded-md transition-all"
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-1.5 hover:bg-destructive/10 rounded-md transition-all"
                   aria-label="Remover sessão"
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive/70" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         )}
