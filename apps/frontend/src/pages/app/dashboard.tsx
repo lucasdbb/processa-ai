@@ -173,18 +173,18 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div
         data-tour="stats"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
       >
         {loading.stats ? (
           Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="bg-card border border-border rounded-xl p-5 space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-28" />
+            <div key={idx} className="bg-card border border-border rounded-xl p-4 sm:p-5 space-y-3">
+              <Skeleton className="h-4 w-16 sm:w-24" />
+              <Skeleton className="h-8 w-12 sm:w-16" />
+              <Skeleton className="h-3 w-20 sm:w-28" />
             </div>
           ))
         ) : errors.stats ? (
-          <div className="sm:col-span-2 lg:col-span-4">
+          <div className="col-span-2 lg:col-span-4">
             <WidgetErrorCard
               title="Indicadores"
               onRetry={() => {
@@ -199,30 +199,30 @@ export default function DashboardPage() {
               <Link
                 key={stat.name}
                 to={stat.href}
-                className="group bg-card border border-border rounded-xl p-5 hover:border-muted-foreground/50 hover:shadow-md transition-all"
+                className="group bg-card border border-border rounded-xl p-4 sm:p-5 hover:border-muted-foreground/50 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.name}</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">{stat.value}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.name}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground mt-1">{stat.value}</p>
                     {stat.change && (
                       <p
                         className={cn(
-                          'text-xs mt-2 flex items-center gap-1',
+                          'text-[11px] sm:text-xs mt-1.5 sm:mt-2 flex items-center gap-1 truncate',
                           stat.changeType === 'positive' && 'text-green-600',
                           stat.changeType === 'negative' && 'text-red-600',
                           stat.changeType === 'neutral' && 'text-muted-foreground'
                         )}
                       >
                         {stat.changeType === 'positive' && (
-                          <TrendingUp className="h-3 w-3" />
+                          <TrendingUp className="h-3 w-3 flex-shrink-0" />
                         )}
                         {stat.change}
                       </p>
                     )}
                   </div>
-                  <div className="p-2.5 bg-muted rounded-lg group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-colors">
-                    <Icon className="h-5 w-5" />
+                  <div className="p-2 sm:p-2.5 bg-muted rounded-lg group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-colors flex-shrink-0">
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                 </div>
               </Link>

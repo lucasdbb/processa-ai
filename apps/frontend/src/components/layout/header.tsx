@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, Moon, Sun, Calculator, Bot, BookOpen, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react'
+import { Menu, X, Moon, Sun, Calculator, Bot, BookOpen, LayoutDashboard, ChevronDown, ChevronRight, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { UserMenu } from '@/features/auth/components/user-menu'
 import { useUser } from '@/features/auth/hooks/use-user'
+import { useAuth } from '@/features/auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { fetchToolsCatalog } from './tools-catalog-utils'
@@ -33,6 +35,7 @@ interface HeaderProps {
 
 export function Header({ onLoginClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false)
   const [recursosOpen, setRecursosOpen] = useState(false)
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -42,6 +45,7 @@ export function Header({ onLoginClick }: HeaderProps) {
   const closeTimeoutRef = useRef<number | null>(null)
   const location = useLocation()
   const { user, isAuthenticated, isLoading } = useUser()
+  const { logout } = useAuth()
   const { resolvedTheme, setTheme } = useTheme()
 
   // Fetch AI tools and calculators from backend on mount
@@ -114,9 +118,22 @@ export function Header({ onLoginClick }: HeaderProps) {
   // Fechar menu mobile ao mudar de rota
   useEffect(() => {
     setMobileMenuOpen(false)
+    setMobileProfileOpen(false)
     setRecursosOpen(false)
     setActiveSubmenu(null)
   }, [location.pathname])
+
+  // Bloquear scroll do body quando menu mobile está aberto
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileMenuOpen])
 
   const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
@@ -384,7 +401,7 @@ export function Header({ onLoginClick }: HeaderProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-background border-t border-border">
+        <div className="lg:hidden bg-background border-t border-border max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
           <div className="px-4 py-4 space-y-4">
             {/* Link Inicio */}
             <Link
@@ -485,43 +502,63 @@ export function Header({ onLoginClick }: HeaderProps) {
             {/* Auth CTA */}
             <div className="border-t border-border pt-4">
               {isAuthenticated && user ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 px-3">
-                    <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                      {(user.name || user.email?.split('@')[0] || 'U')
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </div>
-                    <div className="flex-1 min-w-0">
+                <div>
+                  <button
+                    onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-muted/50 transition-colors w-full"
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.avatar_url} alt={user.name || user.email} />
+                      <AvatarFallback className="bg-slate-900 text-white text-sm font-medium">
+                        {(user.name || user.email?.split('@')[0] || 'U')
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 text-left">
                       <p className="text-sm font-medium text-foreground truncate">
                         {user.name || user.email?.split('@')[0]}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     </div>
-                  </div>
-                  <Link
-                    to="/app"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-lg"
-                  >
-                    Acessar Painel
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
+                    <ChevronDown className={cn('h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform', mobileProfileOpen && 'rotate-180')} />
+                  </button>
+                  {mobileProfileOpen && (
+                    <div className="mt-1 ml-3 space-y-1">
+                      <Link
+                        to="/app"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        Acessar Painel
+                      </Link>
+                      <button
+                        onClick={async () => {
+                          setMobileMenuOpen(false)
+                          await logout()
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors w-full"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sair
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      onLoginClick?.()
-                      setMobileMenuOpen(false)
-                    }}
-                    className="w-full py-3 text-white bg-slate-900 hover:bg-slate-800 font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    Entrar na Plataforma
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    onLoginClick?.()
+                    setMobileMenuOpen(false)
+                  }}
+                  className="w-full py-3 text-white bg-slate-900 hover:bg-slate-800 font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg"
+                >
+                  Entrar na Plataforma
+                </button>
               )}
             </div>
           </div>
