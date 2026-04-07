@@ -27,7 +27,7 @@ def upgrade() -> None:
         (key, display_name, description, icon, path, display_order, is_locked)
         VALUES
         ('fator_previdenciario', 'Fator Previdenciário',
-         'Cálculo do fator previdenciário (gratuito).',
+         'Cálculo do fator previdenciário.',
          'Percent', '/app/calculadoras/fator_previdenciario', 10, false),
         ('tempo_contribuicao', 'Tempo de Contribuição',
          'Cálculo de tempo de contribuição previdenciária.',
