@@ -180,6 +180,15 @@ export default function CalendarioPage() {
     }
   }
 
+  const handleGoogleButtonClick = () => {
+    if (googleStatus?.connected) {
+      setShowGoogleDropdown((prev) => !prev)
+      return
+    }
+
+    void handleConnectGoogle()
+  }
+
   const handleSyncGoogle = async () => {
     setIsSyncing(true)
     setSyncOverlay({
@@ -482,21 +491,39 @@ export default function CalendarioPage() {
           {/* Google Calendar Button + Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
-              onClick={handleConnectGoogle}
-              disabled
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium border border-border/70 bg-gradient-to-r from-muted/50 to-muted text-muted-foreground/90 cursor-not-allowed"
-              title="Integração com Google Calendar em breve"
+              onClick={handleGoogleButtonClick}
+              aria-expanded={googleStatus?.connected ? showGoogleDropdown : false}
+              className={cn(
+                'group inline-flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-semibold border shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                googleStatus?.connected
+                  ? 'border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-teal-500/15 text-emerald-800 dark:text-emerald-200 hover:border-emerald-500/60 hover:shadow-md hover:shadow-emerald-500/20'
+                  : 'border-border/80 bg-gradient-to-r from-background to-muted/70 text-foreground hover:border-border hover:-translate-y-[1px] hover:shadow-md'
+              )}
+              title={googleStatus?.connected ? 'Google Calendar conectado' : 'Conectar Google Calendar'}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-80">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Google Calendar
-              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                Em breve
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-black/5 bg-white/85 dark:bg-black/20">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
               </span>
+              <span className="leading-none">Google Calendar</span>
+              {googleStatus?.connected && (
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Conectado
+                </span>
+              )}
+              {googleStatus?.connected && (
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 text-emerald-700/80 dark:text-emerald-300/80 transition-transform duration-200',
+                    showGoogleDropdown && 'rotate-180'
+                  )}
+                />
+              )}
             </button>
 
             {/* Dropdown */}
