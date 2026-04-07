@@ -168,8 +168,9 @@ async def update_job_payload(
     """Replace the request_payload of an existing job.
 
     If *status* is provided, update the status atomically in the same query.
-    This is used to transition a job from 'pending' → 'queued' together with
-    the final payload so the worker never sees an incomplete payload.
+    This is used to transition a temporary non-queued status → 'queued'
+    together with the final payload so the worker never sees an incomplete
+    payload.
     """
     pool = await get_pool()
     async with pool.connection() as conn:

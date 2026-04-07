@@ -71,8 +71,8 @@ class AiJobService:
         base_payload["job_id"] = job_id
         base_payload["user_id"] = user_id
 
-        # 5. Criar Job no Banco (status='pending' para evitar race condition com o worker)
-        #    O job só será visível ao worker após a transição para 'queued'
+        # 5. Criar Job no Banco com status temporário (não consumido pelo worker).
+        #    O job só ficará elegível para dequeue após a transição para 'queued'
         #    que acontece atomicamente junto com o payload final (com signed URLs).
         try:
             await create_job(
@@ -82,7 +82,7 @@ class AiJobService:
                 client_id=client_id,
                 request_payload=base_payload,
                 priority=7,
-                status="pending",
+                status="processing",
             )
             await add_job_event(
                 job_uuid=job_uuid,
