@@ -161,15 +161,27 @@ async def update_job_payload(
     *,
     job_uuid: uuid.UUID,
     request_payload: dict,
+    status: str | None = None,
 ) -> None:
-    """Replace the request_payload of an existing job."""
+    """Replace the request_payload of an existing job.
+
+    If *status* is provided, update the status atomically in the same query.
+    This is used to transition a job from 'pending' → 'queued' together with
+    the final payload so the worker never sees an incomplete payload.
+    """
     pool = await get_pool()
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
-            await cur.execute(
-                "update public.jobs set request_payload = %s where id = %s",
-                (_to_jsonb(request_payload), job_uuid),
-            )
+            if status:
+                await cur.execute(
+                    "update public.jobs set request_payload = %s, status = %s where id = %s",
+                    (_to_jsonb(request_payload), status, job_uuid),
+                )
+            else:
+                await cur.execute(
+                    "update public.jobs set request_payload = %s where id = %s",
+                    (_to_jsonb(request_payload), job_uuid),
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -538,7 +550,7 @@ async def get_all_user_jobs(
         FROM public.jobs j
         LEFT JOIN office_api.clients c ON j.client_id::text = c.id::text
         LEFT JOIN public.generated_documents d ON d.job_id = j.id AND d.document_type = 'output'
-        WHERE j.status IN ('completed', 'processing') AND j.user_id = %s
+        WHERE j.status IN ('pending', 'queued', 'processing', 'completed') AND j.user_id = %s
     """
     params: list[Any] = [user_id]
 

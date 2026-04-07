@@ -71,7 +71,9 @@ class AiJobService:
         base_payload["job_id"] = job_id
         base_payload["user_id"] = user_id
 
-        # 5. Criar Job no Banco (this IS the enqueue — no separate job_queue)
+        # 5. Criar Job no Banco (status='pending' para evitar race condition com o worker)
+        #    O job só será visível ao worker após a transição para 'queued'
+        #    que acontece atomicamente junto com o payload final (com signed URLs).
         try:
             await create_job(
                 job_uuid=job_uuid,
@@ -80,6 +82,7 @@ class AiJobService:
                 client_id=client_id,
                 request_payload=base_payload,
                 priority=7,
+                status="pending",
             )
             await add_job_event(
                 job_uuid=job_uuid,
@@ -170,7 +173,13 @@ class AiJobService:
                 "input_document_id": input_document_id,
             }
 
-            await update_job_payload(job_uuid=job_uuid, request_payload=final_payload)
+            # Atualiza payload E muda status para 'queued' atomicamente.
+            # Isso garante que o worker nunca pegue o job com files: [].
+            await update_job_payload(
+                job_uuid=job_uuid,
+                request_payload=final_payload,
+                status="queued",
+            )
 
         except Exception as e:
             logger.exception("Error during job processing setup")

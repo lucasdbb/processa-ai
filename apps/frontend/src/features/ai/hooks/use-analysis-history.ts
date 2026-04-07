@@ -5,7 +5,7 @@ import { useUser } from '@/features/auth/hooks/use-user'
 export interface AnalysisJob {
   id: string
   created_at: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
+  status: 'pending' | 'queued' | 'processing' | 'completed' | 'failed'
   functionality: string
   metadata?: {
     file_name?: string
@@ -53,8 +53,10 @@ export function useAnalysisHistory(functionality?: string, clientId?: string | n
     // Polling is configured directly via react-query refetchInterval
     refetchInterval: (query) => {
       const data = query.state.data
-      const hasProcessing = data?.some((j: AnalysisJob) => j.status === 'processing')
-      return hasProcessing ? POLL_INTERVAL : false
+      const hasActive = data?.some((j: AnalysisJob) =>
+        j.status === 'pending' || j.status === 'queued' || j.status === 'processing'
+      )
+      return hasActive ? POLL_INTERVAL : false
     },
   })
 }
