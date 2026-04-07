@@ -12,6 +12,7 @@ from src.core.logging import logger
 @dataclass
 class RagChunk:
     id: str
+    document_id: str
     content: str
     section_title: str | None
     area: str
@@ -30,7 +31,7 @@ async def search_legal_chunks(
     *,
     area: str | None = None,
     top_k: int = 10,
-    similarity_threshold: float = 0.3,
+    similarity_threshold: float = 0.5,
 ) -> list[RagChunk]:
     """Search RAG chunks using dual embedding (content + resumo) with pgvector.
 
@@ -66,7 +67,7 @@ async def search_legal_chunks(
     query = f"""
         WITH scored AS (
             SELECT
-                id, content, section_title, area, tema, legislacao, artigo,
+                id, document_id, content, section_title, area, tema, legislacao, artigo,
                 status, revogado_por, resumo,
                 GREATEST(
                     CASE WHEN embedding IS NOT NULL
@@ -101,19 +102,23 @@ async def search_legal_chunks(
         logger.exception("RAG search failed")
         return []
 
+    # Columns: id(0), document_id(1), content(2), section_title(3), area(4),
+    #          tema(5), legislacao(6), artigo(7), status(8), revogado_por(9),
+    #          resumo(10), raw_score(11), boosted_score(12)
     return [
         RagChunk(
             id=str(r[0]),
-            content=r[1],
-            section_title=r[2],
-            area=r[3],
-            tema=r[4],
-            legislacao=r[5],
-            artigo=r[6],
-            score=float(r[10]),  # raw_score
-            status=r[7] or "vigente",
-            revogado_por=r[8],
-            resumo=r[9],
+            document_id=str(r[1]),
+            content=r[2],
+            section_title=r[3],
+            area=r[4],
+            tema=r[5],
+            legislacao=r[6],
+            artigo=r[7],
+            score=float(r[11]),
+            status=r[8] or "vigente",
+            revogado_por=r[9],
+            resumo=r[10],
         )
         for r in rows
     ]

@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from src.core.auth import get_user_id, require_internal_auth
-from src.core.rate_limit import limiter
+from src.core.db import get_pool
 from src.core.logging import logger
+from src.core.rate_limit import limiter
 from src.features.ai.chat.schemas import (
     ChatMessageRequest,
     ChatMessageResponse,
@@ -14,10 +15,12 @@ from src.features.ai.chat.schemas import (
 )
 from src.features.ai.chat.service import ChatService
 from src.features.billing.credits.service import CreditsService
+from src.features.core.storage.service import StorageService
 
 router = APIRouter()
 chat_service = ChatService()
 credits_service = CreditsService()
+storage_service = StorageService()
 
 
 @router.post(
@@ -146,3 +149,50 @@ async def send_message(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/documents/{document_id}/url")
+async def get_document_url(
+    document_id: str,
+    user_id: str = Depends(get_user_id),
+    _internal=Depends(require_internal_auth),
+):
+    """Returns a signed download URL or the original URL for a RAG document."""
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT document_type, storage_path, bucket, original_filename
+                FROM public.rag_documents
+                WHERE id = %s
+                """,
+                (document_id,),
+            )
+            row = await cur.fetchone()
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado"
+        )
+
+    doc_type, storage_path, bucket, original_filename = row
+
+    # URL-sourced documents: return the original URL directly
+    if doc_type == "url":
+        return {"url": storage_path, "filename": original_filename, "type": "url"}
+
+    # Text-only documents have no downloadable file
+    if bucket == "none" or storage_path == "text-input":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Este documento não possui arquivo para download",
+        )
+
+    # PDF/file documents: generate signed URL from Supabase Storage
+    signed_url = await storage_service.generate_signed_url(
+        bucket=bucket,
+        storage_path=storage_path,
+        expires_in=3600,
+    )
+    return {"url": signed_url, "filename": original_filename, "type": "download"}

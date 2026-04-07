@@ -14,6 +14,7 @@ export type ChatSession = {
 };
 
 export type ChatSource = {
+  document_id: string;
   legislacao: string;
   artigo: string;
   area: string;

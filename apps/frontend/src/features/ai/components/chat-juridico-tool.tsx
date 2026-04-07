@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Bot, Loader2, Send, User, Plus, MessageSquare, Trash2,
   ChevronLeft, BookOpen, ChevronDown, ChevronUp, Scale,
-  AlertCircle, Sparkles, Coins,
+  AlertCircle, Sparkles, Coins, ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { marked } from 'marked'
@@ -16,6 +16,7 @@ import { analytics } from '@/lib/analytics'
 import { useChatSessions, type ChatSource } from '../hooks/use-chat-sessions'
 import { useChatStream } from '../hooks/use-chat-stream'
 import { useCreditsStore } from '@/stores/credits-store'
+import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { toast } from 'sonner'
 
 // ── Markdown rendering ──────────────────────────────────
@@ -52,6 +53,21 @@ function SourceCard({ source }: { source: ChatSource }) {
     alterado: { label: 'Alterado', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
   }
   const statusInfo = statusConfig[source.status]
+
+  const handleOpenDocument = useCallback(async () => {
+    try {
+      const res = await fetchWithCredentials(`${API_URL}/ai/chat/documents/${source.document_id}/url`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        toast.error(err?.detail || 'Erro ao acessar documento')
+        return
+      }
+      const data = await res.json()
+      window.open(data.url, '_blank', 'noopener,noreferrer')
+    } catch {
+      toast.error('Erro ao acessar documento')
+    }
+  }, [source.document_id])
 
   return (
     <div className="rounded-lg bg-muted/60 border border-border/60 px-3 py-2.5 text-xs">
@@ -97,9 +113,9 @@ function SourceCard({ source }: { source: ChatSource }) {
             </p>
           ) : null}
 
-          {/* Toggle to see original text */}
-          {hasResumo && source.content ? (
-            <div className="mt-1.5">
+          {/* Toggle to see original text + open document */}
+          <div className="mt-1.5 flex items-center gap-3">
+            {hasResumo && source.content ? (
               <button
                 type="button"
                 onClick={() => setShowOriginal((v) => !v)}
@@ -107,12 +123,20 @@ function SourceCard({ source }: { source: ChatSource }) {
               >
                 {showOriginal ? 'Ocultar texto original' : 'Ver texto original'}
               </button>
-              {showOriginal ? (
-                <p className="mt-1 text-muted-foreground/70 leading-relaxed text-[11px] border-l-2 border-primary/20 pl-2">
-                  {source.content}
-                </p>
-              ) : null}
-            </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleOpenDocument}
+              className="inline-flex items-center gap-1 text-[10px] text-primary/60 hover:text-primary/80 transition-colors underline underline-offset-2"
+            >
+              <ExternalLink className="h-2.5 w-2.5" />
+              Ver documento
+            </button>
+          </div>
+          {hasResumo && source.content && showOriginal ? (
+            <p className="mt-1 text-muted-foreground/70 leading-relaxed text-[11px] border-l-2 border-primary/20 pl-2">
+              {source.content}
+            </p>
           ) : null}
         </div>
       </div>

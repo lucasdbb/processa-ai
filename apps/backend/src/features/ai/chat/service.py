@@ -23,24 +23,33 @@ REGRAS:
 - Responda APENAS sobre direito brasileiro. Recuse perguntas sobre jurisdições estrangeiras.
 - Cite artigos de lei, súmulas e jurisprudência quando relevante.
 - Seja direto e objetivo. Use linguagem técnica quando apropriado.
-- Esclareça que suas respostas são orientações jurídicas, NÃO parecer jurídico.
 - Se não tiver certeza sobre um artigo ou número de lei específico, diga claramente.
 - Organize respostas longas com tópicos e parágrafos.
 - Quando citar legislação, use o formato: (Art. X, Lei Y) ou (Súmula N, Tribunal).
+- Leve em conta o CONTEXTO DA CONVERSA ao interpretar perguntas de acompanhamento (ex: "sou obrigado?", "e se eu recusar?"). Conecte a pergunta atual ao tema discutido anteriormente.
 """
+
+NO_RAG_RESPONSE = (
+    "Não possuo informações sobre este tema na minha base de conhecimento. "
+    "Sugiro consultar a legislação pertinente ou fontes especializadas."
+)
+
+# Minimum score for the TOP chunk to consider RAG results relevant.
+# Below this, all chunks are discarded even if they passed the DB threshold.
+MIN_TOP_SCORE = 0.65
 
 RAG_CONTEXT_TEMPLATE = """
 
 === BASE DE CONHECIMENTO (FONTES VERIFICADAS) ===
 {chunks}
 === INSTRUÇÃO ===
-Fundamente sua resposta nos artigos acima quando forem relevantes para a pergunta.
-Cite SEMPRE a fonte entre parênteses: (Art. X, Lei Y).
-Se um artigo estiver marcado como ⚠️ REVOGADO ou ⚠️ ALTERADO, INFORME o advogado:
-- Explique que o artigo foi revogado/alterado e por qual lei.
-- Apresente a redação vigente atual quando disponível nas fontes.
-- Se a versão vigente não estiver nas fontes, alerte que o advogado deve consultar a legislação atualizada.
-Se a legislação fornecida não cobrir a pergunta, responda com seu conhecimento geral e diga claramente que não há fonte específica na base."""
+Fundamente sua resposta nos artigos acima. Eles foram selecionados como relevantes para a pergunta.
+- Cite SEMPRE a fonte entre parênteses: (Art. X, Lei Y).
+- Se um artigo estiver marcado como ⚠️ REVOGADO ou ⚠️ ALTERADO, INFORME o advogado:
+  - Explique que o artigo foi revogado/alterado e por qual lei.
+  - Apresente a redação vigente atual quando disponível nas fontes.
+  - Se a versão vigente não estiver nas fontes, alerte que o advogado deve consultar a legislação atualizada.
+- NÃO diga que não possui informações quando as fontes acima cobrem o tema da pergunta."""
 
 
 def _build_system_prompt(chunks: list[RagChunk]) -> str:
@@ -81,6 +90,7 @@ def _chunks_to_sources(chunks: list[RagChunk]) -> list[dict]:
     """Convert RagChunks to serializable source dicts for the SSE done event."""
     return [
         {
+            "document_id": c.document_id,
             "legislacao": c.legislacao or "",
             "artigo": c.artigo or "",
             "area": c.area,
@@ -301,28 +311,58 @@ class ChatService:
         all_messages = await self.get_session_messages(session_id)
         history = all_messages[-MAX_HISTORY_MESSAGES:]
 
-        # 4. RAG: embed query and search for relevant legal chunks
+        # 4. RAG: embed query with conversation context for follow-up questions
+        # Combine recent user messages so pronouns like "it/this" resolve correctly.
         rag_chunks: list[RagChunk] = []
         try:
-            query_embedding = await generate_embedding(message)
+            recent_user_msgs = [m["content"] for m in history if m["role"] == "user"][-3:]
+            if len(recent_user_msgs) > 1:
+                rag_query = " ".join(recent_user_msgs)
+            else:
+                rag_query = message
+            query_embedding = await generate_embedding(rag_query)
             pool = await get_pool()
             rag_chunks = await search_legal_chunks(
                 pool,
                 query_embedding,
                 top_k=8,
-                similarity_threshold=0.35,
+                similarity_threshold=0.5,
             )
             if rag_chunks:
+                top_score = rag_chunks[0].score
                 logger.info(
-                    "RAG returned %d chunks for session %s (top score: %.3f)",
+                    "RAG returned %d chunks for session %s (scores: %s)",
                     len(rag_chunks),
                     session_id,
-                    rag_chunks[0].score,
+                    ", ".join(f"{c.score:.3f}" for c in rag_chunks[:5]),
+                )
+                # Discard all chunks if the best one isn't relevant enough
+                if top_score < MIN_TOP_SCORE:
+                    logger.info(
+                        "RAG top score %.3f < %.2f — discarding all chunks for session %s",
+                        top_score,
+                        MIN_TOP_SCORE,
+                        session_id,
+                    )
+                    rag_chunks = []
+            else:
+                logger.info(
+                    "RAG returned no chunks for session %s",
+                    session_id,
                 )
         except Exception:
             logger.exception("RAG search failed for session %s, proceeding without", session_id)
 
-        # 5. Build Gemini contents from history
+        # 5. If no relevant chunks found, respond without calling LLM
+        if not rag_chunks:
+            full_response = NO_RAG_RESPONSE
+            msg_id = await self.save_message(session_id, "assistant", full_response)
+            yield f"data: {json.dumps({'text': full_response})}\n\n"
+            done_event: dict = {"done": True, "message_id": msg_id}
+            yield f"data: {json.dumps(done_event)}\n\n"
+            return
+
+        # 6. Build Gemini contents from history
         contents = []
         for msg in history:
             role = "user" if msg["role"] == "user" else "model"
@@ -333,7 +373,7 @@ class ChatService:
                 )
             )
 
-        # 6. Stream from Gemini with RAG-augmented system prompt
+        # 7. Stream from Gemini with RAG-augmented system prompt
         system_prompt = _build_system_prompt(rag_chunks)
         full_response = ""
         try:
@@ -349,13 +389,12 @@ class ChatService:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             return
 
-        # 7. Save assistant response
+        # 8. Save assistant response
         msg_id = await self.save_message(session_id, "assistant", full_response)
 
-        # 8. Send done event with sources
-        done_event: dict = {"done": True, "message_id": msg_id}
-        if rag_chunks:
-            done_event["sources"] = _chunks_to_sources(rag_chunks)
+        # 9. Send done event with sources
+        done_event = {"done": True, "message_id": msg_id}
+        done_event["sources"] = _chunks_to_sources(rag_chunks)
         yield f"data: {json.dumps(done_event)}\n\n"
 
     async def _expire_session(self, session_id: str) -> None:
