@@ -14,10 +14,10 @@ from typing import Any
 
 from src.core.db import get_pool
 
-
 # ---------------------------------------------------------------------------
 # JSONB / dict_row helpers (try/except to survive environments without psycopg)
 # ---------------------------------------------------------------------------
+
 
 def _to_jsonb(value: Any) -> Any:
     try:
@@ -63,6 +63,7 @@ def parse_job_uuid(job_id: str) -> uuid.UUID | None:
 # ---------------------------------------------------------------------------
 # Endpoint registry
 # ---------------------------------------------------------------------------
+
 
 async def ensure_endpoint(
     *,
@@ -121,6 +122,7 @@ async def get_endpoint_by_key(key: str) -> dict | None:
 # ---------------------------------------------------------------------------
 # Job CRUD
 # ---------------------------------------------------------------------------
+
 
 async def create_job(
     *,
@@ -188,6 +190,7 @@ async def update_job_payload(
 # Job events
 # ---------------------------------------------------------------------------
 
+
 async def add_job_event(
     *,
     job_uuid: uuid.UUID,
@@ -214,6 +217,7 @@ async def add_job_event(
 # ---------------------------------------------------------------------------
 # Status transitions
 # ---------------------------------------------------------------------------
+
 
 async def mark_job_processing(*, job_uuid: uuid.UUID, progress: int) -> None:
     """Transition a job to 'processing', recording started_at on the first call."""
@@ -277,6 +281,7 @@ async def update_job_progress(*, job_uuid: uuid.UUID, progress: int) -> None:
 # Job status query
 # ---------------------------------------------------------------------------
 
+
 async def get_job_status(*, job_uuid: uuid.UUID) -> dict | None:
     """Return the current status of a job, injecting document_id into result if present.
 
@@ -336,6 +341,7 @@ async def get_job_status(*, job_uuid: uuid.UUID) -> dict | None:
 # ---------------------------------------------------------------------------
 # Document management
 # ---------------------------------------------------------------------------
+
 
 async def create_document(
     *,
@@ -455,6 +461,7 @@ async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
 # ---------------------------------------------------------------------------
 # History queries
 # ---------------------------------------------------------------------------
+
 
 async def get_user_analysis_history(
     *,
@@ -590,9 +597,58 @@ async def get_all_user_jobs(
             return results
 
 
+async def get_active_calculator_job(
+    *,
+    user_id: str,
+    job_type: str,
+    calculation_id: uuid.UUID,
+) -> dict | None:
+    """Return the newest queued/processing calculator job for the same calculation.
+
+    Used to avoid creating duplicate export jobs when the user clicks "Gerar PDF"
+    multiple times before the first one completes.
+    """
+    pool = await get_pool()
+    row_factory = _get_dict_row()
+
+    async with pool.connection() as conn:
+        kw = {"row_factory": row_factory} if row_factory else {}
+        async with conn.cursor(**kw) as cur:
+            await cur.execute(
+                """
+                select j.id, j.status
+                from public.jobs j
+                where j.user_id = %s
+                  and j.job_type = %s
+                  and j.status in ('queued', 'processing')
+                  and j.request_payload ->> 'calculation_id' = %s
+                order by j.created_at desc
+                limit 1
+                """,
+                (user_id, job_type, str(calculation_id)),
+            )
+            row = await cur.fetchone()
+
+    if not row:
+        return None
+
+    if isinstance(row, dict):
+        job_id = row.get("id")
+        status = str(row.get("status") or "queued")
+    else:
+        job_id = row[0]
+        status = str(row[1] or "queued")
+
+    return {
+        "job_id": str(job_id),
+        "status": status,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Delete
 # ---------------------------------------------------------------------------
+
 
 async def delete_job(*, job_uuid: uuid.UUID, user_id: str) -> bool:
     """Delete a job and all its generated_documents. Returns True if the job existed."""
@@ -626,6 +682,7 @@ async def delete_job(*, job_uuid: uuid.UUID, user_id: str) -> bool:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def now_iso(dt: datetime | None) -> str | None:
     """Serialize a datetime to ISO 8601 string, returning None for falsy input."""

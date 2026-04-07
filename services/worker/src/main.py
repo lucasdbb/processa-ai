@@ -480,6 +480,8 @@ async def _handle_calculator_job(job_row: dict) -> None:
     input_payload = payload.get("input_payload") or {}
     output_payload = payload.get("output_payload") or {}
     calculator_key = str(payload.get("calculator_key") or "").strip()
+    target_bucket = str(payload.get("target_bucket") or "").strip() or None
+    target_storage_path = str(payload.get("target_storage_path") or "").strip() or None
 
     if not user_id:
         try:
@@ -526,6 +528,8 @@ async def _handle_calculator_job(job_row: dict) -> None:
             filename=filename,
             expires_in=3600,
             output=True,
+            bucket_override=target_bucket,
+            storage_path_override=target_storage_path,
         )
 
         bucket = uploaded.get("bucket", "documents")

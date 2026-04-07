@@ -195,6 +195,8 @@ class StorageService:
         filename: str,
         expires_in: int,
         output: bool = False,
+        bucket_override: str | None = None,
+        storage_path_override: str | None = None,
     ) -> dict:
         """
         Upload PDF to Supabase Storage.
@@ -203,23 +205,31 @@ class StorageService:
         base_url = (settings.SUPABASE_URL or "").strip().rstrip("/")
         api_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
 
-        # Select bucket based on functionality
+        # Select bucket based on functionality or explicit override
         func_lower = functionality.lower().strip()
-        bucket = "blog-images" if func_lower in ("blog", "media") else "documents"
+        bucket = (
+            str(bucket_override).strip()
+            if bucket_override and str(bucket_override).strip()
+            else ("blog-images" if func_lower in ("blog", "media") else "documents")
+        )
 
         if not base_url or not api_key:
             raise WorkerException(status_code=500, detail="Supabase Storage não configurado")
 
-        sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
-        folder = "output" if output else "input"
-        storage_filename = f"{sha}.pdf"
+        if storage_path_override and str(storage_path_override).strip():
+            storage_path = str(storage_path_override).strip().strip("/")
+            storage_filename = storage_path.rsplit("/", 1)[-1] if "/" in storage_path else storage_path
+        else:
+            sha = hashlib.sha256(pdf_bytes).hexdigest()[:32]
+            folder = "output" if output else "input"
+            storage_filename = f"{sha}.pdf"
 
-        uid = self.sanitize_path_segment(user_id, default="unknown-user")
-        func = self.sanitize_path_segment(functionality, default="ai")
-        cid = self.sanitize_path_segment(client_id, default="no-client")
-        jid = self.sanitize_path_segment(job_uuid, default="unknown-job")
+            uid = self.sanitize_path_segment(user_id, default="unknown-user")
+            func = self.sanitize_path_segment(functionality, default="ai")
+            cid = self.sanitize_path_segment(client_id, default="no-client")
+            jid = self.sanitize_path_segment(job_uuid, default="unknown-job")
 
-        storage_path = f"{uid}/{func}/{cid}/{jid}/{folder}/{storage_filename}"
+            storage_path = f"{uid}/{func}/{cid}/{jid}/{folder}/{storage_filename}"
 
         upload_url = f"{base_url}/storage/v1/object/{bucket}/{storage_path}"
         headers = {

@@ -155,6 +155,56 @@ async def list_calculations(
     return result
 
 
+async def get_calculation_by_id(
+    *,
+    calculation_id: uuid.UUID,
+    user_id: str,
+) -> dict | None:
+    pool = await get_pool()
+    row_factory = _get_dict_row()
+
+    async with pool.connection() as conn:
+        kw = {"row_factory": row_factory} if row_factory else {}
+        async with conn.cursor(**kw) as cur:
+            await cur.execute(
+                "SELECT c.id, c.calculator_key, c.status, c.user_id, c.client_id, "
+                "c.input_payload, c.output_payload, c.error, c.created_at, c.finished_at "
+                "FROM public.calculations c "
+                "WHERE c.id = %s AND c.user_id = %s "
+                "LIMIT 1",
+                (calculation_id, user_id),
+            )
+            row = await cur.fetchone()
+
+    if not row:
+        return None
+
+    if isinstance(row, dict):
+        item = dict(row)
+    else:
+        item = {
+            "id": row[0],
+            "calculator_key": row[1],
+            "status": row[2],
+            "user_id": row[3],
+            "client_id": row[4],
+            "input_payload": row[5],
+            "output_payload": row[6],
+            "error": row[7],
+            "created_at": row[8],
+            "finished_at": row[9],
+        }
+
+    if isinstance(item.get("id"), uuid.UUID):
+        item["id"] = str(item["id"])
+    for dt_key in ("created_at", "finished_at"):
+        v = item.get(dt_key)
+        if v is not None and hasattr(v, "isoformat"):
+            item[dt_key] = v.isoformat()
+
+    return item
+
+
 async def get_calculation_document(
     *,
     calculation_id: uuid.UUID,

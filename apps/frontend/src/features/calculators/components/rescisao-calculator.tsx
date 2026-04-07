@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Calculator, Loader2, ChevronDown, Briefcase, DollarSign, Shield, Moon, History } from 'lucide-react'
+import { Calculator, Loader2, ChevronDown, Briefcase, DollarSign, Shield, Moon, History, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -13,6 +13,13 @@ import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-shee
 
 interface RescisaoCalculatorProps {
   selectedClientId: string | null
+}
+
+type RescisaoDetalhes = {
+  remuneracao_bruta: number
+  total_bruto: number
+  total_descontos: number
+  total: number
 }
 
 const tipoRescisaoLabel: Record<string, string> = {
@@ -52,7 +59,10 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
   const { markCalculatorUsed } = useOnboardingStore()
 
   const [isCalculating, setIsCalculating] = useState(false)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+  const [latestCalculationId, setLatestCalculationId] = useState<string | null>(null)
+  const [latestResult, setLatestResult] = useState<RescisaoDetalhes | null>(null)
 
   // Modal state for freshly generated result
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
@@ -103,6 +113,91 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
     []
   )
 
+  const formatCurrency = useCallback((value: number) => {
+    return value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+    })
+  }, [])
+
+  const startPdfPolling = useCallback((jobId: string) => {
+    let attempts = 0
+    const maxAttempts = 60 // 2 minutes max
+
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+
+    pollIntervalRef.current = setInterval(async () => {
+      attempts++
+      try {
+        const statusRes = await fetchWithCredentials(`${API_URL}/jobs/${encodeURIComponent(jobId)}`)
+        if (!statusRes.ok) {
+          if (attempts >= maxAttempts) {
+            clearInterval(pollIntervalRef.current!)
+            pollIntervalRef.current = null
+            setIsGeneratingPdf(false)
+            toast.error('Tempo esgotado ao gerar PDF')
+          }
+          return
+        }
+
+        const statusData = (await statusRes.json()) as {
+          status: string
+          result?: { document_id?: string; download_url?: string }
+          error?: string
+        }
+
+        if (statusData.status === 'completed') {
+          clearInterval(pollIntervalRef.current!)
+          pollIntervalRef.current = null
+          setIsGeneratingPdf(false)
+          setHistoryRefreshKey((k) => k + 1)
+
+          const downloadUrl = statusData.result?.download_url
+          const documentId = statusData.result?.document_id
+
+          if (downloadUrl) {
+            setGeneratedPdfUrl(downloadUrl)
+            setIsResultModalOpen(true)
+            toast.success('PDF gerado com sucesso')
+          } else if (documentId) {
+            const dlRes = await fetchWithCredentials(`${API_URL}/documents/${documentId}/download`)
+            if (dlRes.ok) {
+              const dlData = (await dlRes.json()) as { download_url: string }
+              setGeneratedPdfUrl(dlData.download_url)
+              setIsResultModalOpen(true)
+              toast.success('PDF gerado com sucesso')
+            } else {
+              toast.success('PDF gerado! Acesse pelo histórico.')
+            }
+          } else {
+            toast.success('PDF gerado! Acesse pelo histórico.')
+          }
+
+          analytics.track('feature_used', {
+            feature: 'rescisao_calculator',
+            action: 'pdf_completed',
+            success: true,
+          })
+        } else if (statusData.status === 'failed') {
+          clearInterval(pollIntervalRef.current!)
+          pollIntervalRef.current = null
+          setIsGeneratingPdf(false)
+          toast.error(statusData.error || 'Erro ao gerar PDF')
+        }
+      } catch {
+        // Silently continue polling on network errors
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollIntervalRef.current!)
+        pollIntervalRef.current = null
+        setIsGeneratingPdf(false)
+        toast.error('Tempo esgotado ao gerar PDF')
+      }
+    }, 2000)
+  }, [])
+
   const handleCalculate = useCallback(async () => {
     if (!user?.id) {
       toast.error('Usuário não autenticado')
@@ -144,7 +239,7 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
           ferias_vencidas: parseInt(formData.feriasVencidas) || 0,
           ferias_proporcionais: true,
           decimo_terceiro: true,
-          export_pdf: true,
+          export_pdf: false,
         }),
       })
 
@@ -156,99 +251,25 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
       markCalculatorUsed()
 
       const data = (await res.json()) as {
-        pdf?: { job_id?: string; status?: string }
+        calculation_id?: string
+        detalhes?: RescisaoDetalhes
       }
+
+      setLatestCalculationId(data.calculation_id || null)
+      setLatestResult(data.detalhes || null)
+      setIsCalculating(false)
 
       // Refresh history and credits
       setHistoryRefreshKey((k) => k + 1)
       fetchCredits()
 
-      // Poll for PDF job completion if a job was enqueued
-      if (data.pdf?.job_id) {
-        const jobId = data.pdf.job_id
-        let attempts = 0
-        const maxAttempts = 60 // 2 minutes max
+      toast.success('Cálculo realizado com sucesso')
 
-        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-
-        pollIntervalRef.current = setInterval(async () => {
-          attempts++
-          try {
-            const statusRes = await fetchWithCredentials(`${API_URL}/jobs/${encodeURIComponent(jobId)}`)
-            if (!statusRes.ok) {
-              if (attempts >= maxAttempts) {
-                clearInterval(pollIntervalRef.current!)
-                pollIntervalRef.current = null
-                setIsCalculating(false)
-                toast.error('Tempo esgotado ao gerar PDF')
-              }
-              return
-            }
-
-            const statusData = (await statusRes.json()) as {
-              status: string
-              result?: { document_id?: string; download_url?: string }
-              error?: string
-            }
-
-            if (statusData.status === 'completed') {
-              clearInterval(pollIntervalRef.current!)
-              pollIntervalRef.current = null
-              setIsCalculating(false)
-              setHistoryRefreshKey((k) => k + 1)
-
-              // Get download URL from result or fetch via unified endpoint
-              const downloadUrl = statusData.result?.download_url
-              const documentId = statusData.result?.document_id
-
-              if (downloadUrl) {
-                setGeneratedPdfUrl(downloadUrl)
-                setIsResultModalOpen(true)
-              } else if (documentId) {
-                const dlRes = await fetchWithCredentials(`${API_URL}/documents/${documentId}/download`)
-                if (dlRes.ok) {
-                  const dlData = (await dlRes.json()) as { download_url: string }
-                  setGeneratedPdfUrl(dlData.download_url)
-                  setIsResultModalOpen(true)
-                } else {
-                  toast.success('PDF gerado! Acesse pelo histórico.')
-                }
-              } else {
-                toast.success('Cálculo realizado com sucesso')
-              }
-
-              analytics.track('feature_used', {
-                feature: 'rescisao_calculator',
-                action: 'completed',
-                success: true,
-              })
-            } else if (statusData.status === 'failed') {
-              clearInterval(pollIntervalRef.current!)
-              pollIntervalRef.current = null
-              setIsCalculating(false)
-              toast.error(statusData.error || 'Erro ao gerar PDF')
-            }
-          } catch {
-            // Silently continue polling on network errors
-          }
-
-          if (attempts >= maxAttempts) {
-            clearInterval(pollIntervalRef.current!)
-            pollIntervalRef.current = null
-            setIsCalculating(false)
-            toast.error('Tempo esgotado ao gerar PDF')
-          }
-        }, 2000)
-      } else {
-        setIsCalculating(false)
-        toast.success('Cálculo realizado com sucesso')
-
-        analytics.track('feature_used', {
-          feature: 'rescisao_calculator',
-          action: 'completed',
-          success: true,
-        })
-      }
+      analytics.track('feature_used', {
+        feature: 'rescisao_calculator',
+        action: 'completed',
+        success: true,
+      })
     } catch (err) {
       setIsCalculating(false)
       analytics.track('feature_used', {
@@ -261,7 +282,56 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
     }
   }, [formData, selectedClientId, user, credits, fetchCredits, markCalculatorUsed])
 
+  const handleGeneratePdf = useCallback(async () => {
+    if (!latestCalculationId) {
+      toast.error('Faça um cálculo antes de gerar o PDF')
+      return
+    }
+
+    setIsGeneratingPdf(true)
+
+    analytics.track('feature_used', {
+      feature: 'rescisao_calculator',
+      action: 'pdf_requested',
+      calculation_id: latestCalculationId,
+    })
+
+    try {
+      const res = await fetchWithCredentials(
+        `${API_URL}/calculators/trabalhista/rescisao-trabalhista/${encodeURIComponent(latestCalculationId)}/pdf`,
+        {
+          method: 'POST',
+        }
+      )
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => null)
+        throw new Error((error as { detail?: string } | null)?.detail || 'Erro ao gerar PDF')
+      }
+
+      const data = (await res.json()) as { job_id?: string }
+      if (!data.job_id) {
+        throw new Error('Resposta inválida ao enfileirar PDF')
+      }
+
+      toast.success('PDF em geração. Você pode continuar usando a calculadora.')
+      startPdfPolling(data.job_id)
+    } catch (err) {
+      setIsGeneratingPdf(false)
+      toast.error(err instanceof Error ? err.message : 'Erro ao gerar PDF')
+    }
+  }, [latestCalculationId, startPdfPolling])
+
   const currentAvisoOptions = avisoOptions[formData.tipoRescisao] || avisoOptions.sem_justa_causa
+  const currentAvisoLabel =
+    currentAvisoOptions.find((opt) => opt.value === formData.tipoAvisoPrevio)?.label ||
+    formData.tipoAvisoPrevio
+  const currentTipoLabel = tipoRescisaoLabel[formData.tipoRescisao] || formData.tipoRescisao
+
+  const totalBruto = latestResult?.total_bruto ?? 0
+  const totalDescontos = latestResult?.total_descontos ?? 0
+  const totalLiquido = latestResult?.total ?? 0
+  const liquidoPercent = totalBruto > 0 ? Math.max(0, Math.min(100, (totalLiquido / totalBruto) * 100)) : 0
 
   const adicionalRisco = formData.adicionalPericulosidade
     ? 'periculosidade'
@@ -534,6 +604,70 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
               {isCalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
               Calcular Rescisão
             </button>
+
+            {latestResult && (
+              <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card p-4 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Resultado da Simulação</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {currentTipoLabel} &middot; Aviso {currentAvisoLabel}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                    Instantâneo
+                  </span>
+                </div>
+
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                  <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 uppercase tracking-wide">
+                    Total Líquido Estimado
+                  </p>
+                  <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 leading-tight mt-1">
+                    {formatCurrency(totalLiquido)}
+                  </p>
+
+                  <div className="mt-3 h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${liquidoPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Líquido representa {liquidoPercent.toFixed(1)}% do total bruto.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md bg-background/80 border border-border p-2.5">
+                    <p className="text-[10px] text-muted-foreground">Total Bruto</p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(totalBruto)}</p>
+                  </div>
+
+                  <div className="rounded-md bg-background/80 border border-border p-2.5">
+                    <p className="text-[10px] text-muted-foreground">Descontos</p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(totalDescontos)}</p>
+                  </div>
+
+                  <div className="rounded-md bg-background/80 border border-border p-2.5 col-span-2">
+                    <p className="text-[10px] text-muted-foreground">Remuneração Base de Cálculo</p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">
+                      {formatCurrency(latestResult.remuneracao_bruta)}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGeneratePdf}
+                  disabled={isGeneratingPdf || !latestCalculationId}
+                  className="w-full flex items-center justify-center gap-2 border border-input hover:bg-muted/60 px-4 py-2.5 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  {isGeneratingPdf ? 'Gerando PDF...' : 'Gerar PDF do Resultado'}
+                </button>
+              </div>
+            )}
 
             <HistoryBottomSheet
               trigger={(open) => (

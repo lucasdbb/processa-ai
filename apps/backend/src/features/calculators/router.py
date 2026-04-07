@@ -6,11 +6,13 @@ from src.core.auth import get_user_id, require_internal_auth
 from src.core.calc_engine_store import (
     create_calculation,
     delete_calculation,
+    get_calculation_by_id,
+    get_calculation_document,
     list_calculations,
     mark_calculation_completed,
     mark_calculation_failed,
 )
-from src.core.job_store import add_job_event, create_document, create_job
+from src.core.job_store import add_job_event, create_document, create_job, get_active_calculator_job
 from src.core.logging import logger
 from src.features.billing.credits.service import credits_service
 from src.features.calculators.schemas import (
@@ -23,6 +25,7 @@ from src.features.calculators.schemas import (
     MediaSalarialResponse,
     ParseCnisRequest,
     ParseCnisResponse,
+    PdfExport,
     RescisaoTrabalhistaRequest,
     RescisaoTrabalhistaResponse,
     TempoContribuicaoRequest,
@@ -44,6 +47,8 @@ async def _enqueue_calculator_pdf(
     calculator_key: str,
     input_payload: dict,
     output_payload: dict,
+    target_bucket: str | None = None,
+    target_storage_path: str | None = None,
 ) -> str:
     """Create a job in the unified jobs table for calculator PDF generation.
 
@@ -54,20 +59,26 @@ async def _enqueue_calculator_pdf(
 
     # Create job record in unified jobs table (this IS the enqueue)
     try:
+        request_payload = {
+            "job_type": job_type,
+            "calculator_key": calculator_key,
+            "calculation_id": str(calculation_id),
+            "user_id": user_id,
+            "client_id": client_id,
+            "input_payload": input_payload,
+            "output_payload": output_payload,
+        }
+
+        if target_bucket and target_storage_path:
+            request_payload["target_bucket"] = target_bucket
+            request_payload["target_storage_path"] = target_storage_path
+
         await create_job(
             job_uuid=job_uuid,
             job_type=job_type,
             user_id=user_id,
             client_id=client_id,
-            request_payload={
-                "job_type": job_type,
-                "calculator_key": calculator_key,
-                "calculation_id": str(calculation_id),
-                "user_id": user_id,
-                "client_id": client_id,
-                "input_payload": input_payload,
-                "output_payload": output_payload,
-            },
+            request_payload=request_payload,
             priority=8,
         )
         await add_job_event(job_uuid=job_uuid, event_type="queued", payload={"progress": 0})
@@ -186,6 +197,82 @@ async def rescisao_trabalhista(
         )
 
 
+@router.post(
+    "/trabalhista/rescisao-trabalhista/{calculation_id}/pdf",
+    response_model=PdfExport,
+    status_code=status.HTTP_200_OK,
+)
+async def generate_rescisao_pdf(
+    calculation_id: str,
+    user_id: str = Depends(get_user_id),
+    _internal=Depends(require_internal_auth),
+):
+    try:
+        calc_uuid = uuid.UUID(calculation_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ID de cálculo inválido",
+        )
+
+    calc = await get_calculation_by_id(calculation_id=calc_uuid, user_id=user_id)
+    if not calc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cálculo não encontrado",
+        )
+
+    if calc.get("calculator_key") != "trabalhista.rescisao-trabalhista":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cálculo incompatível para geração de PDF de rescisão",
+        )
+
+    input_payload = calc.get("input_payload") or {}
+    output_payload = calc.get("output_payload") or {}
+    if not isinstance(output_payload, dict) or not output_payload.get("detalhes"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cálculo ainda não concluído para geração de PDF",
+        )
+
+    active_job = await get_active_calculator_job(
+        user_id=user_id,
+        job_type="calculator_rescisao",
+        calculation_id=calc_uuid,
+    )
+    if active_job:
+        return {
+            "job_id": active_job["job_id"],
+            "status": active_job["status"],
+        }
+
+    existing_document = await get_calculation_document(calculation_id=calc_uuid, user_id=user_id)
+
+    client_id = calc.get("client_id")
+    job_id = await _enqueue_calculator_pdf(
+        job_type="calculator_rescisao",
+        user_id=user_id,
+        client_id=str(client_id).strip() if client_id else None,
+        calculation_id=calc_uuid,
+        calculator_key="trabalhista.rescisao-trabalhista",
+        input_payload=input_payload if isinstance(input_payload, dict) else {},
+        output_payload=output_payload,
+        target_bucket=(
+            str(existing_document.get("bucket")).strip()
+            if isinstance(existing_document, dict) and existing_document.get("bucket")
+            else None
+        ),
+        target_storage_path=(
+            str(existing_document.get("storage_path")).strip()
+            if isinstance(existing_document, dict) and existing_document.get("storage_path")
+            else None
+        ),
+    )
+
+    return {"job_id": job_id, "status": "queued"}
+
+
 # ---------------------------------------------------------------------------
 # Calculadoras Previdenciárias
 # ---------------------------------------------------------------------------
@@ -282,7 +369,9 @@ async def parse_cnis(
 
     # Registrar o arquivo de input em generated_documents para lifecycle tracking
     if data.bucket and data.storage_path:
-        filename = data.storage_path.rsplit("/", 1)[-1] if "/" in data.storage_path else data.storage_path
+        filename = (
+            data.storage_path.rsplit("/", 1)[-1] if "/" in data.storage_path else data.storage_path
+        )
         try:
             await create_document(
                 job_uuid=job_uuid,
@@ -298,7 +387,9 @@ async def parse_cnis(
                 source="calculator",
             )
         except Exception:
-            logger.warning("Failed to register CNIS input in generated_documents — lifecycle tracking skipped")
+            logger.warning(
+                "Failed to register CNIS input in generated_documents — lifecycle tracking skipped"
+            )
 
     return {"job_id": job_id, "status": "queued"}
 
@@ -409,7 +500,7 @@ async def calcular_media_salarial(
         pass
 
     try:
-        job_id = await _enqueue_previdencia_job(
+        await _enqueue_previdencia_job(
             job_type="calculator_media_salarial",
             user_id=user_id,
             client_id=client_id,
