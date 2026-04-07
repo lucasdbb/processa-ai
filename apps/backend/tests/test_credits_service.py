@@ -93,7 +93,9 @@ async def test_grant_welcome_credits_invalid_cpf_returns_400():
 
     with patch("src.features.billing.credits.service.validate_cpf", return_value=False):
         with pytest.raises(HTTPException) as exc:
-            await service.grant_welcome_credits("user-1", "000.000.000-00", "127.0.0.1")
+            await service.grant_welcome_credits(
+                "user-1", "000.000.000-00", "11999999999", "127.0.0.1"
+            )
 
     assert exc.value.status_code == 400
 
@@ -106,9 +108,17 @@ async def test_grant_welcome_credits_duplicate_cpf_returns_409():
     with patch("src.features.billing.credits.service.get_supabase", return_value=supabase):
         service = CreditsService()
 
-    with patch("src.features.billing.credits.service.validate_cpf", return_value=True):
+    with (
+        patch("src.features.billing.credits.service.validate_cpf", return_value=True),
+        patch(
+            "src.features.billing.credits.service.check_phone_verified",
+            new=AsyncMock(return_value=True),
+        ),
+    ):
         with pytest.raises(HTTPException) as exc:
-            await service.grant_welcome_credits("user-1", "123.456.789-09", "127.0.0.1")
+            await service.grant_welcome_credits(
+                "user-1", "123.456.789-09", "11999999999", "127.0.0.1"
+            )
 
     assert exc.value.status_code == 409
 
@@ -116,19 +126,50 @@ async def test_grant_welcome_credits_duplicate_cpf_returns_409():
 @pytest.mark.asyncio
 async def test_grant_welcome_credits_rate_limited_returns_429():
     supabase = MagicMock()
-    supabase.table.side_effect = [_QueryChain(data=[])]
+    supabase.table.side_effect = [_QueryChain(data=[]), _QueryChain(data=[])]
 
     with patch("src.features.billing.credits.service.get_supabase", return_value=supabase):
         service = CreditsService()
 
-    with patch("src.features.billing.credits.service.validate_cpf", return_value=True), patch(
-        "src.features.billing.credits.service.check_ip_rate_limit",
-        new=AsyncMock(return_value=False),
+    with (
+        patch("src.features.billing.credits.service.validate_cpf", return_value=True),
+        patch(
+            "src.features.billing.credits.service.check_phone_verified",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
+            "src.features.billing.credits.service.check_ip_rate_limit",
+            new=AsyncMock(return_value=False),
+        ),
     ):
         with pytest.raises(HTTPException) as exc:
-            await service.grant_welcome_credits("user-1", "123.456.789-09", "127.0.0.1")
+            await service.grant_welcome_credits(
+                "user-1", "123.456.789-09", "11999999999", "127.0.0.1"
+            )
 
     assert exc.value.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_grant_welcome_credits_requires_verified_phone_returns_400():
+    supabase = MagicMock()
+
+    with patch("src.features.billing.credits.service.get_supabase", return_value=supabase):
+        service = CreditsService()
+
+    with (
+        patch("src.features.billing.credits.service.validate_cpf", return_value=True),
+        patch(
+            "src.features.billing.credits.service.check_phone_verified",
+            new=AsyncMock(return_value=False),
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            await service.grant_welcome_credits(
+                "user-1", "123.456.789-09", "11999999999", "127.0.0.1"
+            )
+
+    assert exc.value.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -136,20 +177,31 @@ async def test_grant_welcome_credits_success():
     supabase = MagicMock()
     supabase.table.side_effect = [
         _QueryChain(data=[]),
+        _QueryChain(data=[]),
         _QueryChain(data=[{"id": "user-1", "welcome_credits_claimed": True}]),
     ]
 
     with patch("src.features.billing.credits.service.get_supabase", return_value=supabase):
         service = CreditsService()
 
-    with patch("src.features.billing.credits.service.validate_cpf", return_value=True), patch(
-        "src.features.billing.credits.service.check_ip_rate_limit",
-        new=AsyncMock(return_value=True),
-    ), patch(
-        "src.features.billing.credits.service.log_registration_ip",
-        new=AsyncMock(),
+    with (
+        patch("src.features.billing.credits.service.validate_cpf", return_value=True),
+        patch(
+            "src.features.billing.credits.service.check_phone_verified",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
+            "src.features.billing.credits.service.check_ip_rate_limit",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
+            "src.features.billing.credits.service.log_registration_ip",
+            new=AsyncMock(),
+        ),
     ):
-        result = await service.grant_welcome_credits("user-1", "123.456.789-09", "127.0.0.1")
+        result = await service.grant_welcome_credits(
+            "user-1", "123.456.789-09", "11999999999", "127.0.0.1"
+        )
 
     assert result["success"] is True
     assert result["credits_granted"] == WELCOME_CREDITS_AMOUNT
@@ -161,6 +213,7 @@ async def test_grant_welcome_credits_grant_failure_rolls_back_claim():
     rollback_chain = _QueryChain(data=[{"id": "user-1"}])
     supabase.table.side_effect = [
         _QueryChain(data=[]),
+        _QueryChain(data=[]),
         _QueryChain(data=[{"id": "user-1", "welcome_credits_claimed": True}]),
         rollback_chain,
     ]
@@ -169,15 +222,25 @@ async def test_grant_welcome_credits_grant_failure_rolls_back_claim():
     with patch("src.features.billing.credits.service.get_supabase", return_value=supabase):
         service = CreditsService()
 
-    with patch("src.features.billing.credits.service.validate_cpf", return_value=True), patch(
-        "src.features.billing.credits.service.check_ip_rate_limit",
-        new=AsyncMock(return_value=True),
-    ), patch(
-        "src.features.billing.credits.service.log_registration_ip",
-        new=AsyncMock(),
+    with (
+        patch("src.features.billing.credits.service.validate_cpf", return_value=True),
+        patch(
+            "src.features.billing.credits.service.check_phone_verified",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
+            "src.features.billing.credits.service.check_ip_rate_limit",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
+            "src.features.billing.credits.service.log_registration_ip",
+            new=AsyncMock(),
+        ),
     ):
         with pytest.raises(HTTPException) as exc:
-            await service.grant_welcome_credits("user-1", "123.456.789-09", "127.0.0.1")
+            await service.grant_welcome_credits(
+                "user-1", "123.456.789-09", "11999999999", "127.0.0.1"
+            )
 
     assert exc.value.status_code == 500
 

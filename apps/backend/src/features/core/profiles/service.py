@@ -26,7 +26,7 @@ class ProfilesService:
             profile_response = (
                 self.supabase.table("profiles")
                 .select(
-                    "id, email, name, role, avatar_url, phone, cpf, whatsapp_opt_in, welcome_credits_claimed, has_used_ai_tool, has_used_calculator, checklist_dismissed, checklist_bonus_claimed, created_at"
+                    "id, email, name, role, avatar_url, phone, phone_verified, phone_verified_at, cpf, whatsapp_opt_in, welcome_credits_claimed, has_used_ai_tool, has_used_calculator, checklist_dismissed, checklist_bonus_claimed, created_at"
                 )
                 .eq("id", user_id)
                 .execute()
@@ -71,6 +71,8 @@ class ProfilesService:
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
                 "phone": profile.get("phone"),
+                "phone_verified": profile.get("phone_verified", False),
+                "phone_verified_at": profile.get("phone_verified_at"),
                 "cpf": profile.get("cpf"),
                 "newsletter_opt_in": newsletter_opt_in,
                 "whatsapp_opt_in": profile.get("whatsapp_opt_in", False),
@@ -170,6 +172,8 @@ class ProfilesService:
                 "role": profile.get("role", "user"),
                 "avatar_url": profile.get("avatar_url"),
                 "phone": profile.get("phone"),
+                "phone_verified": profile.get("phone_verified", False),
+                "phone_verified_at": profile.get("phone_verified_at"),
                 "cpf": profile.get("cpf"),
                 "company": profile.get("company"),
                 "bio": profile.get("bio"),

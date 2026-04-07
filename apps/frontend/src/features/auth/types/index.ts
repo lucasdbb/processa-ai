@@ -1,4 +1,9 @@
-export type UserRole = "admin" | "author" | "user" | "premium" | "office_client";
+export type UserRole =
+  | "admin"
+  | "author"
+  | "user"
+  | "premium"
+  | "office_client";
 
 export interface User {
   id: string;
@@ -6,6 +11,8 @@ export interface User {
   name?: string;
   avatar_url?: string;
   phone?: string;
+  phone_verified?: boolean;
+  phone_verified_at?: string;
   cpf?: string;
   company?: string;
   bio?: string;
@@ -17,7 +24,7 @@ export interface User {
   newsletter_opt_in?: boolean;
   whatsapp_opt_in?: boolean;
   role: UserRole;
-  status: 'active' | 'suspended' | 'deleted';
+  status: "active" | "suspended" | "deleted";
   created_at: string;
   updated_at?: string;
 }

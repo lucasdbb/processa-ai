@@ -38,6 +38,8 @@ function buildUser(id: string, email: string, profile: Record<string, unknown>):
     checklist_bonus_claimed: profile.checklist_bonus_claimed as boolean | undefined,
     cpf: profile.cpf as string | undefined,
     phone: profile.phone as string | undefined,
+    phone_verified: profile.phone_verified as boolean | undefined,
+    phone_verified_at: profile.phone_verified_at as string | undefined,
     newsletter_opt_in: profile.newsletter_opt_in as boolean | undefined,
   }
 }
@@ -91,7 +93,7 @@ export function useAuth() {
           } else {
             setUser(null);
           }
-        } catch (error) {
+        } catch {
           setUser(null);
         } finally {
           setLoading(false);
@@ -238,7 +240,7 @@ export function useAuth() {
       useBillingStore.setState({ subscription: null, isLoading: false, error: null });
 
       clearUser();
-    } catch (error) {
+    } catch {
       useCreditsStore.getState().reset();
       useBillingStore.setState({ subscription: null, isLoading: false, error: null });
       clearUser();

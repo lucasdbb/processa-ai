@@ -12,6 +12,10 @@ from src.features.billing.credits.schemas import (
     FeatureCostItem,
     PurchaseCheckoutResponse,
     PurchaseCreditsRequest,
+    SendPhoneCodeRequest,
+    SendPhoneCodeResponse,
+    VerifyPhoneCodeRequest,
+    VerifyPhoneCodeResponse,
 )
 from src.features.billing.credits.service import credits_service
 
@@ -61,7 +65,19 @@ async def claim_welcome_credits(
     """Reivindica créditos de boas-vindas (requer CPF)."""
     # Tenta pegar IP real se estiver atrás de proxy
     ip = request.headers.get("x-forwarded-for", request.client.host).split(",")[0].strip()
-    return await credits_service.grant_welcome_credits(user_id, data.cpf, ip)
+    return await credits_service.grant_welcome_credits(user_id, data.cpf, data.phone, ip)
+
+
+@router.post("/send-phone-code", response_model=SendPhoneCodeResponse)
+async def send_phone_code(data: SendPhoneCodeRequest, user_id: str = Depends(get_user_id)):
+    """Envia código SMS para verificação de telefone."""
+    return await credits_service.send_phone_code(user_id, data.phone)
+
+
+@router.post("/verify-phone-code", response_model=VerifyPhoneCodeResponse)
+async def verify_phone_code(data: VerifyPhoneCodeRequest, user_id: str = Depends(get_user_id)):
+    """Valida código SMS informado pelo usuário."""
+    return await credits_service.verify_phone_code(user_id, data.phone, data.code)
 
 
 @router.post("/claim-checklist-bonus")

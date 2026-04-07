@@ -57,6 +57,25 @@ class CreditHistoryResponse(BaseModel):
 
 class ClaimWelcomeRequest(BaseModel):
     cpf: str
+    phone: str
+
+
+class SendPhoneCodeRequest(BaseModel):
+    phone: str
+
+
+class SendPhoneCodeResponse(BaseModel):
+    sent: bool
+    expires_in: int
+
+
+class VerifyPhoneCodeRequest(BaseModel):
+    phone: str
+    code: str
+
+
+class VerifyPhoneCodeResponse(BaseModel):
+    verified: bool
 
 
 # Admin Metrics Schemas

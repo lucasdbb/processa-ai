@@ -74,6 +74,8 @@ class UserProfile(BaseModel):
     status: str = "active"
     avatar_url: str | None = None
     phone: str | None = None
+    phone_verified: bool = False
+    phone_verified_at: datetime | None = None
     cpf: str | None = None
     newsletter_opt_in: bool = False
     whatsapp_opt_in: bool = False

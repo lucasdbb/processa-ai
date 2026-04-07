@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SEO } from '@/components/seo'
 import { useUser } from '@/features/auth/hooks/use-user'
-import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle, FileSpreadsheet } from 'lucide-react'
+import { Shield, CreditCard, Camera, Check, Loader2, ExternalLink, Pencil, Coins, User, MessageCircle, FileSpreadsheet, Smartphone, BadgeCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/client'
 import { authService } from '@/features/auth/services/auth-service'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useCreditsStore } from '@/stores/credits-store'
+import { creditsService } from '@/services/credits-service'
 import { billingService, type SubscriptionStatus } from '@/services/billing-service'
 import { dataExportService } from '@/services/data-export-service'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -61,8 +62,14 @@ export default function ConfiguracoesPage() {
     newsletter: user?.newsletter_opt_in || false,
     whatsapp: user?.whatsapp_opt_in || false,
   })
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('')
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false)
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false)
+  const [isSendingPhoneCode, setIsSendingPhoneCode] = useState(false)
+  const [isVerifyingPhoneCode, setIsVerifyingPhoneCode] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const phoneCodeInputRef = useRef<HTMLInputElement>(null)
 
   // Security
   const [newPassword, setNewPassword] = useState('')
@@ -115,9 +122,18 @@ export default function ConfiguracoesPage() {
         newsletter: user.newsletter_opt_in || false,
         whatsapp: user.whatsapp_opt_in || false,
       })
+      setPhoneVerificationCode('')
+      setPhoneCodeSent(false)
+      setIsPhoneVerified(Boolean(user.phone_verified && user.phone))
       setAvatarPreview(null)
     }
   }, [editingProfile, user])
+
+  useEffect(() => {
+    if (phoneCodeSent) {
+      phoneCodeInputRef.current?.focus()
+    }
+  }, [phoneCodeSent])
 
   const isFormValid = useMemo(() => {
     if (!formData.name || formData.name.trim() === '') return false
@@ -134,10 +150,61 @@ export default function ConfiguracoesPage() {
       processedValue = checked
     } else if (name === 'phone') {
       processedValue = phoneMask(value)
+      setPhoneCodeSent(false)
+      setIsPhoneVerified(false)
+      setPhoneVerificationCode('')
     } else if (name === 'cpf') {
       processedValue = cpfMask(value)
     }
     setFormData((prev) => ({ ...prev, [name]: processedValue }))
+  }
+
+  const handleSendPhoneCode = async () => {
+    if (!formData.phone || !isValidPhone(formData.phone)) {
+      toast.error('Informe um telefone válido para enviar o código.')
+      return
+    }
+
+    setIsSendingPhoneCode(true)
+    try {
+      await creditsService.sendPhoneCode(removePhoneMask(formData.phone))
+      setPhoneCodeSent(true)
+      setIsPhoneVerified(false)
+      toast.success('Código enviado por SMS.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível enviar o código.'
+      toast.error(message)
+    } finally {
+      setIsSendingPhoneCode(false)
+    }
+  }
+
+  const handleVerifyPhoneCode = async () => {
+    if (!formData.phone || !isValidPhone(formData.phone)) {
+      toast.error('Informe um telefone válido antes de verificar o código.')
+      return
+    }
+
+    if (phoneVerificationCode.trim().length !== 6) {
+      toast.error('O código deve ter 6 dígitos.')
+      return
+    }
+
+    setIsVerifyingPhoneCode(true)
+    try {
+      await creditsService.verifyPhoneCode(
+        removePhoneMask(formData.phone),
+        phoneVerificationCode.trim(),
+      )
+      setIsPhoneVerified(true)
+      toast.success('Telefone verificado com sucesso.')
+    } catch (error) {
+      setIsPhoneVerified(false)
+      const message = error instanceof Error ? error.message : 'Não foi possível verificar o código.'
+      toast.error(message)
+    } finally {
+      setIsVerifyingPhoneCode(false)
+    }
   }
 
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -371,10 +438,12 @@ export default function ConfiguracoesPage() {
               <DataRow
                 label="Telefone"
                 value={user?.phone ? phoneMask(user.phone) : 'Não informado'}
+                verified={Boolean(user?.phone && user?.phone_verified)}
               />
               <DataRow
                 label="CPF"
                 value={user?.cpf ? cpfMask(user.cpf) : 'Não informado'}
+                verified={Boolean(user?.cpf)}
               />
               <div className="flex items-center justify-between px-5 py-4">
                 <div>
@@ -410,18 +479,15 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-5">
+            <div className="rounded-xl border border-border/80 bg-background/50 px-4 py-4">
               <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <h2 className="text-sm font-semibold text-foreground">Exportar meus dados</h2>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Geramos um arquivo Excel com seus dados e enviamos para o seu e-mail quando estiver pronto.
+                <div className="min-w-0">
+                  <h2 className="text-sm font-medium text-foreground">Exportar todos os seus dados</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Geramos um arquivo Excel com todos os dados da sua conta e enviamos para o seu e-mail quando estiver pronto.
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Limite: 1 solicitação a cada 24 horas.
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Inclui perfil, preferências e dados associados da plataforma. Limite: 1 solicitação a cada 24 horas.
                   </p>
                 </div>
 
@@ -429,10 +495,10 @@ export default function ConfiguracoesPage() {
                   type="button"
                   onClick={handleRequestDataExport}
                   disabled={isRequestingDataExport}
-                  className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isRequestingDataExport ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-                  Exportar dados
+                  Exportar
                 </button>
               </div>
             </div>
@@ -732,31 +798,111 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Telefone */}
               <div>
-                <label htmlFor="modal-phone" className="block text-sm font-medium text-foreground mb-1.5">
+                <label id="modal-phone-label" htmlFor="modal-phone" className="block text-sm font-medium text-foreground mb-1.5">
                   Telefone
                 </label>
-                <input
-                  type="tel"
-                  id="modal-phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="(11) 99999-9999"
+                <div
+                  role="group"
+                  aria-labelledby="modal-phone-label"
                   className={cn(
-                    'w-full px-3 py-2.5 border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:border-transparent transition-all',
+                    'flex items-stretch rounded-lg border bg-background overflow-hidden transition-all',
                     formData.phone && !isValidPhone(formData.phone)
-                      ? 'border-destructive focus:ring-destructive'
-                      : formData.phone && isValidPhone(formData.phone)
-                        ? 'border-green-500 focus:ring-green-500'
-                        : 'border-input focus:ring-primary'
+                      ? 'border-destructive focus-within:ring-2 focus-within:ring-destructive'
+                      : isPhoneVerified
+                        ? 'border-green-500 focus-within:ring-2 focus-within:ring-green-500'
+                        : 'border-input focus-within:ring-2 focus-within:ring-primary'
                   )}
-                />
+                >
+                  <input
+                    type="tel"
+                    id="modal-phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    autoComplete="tel"
+                    aria-invalid={Boolean(formData.phone && !isValidPhone(formData.phone))}
+                    aria-describedby={cn(
+                      formData.phone && !isValidPhone(formData.phone) ? 'phone-error' : '',
+                      phoneCodeSent ? 'phone-code-help' : '',
+                    ).trim() || undefined}
+                    placeholder="(11) 99999-9999"
+                    className="w-full min-w-0 px-3 py-2.5 text-sm bg-transparent text-foreground focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendPhoneCode}
+                    disabled={isLoading || isSendingPhoneCode || !formData.phone || !isValidPhone(formData.phone)}
+                    className="h-[42px] px-3 inline-flex items-center justify-center border-l border-input bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Enviar código por SMS"
+                    aria-label="Enviar código por SMS"
+                    aria-controls="phone-code"
+                  >
+                    {isSendingPhoneCode ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+                  </button>
+                </div>
                 {formData.phone && !isValidPhone(formData.phone) && (
-                  <p className="text-xs text-destructive mt-1">Telefone inválido</p>
+                  <p id="phone-error" className="text-xs text-destructive mt-1">Telefone inválido</p>
                 )}
+                {phoneCodeSent && (
+                  <div className="mt-2 space-y-1.5">
+                    <label id="phone-code-label" htmlFor="phone-code" className="block text-xs font-medium text-foreground">
+                      Código SMS
+                    </label>
+                    <p id="phone-code-help" className="text-xs text-muted-foreground">
+                      Digite os 6 dígitos recebidos por SMS.
+                    </p>
+                    <div
+                      role="group"
+                      aria-labelledby="phone-code-label"
+                      className="flex items-stretch rounded-lg border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary"
+                    >
+                      <input
+                        ref={phoneCodeInputRef}
+                        id="phone-code"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        aria-describedby="phone-code-help"
+                        maxLength={6}
+                        value={phoneVerificationCode}
+                        onChange={(e) => setPhoneVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && phoneVerificationCode.length === 6 && !isVerifyingPhoneCode) {
+                            e.preventDefault()
+                            void handleVerifyPhoneCode()
+                          }
+                        }}
+                        placeholder="000000"
+                        className="w-full min-w-0 px-3 py-2 text-sm bg-transparent text-foreground focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyPhoneCode}
+                        disabled={isVerifyingPhoneCode || phoneVerificationCode.length !== 6}
+                        className="h-[38px] px-3 inline-flex items-center justify-center border-l border-input text-sm font-medium bg-muted/40 hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isVerifyingPhoneCode ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verificar'}
+                      </button>
+                    </div>
+                    {isPhoneVerified && (
+                      <p className="text-xs text-green-600 dark:text-green-400">Telefone verificado.</p>
+                    )}
+                  </div>
+                )}
+                <p className="sr-only" aria-live="polite">
+                  {isSendingPhoneCode
+                    ? 'Enviando código por SMS.'
+                    : isVerifyingPhoneCode
+                      ? 'Verificando código SMS.'
+                      : isPhoneVerified
+                        ? 'Telefone verificado com sucesso.'
+                        : phoneCodeSent
+                          ? 'Código enviado. Campo para digitar código disponível.'
+                          : ''}
+                </p>
               </div>
 
               {/* CPF */}
@@ -880,11 +1026,31 @@ export default function ConfiguracoesPage() {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function DataRow({ label, value }: { label: string; value: string }) {
+function DataRow({
+  label,
+  value,
+  verified = false,
+}: {
+  label: string
+  value: string
+  verified?: boolean
+}) {
   return (
-    <div className="flex items-center justify-between px-5 py-4">
-      <p className="text-sm font-medium text-foreground">{label}</p>
-      <p className="text-sm text-muted-foreground">{value}</p>
+    <div className="flex items-center justify-between gap-3 px-5 py-4">
+      <div className="flex items-center gap-2 min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {verified && (
+          <span
+            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-400"
+            title={`${label} verificado`}
+            aria-label={`${label} verificado`}
+          >
+            <BadgeCheck className="h-3 w-3" />
+          </span>
+        )}
+      </div>
+
+      <p className="text-sm text-muted-foreground truncate">{value}</p>
     </div>
   )
 }

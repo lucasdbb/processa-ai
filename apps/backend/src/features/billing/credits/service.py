@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import HTTPException, status
@@ -8,6 +9,7 @@ from src.core.security import (
     log_registration_ip,
     validate_cpf,
 )
+from src.core.sms import normalize_phone_br
 from src.core.stripe_client import create_checkout_session
 from src.core.supabase import get_supabase
 from src.features.billing.credits.constants import (
@@ -15,6 +17,15 @@ from src.features.billing.credits.constants import (
     CREDIT_PACKAGES,
     FEATURE_COSTS,
     WELCOME_CREDITS_AMOUNT,
+)
+from src.features.billing.credits.phone_verification import (
+    check_phone_verified,
+)
+from src.features.billing.credits.phone_verification import (
+    send_phone_code as send_phone_verification_code,
+)
+from src.features.billing.credits.phone_verification import (
+    verify_phone_code as verify_phone_verification_code,
 )
 from src.features.billing.credits.schemas import (
     AdminCreditsMetrics,
@@ -34,6 +45,22 @@ from src.features.billing.subscriptions.service import SubscriptionsService
 class CreditsService:
     def __init__(self):
         self.supabase = get_supabase()
+
+    async def send_phone_code(self, user_id: str, phone: str) -> dict:
+        """Envia código de verificação via SMS."""
+        return await send_phone_verification_code(user_id, phone)
+
+    async def verify_phone_code(self, user_id: str, phone: str, code: str) -> dict:
+        """Valida código de verificação enviado por SMS."""
+        return await verify_phone_verification_code(user_id, phone, code)
+
+    @staticmethod
+    def _normalize_phone_digits(phone: str) -> str:
+        normalized = normalize_phone_br(phone)
+        digits_only = normalized[2:] if normalized.startswith("55") else normalized
+        if not digits_only.isdigit() or len(digits_only) not in (10, 11):
+            raise HTTPException(status_code=400, detail="Número de telefone inválido")
+        return digits_only
 
     async def get_user_credits(self, user_id: str) -> dict:
         """Get user's credit balance with subscription and purchased breakdown."""
@@ -240,32 +267,67 @@ class CreditsService:
 
         return PurchaseCheckoutResponse(checkout_url=session.url, session_id=session.id)
 
-    async def grant_welcome_credits(self, user_id: str, cpf: str, ip: str) -> dict:
+    async def grant_welcome_credits(self, user_id: str, cpf: str, phone: str, ip: str) -> dict:
         """Concede créditos de boas-vindas."""
         # 1. Validar CPF (antes de qualquer escrita)
         if not validate_cpf(cpf):
             raise HTTPException(status_code=400, detail="CPF inválido")
 
-        # 2. Verificar CPF duplicado (check antecipado para erro amigável)
-        cpf_check = self.supabase.table("profiles").select("id").eq("cpf", cpf).neq("id", user_id).execute()
+        # 2. Validar telefone e exigir verificação prévia
+        phone_digits = self._normalize_phone_digits(phone)
+        if not await check_phone_verified(user_id, phone):
+            raise HTTPException(
+                status_code=400,
+                detail="Telefone não verificado. Verifique seu telefone antes de liberar créditos.",
+            )
+
+        # 3. Verificar CPF duplicado (check antecipado para erro amigável)
+        cpf_check = (
+            self.supabase.table("profiles").select("id").eq("cpf", cpf).neq("id", user_id).execute()
+        )
         if cpf_check.data:
             raise HTTPException(status_code=409, detail="CPF já cadastrado em outra conta")
 
-        # 3. Rate limit de IP
+        # 4. Checar unicidade de telefone verificado em outra conta
+        phone_check = (
+            self.supabase.table("profiles")
+            .select("id")
+            .eq("phone", phone_digits)
+            .eq("phone_verified", True)
+            .neq("id", user_id)
+            .execute()
+        )
+        if phone_check.data:
+            raise HTTPException(
+                status_code=409,
+                detail="Este telefone já está verificado em outra conta",
+            )
+
+        # 5. Rate limit de IP
         if not await check_ip_rate_limit(self.supabase, ip):
             raise HTTPException(
                 status_code=429, detail="Limite de contas atingido para este dispositivo/IP"
             )
 
-        # 4. UPDATE atômico: seta CPF + claimed=true SOMENTE se claimed=false
+        # 6. UPDATE atômico: seta CPF + telefone verificado + claimed=true SOMENTE se claimed=false
         #    Previne race condition TOCTOU — duas requests concorrentes não conseguem
         #    ambas ver claimed=false e prosseguir.
         try:
             result = (
                 self.supabase.table("profiles")
-                .update({"cpf": cpf, "welcome_credits_claimed": True})
+                .update(
+                    {
+                        "cpf": cpf,
+                        "phone": phone_digits,
+                        "phone_verified": True,
+                        "phone_verified_at": datetime.now(timezone.utc).isoformat(),
+                        "welcome_credits_claimed": True,
+                    }
+                )
                 .eq("id", user_id)
-                .eq("welcome_credits_claimed", False)  # Atômico: só atualiza se ainda não reivindicou
+                .eq(
+                    "welcome_credits_claimed", False
+                )  # Atômico: só atualiza se ainda não reivindicou
                 .execute()
             )
 
@@ -283,10 +345,10 @@ class CreditsService:
                 status_code=409, detail="Erro ao salvar CPF. Verifique se já não está em uso."
             )
 
-        # 5. Log IP
+        # 7. Log IP
         await log_registration_ip(self.supabase, ip, user_id)
 
-        # 6. Grant credits
+        # 8. Grant credits
         try:
             self.supabase.rpc(
                 "grant_credits_to_user",
