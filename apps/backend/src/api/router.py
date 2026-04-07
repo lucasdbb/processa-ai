@@ -12,9 +12,6 @@ from src.features.billing.webhooks.router import router as webhooks_router
 
 # Calculator features
 from src.features.calculators.router import router as calculators_router
-
-# Jobs (unified job status/delete)
-from src.features.jobs.router import router as jobs_router
 from src.features.core.blog.router import router as blog_router
 from src.features.core.dashboard.router import router as dashboard_router
 
@@ -29,7 +26,9 @@ from src.features.core.plans.router import router as plans_router
 from src.features.core.profiles.router import router as profiles_router
 from src.features.core.storage.router import router as storage_router
 from src.features.core.support.router import router as support_router
-from src.features.core.waitlist.router import router as waitlist_router
+
+# Jobs (unified job status/delete)
+from src.features.jobs.router import router as jobs_router
 
 # Office features
 from src.features.office.calendar.router import router as calendar_router
@@ -64,7 +63,6 @@ api_router.include_router(
 )
 api_router.include_router(storage_router, prefix="/storage", tags=["Storage"])
 api_router.include_router(gen_documents_router, prefix="/documents", tags=["Documents"])
-api_router.include_router(waitlist_router, prefix="/waitlist", tags=["Waitlist"])
 
 # Billing features
 api_router.include_router(subscriptions_router, prefix="/billing/subscriptions", tags=["Billing"])

@@ -72,22 +72,22 @@ export default function HomePage() {
     {
       title: 'Gestão do Escritório',
       description: 'Clientes, processos, prazos, honorários e muito mais. Tudo sob controle num painel simples.',
-      image: '/images/waitlist/painel_gestao.png',
+      image: '/images/home/painel_gestao.png',
     },
     {
       title: 'IA Jurídica',
       description: 'Análise de CNIS, resumos e automações em minutos para o direito brasileiro.',
-      image: '/images/waitlist/analise_cnis.png',
+      image: '/images/home/analise_cnis.png',
     },
     {
       title: 'Calculadoras',
       description: 'Cálculos confiáveis de rescisão ou previdência com relatórios em PDF.',
-      image: '/images/waitlist/calculadora_rescisao.png',
+      image: '/images/home/calculadora_rescisao.png',
     },
     {
       title: 'Biblioteca de Materiais',
       description: 'E-books, guias e petições de alta qualidade para você não começar do zero.',
-      image: '/images/waitlist/materiais.png',
+      image: '/images/home/materiais.png',
     },
   ]
 

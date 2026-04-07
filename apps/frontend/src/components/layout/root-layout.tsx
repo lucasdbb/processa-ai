@@ -10,7 +10,6 @@ import { useAuth } from '@/features/auth/hooks/use-auth'
 import { usePageTracking } from '@/lib/analytics/hooks'
 import { createClient } from '@/lib/supabase/client'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
-import { isWaitlistMode } from '@/lib/waitlist'
 
 type BlogCachePayload = {
   cachedAt: number
@@ -150,7 +149,7 @@ export function RootLayout() {
   return (
     <div className="min-h-screen bg-background font-sans text-foreground selection:bg-slate-700 selection:text-white flex flex-col">
       <RouteLoadingBar />
-      {isAdminRoute ? null : <Header onLoginClick={openLoginModal} waitlistMode={isWaitlistMode} />}
+      {isAdminRoute ? null : <Header onLoginClick={openLoginModal} />}
       <main className="flex-1">
         <AnimatePresence mode="wait">
           <PageTransition key={location.pathname}>
@@ -159,7 +158,7 @@ export function RootLayout() {
         </AnimatePresence>
       </main>
       {isAdminRoute ? null : <Footer />}
-      {!isWaitlistMode && isLoginModalOpen && (
+      {isLoginModalOpen && (
         <LoginModal
           key={loginModalView}
           isOpen={isLoginModalOpen}

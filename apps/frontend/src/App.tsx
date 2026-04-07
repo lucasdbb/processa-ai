@@ -6,7 +6,6 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { lazy, useEffect } from 'react'
 import { fetchPlans, plansQueryKey } from '@/services/plans-service'
-import { isWaitlistMode } from '@/lib/waitlist'
 
 const ReactQueryDevtools = import.meta.env.DEV
   ? lazy(() => import('@tanstack/react-query-devtools').then(m => ({ default: m.ReactQueryDevtools })))
@@ -25,13 +24,11 @@ const queryClient = new QueryClient({
 
 function App() {
   useEffect(() => {
-    if (!isWaitlistMode) {
-      void queryClient.prefetchQuery({
-        queryKey: plansQueryKey,
-        queryFn: fetchPlans,
-        staleTime: 1000 * 60 * 30,
-      })
-    }
+    void queryClient.prefetchQuery({
+      queryKey: plansQueryKey,
+      queryFn: fetchPlans,
+      staleTime: 1000 * 60 * 30,
+    })
   }, [])
 
   return (

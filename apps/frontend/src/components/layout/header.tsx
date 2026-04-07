@@ -29,10 +29,9 @@ type HeaderResourceItem = {
 
 interface HeaderProps {
   onLoginClick?: () => void
-  waitlistMode?: boolean
 }
 
-export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
+export function Header({ onLoginClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [recursosOpen, setRecursosOpen] = useState(false)
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
@@ -47,12 +46,11 @@ export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
 
   // Fetch AI tools and calculators from backend on mount
   useEffect(() => {
-    if (waitlistMode) return
     fetchToolsCatalog().then(({ aiTools, calculators }) => {
       setAiTools(aiTools)
       setCalculators(calculators)
     })
-  }, [waitlistMode])
+  }, [])
 
   // Recursos principais - o que o usuário pode ACESSAR
   const recursos: HeaderResourceItem[] = [
@@ -115,7 +113,6 @@ export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
 
   // Fechar menu mobile ao mudar de rota
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenuOpen(false)
     setRecursosOpen(false)
     setActiveSubmenu(null)
@@ -174,7 +171,7 @@ export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
             </Link>
 
             {/* Dropdown Recursos com Mega Menu Lateral */}
-            {!waitlistMode && <div className="relative" ref={recursosRef}>
+            <div className="relative" ref={recursosRef}>
               <button
                 onClick={() => setRecursosOpen(!recursosOpen)}
                 onMouseEnter={() => setRecursosOpen(true)}
@@ -312,21 +309,19 @@ export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
                   )}
                 </div>
               )}
-            </div>}
+            </div>
 
-            {!waitlistMode && (
-              <Link
-                to="/planos"
-                className={cn(
-                  'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                  isActive('/planos')
-                    ? 'text-foreground bg-muted'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                )}
-              >
-                Planos
-              </Link>
-            )}
+            <Link
+              to="/planos"
+              className={cn(
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+                isActive('/planos')
+                  ? 'text-foreground bg-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              )}
+            >
+              Planos
+            </Link>
 
             <Link
               to="/sobre"
@@ -351,16 +346,7 @@ export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
 
-            {waitlistMode ? (
-              <a
-                href="/"
-                className="group relative inline-flex items-center justify-center gap-2 px-6 py-2 text-sm font-semibold text-white transition-all duration-200 bg-slate-900 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
-              >
-                Entrar na lista
-                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                <div className="absolute inset-0 -z-10 rounded-full ring-1 ring-white/20 group-hover:ring-white/40 transition-all" />
-              </a>
-            ) : isLoading ? (
+            {isLoading ? (
               <div className="h-9 w-20 bg-muted rounded-lg animate-pulse" />
             ) : isAuthenticated && user ? (
               <UserMenu user={user} />
@@ -412,74 +398,70 @@ export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
             </Link>
 
             {/* Recursos */}
-            {!waitlistMode && (
-              <div>
-                <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Recursos
-                </p>
-                <div className="space-y-1">
-                  {recursos.map((item) => {
-                    const Icon = item.icon
+            <div>
+              <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Recursos
+              </p>
+              <div className="space-y-1">
+                {recursos.map((item) => {
+                  const Icon = item.icon
 
-                    // Se tiver subitems, renderizar com submenu
-                    if (item.subitems && item.subitems.length > 0) {
-                      return (
-                        <div key={item.name} className="space-y-1">
-                          <div className="px-3 py-2 text-sm font-medium text-foreground">
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4 text-muted-foreground" />
-                              <span>{item.name}</span>
-                            </div>
-                          </div>
-                          <div className="ml-6 space-y-1">
-                            {item.subitems.map((subitem) => (
-                              <Link
-                                key={subitem.name}
-                                to={subitem.href}
-                                className={cn(
-                                  "block px-3 py-2 rounded-lg text-sm transition-colors",
-                                  subitem.locked
-                                    ? "text-muted-foreground opacity-60 cursor-not-allowed"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                )}
-                              >
-                                {subitem.name}
-                              </Link>
-                            ))}
+                  // Se tiver subitems, renderizar com submenu
+                  if (item.subitems && item.subitems.length > 0) {
+                    return (
+                      <div key={item.name} className="space-y-1">
+                        <div className="px-3 py-2 text-sm font-medium text-foreground">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <span>{item.name}</span>
                           </div>
                         </div>
-                      )
-                    }
-
-                    // Se não tiver subitems, renderizar como link simples
-                    return (
-                      <Link
-                        key={item.name}
-                        to={item.href!}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:bg-muted transition-colors"
-                      >
-                        <Icon className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-sm font-medium">{item.name}</span>
-                      </Link>
+                        <div className="ml-6 space-y-1">
+                          {item.subitems.map((subitem) => (
+                            <Link
+                              key={subitem.name}
+                              to={subitem.href}
+                              className={cn(
+                                "block px-3 py-2 rounded-lg text-sm transition-colors",
+                                subitem.locked
+                                  ? "text-muted-foreground opacity-60 cursor-not-allowed"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              )}
+                            >
+                              {subitem.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     )
-                  })}
-                </div>
+                  }
+
+                  // Se não tiver subitems, renderizar como link simples
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href!}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Icon className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium">{item.name}</span>
+                    </Link>
+                  )
+                })}
               </div>
-            )}
+            </div>
 
             {/* Links */}
             <div className="border-t border-border pt-4 space-y-1">
-              {!waitlistMode && (
-                <Link
-                  to="/planos"
-                  className={cn(
-                    'block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    isActive('/planos') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  Planos
-                </Link>
-              )}
+              <Link
+                to="/planos"
+                className={cn(
+                  'block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive('/planos') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                Planos
+              </Link>
               <Link
                 to="/blog"
                 className={cn(
@@ -500,18 +482,9 @@ export function Header({ onLoginClick, waitlistMode }: HeaderProps) {
               </Link>
             </div>
 
-            {/* Auth / Waitlist CTA */}
+            {/* Auth CTA */}
             <div className="border-t border-border pt-4">
-              {waitlistMode ? (
-                <a
-                  href="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full py-3 text-white bg-slate-900 hover:bg-slate-800 font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg"
-                >
-                  Entrar na lista
-                  <ArrowRight className="h-4 w-4" />
-                </a>
-              ) : isAuthenticated && user ? (
+              {isAuthenticated && user ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 px-3">
                     <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center text-sm font-semibold">
