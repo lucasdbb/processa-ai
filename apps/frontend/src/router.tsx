@@ -24,30 +24,59 @@ import TermosPage from '@/pages/termos'
 import PrivacidadePage from '@/pages/privacidade'
 import TransparenciaIAPage from '@/pages/transparencia-ia'
 
+// Retry wrapper for lazy imports — handles chunk load failures after deployments
+// by reloading the page once when the JS chunk file is no longer available.
+function lazyWithRetry(importFn: () => Promise<{ default: React.ComponentType }>) {
+  return lazy(() =>
+    importFn().catch((error: unknown) => {
+      const isChunkError =
+        error instanceof Error &&
+        (error.message.includes('Failed to fetch dynamically imported module') ||
+          error.message.includes('Loading chunk') ||
+          error.message.includes('Loading CSS chunk') ||
+          error.name === 'ChunkLoadError')
+
+      if (isChunkError) {
+        const reloadKey = 'chunk_reload_' + window.location.pathname
+        const lastReload = sessionStorage.getItem(reloadKey)
+        const now = Date.now()
+
+        // Only auto-reload once per route per 30s to prevent infinite loops
+        if (!lastReload || now - Number(lastReload) > 30_000) {
+          sessionStorage.setItem(reloadKey, String(now))
+          window.location.reload()
+        }
+      }
+
+      throw error
+    }),
+  )
+}
+
 // App pages (lazy loading for code splitting)
-const DashboardPage = lazy(() => import('@/pages/app/dashboard'))
-const ClientesPage = lazy(() => import('@/pages/app/clientes'))
-const ClienteDetalhePage = lazy(() => import('@/pages/app/clientes/[id]'))
-const ProcessosPage = lazy(() => import('@/pages/app/processos'))
-const ProcessoDetalhePage = lazy(() => import('@/pages/app/processos/[id]'))
-const ServicosPage = lazy(() => import('@/pages/app/servicos'))
-const ServicoDetalhePage = lazy(() => import('@/pages/app/servicos/[id]'))
-const CalendarioPage = lazy(() => import('@/pages/app/calendario'))
-const DocumentosPage = lazy(() => import('@/pages/app/documentos'))
-const NotificacoesPage = lazy(() => import('@/pages/app/notificacoes'))
-const ConfiguracoesPage = lazy(() => import('@/pages/app/configuracoes'))
-const AssinaturaPage = lazy(() => import('@/pages/app/assinatura'))
-const AjudaPage = lazy(() => import('@/pages/app/ajuda'))
+const DashboardPage = lazyWithRetry(() => import('@/pages/app/dashboard'))
+const ClientesPage = lazyWithRetry(() => import('@/pages/app/clientes'))
+const ClienteDetalhePage = lazyWithRetry(() => import('@/pages/app/clientes/[id]'))
+const ProcessosPage = lazyWithRetry(() => import('@/pages/app/processos'))
+const ProcessoDetalhePage = lazyWithRetry(() => import('@/pages/app/processos/[id]'))
+const ServicosPage = lazyWithRetry(() => import('@/pages/app/servicos'))
+const ServicoDetalhePage = lazyWithRetry(() => import('@/pages/app/servicos/[id]'))
+const CalendarioPage = lazyWithRetry(() => import('@/pages/app/calendario'))
+const DocumentosPage = lazyWithRetry(() => import('@/pages/app/documentos'))
+const NotificacoesPage = lazyWithRetry(() => import('@/pages/app/notificacoes'))
+const ConfiguracoesPage = lazyWithRetry(() => import('@/pages/app/configuracoes'))
+const AssinaturaPage = lazyWithRetry(() => import('@/pages/app/assinatura'))
+const AjudaPage = lazyWithRetry(() => import('@/pages/app/ajuda'))
 
 // App pages (lazy loading - less frequently accessed)
-const CalculadorasAppPage = lazy(() => import('@/pages/app/calculadoras'))
-const IAJuridicaHubPage = lazy(() => import('@/pages/app/ia-juridica'))
-const IAAppPage = lazy(() => import('@/pages/app/ia'))
+const CalculadorasAppPage = lazyWithRetry(() => import('@/pages/app/calculadoras'))
+const IAJuridicaHubPage = lazyWithRetry(() => import('@/pages/app/ia-juridica'))
+const IAAppPage = lazyWithRetry(() => import('@/pages/app/ia'))
 
 // Admin pages (lazy loading - restricted access + heavy markdown editor)
-const AdminPage = lazy(() => import('@/pages/admin'))
-const AdminNewPostPage = lazy(() => import('@/pages/admin-new-post'))
-const AdminEditPostPage = lazy(() => import('@/pages/admin-edit-post'))
+const AdminPage = lazyWithRetry(() => import('@/pages/admin'))
+const AdminNewPostPage = lazyWithRetry(() => import('@/pages/admin-new-post'))
+const AdminEditPostPage = lazyWithRetry(() => import('@/pages/admin-edit-post'))
 
 // Loading fallback component
 // eslint-disable-next-line react-refresh/only-export-components
