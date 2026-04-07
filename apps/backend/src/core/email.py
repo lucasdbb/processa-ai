@@ -39,6 +39,26 @@ def _get_pt_day_name() -> str:
     return days[datetime.now().weekday()]
 
 
+def _get_pt_full_date() -> str:
+    """Get the current date formatted in Portuguese (e.g., 14 de fevereiro de 2026)."""
+    months = {
+        1: "janeiro",
+        2: "fevereiro",
+        3: "março",
+        4: "abril",
+        5: "maio",
+        6: "junho",
+        7: "julho",
+        8: "agosto",
+        9: "setembro",
+        10: "outubro",
+        11: "novembro",
+        12: "dezembro",
+    }
+    now = datetime.now()
+    return f"{now.day} de {months[now.month]} de {now.year}"
+
+
 def load_email_template(template_name: str, context: dict) -> str:
     """
     Load an HTML email template and render it with Jinja2.
@@ -553,6 +573,7 @@ Equipe Processa AI
     html_body = load_email_template(
         "newsletter.html",
         {
+            "DATA_ENVIO": _get_pt_full_date(),
             "USERNAME": subscriber_name or "Leitor",
             "DIA_DA_SEMANA": _get_pt_day_name(),
             "TITULO_POST": post_title,
@@ -621,6 +642,7 @@ Equipe Processa AI
     html_body = load_email_template(
         "newsletter.html",
         {
+            "DATA_ENVIO": _get_pt_full_date(),
             "USERNAME": "Leitor",
             "DIA_DA_SEMANA": _get_pt_day_name(),
             "TITULO_POST": post_title,
