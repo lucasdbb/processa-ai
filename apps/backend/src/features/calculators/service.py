@@ -107,6 +107,14 @@ class CalculatorsService:
         },
     }
 
+    _AVISO_OPCOES_POR_TIPO = {
+        "sem_justa_causa": ("trabalhado", "indenizado", "dispensado"),
+        "por_pedido": ("trabalhado", "nao_cumprido"),
+        "com_justa_causa": ("dispensado",),
+        "acordo": ("trabalhado", "indenizado", "dispensado"),
+        "termino_contrato": ("dispensado",),
+    }
+
     def calculate_rescisao_trabalhista(
         self,
         *,
@@ -132,11 +140,47 @@ class CalculatorsService:
             )
 
         tipo = str(tipo_rescisao).strip()
+        tipo_aviso = str(tipo_aviso_previo).strip()
         regras = self._VERBAS_POR_TIPO.get(tipo)
         if regras is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"tipo_rescisao inválido: {tipo}",
+            )
+
+        opcoes_aviso = self._AVISO_OPCOES_POR_TIPO.get(tipo, ())
+        if tipo_aviso not in opcoes_aviso:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "tipo_aviso_previo inválido para tipo_rescisao "
+                    f"'{tipo}': '{tipo_aviso}'. "
+                    f"Opções permitidas: {', '.join(opcoes_aviso)}"
+                ),
+            )
+
+        grau_insalubridade = int(adicional_insalubridade_grau or 0)
+        if grau_insalubridade not in (0, 10, 20, 40):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "adicional_insalubridade_grau inválido: "
+                    f"{grau_insalubridade}. Valores permitidos: 0, 10, 20, 40"
+                ),
+            )
+
+        if adicional_periculosidade and grau_insalubridade > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Periculosidade e insalubridade não podem ser acumuladas na mesma rescisão"
+                ),
+            )
+
+        if grau_insalubridade > 0 and float(base_insalubridade) <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="base_insalubridade deve ser maior que zero quando houver insalubridade",
             )
 
         # 1. Remuneração Bruta (Base de Cálculo)
@@ -148,10 +192,8 @@ class CalculatorsService:
             remuneracao += val_periculosidade
 
         val_insalubridade = 0.0
-        if adicional_insalubridade_grau > 0:
-            val_insalubridade = float(base_insalubridade) * (
-                float(adicional_insalubridade_grau) / 100.0
-            )
+        if grau_insalubridade > 0:
+            val_insalubridade = float(base_insalubridade) * (float(grau_insalubridade) / 100.0)
             remuneracao += val_insalubridade
 
         val_noturno = 0.0
@@ -179,14 +221,14 @@ class CalculatorsService:
 
         fator_aviso = regras["aviso_previo_fator"]
 
-        if tipo_aviso_previo in ("indenizado", "trabalhado"):
+        if tipo_aviso in ("indenizado", "trabalhado"):
             # Empregador paga aviso proporcional ao tempo de serviço
             dias_aviso = dias_aviso_proporcional
             tem_aviso = regras["aviso_previo"] and fator_aviso > 0
             valor_aviso_previo = (
                 (remuneracao / 30.0) * dias_aviso * fator_aviso if tem_aviso else 0.0
             )
-        elif tipo_aviso_previo == "nao_cumprido":
+        elif tipo_aviso == "nao_cumprido":
             # Pedido de demissão sem cumprir aviso: desconto de 30 dias fixos
             dias_aviso = 30
             tem_aviso = True
@@ -198,7 +240,7 @@ class CalculatorsService:
             valor_aviso_previo = 0.0
 
         # Projeção só se aplica ao aviso indenizado (trabalhador não trabalhou o período)
-        aviso_indenizado = tem_aviso and tipo_aviso_previo == "indenizado"
+        aviso_indenizado = tem_aviso and tipo_aviso == "indenizado"
 
         # 5. Férias Vencidas + 1/3 (devidas em todos os tipos, inclusive justa causa)
         dias_ferias_vencidas = max(0, int(ferias_vencidas or 0))
@@ -323,7 +365,7 @@ class CalculatorsService:
                 "meses_trabalhados": meses_trabalhados_total,
                 "dias_trabalhados": dias_trabalhados,
                 "dias_aviso_previo": dias_aviso,
-                "tipo_aviso_previo": tipo_aviso_previo,
+                "tipo_aviso_previo": tipo_aviso,
                 "meses_ferias_proporcionais": meses_ferias_prop,
                 "meses_13": meses_13,
                 "tipo_rescisao": tipo,
