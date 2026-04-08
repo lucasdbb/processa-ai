@@ -4,6 +4,7 @@ Email service using Brevo.
 
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -11,6 +12,12 @@ from src.core.config import settings
 from src.core.logging import logger
 
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
+
+
+def _now_in_sao_paulo() -> datetime:
+    """Return current datetime in America/Sao_Paulo timezone."""
+    return datetime.now(SAO_PAULO_TZ)
 
 
 def _resolve_email_api_key() -> str:
@@ -36,7 +43,7 @@ def _get_pt_day_name() -> str:
         5: "Sábado",
         6: "Domingo",
     }
-    return days[datetime.now().weekday()]
+    return days[_now_in_sao_paulo().weekday()]
 
 
 def _get_pt_full_date() -> str:
@@ -55,7 +62,7 @@ def _get_pt_full_date() -> str:
         11: "novembro",
         12: "dezembro",
     }
-    now = datetime.now()
+    now = _now_in_sao_paulo()
     return f"{now.day} de {months[now.month]} de {now.year}"
 
 
