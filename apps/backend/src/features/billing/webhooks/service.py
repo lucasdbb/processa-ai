@@ -110,7 +110,9 @@ class WebhooksService:
 
         event_id = event["id"]
         event_type = event["type"]
-        data = event["data"]["object"]
+        # Convert StripeObject to plain dict so .get() works in all handlers.
+        # to_dict_recursive() converts nested StripeObjects (e.g. metadata) too.
+        data = event["data"]["object"].to_dict_recursive()
 
         # Resolve user_id from the event: prefer metadata.user_id (checkout),
         # fall back to lookup via stripe_customer_id in subscriptions table.
@@ -145,7 +147,10 @@ class WebhooksService:
             logger.info(f"Skipping already processed webhook: {event_id}")
             return {"received": True, "status": "already_processed"}
 
-        logger.info(f"Processing Stripe webhook: {event_type} (ID: {event_id})")
+        logger.info(
+            f"Processing Stripe webhook: {event_type} (ID: {event_id}), "
+            f"user_id={resolved_user_id}, metadata={event_metadata}"
+        )
 
         try:
             # Record event as "processing" BEFORE executing handler to prevent
@@ -305,9 +310,17 @@ class WebhooksService:
             logger.error(f"Failed to retrieve subscription: {e}")
             raise TransientError(f"Failed to retrieve subscription from Stripe: {e}")
 
-        first_item = get_first_item(subscription)
-        plan_id = self._get_plan_id_from_price(first_item.price.id)
-        period = get_subscription_period(subscription)
+        try:
+            first_item = get_first_item(subscription)
+            price_id = first_item.price.id
+            plan_id = self._get_plan_id_from_price(price_id)
+            period = get_subscription_period(subscription)
+        except Exception as e:
+            logger.error(
+                f"Failed to parse subscription details: {e}, "
+                f"subscription_id={subscription_id}, user_id={user_id}"
+            )
+            raise TransientError(f"Failed to parse subscription details: {e}")
 
         try:
             # Update subscription
@@ -333,15 +346,18 @@ class WebhooksService:
             await self._grant_plan_credits(user_id, plan_id)
 
             logger.info(f"Subscription activated for user {user_id}, plan: {plan_id}")
+        except Exception as e:
+            logger.error(f"Failed to update subscription: {e}")
+            raise TransientError(f"Failed to update subscription in database: {e}")
 
-            # Send welcome email
+        # Send welcome email (non-critical — don't fail the webhook if email fails)
+        try:
             user_email = await self._get_user_email(user_id)
             if user_email:
                 plan_name = await self._get_plan_name(plan_id)
                 await send_subscription_welcome(user_email, plan_name)
         except Exception as e:
-            logger.error(f"Failed to update subscription: {e}")
-            raise TransientError(f"Failed to update subscription in database: {e}")
+            logger.error(f"Failed to send welcome email for user {user_id}: {e}")
 
     async def _handle_invoice_paid(self, invoice: dict) -> None:
         """Handle invoice.paid event - renew subscription."""
