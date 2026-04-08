@@ -386,9 +386,23 @@ export function ChatJuridicoTool() {
         >
           {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Nova sessão
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 dark:from-amber-500/25 dark:to-yellow-500/25 border border-amber-400/30 dark:border-amber-400/20 rounded-full shadow-sm shadow-amber-500/10">
-            <Coins className="w-3 h-3 text-amber-500 dark:text-amber-400 drop-shadow-sm" />
-            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">{sessionCost}</span>
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full shadow-sm',
+              isDark
+                ? 'bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border border-amber-400/20 shadow-amber-500/10'
+                : 'bg-gradient-to-r from-amber-400/30 to-yellow-300/30 border border-amber-300/60 shadow-amber-300/25',
+            )}
+          >
+            <Coins
+              className={cn(
+                'w-3 h-3 drop-shadow-sm',
+                isDark ? 'text-amber-400' : 'text-amber-300',
+              )}
+            />
+            <span className={cn('text-[11px] font-bold', isDark ? 'text-amber-300' : 'text-amber-200')}>
+              {sessionCost}
+            </span>
           </span>
         </button>
       </div>
