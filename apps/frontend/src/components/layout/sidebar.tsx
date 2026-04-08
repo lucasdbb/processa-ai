@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  MessageSquarePlus,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -21,6 +22,7 @@ import { useSidebarStore } from '@/stores/sidebar-store'
 import { useTheme } from 'next-themes'
 import { useAiTools } from '@/features/ai/context'
 import { useCalculators } from '@/features/calculators/context'
+import { FeedbackFormDialog } from '@/components/forms/feedback-form-dialog'
 import type { AiTool } from '@/features/ai/types'
 import type { CalculatorItem } from '@/features/calculators/api'
 
@@ -31,6 +33,7 @@ interface NavItem {
   icon: typeof LayoutDashboard
   children?: { name: string; href: string }[]
   dataTour?: string
+  onClick?: () => void
 }
 
 interface NavGroup {
@@ -105,17 +108,13 @@ const getNavigationGroups = (
   ]
 }
 
-const bottomNavigation: NavItem[] = [
-  { name: 'Configurações', href: '/app/configuracoes', icon: Settings, dataTour: 'menu-configuracoes' },
-  { name: 'Ajuda', href: '/app/ajuda', icon: HelpCircle, dataTour: 'menu-ajuda' },
-]
-
 export function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { isExpanded, isMobileOpen, toggle, closeMobile } = useSidebarStore()
   const { resolvedTheme } = useTheme()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const { tools: aiTools } = useAiTools()
   const { calculators } = useCalculators()
 
@@ -124,6 +123,17 @@ export function Sidebar() {
   const collapsedLogoSrc = isDark ? '/logo_dark_colapsada.png' : '/logo_light_colapsada.png'
 
   const navigation = getNavigationGroups(aiTools, calculators)
+  const bottomNavigation: NavItem[] = [
+    { name: 'Configurações', href: '/app/configuracoes', icon: Settings, dataTour: 'menu-configuracoes' },
+    {
+      name: 'Feedback',
+      href: '#',
+      icon: MessageSquarePlus,
+      dataTour: 'menu-feedback',
+      onClick: () => setIsFeedbackOpen(true),
+    },
+    { name: 'Ajuda', href: '/app/ajuda', icon: HelpCircle, dataTour: 'menu-ajuda' },
+  ]
 
   const isActive = (path: string) => {
     if (path === '/app' && location.pathname !== '/app') {
@@ -219,6 +229,31 @@ const renderNavItem = (item: NavItem) => {
             </div>
           )}
         </div>
+      )
+    }
+
+    if (item.onClick) {
+      return (
+        <button
+          key={item.name}
+          type="button"
+          onClick={() => {
+            item.onClick?.()
+            closeMobile()
+          }}
+          data-tour={item.dataTour}
+          className={cn(
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+            active
+              ? 'bg-accent text-foreground'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+            !isExpanded && 'justify-center'
+          )}
+          title={!isExpanded ? item.name : undefined}
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          {isExpanded && <span>{item.name}</span>}
+        </button>
       )
     }
 
@@ -329,6 +364,11 @@ const renderNavItem = (item: NavItem) => {
       >
         {sidebarContent}
       </aside>
+
+      <FeedbackFormDialog
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+      />
 
     </>
   )

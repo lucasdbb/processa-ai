@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, MessageSquarePlus, Shield, LogOut, FileText, Info, Users, Zap, Crown, GraduationCap, Play } from 'lucide-react'
+import { Menu, Search, Bell, Moon, Sun, AlertCircle, FolderKanban, Calculator, Check, Coins, Sparkles, Shield, LogOut, FileText, Info, Users, Zap, Crown, GraduationCap, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommandPaletteStore } from '@/stores/command-palette-store'
@@ -7,7 +7,6 @@ import { useUser } from '@/features/auth/hooks/use-user'
 import { useState, useEffect } from 'react'
 import { useCreditsStore } from '@/stores/credits-store'
 import { notificationService, type NotificationItem } from '@/services/notification-service'
-import { FeedbackFormDialog } from '@/components/forms/feedback-form-dialog'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -42,7 +41,6 @@ const NOTIFICATIONS_STEP_SELECTORS = new Set([
 const USER_MENU_STEP_SELECTORS = new Set([
   '[data-tour="user-menu"]',
   '[data-tour="user-menu-dropdown"]',
-  '[data-tour="user-menu-feedback"]',
   '[data-tour="user-menu-guided-mission"]',
   '[data-tour="user-menu-profile"]',
   '[data-tour="user-menu-logout"]',
@@ -117,7 +115,6 @@ export function AppHeader() {
   const { credits } = useCreditsStore()
   const { subscription } = useBillingStore()
   const { startTour } = useOnboardingStore()
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [tourPinnedMenu, setTourPinnedMenu] = useState<'credits' | 'notifications' | 'user' | null>(null)
   const [isCreditsMenuOpen, setIsCreditsMenuOpen] = useState(false)
   const [isNotificationsMenuOpen, setIsNotificationsMenuOpen] = useState(false)
@@ -590,10 +587,6 @@ export function AppHeader() {
                   <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem onClick={() => setIsFeedbackOpen(true)} data-tour="user-menu-feedback">
-                <MessageSquarePlus className="mr-2 h-4 w-4" />
-                <span>Enviar Sugestão</span>
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleStartTour} data-tour="user-menu-guided-mission">
                 <Play className="mr-2 h-4 w-4" />
                 <span>Iniciar missão guiada</span>
@@ -617,10 +610,6 @@ export function AppHeader() {
         </div>
       </div>
 
-      <FeedbackFormDialog
-        isOpen={isFeedbackOpen}
-        onClose={() => setIsFeedbackOpen(false)}
-      />
     </header>
   )
 }

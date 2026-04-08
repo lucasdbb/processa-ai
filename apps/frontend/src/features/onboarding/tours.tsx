@@ -153,6 +153,16 @@ export const TOURS: Record<string, TourConfig> = {
         ),
       },
       {
+        selector: '#sidebar-desktop [data-tour="menu-feedback"]',
+        placement: 'right',
+        content: (
+          <div className="space-y-2">
+            <h3 className="font-semibold">Feedback</h3>
+            <p className="text-sm">Compartilhe melhorias de produto para ajudar a evoluir seu fluxo de trabalho.</p>
+          </div>
+        ),
+      },
+      {
         selector: '#sidebar-desktop [data-tour="menu-ajuda"]',
         placement: 'right',
         content: (
@@ -233,7 +243,7 @@ export const TOURS: Record<string, TourConfig> = {
         content: (
           <div className="space-y-2">
             <h3 className="font-semibold">Menu do usuário</h3>
-            <p className="text-sm">Este dropdown reúne ações rápidas para feedback, missão guiada e sessão.</p>
+            <p className="text-sm">Este dropdown reúne ações de missão guiada e sessão.</p>
           </div>
         ),
       },
@@ -256,17 +266,6 @@ export const TOURS: Record<string, TourConfig> = {
           <div className="space-y-2">
             <h3 className="font-semibold">Resumo do perfil</h3>
             <p className="text-sm">Confira rapidamente conta ativa e e-mail antes de acionar opções avançadas.</p>
-          </div>
-        ),
-      },
-      {
-        selector: '[data-tour="user-menu-feedback"]',
-        placement: 'left',
-        action: openUserMenu,
-        content: (
-          <div className="space-y-2">
-            <h3 className="font-semibold">Enviar sugestão</h3>
-            <p className="text-sm">Compartilhe melhorias de produto para ajudar a evoluir seu fluxo de trabalho.</p>
           </div>
         ),
       },
@@ -318,9 +317,8 @@ export const TOURS: Record<string, TourConfig> = {
         ),
       },
       {
-        selector: '[data-tour="user-menu-feedback"]',
-        placement: 'left',
-        action: openUserMenu,
+        selector: '#sidebar-desktop [data-tour="menu-feedback"]',
+        placement: 'right',
         content: (
           <div className="space-y-2">
             <h3 className="font-semibold">Loop de melhoria</h3>
