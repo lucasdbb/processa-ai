@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { SEO } from '@/components/seo'
-import { Search, Plus, Mail, Phone, MapPin, User, SlidersHorizontal } from 'lucide-react'
+import { Search, Plus, Mail, Phone, MapPin, User, SlidersHorizontal, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { phoneMask, cpfMask, cnpjMask, removeDocumentMask } from '@/lib/masks'
 import { ClientListSkeleton } from '@/components/skeletons/client-list-skeleton'
@@ -11,6 +11,8 @@ import { useClients } from '@/hooks/use-clients'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { inviteClient } from '@/services/portal-service'
+import type { Client } from '@/services/clients-service'
 
 export default function ClientesPage() {
   const [search, setSearch] = useState('')
@@ -19,6 +21,7 @@ export default function ClientesPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [showClientDialog, setShowClientDialog] = useState(false)
+  const [invitingClientId, setInvitingClientId] = useState<string | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -43,6 +46,48 @@ export default function ClientesPage() {
       archived: 'Arquivado',
     }
     return labels[status] || status
+  }
+
+  const getPortalStatus = (client: Client) => client.portal_status ?? 'not_invited'
+
+  const getPortalStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      not_invited: 'Sem acesso',
+      invited: 'Convite enviado',
+      active: 'Portal ativo',
+      revoked: 'Acesso revogado',
+    }
+    return labels[status] ?? 'Sem acesso'
+  }
+
+  const getPortalStatusClass = (status: string) => {
+    if (status === 'active') return 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+    if (status === 'invited') return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+    if (status === 'revoked') return 'bg-red-500/10 text-red-600 dark:text-red-400'
+    return 'bg-muted text-muted-foreground'
+  }
+
+  const handleInviteFromList = async (event: MouseEvent, client: Client) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (!client.email) {
+      toast.error('O cliente precisa ter e-mail cadastrado para receber convite')
+      return
+    }
+
+    setInvitingClientId(client.id)
+    try {
+      const result = await inviteClient(client.id)
+      toast.success(result.message)
+      await queryClient.invalidateQueries({ queryKey: ['clients'] })
+      await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', client.id] })
+    } catch (error: unknown) {
+      const message = (error as { message?: string })?.message ?? 'Erro ao enviar convite'
+      toast.error(message)
+    } finally {
+      setInvitingClientId(null)
+    }
   }
 
   return (
@@ -170,10 +215,34 @@ export default function ClientesPage() {
                         >
                           {getStatusLabel(client.status)}
                         </span>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full',
+                            getPortalStatusClass(getPortalStatus(client))
+                          )}
+                        >
+                          {getPortalStatusLabel(getPortalStatus(client))}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-muted-foreground hidden sm:block">
-                        Cadastrado em {formatDate(client.created_at)}
-                      </span>
+                      <div className="hidden sm:flex items-center gap-2">
+                        {(getPortalStatus(client) === 'not_invited' || getPortalStatus(client) === 'revoked' || getPortalStatus(client) === 'invited') && (
+                          <button
+                            onClick={(event) => handleInviteFromList(event, client)}
+                            disabled={invitingClientId === client.id || !client.email}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                          >
+                            <Send className="h-3 w-3" />
+                            {invitingClientId === client.id
+                              ? 'Enviando...'
+                              : getPortalStatus(client) === 'invited'
+                              ? 'Reenviar convite'
+                              : 'Convidar portal'}
+                          </button>
+                        )}
+                        <span className="text-[10px] text-muted-foreground">
+                          Cadastrado em {formatDate(client.created_at)}
+                        </span>
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">

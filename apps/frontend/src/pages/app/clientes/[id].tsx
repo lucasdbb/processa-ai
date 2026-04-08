@@ -21,8 +21,8 @@ import {
   ChevronRight,
   Check,
   Send,
+  Shield,
   ShieldOff,
-  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -73,6 +73,8 @@ export default function ClienteDetalhePage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isInviting, setIsInviting] = useState(false)
   const [portalStatus, setPortalStatus] = useState<string | null>(null)
+  const [portalInvitedAt, setPortalInvitedAt] = useState<string | null>(null)
+  const [showPortalManageActions, setShowPortalManageActions] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [showFabMenu, setShowFabMenu] = useState(false)
   const [financeStatusFilter, setFinanceStatusFilter] = useState<'all' | Fee['status']>('all')
@@ -83,7 +85,9 @@ export default function ClienteDetalhePage() {
 
   useEffect(() => {
     if (client) {
-      setPortalStatus((client as unknown as { portal_status?: string }).portal_status ?? null)
+      setPortalStatus(client.portal_status ?? null)
+      setPortalInvitedAt(client.portal_invited_at ?? null)
+      setShowPortalManageActions(false)
     }
   }, [client])
 
@@ -432,6 +436,7 @@ export default function ClienteDetalhePage() {
     try {
       const result = await inviteClient(id)
       setPortalStatus(result.portal_status)
+      setPortalInvitedAt(result.portal_invited_at)
       toast.success(result.message)
       setShowActionsMenu(false)
       await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
@@ -449,6 +454,7 @@ export default function ClienteDetalhePage() {
     try {
       const result = await revokeClientPortalAccess(id)
       setPortalStatus(result.portal_status)
+      setPortalInvitedAt(null)
       toast.success('Acesso ao portal revogado')
       setShowActionsMenu(false)
       await queryClient.invalidateQueries({ queryKey: ['clients', 'detail', id] })
@@ -583,6 +589,53 @@ export default function ClienteDetalhePage() {
     }
   }
 
+  const getPortalStatusLabel = (status: string | null) => {
+    switch (status) {
+      case 'active':
+        return 'Acesso ativo'
+      case 'invited':
+        return 'Convite enviado'
+      case 'revoked':
+        return 'Acesso revogado'
+      default:
+        return 'Sem acesso'
+    }
+  }
+
+  const getPortalStatusClass = (status: string | null) => {
+    if (status === 'active') return 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+    if (status === 'invited') return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+    if (status === 'revoked') return 'bg-red-500/10 text-red-600 dark:text-red-400'
+    return 'bg-muted text-muted-foreground'
+  }
+
+  const getPortalStatusDescription = (status: string | null, hasEmail: boolean) => {
+    if (!hasEmail) {
+      return 'Cadastre um e-mail para enviar convite e liberar acesso ao portal.'
+    }
+    if (status === 'active') {
+      return 'Cliente com acesso ativo ao portal. Pode acompanhar processos, prazos e documentos.'
+    }
+    if (status === 'invited') {
+      return 'Convite enviado e aguardando ativação do cliente.'
+    }
+    if (status === 'revoked') {
+      return 'Acesso revogado. Envie um novo convite para reativar o portal.'
+    }
+    return 'Convide o cliente para acompanhar o caso no Portal do Cliente.'
+  }
+
+  const portalNeedsAttention = (status: string | null, hasEmail: boolean) => {
+    if (!hasEmail) return true
+    return !status || status === 'not_invited' || status === 'revoked'
+  }
+
+  const getPortalCompactSummary = (status: string | null) => {
+    if (status === 'active') return 'Acesso ao portal ativo.'
+    if (status === 'invited') return 'Convite enviado e aguardando ativacao.'
+    return 'Portal sem acesso ativo.'
+  }
+
   const tabs: { id: Tab; label: string; icon: typeof FolderKanban }[] = [
     { id: 'resumo', label: 'Resumo', icon: FileText },
     { id: 'atividades', label: 'Atividades', icon: FolderKanban },
@@ -643,21 +696,15 @@ export default function ClienteDetalhePage() {
               >
                 {client.status === 'active' ? 'Ativo' : 'Inativo'}
               </span>
-              {portalStatus && portalStatus !== 'not_invited' && (
-                <span
-                  className={cn(
-                    'shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase flex items-center gap-1',
-                    portalStatus === 'active'  && 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-                    portalStatus === 'invited' && 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-                    portalStatus === 'revoked' && 'bg-red-500/10 text-red-600 dark:text-red-400',
-                  )}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {portalStatus === 'active'  ? 'Portal Ativo'   :
-                   portalStatus === 'invited' ? 'Convite Enviado' :
-                   'Portal Revogado'}
-                </span>
-              )}
+              <span
+                className={cn(
+                  'shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase flex items-center gap-1',
+                  getPortalStatusClass(portalStatus)
+                )}
+              >
+                <Shield className="h-3 w-3" />
+                {getPortalStatusLabel(portalStatus)}
+              </span>
             </div>
           </div>
 
@@ -746,36 +793,6 @@ export default function ClienteDetalhePage() {
                     <Trash2 className="h-4 w-4" />
                     Excluir Cliente
                   </button>
-                  <div className="border-t border-border my-1" />
-                  {(!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
-                    <button
-                      onClick={handleInvitePortal}
-                      disabled={isInviting}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
-                    >
-                      <Send className="h-4 w-4" />
-                      {isInviting ? 'Enviando...' : 'Convidar para o Portal'}
-                    </button>
-                  )}
-                  {portalStatus === 'invited' && (
-                    <button
-                      onClick={handleInvitePortal}
-                      disabled={isInviting}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-primary disabled:opacity-50"
-                    >
-                      <Send className="h-4 w-4" />
-                      {isInviting ? 'Enviando...' : 'Reenviar Convite'}
-                    </button>
-                  )}
-                  {(portalStatus === 'invited' || portalStatus === 'active') && (
-                    <button
-                      onClick={handleRevokePortal}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
-                    >
-                      <ShieldOff className="h-4 w-4" />
-                      Revogar Acesso ao Portal
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -812,6 +829,90 @@ export default function ClienteDetalhePage() {
             <span>Cliente desde {formatDate(client.created_at)}</span>
           </div>
         </div>
+
+        {portalNeedsAttention(portalStatus, Boolean(client.email)) ? (
+          <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+            <div className="flex items-start gap-2">
+              <div
+                className={cn(
+                  'h-7 w-7 rounded-md flex items-center justify-center shrink-0',
+                  getPortalStatusClass(portalStatus)
+                )}
+              >
+                <Shield className="h-3.5 w-3.5" />
+              </div>
+              <div className="space-y-1 min-w-0">
+                <h2 className="text-sm font-semibold text-foreground">Acesso ao Portal do Cliente</h2>
+                <p className="text-xs text-muted-foreground">
+                  {getPortalStatusDescription(portalStatus, Boolean(client.email))}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {(!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
+                <button
+                  onClick={handleInvitePortal}
+                  disabled={isInviting || !client.email}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Send className="h-4 w-4" />
+                  {isInviting ? 'Enviando...' : 'Convidar para o Portal'}
+                </button>
+              )}
+
+              {!client.email && (
+                <button
+                  onClick={() => setShowEditDialog(true)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <Edit className="h-4 w-4" />
+                  Adicionar e-mail do cliente
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 border-t border-border/80 pt-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="text-xs text-muted-foreground">
+                {getPortalCompactSummary(portalStatus)}{' '}
+                {portalInvitedAt ? `Ultimo envio: ${formatShortDate(portalInvitedAt)}.` : ''}
+              </div>
+              <button
+                onClick={() => setShowPortalManageActions((prev) => !prev)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                {showPortalManageActions ? 'Ocultar acoes' : 'Gerenciar acesso'}
+              </button>
+            </div>
+
+            {showPortalManageActions && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {portalStatus === 'invited' && (
+                  <button
+                    onClick={handleInvitePortal}
+                    disabled={isInviting || !client.email}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                    {isInviting ? 'Enviando...' : 'Reenviar convite'}
+                  </button>
+                )}
+
+                {(portalStatus === 'invited' || portalStatus === 'active') && (
+                  <button
+                    onClick={handleRevokePortal}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-border text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <ShieldOff className="h-4 w-4" />
+                    Revogar acesso
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

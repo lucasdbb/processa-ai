@@ -12,6 +12,8 @@ export interface Client {
   state: string | null;
   zip_code: string | null;
   notes: string | null;
+  portal_status?: "not_invited" | "invited" | "active" | "revoked";
+  portal_invited_at?: string | null;
   status: "active" | "inactive" | "archived";
   created_at: string;
   updated_at: string;
@@ -95,7 +97,8 @@ export const clientsService = {
   async list(params?: ClientListParams): Promise<ClientListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set("search", params.search);
-    if (params?.status && params.status !== "all") searchParams.set("status", params.status);
+    if (params?.status && params.status !== "all")
+      searchParams.set("status", params.status);
     if (params?.limit) searchParams.set("limit", params.limit.toString());
     if (params?.offset) searchParams.set("offset", params.offset.toString());
 
@@ -106,9 +109,12 @@ export const clientsService = {
   },
 
   async count(): Promise<{ total: number }> {
-    const response = await fetchWithCredentials(`${API_URL}/office/clients/count`, {
-      method: "GET",
-    });
+    const response = await fetchWithCredentials(
+      `${API_URL}/office/clients/count`,
+      {
+        method: "GET",
+      },
+    );
 
     if (!response.ok) {
       throw new Error("Failed to count clients");
@@ -124,7 +130,9 @@ export const clientsService = {
   },
 
   async getDetail(id: string): Promise<ClientDetail> {
-    const res = await fetchWithCredentials(`${API_URL}/office/clients/${id}/detail`);
+    const res = await fetchWithCredentials(
+      `${API_URL}/office/clients/${id}/detail`,
+    );
     if (!res.ok) throw new Error("Failed to fetch client detail");
     return res.json();
   },

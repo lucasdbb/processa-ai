@@ -44,6 +44,8 @@ class ClientResponse(BaseModel):
     state: str | None
     zip_code: str | None
     notes: str | None
+    portal_status: str | None = None
+    portal_invited_at: datetime | None = None
     status: ClientStatus
     created_at: datetime
     updated_at: datetime
@@ -122,6 +124,8 @@ class ClientDetailResponse(BaseModel):
     state: str | None
     zip_code: str | None
     notes: str | None
+    portal_status: str | None = None
+    portal_invited_at: datetime | None = None
     status: ClientStatus
     created_at: datetime
     updated_at: datetime
