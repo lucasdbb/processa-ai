@@ -8,8 +8,9 @@ interface PortalGuardProps {
 }
 
 /**
- * Protects /portal routes: only office_client users can access them.
- * All other authenticated users are redirected to /app.
+ * Protects /portal routes.
+ * - office_client can access normally
+ * - other authenticated users can access only in preview mode (?previewClientId=...)
  */
 export function PortalGuard({ children }: PortalGuardProps) {
   useAuth()
@@ -22,10 +23,17 @@ export function PortalGuard({ children }: PortalGuardProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={`/?redirect=${encodeURIComponent(location.pathname)}`} replace />
+    return <Navigate to={`/?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`} replace />
   }
 
-  if (user?.role !== 'office_client') {
+  if (user?.role === 'office_client') {
+    return <>{children}</>
+  }
+
+  const params = new URLSearchParams(location.search)
+  const previewClientId = params.get('previewClientId')
+
+  if (!previewClientId) {
     return <Navigate to="/app" replace />
   }
 

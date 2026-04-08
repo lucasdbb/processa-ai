@@ -1,6 +1,7 @@
 """Business logic for the client portal (read-only views for office clients)."""
 
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from psycopg.rows import dict_row
@@ -82,15 +83,78 @@ class PortalService:
             )
         return row  # keys: id, user_id, name, email, portal_status, portal_invited_at
 
+    async def resolve_lawyer_preview_client(
+        self, lawyer_user_id: str, preview_client_id: str
+    ) -> dict:
+        """
+        Resolve a client by id owned by the current lawyer for preview mode.
+        """
+        try:
+            preview_uuid = str(UUID(preview_client_id))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid preview client id",
+            )
+
+        pool = await get_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT id, user_id, name, email, portal_status, portal_invited_at
+                    FROM office_api.clients
+                    WHERE user_id = %s AND id = %s
+                    """,
+                    (lawyer_user_id, preview_uuid),
+                )
+                row = await cur.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Client not found",
+            )
+
+        return row
+
+    async def resolve_portal_context(
+        self,
+        user_id: str,
+        user_role: str,
+        preview_client_id: str | None = None,
+    ) -> tuple[dict, bool]:
+        """
+        Returns (client_row, is_preview_mode).
+        """
+        if preview_client_id:
+            if user_role == "office_client":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Preview mode is not available for portal clients",
+                )
+            client = await self.resolve_lawyer_preview_client(user_id, preview_client_id)
+            return client, True
+
+        client = await self.resolve_portal_client(user_id)
+        return client, False
+
     # ------------------------------------------------------------------
     # /portal/me
     # ------------------------------------------------------------------
 
-    async def get_me(self, portal_user_id: str) -> PortalMeResponse:
-        client = await self.resolve_portal_client(portal_user_id)
+    async def get_me(
+        self,
+        user_id: str,
+        user_role: str,
+        preview_client_id: str | None = None,
+    ) -> PortalMeResponse:
+        client, is_preview = await self.resolve_portal_context(
+            user_id, user_role, preview_client_id
+        )
 
         # If first access, promote status to 'active'
-        if client["portal_status"] == "invited":
+        if not is_preview and client["portal_status"] == "invited":
             pool = await get_pool()
             async with pool.connection() as conn:
                 async with conn.cursor() as cur:
@@ -132,8 +196,13 @@ class PortalService:
     # /portal/processes
     # ------------------------------------------------------------------
 
-    async def get_processes(self, portal_user_id: str) -> PortalProcessListResponse:
-        client = await self.resolve_portal_client(portal_user_id)
+    async def get_processes(
+        self,
+        user_id: str,
+        user_role: str,
+        preview_client_id: str | None = None,
+    ) -> PortalProcessListResponse:
+        client, _ = await self.resolve_portal_context(user_id, user_role, preview_client_id)
         lawyer_id = str(client["user_id"])
         client_id = str(client["id"])
 
@@ -280,8 +349,13 @@ class PortalService:
     # /portal/events
     # ------------------------------------------------------------------
 
-    async def get_events(self, portal_user_id: str) -> PortalEventsResponse:
-        client = await self.resolve_portal_client(portal_user_id)
+    async def get_events(
+        self,
+        user_id: str,
+        user_role: str,
+        preview_client_id: str | None = None,
+    ) -> PortalEventsResponse:
+        client, _ = await self.resolve_portal_context(user_id, user_role, preview_client_id)
         lawyer_id = str(client["user_id"])
         client_id = str(client["id"])
         now = datetime.now(timezone.utc)
@@ -348,8 +422,13 @@ class PortalService:
     # /portal/documents
     # ------------------------------------------------------------------
 
-    async def get_documents(self, portal_user_id: str) -> PortalDocumentsResponse:
-        client = await self.resolve_portal_client(portal_user_id)
+    async def get_documents(
+        self,
+        user_id: str,
+        user_role: str,
+        preview_client_id: str | None = None,
+    ) -> PortalDocumentsResponse:
+        client, _ = await self.resolve_portal_context(user_id, user_role, preview_client_id)
         lawyer_id = str(client["user_id"])
         client_id = str(client["id"])
 
@@ -394,9 +473,13 @@ class PortalService:
         return PortalDocumentsResponse(documents=docs, total=len(docs))
 
     async def get_document_download_url(
-        self, portal_user_id: str, document_id: str
+        self,
+        user_id: str,
+        user_role: str,
+        document_id: str,
+        preview_client_id: str | None = None,
     ) -> PortalDocumentDownloadResponse:
-        client = await self.resolve_portal_client(portal_user_id)
+        client, _ = await self.resolve_portal_context(user_id, user_role, preview_client_id)
         lawyer_id = str(client["user_id"])
         client_id = str(client["id"])
 
@@ -447,8 +530,13 @@ class PortalService:
     # /portal/finances
     # ------------------------------------------------------------------
 
-    async def get_finances(self, portal_user_id: str) -> PortalFinancesResponse:
-        client = await self.resolve_portal_client(portal_user_id)
+    async def get_finances(
+        self,
+        user_id: str,
+        user_role: str,
+        preview_client_id: str | None = None,
+    ) -> PortalFinancesResponse:
+        client, _ = await self.resolve_portal_context(user_id, user_role, preview_client_id)
         lawyer_id = str(client["user_id"])
         client_id = str(client["id"])
 

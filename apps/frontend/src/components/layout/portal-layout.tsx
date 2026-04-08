@@ -1,6 +1,6 @@
 'use client'
 
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { LogOut, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/features/auth/hooks/use-auth'
@@ -9,8 +9,10 @@ import { usePageTracking } from '@/lib/analytics/hooks'
 export function PortalLayout() {
   usePageTracking()
 
+  const location = useLocation()
   const { logout } = useAuth()
   const { resolvedTheme, setTheme } = useTheme()
+  const isPreviewMode = new URLSearchParams(location.search).has('previewClientId')
 
   const isDark = resolvedTheme === 'dark'
   const logoSrc = isDark ? '/logo_dark.png' : '/logo_light.png'
@@ -31,14 +33,16 @@ export function PortalLayout() {
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
 
-            <button
-              onClick={() => logout()}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Sair do portal"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
+            {!isPreviewMode && (
+              <button
+                onClick={() => logout()}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Sair do portal"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
+            )}
           </div>
         </div>
       </header>

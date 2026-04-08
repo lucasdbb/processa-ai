@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
@@ -320,13 +321,19 @@ function TranslatedEvent({ event }: { event: PortalTimelineEvent }) {
 
 // --- PROCESSES TAB ---
 
-function ProcessDocumentItem({ doc }: { doc: { id: string; name: string; file_size: number | null; created_at?: string } }) {
+function ProcessDocumentItem({
+  doc,
+  previewClientId,
+}: {
+  doc: { id: string; name: string; file_size: number | null; created_at?: string }
+  previewClientId?: string
+}) {
   const [isDownloading, setIsDownloading] = useState(false)
 
   const handleDownload = async () => {
     setIsDownloading(true)
     try {
-      const { url } = await portalService.getDocumentDownloadUrl(doc.id)
+      const { url } = await portalService.getDocumentDownloadUrl(doc.id, previewClientId)
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch {
       toast.error('Não foi possível baixar o documento.')
@@ -362,7 +369,7 @@ function ProcessDocumentItem({ doc }: { doc: { id: string; name: string; file_si
   )
 }
 
-function ProcessCard({ process }: { process: PortalProcess }) {
+function ProcessCard({ process, previewClientId }: { process: PortalProcess; previewClientId?: string }) {
   const [expanded, setExpanded] = useState(false)
   const colorClass = PROCESS_COLOR_MAP[process.status.color] ?? PROCESS_COLOR_MAP.gray
 
@@ -436,7 +443,7 @@ function ProcessCard({ process }: { process: PortalProcess }) {
                     {evt.documents.length > 0 && (
                       <ul className="mt-1.5 space-y-1 pl-1">
                         {evt.documents.map((doc) => (
-                          <ProcessDocumentItem key={doc.id} doc={doc} />
+                          <ProcessDocumentItem key={doc.id} doc={doc} previewClientId={previewClientId} />
                         ))}
                       </ul>
                     )}
@@ -453,7 +460,13 @@ function ProcessCard({ process }: { process: PortalProcess }) {
   )
 }
 
-function ProcessesTab({ processes }: { processes: PortalProcess[] }) {
+function ProcessesTab({
+  processes,
+  previewClientId,
+}: {
+  processes: PortalProcess[]
+  previewClientId?: string
+}) {
   if (processes.length === 0) {
     return (
       <EmptyState
@@ -467,7 +480,7 @@ function ProcessesTab({ processes }: { processes: PortalProcess[] }) {
   return (
     <div className="space-y-3">
       {processes.map((p) => (
-        <ProcessCard key={p.id} process={p} />
+        <ProcessCard key={p.id} process={p} previewClientId={previewClientId} />
       ))}
     </div>
   )
@@ -634,15 +647,21 @@ function DocumentItem({
   )
 }
 
-function DocumentsTab({ documents }: { documents: PortalDocument[] }) {
+function DocumentsTab({
+  documents,
+  previewClientId,
+}: {
+  documents: PortalDocument[]
+  previewClientId?: string
+}) {
   const handleDownload = useCallback(async (id: string) => {
     try {
-      const { url } = await portalService.getDocumentDownloadUrl(id)
+      const { url } = await portalService.getDocumentDownloadUrl(id, previewClientId)
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch {
       toast.error('Não foi possível baixar o documento. Tente novamente.')
     }
-  }, [])
+  }, [previewClientId])
 
   if (documents.length === 0) {
     return (
@@ -811,6 +830,10 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function PortalPage() {
+  const [searchParams] = useSearchParams()
+  const previewClientId = searchParams.get('previewClientId') ?? undefined
+  const isPreviewMode = Boolean(previewClientId)
+
   const [activeTab, setActiveTab] = useState<Tab>('processos')
   const [me, setMe] = useState<PortalMe | null>(null)
 
@@ -832,11 +855,11 @@ export default function PortalPage() {
       setError(null)
       try {
         const [meData, processesData, eventsData, docsData, financesData] = await Promise.all([
-          portalService.getMe(),
-          portalService.getProcesses(),
-          portalService.getEvents(),
-          portalService.getDocuments(),
-          portalService.getFinances(),
+          portalService.getMe(previewClientId),
+          portalService.getProcesses(previewClientId),
+          portalService.getEvents(previewClientId),
+          portalService.getDocuments(previewClientId),
+          portalService.getFinances(previewClientId),
         ])
         setMe(meData)
         setProcesses(processesData.processes)
@@ -852,7 +875,7 @@ export default function PortalPage() {
       }
     }
     loadAll()
-  }, [])
+  }, [previewClientId])
 
   if (isLoading) {
     return (
@@ -878,6 +901,20 @@ export default function PortalPage() {
     <div className="flex flex-col flex-1 min-h-0 gap-5">
       {/* Greeting — static, never scrolls */}
       <div className="shrink-0">
+        {isPreviewMode && previewClientId && (
+          <div className="mb-3 rounded-lg border border-blue-200/80 bg-blue-50/80 px-3 py-2 text-sm text-blue-900 dark:border-blue-800/70 dark:bg-blue-950/35 dark:text-blue-100 flex flex-wrap items-center justify-between gap-2">
+            <span className="font-medium">Modo preview: visualizando o portal como cliente.</span>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-8 border-blue-300/80 text-blue-900 hover:bg-blue-100/70 dark:border-blue-700 dark:text-blue-100 dark:hover:bg-blue-900/50"
+            >
+              <Link to={`/app/clientes/${previewClientId}`}>Voltar para perfil</Link>
+            </Button>
+          </div>
+        )}
+
         <h1 className="text-xl font-semibold">
           Olá, {me?.client_name?.split(' ')[0] ?? 'bem-vindo'} 👋
         </h1>
@@ -916,7 +953,7 @@ export default function PortalPage() {
       <div className="flex-1 min-h-0 flex flex-col">
         {activeTab === 'processos' && (
           <div className="flex-1 min-h-0 overflow-y-auto pb-4">
-            <ProcessesTab processes={processes} />
+            <ProcessesTab processes={processes} previewClientId={previewClientId} />
           </div>
         )}
         {activeTab === 'agenda' && (
@@ -926,7 +963,7 @@ export default function PortalPage() {
         )}
         {activeTab === 'documentos' && (
           <div className="flex-1 min-h-0 overflow-y-auto pb-4">
-            <DocumentsTab documents={documents} />
+            <DocumentsTab documents={documents} previewClientId={previewClientId} />
           </div>
         )}
         {activeTab === 'financeiro' && (

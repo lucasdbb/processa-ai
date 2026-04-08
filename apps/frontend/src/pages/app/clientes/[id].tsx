@@ -663,6 +663,7 @@ export default function ClienteDetalhePage() {
   }
 
   const fullAddress = [client.address, client.city, client.state].filter(Boolean).join(', ')
+  const portalPreviewUrl = id ? `/portal?previewClientId=${encodeURIComponent(id)}` : '/portal'
 
   const filteredFees = financeStatusFilter === 'all'
     ? fees
@@ -850,6 +851,16 @@ export default function ClienteDetalhePage() {
             </div>
 
             <div className="flex flex-wrap gap-2 pt-1">
+              {client.email && (
+                <Link
+                  to={portalPreviewUrl}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <Shield className="h-4 w-4" />
+                  Ver como cliente
+                </Link>
+              )}
+
               {(!portalStatus || portalStatus === 'not_invited' || portalStatus === 'revoked') && (
                 <button
                   onClick={handleInvitePortal}
@@ -889,6 +900,16 @@ export default function ClienteDetalhePage() {
 
             {showPortalManageActions && (
               <div className="flex flex-wrap gap-2 pt-1">
+                {client.email && (
+                  <Link
+                    to={portalPreviewUrl}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Shield className="h-4 w-4" />
+                    Ver como cliente
+                  </Link>
+                )}
+
                 {portalStatus === 'invited' && (
                   <button
                     onClick={handleInvitePortal}
