@@ -1,13 +1,13 @@
 """Shared fixtures for backend tests."""
 
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 # Set test environment before importing app
-os.environ["ENVIRONMENT"] = "test"
+os.environ["ENVIRONMENT"] = "development"
 os.environ["INTERNAL_TOKEN"] = "test-internal-token"
 os.environ["SUPABASE_JWT_SECRET"] = "test-jwt-secret-that-is-long-enough-for-hs256"
 os.environ["DATABASE_URL"] = ""
@@ -53,8 +53,10 @@ TEST_ADMIN_ID = "00000000-0000-0000-0000-000000000099"
 @pytest.fixture
 def mock_auth_user():
     """Patch the auth middleware to inject a regular user."""
-    with patch("src.core.middleware.jwt") as mock_jwt, \
-         patch("src.core.middleware.get_supabase") as mock_supabase:
+    with (
+        patch("src.core.middleware.jwt") as mock_jwt,
+        patch("src.core.middleware.get_supabase") as mock_supabase,
+    ):
         mock_jwt.decode.return_value = {"sub": TEST_USER_ID}
         mock_supabase_client = MagicMock()
         mock_supabase_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
@@ -67,8 +69,10 @@ def mock_auth_user():
 @pytest.fixture
 def mock_auth_admin():
     """Patch the auth middleware to inject an admin user."""
-    with patch("src.core.middleware.jwt") as mock_jwt, \
-         patch("src.core.middleware.get_supabase") as mock_supabase:
+    with (
+        patch("src.core.middleware.jwt") as mock_jwt,
+        patch("src.core.middleware.get_supabase") as mock_supabase,
+    ):
         mock_jwt.decode.return_value = {"sub": TEST_ADMIN_ID}
         mock_supabase_client = MagicMock()
         mock_supabase_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
