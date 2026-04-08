@@ -34,6 +34,17 @@ class PermanentError(Exception):
     pass
 
 
+def _sget(obj, key, default=None):
+    """Safe get for both dict and StripeObject."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    try:
+        val = obj[key]
+        return val if val is not None else default
+    except (KeyError, AttributeError):
+        return default
+
+
 class WebhooksService:
     def __init__(self):
         self.supabase = get_supabase()
@@ -110,15 +121,14 @@ class WebhooksService:
 
         event_id = event["id"]
         event_type = event["type"]
-        # Convert StripeObject to plain dict so .get() works in all handlers.
-        # to_dict_recursive() converts nested StripeObjects (e.g. metadata) too.
-        data = event["data"]["object"].to_dict_recursive()
+        data = event["data"]["object"]
 
         # Resolve user_id from the event: prefer metadata.user_id (checkout),
         # fall back to lookup via stripe_customer_id in subscriptions table.
-        resolved_user_id: str | None = data.get("metadata", {}).get("user_id")
+        metadata = _sget(data, "metadata", {})
+        resolved_user_id: str | None = _sget(metadata, "user_id")
         if not resolved_user_id:
-            customer_id = data.get("customer")
+            customer_id = _sget(data, "customer")
             if customer_id:
                 try:
                     lookup = (
@@ -135,9 +145,9 @@ class WebhooksService:
 
         # Build metadata with key identifiers for diagnostics/monitoring
         event_metadata: dict = {
-            k: data.get(k)
+            k: data[k]
             for k in ("id", "customer", "subscription", "invoice", "charge")
-            if data.get(k)
+            if k in data
         }
         if resolved_user_id:
             event_metadata["user_id"] = resolved_user_id
@@ -255,10 +265,11 @@ class WebhooksService:
 
         return {"received": True}
 
-    async def _handle_credit_purchase(self, session: dict) -> None:
+    async def _handle_credit_purchase(self, session) -> None:
         """Handle checkout.session.completed for credit purchase."""
-        user_id = session.get("metadata", {}).get("user_id")
-        credits_str = session.get("metadata", {}).get("credits")
+        metadata = _sget(session, "metadata", {})
+        user_id = _sget(metadata, "user_id")
+        credits_str = _sget(metadata, "credits")
 
         if not user_id or not credits_str:
             logger.warning("checkout.session.completed (payment) missing metadata")
@@ -282,18 +293,19 @@ class WebhooksService:
             logger.error(f"Failed to grant purchased credits: {e}")
             raise TransientError(f"Failed to grant credits: {e}")
 
-    async def _handle_checkout_completed(self, session: dict) -> None:
+    async def _handle_checkout_completed(self, session) -> None:
         """Handle checkout.session.completed event."""
-        mode = session.get("mode")
+        mode = _sget(session, "mode")
 
         if mode == "payment":
             # Credit purchase
             await self._handle_credit_purchase(session)
             return
 
-        customer_id = session.get("customer")
-        subscription_id = session.get("subscription")
-        user_id = session.get("metadata", {}).get("user_id")
+        customer_id = _sget(session, "customer")
+        subscription_id = _sget(session, "subscription")
+        metadata = _sget(session, "metadata", {})
+        user_id = _sget(metadata, "user_id")
 
         if not customer_id or not subscription_id:
             logger.warning("checkout.session.completed missing customer or subscription")
@@ -359,9 +371,9 @@ class WebhooksService:
         except Exception as e:
             logger.error(f"Failed to send welcome email for user {user_id}: {e}")
 
-    async def _handle_invoice_paid(self, invoice: dict) -> None:
+    async def _handle_invoice_paid(self, invoice) -> None:
         """Handle invoice.paid event - renew subscription."""
-        subscription_id = invoice.get("subscription")
+        subscription_id = _sget(invoice, "subscription")
         if not subscription_id:
             # Invoice without subscription (one-time payment) - skip
             logger.debug("invoice.paid without subscription_id, skipping")
@@ -406,9 +418,9 @@ class WebhooksService:
             logger.error(f"Failed to update subscription on invoice.paid: {e}")
             raise TransientError(f"Failed to update subscription in database: {e}")
 
-    async def _handle_invoice_failed(self, invoice: dict) -> None:
+    async def _handle_invoice_failed(self, invoice) -> None:
         """Handle invoice.payment_failed event."""
-        subscription_id = invoice.get("subscription")
+        subscription_id = _sget(invoice, "subscription")
         if not subscription_id:
             logger.debug("invoice.payment_failed without subscription_id, skipping")
             return
@@ -428,17 +440,17 @@ class WebhooksService:
                 if user_id:
                     user_email = await self._get_user_email(user_id)
                     if user_email:
-                        invoice_url = invoice.get("hosted_invoice_url")
+                        invoice_url = _sget(invoice, "hosted_invoice_url")
                         await send_payment_failed(user_email, invoice_url)
         except Exception as e:
             logger.error(f"Failed to update subscription on invoice.failed: {e}")
             raise TransientError(f"Failed to update subscription status: {e}")
 
-    async def _handle_invoice_action_required(self, invoice: dict) -> None:
+    async def _handle_invoice_action_required(self, invoice) -> None:
         """Handle invoice.payment_action_required event (3D Secure, etc)."""
-        subscription_id = invoice.get("subscription")
-        customer_email = invoice.get("customer_email")
-        hosted_invoice_url = invoice.get("hosted_invoice_url")
+        subscription_id = _sget(invoice, "subscription")
+        customer_email = _sget(invoice, "customer_email")
+        hosted_invoice_url = _sget(invoice, "hosted_invoice_url")
 
         if not subscription_id:
             logger.debug("invoice.payment_action_required without subscription_id, skipping")
@@ -462,13 +474,13 @@ class WebhooksService:
             logger.error(f"Failed to handle invoice action required: {e}")
             raise TransientError(f"Failed to update subscription status: {e}")
 
-    async def _handle_subscription_created(self, subscription: dict) -> None:
+    async def _handle_subscription_created(self, subscription) -> None:
         """
         Handle customer.subscription.created event
         (for subscriptions created outside checkout).
         """
-        subscription_id = subscription.get("id")
-        customer_id = subscription.get("customer")
+        subscription_id = _sget(subscription, "id")
+        customer_id = _sget(subscription, "customer")
 
         if not subscription_id or not customer_id:
             raise PermanentError("subscription.created missing required fields")
@@ -517,7 +529,7 @@ class WebhooksService:
                     "current_period_end": datetime.fromtimestamp(
                         first_item["current_period_end"], tz=timezone.utc
                     ).isoformat(),
-                    "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
+                    "cancel_at_period_end": _sget(subscription, "cancel_at_period_end", False),
                 }
             ).eq("stripe_customer_id", customer_id).execute()
 
@@ -535,15 +547,15 @@ class WebhooksService:
             logger.error(f"Failed to handle subscription created: {e}")
             raise TransientError(f"Failed to process subscription creation: {e}")
 
-    async def _handle_subscription_updated(self, subscription: dict) -> None:
+    async def _handle_subscription_updated(self, subscription) -> None:
         """Handle customer.subscription.updated event."""
-        subscription_id = subscription.get("id")
+        subscription_id = _sget(subscription, "id")
         if not subscription_id:
             raise PermanentError("subscription.updated missing subscription id")
 
         # Check for plan change (upgrade/downgrade)
         # previous_attributes contains fields that changed
-        previous_attributes = subscription.get("previous_attributes", {})
+        previous_attributes = _sget(subscription, "previous_attributes", {})
 
         # Check if items changed (which implies price/plan change)
         if "items" in previous_attributes:
@@ -583,7 +595,7 @@ class WebhooksService:
                     "current_period_end": datetime.fromtimestamp(
                         first_item["current_period_end"], tz=timezone.utc
                     ).isoformat(),
-                    "cancel_at_period_end": subscription.get("cancel_at_period_end", False),
+                    "cancel_at_period_end": _sget(subscription, "cancel_at_period_end", False),
                 }
             ).eq("stripe_subscription_id", subscription_id).execute()
 
@@ -612,9 +624,9 @@ class WebhooksService:
             logger.error(f"Failed to update subscription: {e}")
             raise TransientError(f"Failed to update subscription in database: {e}")
 
-    async def _handle_subscription_deleted(self, subscription: dict) -> None:
+    async def _handle_subscription_deleted(self, subscription) -> None:
         """Handle customer.subscription.deleted event."""
-        subscription_id = subscription.get("id")
+        subscription_id = _sget(subscription, "id")
         if not subscription_id:
             raise PermanentError("subscription.deleted missing subscription id")
 
@@ -677,9 +689,9 @@ class WebhooksService:
             logger.error(f"Failed to update subscription on delete: {e}")
             raise TransientError(f"Failed to update subscription on cancellation: {e}")
 
-    async def _handle_subscription_paused(self, subscription: dict) -> None:
+    async def _handle_subscription_paused(self, subscription) -> None:
         """Handle customer.subscription.paused event."""
-        subscription_id = subscription.get("id")
+        subscription_id = _sget(subscription, "id")
         if not subscription_id:
             raise PermanentError("subscription.paused missing subscription id")
 
@@ -692,9 +704,9 @@ class WebhooksService:
             logger.error(f"Failed to update subscription on pause: {e}")
             raise TransientError(f"Failed to pause subscription: {e}")
 
-    async def _handle_subscription_resumed(self, subscription: dict) -> None:
+    async def _handle_subscription_resumed(self, subscription) -> None:
         """Handle customer.subscription.resumed event."""
-        subscription_id = subscription.get("id")
+        subscription_id = _sget(subscription, "id")
         if not subscription_id:
             raise PermanentError("subscription.resumed missing subscription id")
 
@@ -718,11 +730,11 @@ class WebhooksService:
             logger.error(f"Failed to update subscription on resume: {e}")
             raise TransientError(f"Failed to resume subscription: {e}")
 
-    async def _handle_charge_refunded(self, charge: dict) -> None:
+    async def _handle_charge_refunded(self, charge) -> None:
         """Handle charge.refunded event - revoke credits if applicable."""
-        invoice_id = charge.get("invoice")
-        amount_refunded = charge.get("amount_refunded", 0)
-        refunded = charge.get("refunded", False)
+        invoice_id = _sget(charge, "invoice")
+        amount_refunded = _sget(charge, "amount_refunded", 0)
+        refunded = _sget(charge, "refunded", False)
 
         if not invoice_id:
             logger.debug("charge.refunded without invoice_id, skipping")
@@ -772,16 +784,16 @@ class WebhooksService:
             logger.error(f"Failed to handle charge refunded: {e}")
             raise TransientError(f"Failed to process refund: {e}")
 
-    async def _handle_dispute_created(self, dispute: dict) -> None:
+    async def _handle_dispute_created(self, dispute) -> None:
         """Handle charge.dispute.created event - critical alert."""
-        charge_id = dispute.get("charge")
-        amount = dispute.get("amount", 0)
-        reason = dispute.get("reason", "unknown")
-        status = dispute.get("status", "unknown")
+        charge_id = _sget(dispute, "charge")
+        amount = _sget(dispute, "amount", 0)
+        reason = _sget(dispute, "reason", "unknown")
+        dispute_status = _sget(dispute, "status", "unknown")
 
         logger.critical(
             f"DISPUTE CREATED - Charge: {charge_id}, Amount: {amount}, "
-            f"Reason: {reason}, Status: {status}"
+            f"Reason: {reason}, Status: {dispute_status}"
         )
 
         # Try to find associated subscription
@@ -819,11 +831,11 @@ class WebhooksService:
             logger.error(f"Failed to get dispute details: {e}")
             # Don't raise - dispute is logged, we don't want to retry
 
-    async def _handle_customer_updated(self, customer: dict) -> None:
+    async def _handle_customer_updated(self, customer) -> None:
         """Handle customer.updated event - sync customer data."""
-        customer_id = customer.get("id")
-        email = customer.get("email")
-        name = customer.get("name")
+        customer_id = _sget(customer, "id")
+        email = _sget(customer, "email")
+        name = _sget(customer, "name")
 
         if not customer_id:
             raise PermanentError("customer.updated missing customer id")
