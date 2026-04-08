@@ -30,6 +30,7 @@ processa-ai/
 - **Calculadoras**: Rescisão trabalhista e simulação de aposentadoria, com geração de relatório PDF
 - **Blog Jurídico**: Sistema completo com editor Markdown, categorias e admin dashboard
 - **Billing**: Assinaturas via Stripe com sistema de créditos
+- **Onboarding Seguro de Créditos**: Liberação de créditos de boas-vindas condicionada a CPF válido e telefone verificado por SMS
 - **Autenticação**: Login, registro e OAuth via Supabase Auth
 - **Newsletter e Suporte**: Inscrição em newsletter e formulário de contato
 - **Notificações**: Sistema de notificações in-app
@@ -286,7 +287,13 @@ Todas as rotas sob o prefixo `/api`. Documentação interativa: http://localhost
 |---|---|
 | `/api/billing/subscriptions` | Assinaturas Stripe |
 | `/api/billing/webhooks` | Webhooks Stripe |
-| `/api/credits` | Sistema de créditos |
+| `/api/credits` | Sistema de créditos + validação de telefone por SMS no onboarding |
+
+**Fluxo de créditos de boas-vindas (antiabuso):**
+- O usuário solicita código SMS em `POST /api/credits/send-phone-code`
+- O usuário valida o código em `POST /api/credits/verify-phone-code`
+- O resgate em `POST /api/credits/claim-welcome` exige CPF válido e telefone previamente verificado
+- Telefones verificados são únicos por conta para reduzir abuso de créditos grátis
 
 **Office (Gestão de Escritório):**
 | Prefixo | Módulo |

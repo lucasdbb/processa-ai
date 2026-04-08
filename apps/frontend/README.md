@@ -106,3 +106,20 @@ A navegação da SPA é gerenciada pelo React Router v7. Existem quatro níveis 
 4.  **Portal (`/portal/*`):** Rotas protegidas pelo `<PortalGuard />`. Permitem que clientes do escritório acessem seus processos.
 
 Além disso, algumas páginas podem ser bloqueadas pelo `<RequirePlan />` dependendo do plano de assinatura (ex: calculadoras premium).
+
+## 🎁 Onboarding de Créditos (WelcomeModal)
+
+O fluxo de primeiro acesso na área autenticada usa um modal de onboarding para liberar os créditos de boas-vindas com validação antiabuso.
+
+**Fluxo da UI:**
+1. Usuário preenche CPF e telefone
+2. Solicita envio do código SMS
+3. Informa o código de 6 dígitos para verificação
+4. Somente após telefone verificado o botão de liberar créditos é habilitado
+
+**Integração com API (`/api/credits`):**
+- `send-phone-code` para envio do SMS
+- `verify-phone-code` para validação do código
+- `claim-welcome` para concessão dos créditos
+
+Esse fluxo está centralizado no WelcomeModal e no serviço de créditos do frontend.

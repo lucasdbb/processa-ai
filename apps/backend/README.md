@@ -102,3 +102,18 @@ A documentação interativa (Swagger UI) pode ser acessada em `http://localhost:
 O backend utiliza o Supabase para gerenciar a identidade dos usuários. A autenticação é validada no backend via **Supabase JWT Auth Middleware**, que intercepta as requisições, verifica o token Bearer JWT enviado pelo frontend e anexa as informações do usuário logado no estado da requisição (ex: `request.state.user`).
 
 As rotas são protegidas utilizando a dependência `get_current_user` do FastAPI.
+
+## 📱 Verificação de Telefone por SMS (Créditos de Boas-Vindas)
+
+O módulo de créditos inclui validação de telefone via SMS para reduzir abuso no resgate de créditos grátis.
+
+**Endpoints (prefixo `/api/credits`):**
+- `POST /send-phone-code`: envia código SMS de 6 dígitos para o telefone informado
+- `POST /verify-phone-code`: valida o código recebido e marca o telefone como verificado
+- `POST /claim-welcome`: concede créditos de boas-vindas somente com CPF válido e telefone já verificado
+
+**Regras principais:**
+- O telefone deve estar em formato BR válido (DDD + número)
+- Há limite de tentativas para validação do código
+- Telefones verificados não podem ser reutilizados por outra conta
+- Ao validar com sucesso, o perfil registra o status de telefone verificado
