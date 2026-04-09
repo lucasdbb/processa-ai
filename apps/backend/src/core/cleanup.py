@@ -39,7 +39,7 @@ class CleanupService:
 
         - Completed jobs older than 90 days
         - Failed/cancelled jobs older than 30 days
-        - Associated ai_job_events are deleted via FK CASCADE
+        - Associated job_events are deleted via FK CASCADE
         - Associated generated_documents have job_id set to NULL (FK ON DELETE SET NULL),
           so we explicitly delete them and their storage files first
         """
@@ -60,9 +60,9 @@ class CleanupService:
                     # Find jobs to delete
                     await cur.execute(
                         """
-                        SELECT id FROM public.ai_jobs
+                                SELECT id FROM public.jobs
                         WHERE (status = 'completed' AND finished_at < %s)
-                           OR (status IN ('failed', 'cancelled') AND finished_at < %s)
+                                    OR (status IN ('failed', 'cancelled', 'dead') AND finished_at < %s)
                         """,
                         (completed_cutoff, failed_cutoff),
                     )
@@ -95,9 +95,9 @@ class CleanupService:
                     )
                     docs_deleted = cur.rowcount
 
-                    # Delete AI jobs (ai_job_events cascade automatically)
+                    # Delete jobs (job_events cascade automatically)
                     await cur.execute(
-                        "DELETE FROM public.ai_jobs WHERE id = ANY(%s)",
+                        "DELETE FROM public.jobs WHERE id = ANY(%s)",
                         (job_ids,),
                     )
                     jobs_deleted = cur.rowcount
@@ -332,9 +332,7 @@ class CleanupService:
                         f"(stripe_sub: {sub.get('stripe_subscription_id')})"
                     )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to clean up subscription {sub['id']}: {e}", exc_info=True
-                    )
+                    logger.error(f"Failed to clean up subscription {sub['id']}: {e}", exc_info=True)
 
             logger.info(f"Incomplete subscriptions cleanup: {count} subscriptions reset")
 

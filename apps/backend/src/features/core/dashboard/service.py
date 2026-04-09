@@ -743,7 +743,7 @@ class DashboardService:
                             COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as total_completion,
                             COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
                             COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
-                        FROM public.ai_jobs
+                                                FROM public.jobs
                         WHERE status = 'completed'
                           AND result_payload->'token_usage' IS NOT NULL
                         """
@@ -759,7 +759,7 @@ class DashboardService:
                             COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as total_completion,
                             COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
                             COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
-                        FROM public.ai_jobs
+                                                FROM public.jobs
                         WHERE status = 'completed'
                           AND result_payload->'token_usage' IS NOT NULL
                           AND finished_at >= %s
@@ -779,7 +779,7 @@ class DashboardService:
                             COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as completion_tokens,
                             COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
                             COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
-                        FROM public.ai_jobs
+                                                FROM public.jobs
                         WHERE status = 'completed'
                           AND result_payload->'token_usage' IS NOT NULL
                         GROUP BY
@@ -794,16 +794,16 @@ class DashboardService:
                     await cur.execute(
                         """
                         SELECT
-                            endpoint_key,
+                                                        job_type as endpoint_key,
                             COUNT(*) as job_count,
                             COALESCE(SUM((result_payload->'token_usage'->>'prompt_tokens')::int), 0) as prompt_tokens,
                             COALESCE(SUM((result_payload->'token_usage'->>'completion_tokens')::int), 0) as completion_tokens,
                             COALESCE(SUM((result_payload->'token_usage'->>'total_tokens')::int), 0) as total_tokens,
                             COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as total_cost
-                        FROM public.ai_jobs
+                                                FROM public.jobs
                         WHERE status = 'completed'
                           AND result_payload->'token_usage' IS NOT NULL
-                        GROUP BY endpoint_key
+                                                GROUP BY job_type
                         ORDER BY total_cost DESC
                         """
                     )
@@ -816,7 +816,7 @@ class DashboardService:
                             finished_at::date as day,
                             COUNT(*) as job_count,
                             COALESCE(SUM((result_payload->'token_usage'->>'cost_usd')::numeric), 0) as daily_cost
-                        FROM public.ai_jobs
+                                                FROM public.jobs
                         WHERE status = 'completed'
                           AND result_payload->'token_usage' IS NOT NULL
                           AND finished_at >= %s
