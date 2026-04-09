@@ -15,7 +15,7 @@ from src.features.core.feedback.service import FeedbackService
 router = APIRouter()
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=FeedbackResponse)
 async def create_feedback(data: FeedbackCreate, current_user=Depends(get_current_user)):
     service = FeedbackService()
     return await service.create(current_user.id, data)
@@ -45,6 +45,24 @@ async def list_feedback(
         result.append(item)
 
     return FeedbackListResponse(items=result, total=total)
+
+
+@router.get("/me", response_model=FeedbackListResponse)
+async def list_my_feedback(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    current_user=Depends(get_current_user),
+):
+    service = FeedbackService()
+    data, total = await service.list_by_user(current_user.id, limit, offset, sort_order)
+    return FeedbackListResponse(items=data, total=total or 0)
+
+
+@router.delete("/me/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def withdraw_my_feedback(id: UUID, current_user=Depends(get_current_user)):
+    service = FeedbackService()
+    await service.withdraw_by_user(current_user.id, id)
 
 
 @router.patch("/{id}", response_model=FeedbackResponse)
