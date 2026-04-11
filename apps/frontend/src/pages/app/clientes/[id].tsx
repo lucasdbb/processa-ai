@@ -890,26 +890,27 @@ export default function ClienteDetalhePage() {
                 {getPortalCompactSummary(portalStatus)}{' '}
                 {portalInvitedAt ? `Ultimo envio: ${formatShortDate(portalInvitedAt)}.` : ''}
               </div>
-              <button
-                onClick={() => setShowPortalManageActions((prev) => !prev)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                {showPortalManageActions ? 'Ocultar acoes' : 'Gerenciar acesso'}
-              </button>
+              <div className="flex items-center gap-2">
+                {client.email && (
+                  <Link
+                    to={portalPreviewUrl}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Shield className="h-3.5 w-3.5" />
+                    Ver como cliente
+                  </Link>
+                )}
+                <button
+                  onClick={() => setShowPortalManageActions((prev) => !prev)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  {showPortalManageActions ? 'Ocultar acoes' : 'Gerenciar acesso'}
+                </button>
+              </div>
             </div>
 
             {showPortalManageActions && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {client.email && (
-                  <Link
-                    to={portalPreviewUrl}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    <Shield className="h-4 w-4" />
-                    Ver como cliente
-                  </Link>
-                )}
-
                 {portalStatus === 'invited' && (
                   <button
                     onClick={handleInvitePortal}
