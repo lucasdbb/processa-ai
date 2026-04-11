@@ -111,10 +111,15 @@ async def list_calculations(
             await cur.execute(
                 f"SELECT c.id, c.calculator_key, c.status, c.user_id, c.client_id, "
                 f"c.input_payload, c.output_payload, c.error, c.created_at, c.finished_at, "
-                f"d.id AS document_id "
+                f"d_pdf.id AS document_id, d_docx.id AS docx_document_id "
                 f"FROM public.calculations c "
-                f"LEFT JOIN public.generated_documents d "
-                f"ON d.calculation_id = c.id "
+                f"LEFT JOIN public.generated_documents d_pdf "
+                f"ON d_pdf.calculation_id = c.id "
+                f"AND d_pdf.mime_type = 'application/pdf' "
+                f"LEFT JOIN public.generated_documents d_docx "
+                f"ON d_docx.calculation_id = c.id "
+                f"AND d_docx.mime_type = "
+                f"'application/vnd.openxmlformats-officedocument.wordprocessingml.document' "
                 f"WHERE {where} "
                 f"ORDER BY c.created_at DESC LIMIT %s",
                 params,
@@ -141,9 +146,10 @@ async def list_calculations(
                 "created_at": row[8],
                 "finished_at": row[9],
                 "document_id": row[10],
+                "docx_document_id": row[11],
             }
         # Serialize UUID and datetime
-        for uid_key in ("id", "document_id"):
+        for uid_key in ("id", "document_id", "docx_document_id"):
             if isinstance(item.get(uid_key), uuid.UUID):
                 item[uid_key] = str(item[uid_key])
         for dt_key in ("created_at", "finished_at"):

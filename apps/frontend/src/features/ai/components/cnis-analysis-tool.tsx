@@ -17,6 +17,7 @@ import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-l
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
 import { useAnalysisHistory } from '@/features/ai/hooks/use-analysis-history'
+import { downloadGeneratedDocument } from '@/features/ai/lib/download-document'
 
 interface CnisAnalysisToolProps {
   onOpenRegisterModal?: () => void
@@ -42,6 +43,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
+  const [docxDocumentId, setDocxDocumentId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
@@ -221,7 +223,12 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
         const statusData = (await statusResponse.json()) as {
           status: string
           progress: number
-          result?: { download_url?: string; content?: string; document_id?: string }
+          result?: {
+            download_url?: string
+            content?: string
+            document_id?: string
+            docx_document_id?: string
+          }
           error?: string
         }
 
@@ -236,6 +243,9 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
         }
 
         if (statusData.status === 'completed') {
+          // Track DOCX availability for the Word download button
+          setDocxDocumentId(statusData.result?.docx_document_id || null)
+
           // Job completed - get the result
           if (statusData.result?.download_url) {
             // Use signed URL directly
@@ -287,6 +297,28 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
       setIsGenerating(false)
     }
   }, [isAuthenticated, cnisFile, openRegisterModal, setCnisPdfUrl, markAiToolUsed, selectedClientId, uploadFiles])
+
+  const handleDownloadDocx = useCallback(async () => {
+    if (!isAuthenticated) {
+      openRegisterModal()
+      return
+    }
+    if (!docxDocumentId) return
+    try {
+      analytics.track('feature_used', {
+        feature: 'cnis_analysis',
+        action: 'downloaded_docx',
+      })
+      await downloadGeneratedDocument(
+        docxDocumentId,
+        `analise_cnis_${Date.now()}.docx`
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Erro ao baixar o documento Word'
+      )
+    }
+  }, [docxDocumentId, isAuthenticated, openRegisterModal])
 
   const handleDownload = useCallback(async () => {
     if (!isAuthenticated) {
@@ -483,6 +515,7 @@ export function CnisAnalysisTool({ onOpenRegisterModal, selectedClientId }: Cnis
         title="Análise do CNIS"
         pdfUrl={generatedPdfUrl}
         onDownload={handleDownload}
+        onDownloadDocx={docxDocumentId ? handleDownloadDocx : undefined}
       />
     </div>
   )

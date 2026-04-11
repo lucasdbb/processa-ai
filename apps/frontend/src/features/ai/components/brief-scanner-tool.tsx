@@ -15,6 +15,7 @@ import { analytics } from '@/lib/analytics'
 
 import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-list'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
+import { downloadGeneratedDocument } from '@/features/ai/lib/download-document'
 import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
 import { useAnalysisHistory } from '@/features/ai/hooks/use-analysis-history'
 
@@ -42,6 +43,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
+  const [docxDocumentId, setDocxDocumentId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
@@ -129,6 +131,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
     setIsGenerating(true)
     setProgress(0)
     setPdfUrl('')
+    setDocxDocumentId(null)
 
     analytics.track('feature_used', {
       feature: 'brief_scanner',
@@ -219,7 +222,12 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         const statusData = (await statusResponse.json()) as {
           status: string
           progress: number
-          result?: { download_url?: string; content?: string; document_id?: string }
+          result?: {
+            download_url?: string
+            content?: string
+            document_id?: string
+            docx_document_id?: string
+          }
           error?: string
         }
 
@@ -233,6 +241,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         }
 
         if (statusData.status === 'completed') {
+          setDocxDocumentId(statusData.result?.docx_document_id || null)
           if (statusData.result?.download_url) {
             setPdfUrl(statusData.result.download_url)
             setIsResultModalOpen(true)
@@ -307,6 +316,23 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
       window.open(generatedPdfUrl, '_blank')
     }
   }, [generatedPdfUrl, isAuthenticated, openRegisterModal])
+
+  const handleDownloadDocx = useCallback(async () => {
+    if (!isAuthenticated) {
+      openRegisterModal()
+      return
+    }
+    if (!docxDocumentId) return
+    try {
+      analytics.track('feature_used', {
+        feature: 'brief_scanner',
+        action: 'downloaded_docx',
+      })
+      await downloadGeneratedDocument(docxDocumentId, `analise_scanner_${Date.now()}.docx`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao baixar o documento Word')
+    }
+  }, [docxDocumentId, isAuthenticated, openRegisterModal])
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -469,6 +495,7 @@ export function BriefScannerTool({ onOpenRegisterModal: propOpenRegisterModal, s
         title="Análise da Peça"
         pdfUrl={generatedPdfUrl}
         onDownload={handleDownload}
+        onDownloadDocx={docxDocumentId ? handleDownloadDocx : undefined}
       />
     </div>
   )

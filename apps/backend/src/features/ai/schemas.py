@@ -56,6 +56,7 @@ class AnalysisHistoryItem(BaseModel):
     finished_at: str | None = None
     input_document: DocumentResponse | None = None
     output_document: DocumentResponse | None = None
+    output_docx_document: DocumentResponse | None = None
     audit_score: float | None = None
 
 

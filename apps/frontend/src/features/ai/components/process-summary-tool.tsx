@@ -18,6 +18,7 @@ import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-l
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
 import { useAnalysisHistory } from '@/features/ai/hooks/use-analysis-history'
+import { downloadGeneratedDocument } from '@/features/ai/lib/download-document'
 
 const MAX_FILES = 5
 
@@ -44,6 +45,7 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
+  const [docxDocumentId, setDocxDocumentId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
@@ -197,7 +199,12 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
         const statusData = (await statusRes.json()) as {
           status: string
           progress: number
-          result?: { download_url?: string; content?: string; document_id?: string }
+          result?: {
+            download_url?: string
+            content?: string
+            document_id?: string
+            docx_document_id?: string
+          }
           error?: string
         }
 
@@ -211,6 +218,7 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
 
         if (statusData.status === 'completed') {
           setProgress(100)
+          setDocxDocumentId(statusData.result?.docx_document_id || null)
 
           if (statusData.result?.download_url) {
             setPdfUrl(statusData.result.download_url)
@@ -280,6 +288,24 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
       window.open(generatedPdfUrl, '_blank')
     }
   }, [generatedPdfUrl])
+
+  const handleDownloadDocx = useCallback(async () => {
+    if (!docxDocumentId) return
+    try {
+      analytics.track('feature_used', {
+        feature: 'process_summary',
+        action: 'downloaded_docx',
+      })
+      await downloadGeneratedDocument(
+        docxDocumentId,
+        `resumo_processo_${Date.now()}.docx`
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Erro ao baixar o documento Word'
+      )
+    }
+  }, [docxDocumentId])
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -464,6 +490,7 @@ export function ProcessSummaryTool({ selectedClientId }: ProcessSummaryToolProps
         title="Resumo do Processo"
         pdfUrl={generatedPdfUrl}
         onDownload={handleDownload}
+        onDownloadDocx={docxDocumentId ? handleDownloadDocx : undefined}
       />
     </div>
   )

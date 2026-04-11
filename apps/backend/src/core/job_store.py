@@ -308,11 +308,15 @@ async def get_job_status(*, job_uuid: uuid.UUID) -> dict | None:
                     j.started_at,
                     j.finished_at,
                     j.user_id,
-                    d.id as output_doc_id
+                    d.id as output_doc_id,
+                    d_docx.id as output_docx_doc_id
                 from public.jobs j
                 left join public.generated_documents d
                     on d.job_id = j.id
-                    and d.document_type = 'output'
+                    and d.document_type in ('output', 'calculator_rescisao_pdf')
+                left join public.generated_documents d_docx
+                    on d_docx.job_id = j.id
+                    and d_docx.document_type in ('output_docx', 'calculator_rescisao_docx')
                 where j.id = %s
                 """,
                 (str(job_uuid),),
@@ -327,6 +331,12 @@ async def get_job_status(*, job_uuid: uuid.UUID) -> dict | None:
             if row.get("output_doc_id"):
                 if isinstance(result_payload, dict):
                     result_payload["document_id"] = str(row.get("output_doc_id"))
+
+            if row.get("output_docx_doc_id"):
+                if isinstance(result_payload, dict):
+                    result_payload.setdefault(
+                        "docx_document_id", str(row.get("output_docx_doc_id"))
+                    )
 
             return {
                 "status": str(row.get("status") or "unknown"),
@@ -449,7 +459,7 @@ async def get_document_by_id(*, document_id: uuid.UUID) -> dict | None:
             await cur.execute(
                 """
                 select id, user_id, document_type, bucket, storage_path,
-                       filename, size_bytes, created_at
+                       filename, size_bytes, mime_type, created_at
                 from public.generated_documents
                 where id = %s
                 """,
@@ -505,12 +515,16 @@ async def get_user_analysis_history(
                     d_output.size_bytes as output_size,
                     d_output.storage_path as output_storage_path,
                     d_output.bucket as output_bucket,
-                    d_output.created_at as output_created_at
+                    d_output.created_at as output_created_at,
+                    d_docx.id as output_docx_id,
+                    d_docx.filename as output_docx_filename
                 from public.jobs j
                 left join public.generated_documents d_input
                     on d_input.job_id = j.id and d_input.document_type = 'input'
                 left join public.generated_documents d_output
                     on d_output.job_id = j.id and d_output.document_type = 'output'
+                left join public.generated_documents d_docx
+                    on d_docx.job_id = j.id and d_docx.document_type = 'output_docx'
                 where j.user_id = %s and j.job_type = %s
                 order by j.created_at desc
                 limit %s offset %s
@@ -548,16 +562,20 @@ async def get_all_user_jobs(
                 'download_url', j.result_payload->>'download_url',
                 'pdf_url', j.result_payload->>'pdf_url',
                 'content', j.result_payload->>'content',
-                'text', j.result_payload->>'text'
+                'text', j.result_payload->>'text',
+                'docx_document_id', j.result_payload->>'docx_document_id'
             ) as result_payload,
             c.name as client_name,
             c.id as client_id,
             d.bucket as output_bucket,
             d.storage_path as output_storage_path,
-            d.id as output_document_id
+            d.id as output_document_id,
+            d_docx.id as output_docx_document_id
         FROM public.jobs j
         LEFT JOIN office_api.clients c ON j.client_id::text = c.id::text
         LEFT JOIN public.generated_documents d ON d.job_id = j.id AND d.document_type = 'output'
+        LEFT JOIN public.generated_documents d_docx
+            ON d_docx.job_id = j.id AND d_docx.document_type = 'output_docx'
         WHERE j.status IN ('pending', 'queued', 'processing', 'completed') AND j.user_id = %s
     """
     params: list[Any] = [user_id]
@@ -593,6 +611,7 @@ async def get_all_user_jobs(
                         "output_bucket": row[8],
                         "output_storage_path": row[9],
                         "output_document_id": str(row[10]) if row[10] else None,
+                        "output_docx_document_id": str(row[11]) if row[11] else None,
                     }
                 )
             return results

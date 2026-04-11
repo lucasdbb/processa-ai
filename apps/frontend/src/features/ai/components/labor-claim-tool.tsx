@@ -22,6 +22,7 @@ import { AnalysisHistoryList } from '@/features/ai/components/analysis-history-l
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
 import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
 import { useAnalysisHistory } from '@/features/ai/hooks/use-analysis-history'
+import { downloadGeneratedDocument } from '@/features/ai/lib/download-document'
 
 interface LaborClaimToolProps {
   selectedClientId?: string | null
@@ -46,6 +47,7 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState('')
+  const [docxDocumentId, setDocxDocumentId] = useState<string | null>(null)
   const [generatedText, setGeneratedText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
@@ -140,6 +142,7 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
     setIsGenerating(true)
     setProgress(0)
     setGeneratedPdfUrl('')
+    setDocxDocumentId(null)
     setGeneratedText('')
 
     analytics.track('feature_used', {
@@ -218,6 +221,7 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
               if (statusData.result.pdf_url || statusData.result.download_url) {
                 setGeneratedPdfUrl(statusData.result.pdf_url || statusData.result.download_url)
               }
+              setDocxDocumentId(statusData.result.docx_document_id || null)
               setIsResultModalOpen(true)
             }
 
@@ -267,19 +271,37 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
       const response = await fetch(generatedPdfUrl)
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
-      
+
       const element = document.createElement('a')
       element.href = url
       element.download = `reclamacao_trabalhista_${Date.now()}.pdf`
       document.body.appendChild(element)
       element.click()
-      
+
       window.URL.revokeObjectURL(url)
       document.body.removeChild(element)
     } catch (error) {
       window.open(generatedPdfUrl, '_blank')
     }
   }, [generatedPdfUrl])
+
+  const handleDownloadDocx = useCallback(async () => {
+    if (!docxDocumentId) return
+    try {
+      analytics.track('feature_used', {
+        feature: 'labor_claim',
+        action: 'downloaded_docx',
+      })
+      await downloadGeneratedDocument(
+        docxDocumentId,
+        `reclamacao_trabalhista_${Date.now()}.docx`
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Erro ao baixar o documento Word'
+      )
+    }
+  }, [docxDocumentId])
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -476,6 +498,7 @@ export function LaborClaimTool({ selectedClientId }: LaborClaimToolProps) {
         pdfUrl={generatedPdfUrl}
         htmlContent={generatedText ? previewHtml : undefined}
         onDownload={handleDownload}
+        onDownloadDocx={docxDocumentId ? handleDownloadDocx : undefined}
       />
     </div>
   )

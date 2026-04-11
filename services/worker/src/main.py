@@ -394,6 +394,62 @@ async def _save_results(
                 result_payload["bucket"] = bucket
                 result_payload["storage_path"] = storage_path
 
+        # Persist DOCX output (generated alongside the PDF from the same template)
+        docx_bucket = result.get("docx_bucket")
+        docx_storage_path = result.get("docx_storage_path")
+        docx_bytes_raw = result.get("docx_content")
+        if isinstance(docx_bucket, str) and isinstance(docx_storage_path, str):
+            docx_checksum = None
+            docx_size_bytes = None
+            if isinstance(docx_bytes_raw, (bytes, bytearray)):
+                docx_raw = bytes(docx_bytes_raw)
+                docx_checksum = hashlib.sha256(docx_raw).hexdigest()
+                docx_size_bytes = len(docx_raw)
+
+            docx_filename = (
+                docx_storage_path.rsplit("/", 1)[-1]
+                if "/" in docx_storage_path
+                else docx_storage_path
+            )
+            docx_doc_id = None
+            try:
+                docx_doc_id = await create_document(
+                    job_uuid=job_uuid,
+                    user_id=user_id,
+                    client_id=str(client_id) if client_id is not None else None,
+                    document_type="output_docx",
+                    bucket=docx_bucket,
+                    storage_path=docx_storage_path,
+                    filename=docx_filename,
+                    checksum_sha256=docx_checksum,
+                    size_bytes=docx_size_bytes,
+                    mime_type=(
+                        "application/vnd.openxmlformats-officedocument"
+                        ".wordprocessingml.document"
+                    ),
+                    metadata={"endpoint": job_type},
+                    linked_document_id=input_doc_id,
+                )
+            except Exception:
+                logger.exception("Failed to persist DOCX document in database")
+
+            if docx_doc_id:
+                try:
+                    from src.core.storage import StorageService
+
+                    storage = StorageService()
+                    docx_download_url = await storage.generate_signed_url(
+                        bucket=docx_bucket,
+                        storage_path=docx_storage_path,
+                        expires_in=3600,
+                    )
+                    result_payload["docx_download_url"] = docx_download_url
+                except Exception as e:
+                    logger.warning(f"Failed to generate preview URL for DOCX document: {e}")
+
+                result_payload["docx_document_id"] = str(docx_doc_id)
+                logger.info("Output DOCX document saved: %s", docx_doc_id)
+
     try:
         await mark_job_completed(job_uuid=job_uuid, result_payload=result_payload)
         await add_job_event(
@@ -500,15 +556,19 @@ async def _handle_calculator_job(job_row: dict) -> None:
         logger.exception("Failed to persist job processing in database")
 
     try:
-        # Generate PDF
+        # Generate DOCX first (template-based), then convert to PDF.
+        # We keep both formats so Pro users can download either.
         if job_type == "calculator_rescisao":
-            from src.handlers.reports.rescisao import generate_rescisao_pdf_from_template
+            from src.handlers.reports.cnis import docx_bytes_to_pdf_bytes
+            from src.handlers.reports.rescisao import generate_rescisao_docx_from_template
 
-            pdf_bytes = generate_rescisao_pdf_from_template(
+            docx_bytes = generate_rescisao_docx_from_template(
                 input_payload=input_payload, output_payload=output_payload
             )
         else:
             raise RuntimeError(f"Tipo de calculadora desconhecido: {job_type}")
+
+        pdf_bytes = docx_bytes_to_pdf_bytes(docx_bytes)
 
         if not pdf_bytes or not pdf_bytes.lstrip().startswith(b"%PDF"):
             raise RuntimeError("Falha ao gerar PDF do relatório")
@@ -518,14 +578,16 @@ async def _handle_calculator_job(job_row: dict) -> None:
 
         storage = StorageService()
         job_uuid_str = str(job_uuid)
-        filename = f"{job_type}_{calculation_id_str or job_uuid_str}.pdf"
+        pdf_filename = f"{job_type}_{calculation_id_str or job_uuid_str}.pdf"
+        docx_filename = f"{job_type}_{calculation_id_str or job_uuid_str}.docx"
+
         uploaded = await storage.upload_pdf_to_supabase(
             pdf_bytes=pdf_bytes,
             user_id=user_id,
             client_id=str(client_id) if client_id else None,
             functionality="calculators",
             job_uuid=job_uuid_str,
-            filename=filename,
+            filename=pdf_filename,
             expires_in=3600,
             output=True,
             bucket_override=target_bucket,
@@ -536,18 +598,50 @@ async def _handle_calculator_job(job_row: dict) -> None:
         storage_path = uploaded.get("storage_path", "")
         download_url = uploaded.get("signed_url") or uploaded.get("download_url") or ""
 
+        # Upload DOCX next to the PDF. Derive its storage path from the PDF
+        # path (swap the extension) so regenerations overwrite cleanly.
+        docx_storage_path_override = None
+        if storage_path:
+            if storage_path.lower().endswith(".pdf"):
+                docx_storage_path_override = storage_path[:-4] + ".docx"
+            else:
+                docx_storage_path_override = storage_path + ".docx"
+
+        docx_uploaded = await storage.upload_bytes_to_supabase(
+            file_bytes=docx_bytes,
+            user_id=user_id,
+            client_id=str(client_id) if client_id else None,
+            functionality="calculators",
+            job_uuid=job_uuid_str,
+            filename=docx_filename,
+            content_type=(
+                "application/vnd.openxmlformats-officedocument"
+                ".wordprocessingml.document"
+            ),
+            expires_in=3600,
+            output=True,
+            bucket_override=bucket,
+            storage_path_override=docx_storage_path_override,
+        )
+        docx_bucket = docx_uploaded.get("bucket", "documents")
+        docx_storage_path = docx_uploaded.get("storage_path", "")
+        docx_download_url = (
+            docx_uploaded.get("signed_url") or docx_uploaded.get("download_url") or ""
+        )
+
         # Create document record
         doc_id = None
+        docx_doc_id = None
+        calc_uuid = None
+        if calculation_id_str:
+            try:
+                calc_uuid = uuid.UUID(calculation_id_str)
+            except Exception:
+                pass
+
         if bucket and storage_path:
             checksum = hashlib.sha256(pdf_bytes).hexdigest()
             size_bytes = len(pdf_bytes)
-
-            calc_uuid = None
-            if calculation_id_str:
-                try:
-                    calc_uuid = uuid.UUID(calculation_id_str)
-                except Exception:
-                    pass
 
             try:
                 doc_id = await create_document(
@@ -557,7 +651,7 @@ async def _handle_calculator_job(job_row: dict) -> None:
                     document_type=f"{job_type}_pdf",
                     bucket=bucket,
                     storage_path=storage_path,
-                    filename=filename,
+                    filename=pdf_filename,
                     checksum_sha256=checksum,
                     size_bytes=size_bytes,
                     metadata={"calculator_key": calculator_key},
@@ -567,12 +661,41 @@ async def _handle_calculator_job(job_row: dict) -> None:
             except Exception:
                 logger.exception("Failed to persist calculator document in database")
 
+        if docx_bucket and docx_storage_path:
+            docx_checksum = hashlib.sha256(docx_bytes).hexdigest()
+            docx_size_bytes = len(docx_bytes)
+            try:
+                docx_doc_id = await create_document(
+                    job_uuid=job_uuid,
+                    user_id=user_id,
+                    client_id=str(client_id) if client_id else None,
+                    document_type=f"{job_type}_docx",
+                    bucket=docx_bucket,
+                    storage_path=docx_storage_path,
+                    filename=docx_filename,
+                    checksum_sha256=docx_checksum,
+                    size_bytes=docx_size_bytes,
+                    mime_type=(
+                        "application/vnd.openxmlformats-officedocument"
+                        ".wordprocessingml.document"
+                    ),
+                    metadata={"calculator_key": calculator_key},
+                    source="calculator",
+                    calculation_id=calc_uuid,
+                )
+            except Exception:
+                logger.exception("Failed to persist calculator DOCX in database")
+
         # Mark completed
         result_payload: dict = {}
         if doc_id:
             result_payload["document_id"] = str(doc_id)
         if download_url:
             result_payload["download_url"] = download_url
+        if docx_doc_id:
+            result_payload["docx_document_id"] = str(docx_doc_id)
+        if docx_download_url:
+            result_payload["docx_download_url"] = docx_download_url
 
         try:
             await mark_job_completed(job_uuid=job_uuid, result_payload=result_payload)

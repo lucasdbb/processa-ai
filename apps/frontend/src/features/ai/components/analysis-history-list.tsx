@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAnalysisHistory, type AnalysisJob } from '@/features/ai/hooks/use-analysis-history'
 import { AnalysisResultModal } from './analysis-result-modal'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
+import { downloadGeneratedDocument } from '@/features/ai/lib/download-document'
 
 interface AnalysisHistoryListProps {
   functionality?: string
@@ -218,12 +219,44 @@ export function AnalysisHistoryList({ functionality, clientId, title = 'Históri
           title={`Resultado: ${selectedJob.metadata?.file_name || 'Análise'}`}
           pdfUrl={selectedJob.result?.download_url || selectedJob.result?.pdf_url}
           htmlContent={selectedJob.result?.content || selectedJob.result?.text}
-          onDownload={() => {
-             const url = selectedJob.result?.download_url || selectedJob.result?.pdf_url
-             if (url) {
-               window.open(url, '_blank')
-             }
+          onDownload={async () => {
+            const documentId = selectedJob.result?.document_id
+            if (documentId) {
+              try {
+                const fallback = selectedJob.metadata?.file_name
+                  ? `${selectedJob.metadata.file_name.replace(/\.[^.]+$/, '')}.pdf`
+                  : `analise_${Date.now()}.pdf`
+                await downloadGeneratedDocument(documentId, fallback)
+                return
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Erro ao baixar o PDF')
+                return
+              }
+            }
+            const url = selectedJob.result?.download_url || selectedJob.result?.pdf_url
+            if (url) {
+              window.open(url, '_blank')
+            }
           }}
+          onDownloadDocx={
+            selectedJob.result?.docx_document_id
+              ? async () => {
+                  try {
+                    const fallback = selectedJob.metadata?.file_name
+                      ? `${selectedJob.metadata.file_name.replace(/\.[^.]+$/, '')}.docx`
+                      : `analise_${Date.now()}.docx`
+                    await downloadGeneratedDocument(
+                      selectedJob.result!.docx_document_id!,
+                      fallback
+                    )
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error ? error.message : 'Erro ao baixar o documento Word'
+                    )
+                  }
+                }
+              : undefined
+          }
         />
       )}
 

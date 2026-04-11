@@ -13,6 +13,7 @@ export interface CalculationItem {
   created_at: string
   finished_at: string | null
   document_id: string | null
+  docx_document_id?: string | null
 }
 
 export function useCalculationHistory(

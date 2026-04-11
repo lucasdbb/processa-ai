@@ -298,6 +298,7 @@ class CalculationHistoryItem(BaseModel):
     created_at: str
     finished_at: str | None = None
     document_id: str | None = None
+    docx_document_id: str | None = None
 
 
 class CalculationHistoryResponse(BaseModel):

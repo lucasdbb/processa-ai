@@ -8,6 +8,7 @@ import { useCreditsStore } from '@/stores/credits-store'
 import { useOnboardingStore } from '@/features/onboarding'
 import { analytics } from '@/lib/analytics'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
+import { downloadGeneratedDocument } from '@/features/ai/lib/download-document'
 import { CalculationHistoryList } from './calculation-history-list'
 import { HistoryBottomSheet } from '@/features/ai/components/history-bottom-sheet'
 
@@ -67,6 +68,8 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
   // Modal state for freshly generated result
   const [isResultModalOpen, setIsResultModalOpen] = useState(false)
   const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | undefined>()
+  const [pdfDocumentId, setPdfDocumentId] = useState<string | null>(null)
+  const [docxDocumentId, setDocxDocumentId] = useState<string | null>(null)
 
   // Polling ref for PDF job
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -143,7 +146,11 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
 
         const statusData = (await statusRes.json()) as {
           status: string
-          result?: { document_id?: string; download_url?: string }
+          result?: {
+            document_id?: string
+            download_url?: string
+            docx_document_id?: string
+          }
           error?: string
         }
 
@@ -155,6 +162,10 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
 
           const downloadUrl = statusData.result?.download_url
           const documentId = statusData.result?.document_id
+          const docxId = statusData.result?.docx_document_id || null
+
+          setPdfDocumentId(documentId || null)
+          setDocxDocumentId(docxId)
 
           if (downloadUrl) {
             setGeneratedPdfUrl(downloadUrl)
@@ -289,6 +300,9 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
     }
 
     setIsGeneratingPdf(true)
+    setPdfDocumentId(null)
+    setDocxDocumentId(null)
+    setGeneratedPdfUrl(undefined)
 
     analytics.track('feature_used', {
       feature: 'rescisao_calculator',
@@ -321,6 +335,38 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
       toast.error(err instanceof Error ? err.message : 'Erro ao gerar PDF')
     }
   }, [latestCalculationId, startPdfPolling])
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (pdfDocumentId) {
+      try {
+        analytics.track('feature_used', {
+          feature: 'rescisao_calculator',
+          action: 'downloaded_pdf',
+        })
+        await downloadGeneratedDocument(pdfDocumentId, `rescisao_trabalhista_${Date.now()}.pdf`)
+        return
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Erro ao baixar o PDF')
+        return
+      }
+    }
+    if (generatedPdfUrl) {
+      window.open(generatedPdfUrl, '_blank')
+    }
+  }, [pdfDocumentId, generatedPdfUrl])
+
+  const handleDownloadDocx = useCallback(async () => {
+    if (!docxDocumentId) return
+    try {
+      analytics.track('feature_used', {
+        feature: 'rescisao_calculator',
+        action: 'downloaded_docx',
+      })
+      await downloadGeneratedDocument(docxDocumentId, `rescisao_trabalhista_${Date.now()}.docx`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao baixar o documento Word')
+    }
+  }, [docxDocumentId])
 
   const currentAvisoOptions = avisoOptions[formData.tipoRescisao] || avisoOptions.sem_justa_causa
   const currentAvisoLabel =
@@ -708,13 +754,8 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
         onClose={() => setIsResultModalOpen(false)}
         title="Rescisão Trabalhista"
         pdfUrl={generatedPdfUrl}
-        onDownload={
-          generatedPdfUrl
-            ? () => {
-                window.open(generatedPdfUrl, '_blank')
-              }
-            : undefined
-        }
+        onDownload={generatedPdfUrl || pdfDocumentId ? handleDownloadPdf : undefined}
+        onDownloadDocx={docxDocumentId ? handleDownloadDocx : undefined}
       />
     </div>
   )

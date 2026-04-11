@@ -19,6 +19,8 @@ interface BillingState {
   /** Force refetch regardless of stale time (e.g. after plan change) */
   invalidate: () => Promise<void>;
   isPro: () => boolean;
+  /** Whether the user can download Word (DOCX) reports — restricted to paid office plans */
+  canDownloadDocx: () => boolean;
 }
 
 let fetchPromise: Promise<void> | null = null;
@@ -76,5 +78,14 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     const { subscription } = get();
     if (!subscription) return false;
     return subscription.status === "active" && subscription.plan_id !== "free";
+  },
+
+  canDownloadDocx: () => {
+    const { subscription } = get();
+    if (!subscription) return false;
+    if (subscription.status !== "active") return false;
+    return (
+      subscription.plan_id === "autonomo" || subscription.plan_id === "escritorio"
+    );
   },
 }));

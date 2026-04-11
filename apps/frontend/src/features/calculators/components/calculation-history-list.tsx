@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { AnalysisResultModal } from '@/features/ai/components/analysis-result-modal'
+import { downloadGeneratedDocument } from '@/features/ai/lib/download-document'
 import { useCalculationHistory, type CalculationItem } from '../hooks/use-calculation-history'
 import { fetchWithCredentials, API_URL } from '@/lib/fetch'
 import { useUser } from '@/features/auth/hooks/use-user'
@@ -65,6 +66,8 @@ export function CalculationHistoryList({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [pdfUrl, setPdfUrl] = useState<string | undefined>()
   const [modalTitle, setModalTitle] = useState('')
+  const [activePdfDocumentId, setActivePdfDocumentId] = useState<string | null>(null)
+  const [activeDocxDocumentId, setActiveDocxDocumentId] = useState<string | null>(null)
   const [calcToDelete, setCalcToDelete] = useState<CalculationItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -84,6 +87,8 @@ export function CalculationHistoryList({
       if (res.ok) {
         const data = (await res.json()) as { download_url: string; filename: string }
         setPdfUrl(data.download_url)
+        setActivePdfDocumentId(calc.document_id)
+        setActiveDocxDocumentId(calc.docx_document_id || null)
         const summary = getCalcSummary(calc)
         setModalTitle(`Rescisão Trabalhista — ${summary.title}`)
         setIsModalOpen(true)
@@ -98,6 +103,36 @@ export function CalculationHistoryList({
       throw new Error('Falha ao buscar documento')
     } catch (err) {
       toast.error('Erro ao abrir documento')
+    }
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setActivePdfDocumentId(null)
+    setActiveDocxDocumentId(null)
+  }
+
+  const handleDownloadPdf = async () => {
+    if (activePdfDocumentId) {
+      try {
+        await downloadGeneratedDocument(activePdfDocumentId, `rescisao_trabalhista_${Date.now()}.pdf`)
+        return
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Erro ao baixar o PDF')
+        return
+      }
+    }
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank')
+    }
+  }
+
+  const handleDownloadDocx = async () => {
+    if (!activeDocxDocumentId) return
+    try {
+      await downloadGeneratedDocument(activeDocxDocumentId, `rescisao_trabalhista_${Date.now()}.docx`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao baixar o documento Word')
     }
   }
 
@@ -267,16 +302,11 @@ export function CalculationHistoryList({
 
       <AnalysisResultModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         title={modalTitle}
         pdfUrl={pdfUrl}
-        onDownload={
-          pdfUrl
-            ? () => {
-                window.open(pdfUrl, '_blank')
-              }
-            : undefined
-        }
+        onDownload={pdfUrl || activePdfDocumentId ? handleDownloadPdf : undefined}
+        onDownloadDocx={activeDocxDocumentId ? handleDownloadDocx : undefined}
       />
 
       <ConfirmDialog

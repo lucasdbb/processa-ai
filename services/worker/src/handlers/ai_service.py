@@ -13,10 +13,19 @@ from src.handlers.pipeline import (
     run_gemini_multi_pdf_analysis,
     run_gemini_pdf_analysis,
 )
-from src.handlers.reports.brief_scanner import generate_brief_scanner_pdf_from_template
-from src.handlers.reports.cnis import generate_cnis_pdf_from_template
-from src.handlers.reports.labor_claim import generate_labor_claim_pdf_from_template
-from src.handlers.reports.process_summary import generate_process_summary_pdf_from_template
+from src.handlers.reports.brief_scanner import (
+    generate_brief_scanner_docx_from_template,
+)
+from src.handlers.reports.cnis import (
+    docx_bytes_to_pdf_bytes,
+    generate_cnis_docx_from_template,
+)
+from src.handlers.reports.labor_claim import (
+    generate_labor_claim_docx_from_template,
+)
+from src.handlers.reports.process_summary import (
+    generate_process_summary_docx_from_template,
+)
 from src.prompts.audio_transcription import AUDIO_TRANSCRIPTION_GEMINI_PROMPT
 from src.prompts.brief_scanner import BRIEF_SCANNER_GEMINI_PROMPT
 from src.prompts.cnis import CNIS_GEMINI_PROMPT
@@ -104,6 +113,87 @@ class AiService:
             raise WorkerException(status_code=502, detail="Falha ao gerar PDF")
 
         return pdf_bytes
+
+    DOCX_MIME_TYPE = (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
+    async def _store_report_outputs(
+        self,
+        *,
+        docx_bytes: bytes,
+        filename: str,
+        user_id: str,
+        client_id: str | None,
+        functionality: str,
+        job_uuid: str,
+        expires_in: int,
+        pdf_error_detail: str,
+    ) -> dict:
+        """Convert a DOCX report to PDF and upload both to Supabase Storage.
+
+        Returns a dict with PDF fields at the top level (bucket, storage_path,
+        signed_url, filename, content) and DOCX fields prefixed with `docx_`.
+        """
+        pdf_bytes = docx_bytes_to_pdf_bytes(docx_bytes)
+
+        if not pdf_bytes or not pdf_bytes.lstrip().startswith(b"%PDF"):
+            raise WorkerException(status_code=502, detail=pdf_error_detail)
+
+        pdf_filename = filename if filename.lower().endswith(".pdf") else f"{filename}.pdf"
+        docx_filename_base = (
+            filename[:-4] if filename.lower().endswith(".pdf") else filename
+        )
+        docx_filename = f"{docx_filename_base}.docx"
+
+        pdf_uploaded = await self.storage.upload_pdf_to_supabase(
+            pdf_bytes=pdf_bytes,
+            user_id=user_id,
+            client_id=client_id,
+            functionality=functionality,
+            job_uuid=job_uuid,
+            filename=pdf_filename,
+            expires_in=expires_in,
+            output=True,
+        )
+        if "signed_url" in pdf_uploaded:
+            pdf_uploaded["download_url"] = pdf_uploaded["signed_url"]
+
+        # Derive the DOCX path from the PDF path (swap extension) so the two
+        # files always live side-by-side in storage.
+        pdf_storage_path = pdf_uploaded.get("storage_path") or ""
+        pdf_bucket = pdf_uploaded.get("bucket")
+        docx_storage_path_override = None
+        if pdf_storage_path:
+            if pdf_storage_path.lower().endswith(".pdf"):
+                docx_storage_path_override = pdf_storage_path[:-4] + ".docx"
+            else:
+                docx_storage_path_override = pdf_storage_path + ".docx"
+
+        docx_uploaded = await self.storage.upload_bytes_to_supabase(
+            file_bytes=docx_bytes,
+            user_id=user_id,
+            client_id=client_id,
+            functionality=functionality,
+            job_uuid=job_uuid,
+            filename=docx_filename,
+            content_type=self.DOCX_MIME_TYPE,
+            expires_in=expires_in,
+            output=True,
+            bucket_override=pdf_bucket,
+            storage_path_override=docx_storage_path_override,
+        )
+
+        return {
+            "content": pdf_bytes,
+            **pdf_uploaded,
+            "docx_content": docx_bytes,
+            "docx_bucket": docx_uploaded.get("bucket"),
+            "docx_storage_path": docx_uploaded.get("storage_path"),
+            "docx_signed_url": docx_uploaded.get("signed_url"),
+            "docx_download_url": docx_uploaded.get("signed_url"),
+            "docx_filename": docx_uploaded.get("filename") or docx_filename,
+        }
 
     async def _download_pdf_bytes(self, file_url: str) -> bytes:
         url = (file_url or "").strip()
@@ -207,34 +297,35 @@ class AiService:
         if input_storage:
             response["input_storage"] = input_storage
 
-        # Generate PDF once from structured JSON (DOCX -> PDF)
-        pdf_bytes = generate_cnis_pdf_from_template(structured_data)
+        # Generate DOCX from structured JSON
+        docx_bytes = generate_cnis_docx_from_template(structured_data)
 
-        if not pdf_bytes or not pdf_bytes.lstrip().startswith(b"%PDF"):
-            raise WorkerException(status_code=502, detail="Falha ao gerar PDF do relatório CNIS")
-
-        response["content"] = pdf_bytes
-
-        # Upload to Supabase if requested
+        # Upload both DOCX and PDF (converted from DOCX) if requested
         if store_pdf and job_id:
             if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
                 raise WorkerException(
                     status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
                 )
             job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            uploaded = await self.storage.upload_pdf_to_supabase(
-                pdf_bytes=pdf_bytes,
+            outputs = await self._store_report_outputs(
+                docx_bytes=docx_bytes,
+                filename=inferred_filename,
                 user_id=user_id,
                 client_id=client_id,
                 functionality=functionality,
                 job_uuid=job_uuid_str,
-                filename=inferred_filename,
                 expires_in=signed_url_expires_in,
-                output=True,
+                pdf_error_detail="Falha ao gerar PDF do relatório CNIS",
             )
-            if "signed_url" in uploaded:
-                uploaded["download_url"] = uploaded["signed_url"]
-            response.update(uploaded)
+            response.update(outputs)
+        else:
+            # No storage: still produce PDF bytes for callers that want inline content
+            pdf_bytes_local = docx_bytes_to_pdf_bytes(docx_bytes)
+            if not pdf_bytes_local or not pdf_bytes_local.lstrip().startswith(b"%PDF"):
+                raise WorkerException(
+                    status_code=502, detail="Falha ao gerar PDF do relatório CNIS"
+                )
+            response["content"] = pdf_bytes_local
 
         return response
 
@@ -321,36 +412,34 @@ class AiService:
         if input_storage:
             response["input_storage"] = input_storage
 
-        # Generate PDF once from structured JSON (DOCX -> PDF)
-        pdf_bytes_out = generate_process_summary_pdf_from_template(structured_data)
+        # Generate DOCX from structured JSON
+        docx_bytes = generate_process_summary_docx_from_template(structured_data)
 
-        if not pdf_bytes_out or not pdf_bytes_out.lstrip().startswith(b"%PDF"):
-            raise WorkerException(
-                status_code=502, detail="Falha ao gerar PDF do relatório de processo"
-            )
-
-        response["content"] = pdf_bytes_out
-
-        # Upload to Supabase if requested
+        # Upload both DOCX and PDF (converted from DOCX) if requested
         if store_pdf and job_id:
             if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
                 raise WorkerException(
                     status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
                 )
             job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            uploaded = await self.storage.upload_pdf_to_supabase(
-                pdf_bytes=pdf_bytes_out,
+            outputs = await self._store_report_outputs(
+                docx_bytes=docx_bytes,
+                filename=inferred_filename,
                 user_id=user_id,
                 client_id=client_id,
                 functionality=functionality,
                 job_uuid=job_uuid_str,
-                filename=inferred_filename,
                 expires_in=signed_url_expires_in,
-                output=True,
+                pdf_error_detail="Falha ao gerar PDF do relatório de processo",
             )
-            if "signed_url" in uploaded:
-                uploaded["download_url"] = uploaded["signed_url"]
-            response.update(uploaded)
+            response.update(outputs)
+        else:
+            pdf_bytes_local = docx_bytes_to_pdf_bytes(docx_bytes)
+            if not pdf_bytes_local or not pdf_bytes_local.lstrip().startswith(b"%PDF"):
+                raise WorkerException(
+                    status_code=502, detail="Falha ao gerar PDF do relatório de processo"
+                )
+            response["content"] = pdf_bytes_local
 
         return response
 
@@ -469,36 +558,35 @@ class AiService:
         if input_storage:
             response["input_storage"] = input_storage
 
-        # Generate PDF once from structured JSON (DOCX -> PDF)
-        pdf_bytes_out = generate_labor_claim_pdf_from_template(structured_data)
+        # Generate DOCX from structured JSON
+        docx_bytes = generate_labor_claim_docx_from_template(structured_data)
 
-        if not pdf_bytes_out or not pdf_bytes_out.lstrip().startswith(b"%PDF"):
-            raise WorkerException(
-                status_code=502, detail="Falha ao gerar PDF do relatório de reclamação trabalhista"
-            )
-
-        response["content"] = pdf_bytes_out
-
-        # Upload to Supabase if requested
+        # Upload both DOCX and PDF (converted from DOCX) if requested
         if store_pdf and job_id:
             if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
                 raise WorkerException(
                     status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
                 )
             job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            uploaded = await self.storage.upload_pdf_to_supabase(
-                pdf_bytes=pdf_bytes_out,
+            outputs = await self._store_report_outputs(
+                docx_bytes=docx_bytes,
+                filename=inferred_filename,
                 user_id=user_id,
                 client_id=client_id,
                 functionality=functionality,
                 job_uuid=job_uuid_str,
-                filename=inferred_filename,
                 expires_in=signed_url_expires_in,
-                output=True,
+                pdf_error_detail="Falha ao gerar PDF do relatório de reclamação trabalhista",
             )
-            if "signed_url" in uploaded:
-                uploaded["download_url"] = uploaded["signed_url"]
-            response.update(uploaded)
+            response.update(outputs)
+        else:
+            pdf_bytes_local = docx_bytes_to_pdf_bytes(docx_bytes)
+            if not pdf_bytes_local or not pdf_bytes_local.lstrip().startswith(b"%PDF"):
+                raise WorkerException(
+                    status_code=502,
+                    detail="Falha ao gerar PDF do relatório de reclamação trabalhista",
+                )
+            response["content"] = pdf_bytes_local
 
         return response
 
@@ -576,36 +664,35 @@ class AiService:
         if input_storage:
             response["input_storage"] = input_storage
 
-        # Generate PDF from structured JSON (DOCX -> PDF)
-        pdf_bytes = generate_brief_scanner_pdf_from_template(structured_data)
+        # Generate DOCX from structured JSON
+        docx_bytes = generate_brief_scanner_docx_from_template(structured_data)
 
-        if not pdf_bytes or not pdf_bytes.lstrip().startswith(b"%PDF"):
-            raise WorkerException(
-                status_code=502, detail="Falha ao gerar PDF do relatório do Scanner de Peça"
-            )
-
-        response["content"] = pdf_bytes
-
-        # Upload to Supabase if requested
+        # Upload both DOCX and PDF (converted from DOCX) if requested
         if store_pdf and job_id:
             if not (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip():
                 raise WorkerException(
                     status_code=400, detail="SUPABASE_SERVICE_ROLE_KEY não configurada"
                 )
             job_uuid_str = job_id.split(":", 1)[1] if ":" in job_id else job_id
-            uploaded = await self.storage.upload_pdf_to_supabase(
-                pdf_bytes=pdf_bytes,
+            outputs = await self._store_report_outputs(
+                docx_bytes=docx_bytes,
+                filename=inferred_filename,
                 user_id=user_id,
                 client_id=client_id,
                 functionality=functionality,
                 job_uuid=job_uuid_str,
-                filename=inferred_filename,
                 expires_in=signed_url_expires_in,
-                output=True,
+                pdf_error_detail="Falha ao gerar PDF do relatório do Scanner de Peça",
             )
-            if "signed_url" in uploaded:
-                uploaded["download_url"] = uploaded["signed_url"]
-            response.update(uploaded)
+            response.update(outputs)
+        else:
+            pdf_bytes_local = docx_bytes_to_pdf_bytes(docx_bytes)
+            if not pdf_bytes_local or not pdf_bytes_local.lstrip().startswith(b"%PDF"):
+                raise WorkerException(
+                    status_code=502,
+                    detail="Falha ao gerar PDF do relatório do Scanner de Peça",
+                )
+            response["content"] = pdf_bytes_local
 
         return response
 

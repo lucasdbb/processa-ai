@@ -19,6 +19,8 @@ export interface AnalysisJob {
     content?: string // Base64 ou texto
     text?: string // Texto gerado
     document_id?: string
+    docx_document_id?: string
+    docx_download_url?: string
   }
 }
 

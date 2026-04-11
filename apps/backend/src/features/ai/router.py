@@ -25,7 +25,14 @@ from src.features.ai.schemas import (
     ProcessSummaryRequest,
 )
 from src.features.ai.service import AiJobService
+from src.features.billing.subscriptions.service import subscriptions_service
 from src.features.core.storage.service import StorageService
+
+# Plans allowed to download Word (DOCX) versions of generated reports.
+DOCX_ALLOWED_PLANS = {"autonomo", "escritorio"}
+DOCX_MIME_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
 
 router = APIRouter()
 router.include_router(chat_router, prefix="/chat", tags=["chat"])
@@ -356,6 +363,18 @@ async def get_analysis_history(
                 ),
             )
 
+        output_docx_doc = None
+        if row.get("output_docx_id"):
+            output_docx_doc = DocumentResponse(
+                id=str(row["output_docx_id"]),
+                document_type="output_docx",
+                filename=row.get("output_docx_filename") or "analise.docx",
+                size_bytes=None,
+                created_at=(
+                    row["output_created_at"].isoformat() if row.get("output_created_at") else ""
+                ),
+            )
+
         result_payload = row.get("result_payload") or {}
         audit_score = result_payload.get("audit_score")
 
@@ -367,6 +386,7 @@ async def get_analysis_history(
                 finished_at=(row["finished_at"].isoformat() if row.get("finished_at") else None),
                 input_document=input_doc,
                 output_document=output_doc,
+                output_docx_document=output_docx_doc,
                 audit_score=audit_score,
             )
         )
@@ -410,16 +430,44 @@ async def download_document(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado"
             )
 
+        # DOCX downloads are gated to paid plans (autonomo, escritorio).
+        doc_mime = (doc.get("mime_type") or "").strip().lower()
+        doc_type = (doc.get("document_type") or "").strip().lower()
+        is_docx = doc_mime == DOCX_MIME_TYPE or doc_type.endswith("_docx")
+        if is_docx:
+            try:
+                subscription = await subscriptions_service.get_subscription(user_id)
+            except HTTPException:
+                raise
+            except Exception:
+                logger.exception("Failed to load subscription for DOCX download gate")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Erro ao validar plano",
+                )
+
+            plan_id = (subscription.get("plan_id") or "").strip().lower()
+            sub_status = (subscription.get("status") or "").strip().lower()
+            if sub_status != "active" or plan_id not in DOCX_ALLOWED_PLANS:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        "Download em Word disponível apenas para os planos "
+                        "Autônomo e Escritório."
+                    ),
+                )
+
         storage_service = StorageService()
         signed_url = await storage_service.generate_signed_url(
             bucket=doc["bucket"], storage_path=doc["storage_path"], expires_in=expires_in
         )
 
+        default_filename = "documento.docx" if is_docx else "documento.pdf"
         return DocumentDownloadResponse(
             document_id=document_id,
             download_url=signed_url,
             expires_in=expires_in,
-            filename=doc.get("filename") or "documento.pdf",
+            filename=doc.get("filename") or default_filename,
         )
     except HTTPException:
         raise
@@ -477,6 +525,10 @@ async def get_user_jobs_list(
                     or result_payload.get("pdf_url"),
                     "pdf_url": result_payload.get("pdf_url"),
                     "document_id": job.get("output_document_id"),
+                    "docx_document_id": (
+                        job.get("output_docx_document_id")
+                        or result_payload.get("docx_document_id")
+                    ),
                     "content": result_payload.get("content"),
                     "text": result_payload.get("text"),
                 },
