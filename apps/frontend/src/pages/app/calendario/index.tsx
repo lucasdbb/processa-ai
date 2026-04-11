@@ -4,7 +4,7 @@ import { SEO } from '@/components/seo'
 import { format, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
-import { AlertTriangle, CalendarClock, CalendarDays, ChevronDown, List, Plus } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarDays, CheckCircle, ChevronDown, List, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PrazosCalendar, type CalendarEvent as PrazosCalendarEvent } from '@/components/calendar/prazos-calendar'
 import { CalendarEventFormDialog } from '@/components/forms/calendar-event-form-dialog'
@@ -841,21 +841,39 @@ export default function CalendarioPage() {
                           </p>
                         )}
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-semibold text-sm text-foreground">
-                          {formatDeadlineDate(event.start_at)}
-                        </p>
-                        <p
-                          className={cn(
-                            'text-[11px] font-medium mt-0.5',
-                            urgency === 'critical' && 'text-red-600 dark:text-red-500',
-                            urgency === 'urgent' && 'text-yellow-600 dark:text-yellow-500',
-                            urgency === 'warning' && 'text-yellow-600 dark:text-yellow-500',
-                            urgency === 'normal' && 'text-muted-foreground'
-                          )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            try {
+                              await calendarService.updateEvent(event.id, { deadline_status: 'completed' })
+                              toast.success('Prazo concluído com sucesso')
+                              await queryClient.invalidateQueries({ queryKey: ['calendar'] })
+                            } catch {
+                              toast.error('Erro ao concluir prazo')
+                            }
+                          }}
+                          className="p-1.5 rounded-md hover:bg-green-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Concluir prazo"
                         >
-                          {formatDaysUntil(daysUntil)}
-                        </p>
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </button>
+                        <div className="text-right">
+                          <p className="font-semibold text-sm text-foreground">
+                            {formatDeadlineDate(event.start_at)}
+                          </p>
+                          <p
+                            className={cn(
+                              'text-[11px] font-medium mt-0.5',
+                              urgency === 'critical' && 'text-red-600 dark:text-red-500',
+                              urgency === 'urgent' && 'text-yellow-600 dark:text-yellow-500',
+                              urgency === 'warning' && 'text-yellow-600 dark:text-yellow-500',
+                              urgency === 'normal' && 'text-muted-foreground'
+                            )}
+                          >
+                            {formatDaysUntil(daysUntil)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )

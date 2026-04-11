@@ -258,6 +258,7 @@ class ProcessesService:
                         (SELECT COUNT(*) FROM office_api.events e
                          WHERE e.user_id = %(uid)s AND e.processo_id = p.id
                            AND e.event_type = 'prazo'
+                           AND e.deadline_status = 'pending'
                         ) as _deadlines_count,
                         (SELECT COUNT(*) FROM office_api.events e
                          WHERE e.user_id = %(uid)s AND e.processo_id = p.id

@@ -554,39 +554,68 @@ export default function ProcessoDetalhePage() {
                       key={deadline.id}
                       className={cn(
                         'p-4 rounded-lg border bg-card flex items-center justify-between',
-                        deadline.days_until < 0
-                          ? 'border-red-500/30 bg-red-500/5'
-                          : deadline.days_until <= 3
-                            ? 'border-orange-500/30 bg-orange-500/5'
-                            : 'border-border'
+                        deadline.status === 'completed'
+                          ? 'border-green-500/30 bg-green-500/5 opacity-75'
+                          : deadline.days_until < 0
+                            ? 'border-red-500/30 bg-red-500/5'
+                            : deadline.days_until <= 3
+                              ? 'border-orange-500/30 bg-orange-500/5'
+                              : 'border-border'
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <AlertCircle className={cn('h-5 w-5', getPriorityColor(deadline.priority))} />
+                        {deadline.status === 'completed' ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <AlertCircle className={cn('h-5 w-5', getPriorityColor(deadline.priority))} />
+                        )}
                         <div>
-                          <h4 className="font-medium text-foreground">{deadline.title}</h4>
+                          <h4 className={cn('font-medium text-foreground', deadline.status === 'completed' && 'line-through')}>{deadline.title}</h4>
                           <p className="text-sm text-muted-foreground">
                             {formatShortDate(deadline.due_date)}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p
-                          className={cn(
-                            'text-sm font-medium',
-                            deadline.days_until < 0
-                              ? 'text-red-600 dark:text-red-400'
-                              : deadline.days_until <= 3
-                                ? 'text-orange-600 dark:text-orange-400'
-                                : 'text-muted-foreground'
-                          )}
-                        >
-                          {deadline.days_until === 0
-                            ? 'HOJE'
-                            : deadline.days_until < 0
-                              ? `${Math.abs(deadline.days_until)} dias atrás`
-                              : `${deadline.days_until} ${deadline.days_until === 1 ? 'dia' : 'dias'}`}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        {deadline.status !== 'completed' && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await calendarService.updateEvent(deadline.id, { deadline_status: 'completed' })
+                                toast.success('Prazo concluído com sucesso')
+                                await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
+                              } catch {
+                                toast.error('Erro ao concluir prazo')
+                              }
+                            }}
+                            className="p-1 rounded-md hover:bg-green-500/10 transition-colors"
+                            title="Concluir prazo"
+                          >
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          </button>
+                        )}
+                        <div className="text-right">
+                          <p
+                            className={cn(
+                              'text-sm font-medium',
+                              deadline.status === 'completed'
+                                ? 'text-green-600 dark:text-green-400'
+                                : deadline.days_until < 0
+                                  ? 'text-red-600 dark:text-red-400'
+                                  : deadline.days_until <= 3
+                                    ? 'text-orange-600 dark:text-orange-400'
+                                    : 'text-muted-foreground'
+                            )}
+                          >
+                            {deadline.status === 'completed'
+                              ? 'Concluído'
+                              : deadline.days_until === 0
+                                ? 'HOJE'
+                                : deadline.days_until < 0
+                                  ? `${Math.abs(deadline.days_until)} dias atrás`
+                                  : `${deadline.days_until} ${deadline.days_until === 1 ? 'dia' : 'dias'}`}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -720,23 +749,29 @@ export default function ProcessoDetalhePage() {
                   key={deadline.id}
                   className={cn(
                     'p-4 rounded-lg border bg-card',
-                    deadline.days_until < 0
-                      ? 'border-red-500/30 bg-red-500/5'
-                      : deadline.days_until <= 3
-                        ? 'border-orange-500/30 bg-orange-500/5'
-                        : 'border-border'
+                    deadline.status === 'completed'
+                      ? 'border-green-500/30 bg-green-500/5 opacity-75'
+                      : deadline.days_until < 0
+                        ? 'border-red-500/30 bg-red-500/5'
+                        : deadline.days_until <= 3
+                          ? 'border-orange-500/30 bg-orange-500/5'
+                          : 'border-border'
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <Clock className={cn('h-4 w-4', getPriorityColor(deadline.priority))} />
+                      {deadline.status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Clock className={cn('h-4 w-4', getPriorityColor(deadline.priority))} />
+                      )}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-foreground truncate">{deadline.title}</h3>
+                        <h3 className={cn('text-sm font-semibold text-foreground truncate', deadline.status === 'completed' && 'line-through')}>{deadline.title}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           Data: {formatShortDate(deadline.due_date)}
                         </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Status: {deadline.status === 'pending' ? 'Pendente' : deadline.status}
+                        <p className={cn('text-[11px] mt-0.5', deadline.status === 'completed' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground')}>
+                          Status: {deadline.status === 'pending' ? 'Pendente' : deadline.status === 'completed' ? 'Concluído' : deadline.status}
                         </p>
                       </div>
                     </div>
@@ -745,21 +780,42 @@ export default function ProcessoDetalhePage() {
                         <span
                           className={cn(
                             'text-xs font-medium',
-                            deadline.days_until < 0
-                              ? 'text-red-600 dark:text-red-400'
-                              : deadline.days_until <= 3
-                                ? 'text-orange-600 dark:text-orange-400'
-                                : 'text-muted-foreground'
+                            deadline.status === 'completed'
+                              ? 'text-green-600 dark:text-green-400'
+                              : deadline.days_until < 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : deadline.days_until <= 3
+                                  ? 'text-orange-600 dark:text-orange-400'
+                                  : 'text-muted-foreground'
                           )}
                         >
-                          {deadline.days_until === 0
-                            ? 'HOJE'
-                            : deadline.days_until < 0
-                              ? `${Math.abs(deadline.days_until)} dias atrás`
-                              : `${deadline.days_until} ${deadline.days_until === 1 ? 'dia' : 'dias'}`}
+                          {deadline.status === 'completed'
+                            ? 'Concluído'
+                            : deadline.days_until === 0
+                              ? 'HOJE'
+                              : deadline.days_until < 0
+                                ? `${Math.abs(deadline.days_until)} dias atrás`
+                                : `${deadline.days_until} ${deadline.days_until === 1 ? 'dia' : 'dias'}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
+                        {deadline.status !== 'completed' && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await calendarService.updateEvent(deadline.id, { deadline_status: 'completed' })
+                                toast.success('Prazo concluído com sucesso')
+                                await queryClient.invalidateQueries({ queryKey: ['processes', 'detail', id] })
+                              } catch {
+                                toast.error('Erro ao concluir prazo')
+                              }
+                            }}
+                            className="p-1 rounded-md hover:bg-green-500/10 transition-colors"
+                            title="Concluir prazo"
+                          >
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          </button>
+                        )}
                         <button
                           onClick={async () => {
                             try {

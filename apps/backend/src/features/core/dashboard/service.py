@@ -49,7 +49,8 @@ class DashboardService:
                                AND priority = 'high') as urgent_deadlines_today,
                             (SELECT COUNT(*) FROM office_api.events
                              WHERE user_id = %(uid)s
-                               AND event_type = 'prazo') as total_deadlines,
+                               AND event_type = 'prazo'
+                               AND deadline_status = 'pending') as total_deadlines,
                             (SELECT COUNT(*) FROM public.credit_transactions
                              WHERE user_id = %(uid)s AND transaction_type = 'consume'
                                AND reason LIKE %(calc_pattern)s
