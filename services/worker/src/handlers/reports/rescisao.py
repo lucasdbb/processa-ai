@@ -75,6 +75,7 @@ def _build_context(*, input_payload: dict, output_payload: dict) -> dict:
     val_peric = comps.get("periculosidade", 0)
     val_insal = comps.get("insalubridade", 0)
     val_not = comps.get("noturno", 0)
+    val_horas_extras = comps.get("horas_extras", 0)
     val_outras = comps.get("outras", 0)
 
     composicao = {
@@ -82,6 +83,7 @@ def _build_context(*, input_payload: dict, output_payload: dict) -> dict:
         "periculosidade": _money(val_peric) if val_peric > 0 else DASH,
         "insalubridade": _money(val_insal) if val_insal > 0 else DASH,
         "noturno": _money(val_not) if val_not > 0 else DASH,
+        "horas_extras": _money(val_horas_extras) if val_horas_extras > 0 else DASH,
         "outras_verbas": _money(val_outras) if val_outras > 0 else DASH,
     }
 

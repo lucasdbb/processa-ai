@@ -124,6 +124,9 @@ class CalculatorsService:
         base_insalubridade: float,
         adicional_noturno_percent: float,
         media_horas_noturnas: float,
+        media_horas_extras: float,
+        adicional_horas_extras_percent: float,
+        carga_horaria_mensal: float,
         outras_verbas: float,
         data_admissao: date,
         data_rescisao: date,
@@ -198,11 +201,22 @@ class CalculatorsService:
 
         val_noturno = 0.0
         if media_horas_noturnas > 0:
-            valor_hora = salario_base / 220.0
+            valor_hora_noturno = salario_base / float(carga_horaria_mensal)
             val_noturno = (
-                valor_hora * media_horas_noturnas * (float(adicional_noturno_percent) / 100.0)
+                valor_hora_noturno * media_horas_noturnas * (float(adicional_noturno_percent) / 100.0)
             )
             remuneracao += val_noturno
+
+        val_horas_extras = 0.0
+        if media_horas_extras > 0:
+            if adicional_horas_extras_percent not in (50.0, 100.0):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="adicional_horas_extras_percent deve ser 50.0 ou 100.0",
+                )
+            valor_hora = salario_base / float(carga_horaria_mensal)
+            val_horas_extras = valor_hora * (1 + adicional_horas_extras_percent / 100.0) * media_horas_extras
+            remuneracao += val_horas_extras
 
         remuneracao += float(outras_verbas)
 
@@ -380,6 +394,7 @@ class CalculatorsService:
                     "periculosidade": val_periculosidade,
                     "insalubridade": val_insalubridade,
                     "noturno": val_noturno,
+                    "horas_extras": val_horas_extras,
                     "outras": outras_verbas,
                 },
             },

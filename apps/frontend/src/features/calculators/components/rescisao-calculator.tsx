@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Calculator, Loader2, ChevronDown, Briefcase, DollarSign, Shield, Moon, History, FileText } from 'lucide-react'
+import { Calculator, Loader2, ChevronDown, Briefcase, DollarSign, Shield, Moon, History, FileText, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { API_URL, fetchWithCredentials } from '@/lib/fetch'
@@ -88,6 +88,9 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
     baseInsalubridade: '1621.00',
     adicionalNoturnoPercent: '20',
     mediaHorasNoturnas: '',
+    mediaHorasExtras: '',
+    adicionalHorasExtrasPercent: '50',
+    cargaHorariaMensal: '220',
     outrasVerbas: '',
     dataAdmissao: '',
     dataRescisao: '',
@@ -242,6 +245,9 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
           base_insalubridade: parseFloat(formData.baseInsalubridade) || 1621.0,
           adicional_noturno_percent: parseFloat(formData.adicionalNoturnoPercent) || 20,
           media_horas_noturnas: parseFloat(formData.mediaHorasNoturnas) || 0,
+          media_horas_extras: parseFloat(formData.mediaHorasExtras) || 0,
+          adicional_horas_extras_percent: parseFloat(formData.adicionalHorasExtrasPercent) || 50,
+          carga_horaria_mensal: parseFloat(formData.cargaHorariaMensal) || 220,
           outras_verbas: parseFloat(formData.outrasVerbas) || 0,
           data_admissao: formData.dataAdmissao,
           data_rescisao: formData.dataRescisao,
@@ -635,6 +641,71 @@ export function RescisaoCalculator({ selectedClientId }: RescisaoCalculatorProps
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Horas Extras */}
+              <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-3">
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="h-3 w-3 text-orange-500" />
+                  Horas Extras Habituais
+                </span>
+
+                <div className="flex gap-1.5">
+                  {[
+                    { value: '50', label: '1,5x (50%)' },
+                    { value: '100', label: '2x (100%)' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleInputChange('adicionalHorasExtrasPercent', opt.value)}
+                      className={cn(
+                        'flex-1 py-1.5 rounded-md border text-xs font-medium transition-all',
+                        formData.adicionalHorasExtrasPercent === opt.value
+                          ? 'bg-orange-500/10 border-orange-500/40 text-orange-700 dark:text-orange-400'
+                          : 'bg-background border-input text-muted-foreground hover:bg-muted/50'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-medium text-muted-foreground mb-1">Média de Horas/mês</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={formData.mediaHorasExtras}
+                        onChange={(e) => handleInputChange('mediaHorasExtras', e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        className={cn(inputClass, 'pr-8 text-xs')}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">h</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-medium text-muted-foreground mb-1">Carga horária mensal</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={formData.cargaHorariaMensal}
+                        onChange={(e) => handleInputChange('cargaHorariaMensal', e.target.value)}
+                        min="1"
+                        className={cn(inputClass, 'pr-8 text-xs')}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">h</span>
+                    </div>
+                  </div>
+                </div>
+
+                {parseFloat(formData.mediaHorasExtras) > 0 && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Hora normal = salário base ÷ {formData.cargaHorariaMensal}h. Valor integra férias, 13º e FGTS.
+                  </p>
+                )}
               </div>
             </div>
           </div>
