@@ -158,8 +158,6 @@ function ServiceFormDialogBody({
   return (
     <DialogContent
       className="max-w-2xl max-h-[90vh] overflow-y-auto"
-      onInteractOutside={(e) => e.preventDefault()}
-      onEscapeKeyDown={(e) => e.preventDefault()}
     >
       <DialogHeader>
         <DialogTitle>{isEditing ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>

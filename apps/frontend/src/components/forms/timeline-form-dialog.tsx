@@ -231,8 +231,6 @@ export function TimelineFormDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent
         className="sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader className="p-6 pb-2 shrink-0">
           <DialogTitle>
