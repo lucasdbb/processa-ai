@@ -100,7 +100,7 @@ export function DailyBriefingCard({ briefing }: DailyBriefingCardProps) {
     if (audiencias > 0)
       eventParts.push(`${audiencias} audiência${audiencias > 1 ? 's' : ''}`)
     if (reunioes > 0)
-      eventParts.push(`${reunioes} reunião${reunioes > 1 ? 'ões' : ''}`)
+      eventParts.push(`${reunioes} ${reunioes > 1 ? 'reuniões' : 'reunião'}`)
     if (eventParts.length === 0)
       eventParts.push(`${summary.events_count} evento${summary.events_count > 1 ? 's' : ''}`)
     parts.push(eventParts.join(', '))

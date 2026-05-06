@@ -17,6 +17,11 @@ class RescisaoTrabalhistaRequest(BaseModel):
     )
     adicional_noturno_percent: float = Field(default=20.0, ge=0)
     media_horas_noturnas: float = Field(default=0.0, ge=0)
+    media_horas_extras: float = Field(default=0.0, ge=0)
+    adicional_horas_extras_percent: float = Field(
+        default=50.0, description="Percentual do adicional: 50.0 ou 100.0"
+    )
+    carga_horaria_mensal: float = Field(default=220.0, gt=0)
     outras_verbas: float = Field(default=0.0, ge=0)
 
     data_admissao: date

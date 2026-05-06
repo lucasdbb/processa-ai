@@ -248,8 +248,6 @@ function ClientFormDialogBody({
   return (
     <DialogContent
       className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
-      onInteractOutside={(e) => e.preventDefault()}
-      onEscapeKeyDown={(e) => e.preventDefault()}
     >
       <DialogHeader className="p-6 pb-2 shrink-0">
         <DialogTitle>{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
