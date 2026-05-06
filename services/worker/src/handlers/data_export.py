@@ -430,6 +430,7 @@ async def _create_export_notification(
     document_id: str | None,
     job_id: str,
     filename: str,
+    download_url: str | None = None,
 ) -> None:
     pool = await get_pool()
     metadata: dict[str, Any] = {
@@ -438,6 +439,8 @@ async def _create_export_notification(
     }
     if document_id:
         metadata["document_id"] = document_id
+    if download_url:
+        metadata["download_url"] = download_url
 
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
@@ -450,7 +453,7 @@ async def _create_export_notification(
                     user_id,
                     "system",
                     "Exportação de dados pronta",
-                    "Seu arquivo Excel esta pronto para download.",
+                    "Seu arquivo Excel está pronto. Clique em Baixar para fazer o download.",
                     _to_jsonb(metadata),
                 ),
             )
@@ -467,7 +470,14 @@ async def _send_export_ready_email(
     sender = (settings.BREVO_FROM or "").strip()
     sender_name = (settings.BREVO_FROM_NAME or "Contato - Processa AI").strip()
 
-    if not api_key or not sender or not to_email:
+    if not api_key:
+        logger.warning("Export email skipped: BREVO_API_KEY is not configured")
+        return False
+    if not sender:
+        logger.warning("Export email skipped: BREVO_FROM is not configured")
+        return False
+    if not to_email:
+        logger.warning("Export email skipped: recipient email is empty")
         return False
 
     greeting_name = user_name.strip() if isinstance(user_name, str) and user_name.strip() else ""
@@ -507,7 +517,14 @@ async def _send_export_ready_email(
                     "Content-Type": "application/json",
                 },
             )
-            return 200 <= resp.status_code < 300
+            if 200 <= resp.status_code < 300:
+                return True
+            logger.warning(
+                "Brevo rejected export-ready email: status=%s body=%s",
+                resp.status_code,
+                resp.text[:500],
+            )
+            return False
     except Exception:
         logger.exception("Failed sending export-ready email")
         return False
@@ -740,6 +757,7 @@ async def handle_user_data_export_job(job_row: dict) -> None:
             document_id=str(document_id) if document_id else None,
             job_id=str(job_uuid),
             filename=filename,
+            download_url=signed_url if isinstance(signed_url, str) else None,
         )
 
         if user_email:
@@ -751,6 +769,11 @@ async def handle_user_data_export_job(job_row: dict) -> None:
             )
             if not email_sent:
                 logger.warning("Could not send export-ready email to user %s", user_id)
+        else:
+            logger.warning(
+                "Export-ready email not attempted: no email available for user %s",
+                user_id,
+            )
 
     except Exception as exc:
         logger.exception("user_data_export failed for user %s", user_id)

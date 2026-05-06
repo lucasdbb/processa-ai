@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AlertCircle, FolderKanban, Calculator, Check, Filter, Trash2, Bell, FileText, Sparkles, Info } from 'lucide-react'
+import { AlertCircle, FolderKanban, Calculator, Check, Filter, Trash2, Bell, FileText, Sparkles, Info, Download } from 'lucide-react'
 import { SEO } from '@/components/seo'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -209,6 +209,17 @@ export default function NotificacoesPage() {
                   </div>
                   {notification.description && (
                     <p className="text-sm text-muted-foreground">{notification.description}</p>
+                  )}
+                  {typeof notification.metadata?.download_url === 'string' && (
+                    <a
+                      href={notification.metadata.download_url as string}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
+                    >
+                      <Download className="h-4 w-4" />
+                      Baixar arquivo
+                    </a>
                   )}
                   <p className="text-xs text-muted-foreground">{timeAgo}</p>
                 </div>
