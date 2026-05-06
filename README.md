@@ -1,5 +1,7 @@
 # Processa AI
 
+> ⚠️ **Projeto descontinuado.** O SaaS Processa AI foi encerrado e o código fonte foi liberado como open source para fins de estudo, referência e portfólio. Não há manutenção ativa, e nenhum suporte é fornecido.
+
 Plataforma de tecnologia jurídica com gestão de escritório, assistência com IA, chat jurídico com RAG, calculadoras trabalhistas e blog especializado. Desenvolvida com **Vite 7 + React 19** (frontend) e **Python 3.13 + FastAPI** (backend), utilizando **Supabase** como banco de dados e autenticação.
 
 ## Estrutura do Monorepo
@@ -86,7 +88,7 @@ processa-ai/
 
 ### 1. Clone o repositório
 ```bash
-git clone https://github.com/seu-usuario/processa-ai.git
+git clone https://github.com/marcelogcardozo/processa-ai.git
 cd processa-ai
 ```
 
@@ -225,6 +227,7 @@ Todas as páginas do app são lazy-loaded com `React.lazy()` + `Suspense`.
 | `/materiais` | Biblioteca de materiais |
 | `/termos` | Termos de uso |
 | `/privacidade` | Política de privacidade |
+| `/transparencia-ia` | Transparência sobre uso de IA |
 | `/auth/callback` | Callback OAuth/magic-link |
 
 **App (requer autenticação):**
@@ -241,6 +244,7 @@ Todas as páginas do app são lazy-loaded com `React.lazy()` + `Suspense`.
 | `/app/documentos` | Biblioteca de documentos |
 | `/app/ia` | Hub de ferramentas de IA |
 | `/app/ia/:toolId` | Ferramenta de IA específica |
+| `/app/ia-juridica` | Chat jurídico com RAG |
 | `/app/calculadoras` | Calculadoras trabalhistas |
 | `/app/calculadoras/:calculatorId` | Calculadora específica |
 | `/app/assinatura` | Gerenciar assinatura |
@@ -264,57 +268,58 @@ Todas as páginas do app são lazy-loaded com `React.lazy()` + `Suspense`.
 
 ### Backend API
 
-Todas as rotas sob o prefixo `/api`. Documentação interativa: http://localhost:8000/docs
+Todas as rotas sob o prefixo `/api/v1`. Documentação interativa: http://localhost:8000/docs
 
 **Core:**
 | Prefixo | Módulo |
 |---|---|
-| `/api/profiles` (alias `/api/users`) | Perfis de usuário |
-| `/api/dashboard` | Dashboard analytics |
-| `/api/blog` | Posts, categorias |
-| `/api/newsletter` | Inscrição/cancelamento |
-| `/api/support` | Formulário de contato |
-| `/api/feedback` | Feedback de usuários |
-| `/api/materials` | Materiais para download |
-| `/api/plans` | Planos disponíveis |
-| `/api/notifications` | Notificações |
-| `/api/notification-logs` | Logs de notificações |
-| `/api/storage` | Upload via signed URL |
-| `/api/documents` | Documentos gerais |
+| `/api/v1/profiles` (alias `/api/v1/users`) | Perfis de usuário |
+| `/api/v1/dashboard` | Dashboard analytics |
+| `/api/v1/blog` | Posts, categorias |
+| `/api/v1/newsletter` | Inscrição/cancelamento |
+| `/api/v1/support` | Formulário de contato |
+| `/api/v1/feedback` | Feedback de usuários |
+| `/api/v1/materials` | Materiais para download |
+| `/api/v1/plans` | Planos disponíveis |
+| `/api/v1/notifications` | Notificações |
+| `/api/v1/notification-logs` | Logs de notificações |
+| `/api/v1/storage` | Upload via signed URL |
+| `/api/v1/documents` | Documentos gerais |
 
 **Billing:**
 | Prefixo | Módulo |
 |---|---|
-| `/api/billing/subscriptions` | Assinaturas Stripe |
-| `/api/billing/webhooks` | Webhooks Stripe |
-| `/api/credits` | Sistema de créditos + validação de telefone por SMS no onboarding |
+| `/api/v1/billing/subscriptions` | Assinaturas Stripe |
+| `/api/v1/billing/webhooks` | Webhooks Stripe |
+| `/api/v1/credits` | Sistema de créditos + validação de telefone por SMS no onboarding |
 
 **Fluxo de créditos de boas-vindas (antiabuso):**
-- O usuário solicita código SMS em `POST /api/credits/send-phone-code`
-- O usuário valida o código em `POST /api/credits/verify-phone-code`
-- O resgate em `POST /api/credits/claim-welcome` exige CPF válido e telefone previamente verificado
+- O usuário solicita código SMS em `POST /api/v1/credits/send-phone-code`
+- O usuário valida o código em `POST /api/v1/credits/verify-phone-code`
+- O resgate em `POST /api/v1/credits/claim-welcome` exige CPF válido e telefone previamente verificado
 - Telefones verificados são únicos por conta para reduzir abuso de créditos grátis
 
 **Office (Gestão de Escritório):**
 | Prefixo | Módulo |
 |---|---|
-| `/api/office/clients` | Clientes |
-| `/api/office/processes` | Processos |
-| `/api/office/documents` | Documentos |
-| `/api/office/timeline` | Andamentos |
-| `/api/office/deadlines` | Prazos |
-| `/api/office/fees` | Honorários |
-| `/api/office/fee-payments` | Pagamentos de honorários |
-| `/api/office/notes` | Anotações |
-| `/api/office/services` | Serviços |
-| `/api/office/calendar` | Calendário |
+| `/api/v1/office/clients` | Clientes |
+| `/api/v1/office/processes` | Processos |
+| `/api/v1/office/documents` | Documentos |
+| `/api/v1/office/timeline` | Andamentos |
+| `/api/v1/office/deadlines` | Prazos |
+| `/api/v1/office/fees` | Honorários |
+| `/api/v1/office/fee-payments` | Pagamentos de honorários |
+| `/api/v1/office/notes` | Anotações |
+| `/api/v1/office/services` | Serviços |
+| `/api/v1/office/calendar` | Calendário |
 
 **IA e Outros:**
 | Prefixo | Módulo |
 |---|---|
-| `/api/ai` | Ferramentas de IA + Chat jurídico (SSE streaming) |
-| `/api/calculators` | Calculadoras trabalhistas |
-| `/api/portal` | Portal do cliente (read-only) |
+| `/api/v1/ai` | Ferramentas de IA + Chat jurídico (SSE streaming) |
+| `/api/v1/calculators` | Calculadoras trabalhistas |
+| `/api/v1/jobs` | Status e listagem de jobs assíncronos |
+| `/api/v1/portal` | Portal do cliente (read-only) |
 
 ## Arquitetura
 
@@ -458,4 +463,6 @@ Variáveis de ambiente obrigatórias:
 
 ## Licença
 
-Este projeto está sob a licença MIT.
+Este projeto é distribuído sob a licença **GNU Affero General Public License v3.0 (AGPL-3.0)**. Veja o arquivo [LICENSE](./LICENSE) para o texto completo.
+
+A AGPL-3.0 é uma licença *copyleft forte*: qualquer pessoa pode usar, modificar e até oferecer este software como serviço (SaaS), **mas é obrigada a disponibilizar publicamente o código-fonte completo de qualquer modificação ou derivação**, incluindo as rodadas em servidores acessíveis ao público.
