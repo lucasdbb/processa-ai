@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Biblioteca de Prompts</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="app-header">
+    <p class="overline"><span class="glow-dot" aria-hidden="true"></span>A Nova Advocacia</p>
+    <h1>Biblioteca de Prompts</h1>
+  </header>
+
+  <!-- ═══ VISTA: LISTA ═══ -->
+  <section id="view-list" class="view">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" class="input input-search" type="search" placeholder="Buscar prompt..." aria-label="Buscar prompt" />
+      </div>
+      <button id="btn-new" class="btn-primary" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Novo prompt
+      </button>
+    </div>
+
+    <div id="chips" class="chips" role="group" aria-label="Filtrar por categoria"></div>
+
+    <div id="prompt-list" class="prompt-list" aria-live="polite"></div>
+
+    <div id="empty-state" class="empty-state" hidden>
+      <div class="empty-glyph" aria-hidden="true">&gt;_</div>
+      <h2>Nenhum prompt ainda</h2>
+      <p>Cadastre seu primeiro prompt e ele ficará sempre à mão para copiar e usar em qualquer LLM.</p>
+      <button id="btn-empty-new" class="btn-primary" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Criar primeiro prompt
+      </button>
+    </div>
+
+    <div id="no-results" class="empty-state" hidden>
+      <h2>Nada encontrado</h2>
+      <p>Nenhum prompt corresponde à busca ou ao filtro atual.</p>
+    </div>
+
+    <footer class="app-footer">
+      <span id="count" class="count"></span>
+      <div class="footer-actions">
+        <button id="btn-export" class="btn-ghost" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Exportar
+        </button>
+        <button id="btn-import" class="btn-ghost" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Importar
+        </button>
+        <input id="file-import" type="file" accept="application/json,.json" hidden />
+      </div>
+    </footer>
+  </section>
+
+  <!-- ═══ VISTA: EDITOR ═══ -->
+  <section id="view-editor" class="view" hidden>
+    <h2 id="editor-title" class="editor-heading">Novo prompt</h2>
+    <form id="form-editor" autocomplete="off">
+      <div class="field">
+        <label class="input-label" for="f-title">Título</label>
+        <input id="f-title" class="input" type="text" maxlength="120" required
+               placeholder="Ex.: Petição inicial trabalhista" />
+      </div>
+      <div class="field">
+        <label class="input-label" for="f-category">Categoria</label>
+        <input id="f-category" class="input" type="text" maxlength="40" list="category-options"
+               placeholder="Ex.: Petições, Contratos, Marketing..." />
+        <datalist id="category-options"></datalist>
+      </div>
+      <div class="field">
+        <label class="input-label" for="f-content">Conteúdo do prompt</label>
+        <textarea id="f-content" class="input textarea" rows="12" required
+                  placeholder="Cole ou escreva aqui o prompt completo..."></textarea>
+      </div>
+      <div class="editor-actions">
+        <button type="submit" class="btn-primary">Salvar prompt</button>
+        <button type="button" id="btn-cancel" class="btn-ghost">Cancelar</button>
+      </div>
+    </form>
+  </section>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

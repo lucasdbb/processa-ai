@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Biblioteca de Prompts — A Nova Advocacia",
+  "description": "Cadastre, organize e copie seus prompts para usar em qualquer LLM (ChatGPT, Claude, Gemini...).",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Abrir Biblioteca de Prompts"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": ["sidePanel", "storage"],
+  "minimum_chrome_version": "114"
+}
