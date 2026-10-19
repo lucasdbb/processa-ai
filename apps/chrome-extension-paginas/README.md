@@ -36,10 +36,30 @@ Se a página já estiver salva, o popup avisa e o botão vira **Atualizar págin
 
 ## Sincronização entre computadores
 
-As páginas ficam em `chrome.storage.sync`, que o Chrome sincroniza entre os
-computadores conectados na **mesma conta Google**, com a sincronização ligada e
-**Extensões** marcado em *Configurações → Você e o Google → Sincronização*. A extensão
-precisa estar instalada em cada computador.
+As páginas ficam em `chrome.storage.sync`. O Chrome só leva esses dados para outros
+computadores quando **todas** estas condições valem, nos dois computadores:
+
+1. Chrome conectado na **mesma conta Google**.
+2. Opção **Extensões** ligada na sincronização da conta
+   (`chrome://settings/syncSetup/advanced`, ou procure "Extensões" em
+   *Configurações → Você e o Google*).
+3. A extensão instalada com o **mesmo ID** (garantido pelo campo `key`, veja abaixo).
+
+A condição 2 é a que costuma falhar. No código atual do Chromium, os dados de
+`storage.sync` (tipo `EXTENSION_SETTINGS`) andam junto com a opção "Extensões". Para quem
+usa o Chrome conectado sem a sincronização completa, essa opção só vem ligada por padrão
+em logins novos, e quem já estava conectado antes fica com ela desligada. O Chrome não
+oferece API para a extensão saber se a opção está ligada. Por isso, a partir da v1.1:
+
+- Cada computador grava um pequeno registro de presença (`d_<id>`) na sincronização.
+- O painel no topo da lista mostra **quais computadores estão se enxergando**: ponto
+  verde quando outro computador aparece, ponto âmbar quando só este.
+- Quando só há este computador, o painel abre um guia passo a passo com um botão que
+  abre as configurações de sincronização do Chrome.
+- Dá para renomear este computador e esquecer computadores antigos.
+
+Páginas salvas enquanto a opção estava desligada não se perdem: ficam neste computador e
+sobem para a conta assim que a opção é ligada.
 
 O Chrome limita esse armazenamento a **100 KB** (cerca de 400 a 500 páginas, dependendo
 do tamanho das notas). A extensão trata o limite assim:
@@ -68,6 +88,26 @@ do tamanho das notas). A extensão trata o limite assim:
 3. Fixe o ícone na barra pelo ícone de quebra-cabeça.
 
 O atalho de teclado pode ser trocado em `chrome://extensions/shortcuts`.
+
+## Como atualizar sem perder as páginas
+
+As páginas salvas pertencem ao ID da extensão, e não aos arquivos. Por isso:
+
+1. (Recomendado) Na lista, clique em **Exportar** para ter um backup.
+2. Substitua os arquivos da pasta da extensão pelos da versão nova.
+3. Em `chrome://extensions`, clique em **↻** (recarregar) no card da extensão.
+4. Confira a versão no rodapé da lista (ex.: `v1.1.0`).
+
+**Nunca remova a extensão para atualizar**: remover apaga as páginas salvas daquele
+computador. Carregar a versão nova a partir de outra pasta também preserva os dados,
+porque o campo `key` mantém o mesmo ID.
+
+## Histórico de versões
+
+- **1.1.0**: painel de sincronização com os computadores conectados e guia para ligar a
+  opção "Extensões" do Chrome; o popup deixou de dizer "Sincronizado" sem ter como
+  confirmar; versão exibida no rodapé.
+- **1.0.0**: versão inicial.
 
 ## Permissões
 

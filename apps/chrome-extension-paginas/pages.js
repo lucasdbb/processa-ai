@@ -17,6 +17,8 @@ let clearArmed = false;
 let clearArmedTimer = null;
 let refreshTimer = null;
 let toastTimer = null;
+let renamingDevice = false;
+let syncPanelAutoOpened = false;
 
 const ICONS = {
   read: 'M20 6 9 17l-5-5',
@@ -89,6 +91,18 @@ function fmtWhen(ts) {
   if (ts >= startOfToday()) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const sameYear = d.getFullYear() === new Date().getFullYear();
   return d.toLocaleDateString('pt-BR', sameYear ? { day: '2-digit', month: 'short' } : { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fmtAgo(ts) {
+  if (!ts) return 'ainda não registrado';
+  const diff = Math.max(0, Date.now() - ts);
+  const min = Math.round(diff / 60000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `há ${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? 'há 1 dia' : `há ${d} dias`;
 }
 
 function fmtKB(bytes) {
@@ -407,12 +421,120 @@ async function renderUsage() {
   }
 }
 
+// ─── Painel de sincronização ───
+
+const DEVICE_ICON = 'M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm4 15h8M12 17v3';
+
+async function renderSync() {
+  if (renamingDevice) return;
+  let devices;
+  try {
+    devices = await Store.devices();
+  } catch {
+    return;
+  }
+  const others = devices.filter((d) => !d.isThis);
+  const panel = $('sync-panel');
+  const dot = $('sync-dot');
+  const summary = $('sync-summary');
+  summary.textContent = '';
+
+  if (others.length) {
+    const latest = others[0];
+    dot.className = 'status-dot on';
+    panel.classList.remove('is-off');
+    summary.append(
+      document.createTextNode(`Sincronizando com ${others.map((d) => d.name).join(', ')} `),
+      el('span', 'muted', `· última atividade ${fmtAgo(latest.lastSeen)}`)
+    );
+  } else {
+    dot.className = 'status-dot off';
+    panel.classList.add('is-off');
+    summary.append(
+      document.createTextNode('Só este computador até agora '),
+      el('span', 'muted', '· veja como ligar a sincronização')
+    );
+  }
+  $('sync-help').hidden = others.length > 0;
+
+  const list = $('device-list');
+  list.textContent = '';
+  for (const d of devices) list.appendChild(deviceEl(d));
+
+  // abre o guia sozinho na primeira vez em que há páginas mas nenhum outro computador
+  if (!others.length && items.length && !syncPanelAutoOpened) {
+    syncPanelAutoOpened = true;
+    panel.open = true;
+  }
+}
+
+function deviceEl(d) {
+  const li = el('li', 'device');
+  li.appendChild(icon(DEVICE_ICON)).classList.add('device-icon');
+  li.appendChild(el('span', 'device-name', d.name));
+  if (d.isThis) li.appendChild(el('span', 'badge', 'este computador'));
+
+  const meta = el('span', 'device-meta', d.isThis
+    ? `versão ${d.version || chrome.runtime.getManifest().version}`
+    : `última atividade ${fmtAgo(d.lastSeen)}${d.version ? ` · versão ${d.version}` : ''}`);
+  li.appendChild(meta);
+
+  const btn = el('button', 'btn-ghost btn-small', d.isThis ? 'Renomear' : 'Esquecer');
+  btn.type = 'button';
+  if (d.isThis) {
+    btn.addEventListener('click', () => startRename(li, d));
+  } else {
+    btn.title = 'Remove este computador da lista (por exemplo, se ele não existe mais)';
+    btn.addEventListener('click', async () => {
+      await Store.forgetDevice(d.id);
+      renderSync();
+    });
+  }
+  li.appendChild(btn);
+  return li;
+}
+
+function startRename(li, d) {
+  renamingDevice = true;
+  li.textContent = '';
+  li.appendChild(icon(DEVICE_ICON)).classList.add('device-icon');
+  const form = el('form', 'device-rename');
+  const input = el('input', 'input');
+  input.value = d.name;
+  input.maxLength = 40;
+  input.setAttribute('aria-label', 'Nome deste computador');
+  const save = el('button', 'btn-ghost btn-small', 'Salvar');
+  save.type = 'submit';
+  const cancel = el('button', 'btn-ghost btn-small', 'Cancelar');
+  cancel.type = 'button';
+  form.append(input, save, cancel);
+  li.appendChild(form);
+  input.focus();
+  input.select();
+
+  const finish = () => {
+    renamingDevice = false;
+    renderSync();
+  };
+  cancel.addEventListener('click', finish);
+  form.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') finish();
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await Store.renameDevice(input.value);
+    finish();
+    showToast('Nome do computador atualizado');
+  });
+}
+
 // ─── Ações ───
 
 async function refresh() {
   items = await Store.all();
   render();
   renderUsage();
+  renderSync();
 }
 
 function scheduleRefresh() {
@@ -600,13 +722,24 @@ function showToast(message, isError = false) {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync' && area !== 'local') return;
-  if (Object.keys(changes).some((k) => k.startsWith(Store.PREFIX))) scheduleRefresh();
+  const keys = Object.keys(changes);
+  if (keys.some((k) => k.startsWith(Store.PREFIX))) scheduleRefresh();
+  else if (area === 'sync' && keys.some((k) => k.startsWith(Store.DEVICE_PREFIX))) renderSync();
 });
 
 // ─── Init ───
 
 document.addEventListener('DOMContentLoaded', async () => {
+  $('version').textContent = `v${chrome.runtime.getManifest().version}`;
+  $('ext-id').textContent = chrome.runtime.id;
+  $('btn-open-sync-settings').addEventListener('click', () => {
+    chrome.tabs.create({ url: 'chrome://settings/syncSetup/advanced' });
+  });
+
+  await Store.heartbeat();
   await refresh();
+  // atualiza o "há X min" dos outros computadores sem recarregar a página
+  setInterval(renderSync, 60000);
 
   const moved = await Store.rebalance();
   if (moved) {

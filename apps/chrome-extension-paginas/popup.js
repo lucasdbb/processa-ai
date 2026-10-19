@@ -40,17 +40,22 @@ async function renderFooter(items) {
   $('list-count').textContent = items.length ? `(${items.length})` : '';
   const status = $('sync-status');
   try {
-    const { bytes, quota } = await Store.usage();
+    const [{ bytes, quota }, devices] = await Promise.all([Store.usage(), Store.devices()]);
     const pct = Math.round((bytes / quota) * 100);
     const localCount = items.filter((i) => i.area === 'local').length;
+    const others = devices.filter((d) => !d.isThis).length;
+    status.classList.remove('warn');
     if (localCount) {
       status.textContent = `${localCount} só neste computador`;
       status.classList.add('warn');
     } else if (pct >= 80) {
-      status.textContent = `Sincronização ${pct}% cheia`;
+      status.textContent = `Espaço de sincronização ${pct}% cheio`;
       status.classList.add('warn');
+    } else if (others) {
+      status.textContent = others === 1 ? 'Sincronizando com 1 computador' : `Sincronizando com ${others} computadores`;
     } else {
-      status.textContent = 'Sincronizado';
+      status.textContent = 'Sem outro computador ainda';
+      status.title = 'Abra "Ver páginas salvas" para ver como ligar a sincronização';
     }
   } catch {
     status.textContent = '';

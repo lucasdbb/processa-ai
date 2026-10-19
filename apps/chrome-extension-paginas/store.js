@@ -7,11 +7,19 @@
 // dois computadores sobrescrevam a lista inteira um do outro.
 // Quando o espaço do sync acaba, a página vai para chrome.storage.local
 // (só neste computador) e rebalance() a devolve ao sync quando houver espaço.
+//
+// O Chrome não expõe se a sincronização está ligada: storage.sync só sai do
+// computador quando a opção "Extensões" está ativa na sincronização da conta.
+// Para tornar isso visível, cada instalação grava um registro de presença
+// ("d_<id do dispositivo>") no sync; ver o registro de outro computador é a
+// prova de que a sincronização funciona.
 
 'use strict';
 
 const Store = (() => {
   const PREFIX = 's_';
+  const DEVICE_PREFIX = 'd_';
+  const HEARTBEAT_MS = 5 * 60 * 1000;
   const SYNC = chrome.storage.sync;
   const LOCAL = chrome.storage.local;
   const QUOTA_BYTES = SYNC.QUOTA_BYTES || 102400;
@@ -91,12 +99,86 @@ const Store = (() => {
     return [...byId.values()];
   }
 
+  // ─── Dispositivos (registro de presença) ───
+
+  function defaultDeviceName() {
+    const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+    if (/mac/i.test(platform)) return 'Mac';
+    if (/win/i.test(platform)) return 'Windows';
+    if (/cros|chrome os/i.test(platform)) return 'Chromebook';
+    if (/linux/i.test(platform)) return 'Linux';
+    return 'Computador';
+  }
+
+  async function getDevice() {
+    const data = await LOCAL.get(['deviceId', 'deviceName', 'lastHeartbeat']);
+    let { deviceId, deviceName } = data;
+    if (!deviceId) {
+      deviceId = crypto.getRandomValues(new Uint32Array(2)).reduce((s, n) => s + n.toString(36), '').slice(0, 10);
+      deviceName = defaultDeviceName();
+      await LOCAL.set({ deviceId, deviceName });
+    }
+    return { id: deviceId, name: deviceName || defaultDeviceName(), lastHeartbeat: Number(data.lastHeartbeat) || 0 };
+  }
+
+  function heartbeatEntry(device) {
+    return {
+      [DEVICE_PREFIX + device.id]: { n: device.name, s: Date.now(), v: chrome.runtime.getManifest().version },
+    };
+  }
+
+  async function heartbeat(force = false) {
+    const device = await getDevice();
+    if (!force && Date.now() - device.lastHeartbeat < HEARTBEAT_MS) return device;
+    try {
+      await SYNC.set(heartbeatEntry(device));
+      await LOCAL.set({ lastHeartbeat: Date.now() });
+    } catch {
+      // sem espaço ou limite de gravações: tenta de novo na próxima abertura
+    }
+    return device;
+  }
+
+  async function devices() {
+    const [device, data] = await Promise.all([getDevice(), SYNC.get(null)]);
+    const list = [];
+    for (const [key, value] of Object.entries(data)) {
+      if (!key.startsWith(DEVICE_PREFIX) || !value) continue;
+      const id = key.slice(DEVICE_PREFIX.length);
+      list.push({
+        id,
+        name: String(value.n || 'Computador'),
+        lastSeen: Number(value.s) || 0,
+        version: String(value.v || ''),
+        isThis: id === device.id,
+      });
+    }
+    if (!list.some((d) => d.isThis)) {
+      list.push({ id: device.id, name: device.name, lastSeen: 0, version: chrome.runtime.getManifest().version, isThis: true });
+    }
+    list.sort((a, b) => Number(b.isThis) - Number(a.isThis) || b.lastSeen - a.lastSeen);
+    return list;
+  }
+
+  async function renameDevice(name) {
+    await LOCAL.set({ deviceName: clean(name, 40) || defaultDeviceName() });
+    await heartbeat(true);
+  }
+
+  async function forgetDevice(id) {
+    await SYNC.remove(DEVICE_PREFIX + id);
+  }
+
   async function add(fields) {
     const item = sanitize({ ...fields, id: newId(), createdAt: Date.now(), read: false });
     const key = PREFIX + item.id;
     const value = encode(item);
+    const device = await getDevice();
+    const heartbeatDue = Date.now() - device.lastHeartbeat >= HEARTBEAT_MS;
     try {
-      await SYNC.set({ [key]: value });
+      // a presença vai na mesma gravação: não gasta cota extra de escrita
+      await SYNC.set({ [key]: value, ...(heartbeatDue ? heartbeatEntry(device) : {}) });
+      if (heartbeatDue) await LOCAL.set({ lastHeartbeat: Date.now() });
       return { ...item, area: 'sync' };
     } catch (err) {
       if (!isQuotaError(err)) throw err;
@@ -231,8 +313,13 @@ const Store = (() => {
 
   return {
     PREFIX,
+    DEVICE_PREFIX,
     LIMITS,
     all,
+    devices,
+    heartbeat,
+    renameDevice,
+    forgetDevice,
     add,
     addMany,
     update,
