@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Páginas Salvas</title>
+  <link rel="icon" href="icons/icon-32.png" />
+  <link rel="stylesheet" href="base.css" />
+  <link rel="stylesheet" href="pages.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="page-header">
+      <div>
+        <p class="overline"><span class="glow-dot" aria-hidden="true"></span>A Nova Advocacia</p>
+        <h1>Páginas Salvas</h1>
+      </div>
+      <div class="sync-meter">
+        <div class="sync-meter-top">
+          <span class="input-label">Sincronização</span>
+          <span id="sync-text" class="sync-text"></span>
+        </div>
+        <div id="meter" class="meter" role="meter" aria-label="Espaço de sincronização usado" aria-valuemin="0" aria-valuemax="100">
+          <div id="meter-fill" class="meter-fill"></div>
+        </div>
+        <p id="sync-local" class="sync-local" hidden></p>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="search-wrap">
+        <svg class="i search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" class="input input-search" type="search" placeholder="Buscar por título, site, nota ou categoria" aria-label="Buscar páginas salvas" />
+        <kbd class="search-kbd" aria-hidden="true">/</kbd>
+      </div>
+      <div class="segmented" role="group" aria-label="Filtrar por status">
+        <button type="button" data-status="all" aria-pressed="true">Todas <span class="seg-count" id="count-all"></span></button>
+        <button type="button" data-status="unread" aria-pressed="false">Não lidas <span class="seg-count" id="count-unread"></span></button>
+        <button type="button" data-status="read" aria-pressed="false">Lidas <span class="seg-count" id="count-read"></span></button>
+      </div>
+      <label class="sort-wrap">
+        <span class="sr-only">Ordenar</span>
+        <select id="sort" class="input select">
+          <option value="newest">Mais recentes</option>
+          <option value="oldest">Mais antigas</option>
+          <option value="az">Título (A–Z)</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="chips" class="chips" role="group" aria-label="Filtrar por categoria"></div>
+
+    <main id="list" class="list" aria-live="polite"></main>
+
+    <div id="empty-state" class="empty-state" hidden>
+      <div class="empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1Z"/></svg>
+      </div>
+      <h2>Nenhuma página salva ainda</h2>
+      <p>Em qualquer site, clique no ícone da extensão (ou use <kbd>Alt+Shift+S</kbd>) e em <strong>Salvar página</strong>. A aba continua aberta e a página aparece aqui.</p>
+    </div>
+
+    <div id="no-results" class="empty-state" hidden>
+      <h2>Nada encontrado</h2>
+      <p>Nenhuma página corresponde à busca ou aos filtros atuais.</p>
+    </div>
+
+    <footer class="page-footer">
+      <span id="count" class="count"></span>
+      <div class="footer-actions">
+        <button id="btn-clear-read" class="btn-ghost" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          <span id="btn-clear-read-label">Excluir lidas</span>
+        </button>
+        <button id="btn-export" class="btn-ghost" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Exportar
+        </button>
+        <button id="btn-import" class="btn-ghost" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Importar
+        </button>
+        <input id="file-import" type="file" accept="application/json,.json" hidden />
+      </div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="store.js"></script>
+  <script src="pages.js"></script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Salvar página</title>
+  <link rel="stylesheet" href="base.css" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body class="popup">
+  <header class="popup-header">
+    <p class="overline"><span class="glow-dot" aria-hidden="true"></span>A Nova Advocacia</p>
+    <h1>Salvar página</h1>
+  </header>
+
+  <!-- ═══ FORMULÁRIO ═══ -->
+  <section id="state-form" hidden>
+    <div class="page-card">
+      <img id="favicon" class="favicon" alt="" />
+      <div class="page-card-text">
+        <p id="page-host" class="page-host"></p>
+        <p id="page-url" class="page-url"></p>
+      </div>
+    </div>
+
+    <p id="already" class="already" hidden></p>
+
+    <form id="form" autocomplete="off">
+      <div class="field">
+        <label class="input-label" for="f-title">Título</label>
+        <input id="f-title" class="input" type="text" maxlength="300" required />
+      </div>
+      <div class="field">
+        <label class="input-label" for="f-category">Categoria <span class="optional">(opcional)</span></label>
+        <input id="f-category" class="input" type="text" maxlength="40" list="category-options" placeholder="Ex.: Jurisprudência, Leitura, Clientes..." />
+        <datalist id="category-options"></datalist>
+      </div>
+      <div class="field">
+        <label class="input-label" for="f-note">Nota <span class="optional">(opcional)</span></label>
+        <textarea id="f-note" class="input textarea" rows="3" maxlength="1000" placeholder="Por que esta página importa?"></textarea>
+      </div>
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+      <button id="btn-save" type="submit" class="btn-primary btn-block">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1Z"/></svg>
+        <span id="btn-save-label">Salvar página</span>
+      </button>
+      <p class="hint"><kbd>Enter</kbd> salva · a aba continua aberta</p>
+    </form>
+  </section>
+
+  <!-- ═══ SALVO ═══ -->
+  <section id="state-done" class="state-done" hidden>
+    <div class="done-check" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+    </div>
+    <h2 id="done-title">Página salva</h2>
+    <p id="done-text">A aba continua aberta. Você encontra tudo em “Ver páginas salvas”.</p>
+  </section>
+
+  <!-- ═══ PÁGINA NÃO SALVÁVEL ═══ -->
+  <section id="state-blocked" class="state-done" hidden>
+    <h2>Esta página não pode ser salva</h2>
+    <p>Páginas internas do Chrome (como a nova guia ou as configurações) não podem ser salvas. Abra um site e tente de novo.</p>
+  </section>
+
+  <footer class="popup-footer">
+    <button id="btn-open-list" class="link-btn" type="button">
+      Ver páginas salvas <span id="list-count" class="list-count"></span>
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+    <span id="sync-status" class="sync-status"></span>
+  </footer>
+
+  <script src="store.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
