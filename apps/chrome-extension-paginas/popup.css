@@ -1,0 +1,184 @@
+/* Popup — salvar a página atual */
+
+body.popup {
+  width: 360px;
+  padding: 1rem 1.1rem 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.popup-header { margin-bottom: 0.85rem; }
+
+.popup-header h1 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+/* ─── Cartão da página ─── */
+
+.page-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  background: rgba(10, 22, 40, 0.7);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  border-radius: var(--radius-lg);
+  margin-bottom: 0.85rem;
+}
+
+.page-card-text { min-width: 0; }
+
+.page-host,
+.page-url {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-host {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-gray-100);
+}
+
+.page-url {
+  font-size: 0.6875rem;
+  color: var(--color-gray-500);
+}
+
+.already {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: -0.2rem 0 0.85rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.1);
+  color: #A5B4FC;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+/* ─── Formulário ─── */
+
+.field { margin-bottom: 0.75rem; }
+
+.btn-block { width: 100%; margin-top: 0.25rem; }
+
+.hint {
+  margin: 0.55rem 0 0;
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--color-gray-500);
+}
+
+.form-error {
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  color: #FCA5A5;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ─── Estados de confirmação ─── */
+
+.state-done {
+  text-align: center;
+  padding: 1.25rem 0.5rem 0.75rem;
+}
+
+.state-done h2 {
+  margin: 0.85rem 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.state-done p {
+  margin: 0 auto;
+  max-width: 17rem;
+  color: var(--color-gray-300);
+  font-size: 0.8125rem;
+}
+
+.state-done.is-local p { color: #FCD34D; }
+
+.done-check {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--gradient-neural);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--glow-cyan-md);
+  animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.done-check svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: var(--color-bg-void);
+  stroke-width: 2.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.state-done.is-local .done-check {
+  background: linear-gradient(135deg, #F59E0B 0%, #6366F1 100%);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.35);
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Rodapé ─── */
+
+.popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid transparent;
+  border-image: var(--gradient-divider) 1;
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0;
+  background: none;
+  border: none;
+  color: var(--color-cyan);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.link-btn svg.i { width: 14px; height: 14px; }
+
+.list-count {
+  color: var(--color-gray-500);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.sync-status {
+  font-size: 0.6875rem;
+  color: var(--color-gray-500);
+  text-align: right;
+}
+.sync-status.warn { color: var(--color-warning); }

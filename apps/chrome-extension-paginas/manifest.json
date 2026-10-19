@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Páginas Salvas — A Nova Advocacia",
+  "description": "Salve a página atual com um clique (título, link e nota) e encontre tudo depois, sincronizado entre seus computadores.",
+  "version": "1.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvGZrwPNpiWrzUap4oqTEE8kcdCHiwGY30rJy4VSHAaaROojwZDXwAr8SC4CIGwMEyEnE+WcE9KRVaLEwzrpApZrPUEc7SX1Oo/X0FA5H505Ue8216jCNr/Rz+2BK/jmiOl+OOI6wN+qLNMC/Hdmccv5B8TS8qjFxF0hLlePOcbi2HGuZXAa6lTD/3w2LDsxm+RjfX7ht7G9gDC7BwjUnysu+jOGaA5zeuoDKiNqHtAgFL9TZT9ajc4pXDORtNOFoVWgfjNS+w1gBRiQEOA7kUtdUrMJ0A0a7MdYIOlBR5ADYH6QqA9zYCOGMDeAS79kTlbwcf6asgBv7CoiKZEc0HQIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Salvar esta página",
+    "default_popup": "popup.html"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      }
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "favicon",
+    "contextMenus"
+  ],
+  "minimum_chrome_version": "116"
+}

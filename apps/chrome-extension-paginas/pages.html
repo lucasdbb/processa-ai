@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Páginas Salvas</title>
+  <link rel="icon" href="icons/icon-32.png" />
+  <link rel="stylesheet" href="base.css" />
+  <link rel="stylesheet" href="pages.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="page-header">
+      <div>
+        <p class="overline"><span class="glow-dot" aria-hidden="true"></span>A Nova Advocacia</p>
+        <h1>Páginas Salvas</h1>
+      </div>
+      <div class="sync-meter">
+        <div class="sync-meter-top">
+          <span class="input-label">Espaço de sincronização</span>
+          <span id="sync-text" class="sync-text"></span>
+        </div>
+        <div id="meter" class="meter" role="meter" aria-label="Espaço de sincronização usado" aria-valuemin="0" aria-valuemax="100">
+          <div id="meter-fill" class="meter-fill"></div>
+        </div>
+        <p id="sync-local" class="sync-local" hidden></p>
+      </div>
+    </header>
+
+    <details id="sync-panel" class="sync-panel">
+      <summary>
+        <span id="sync-dot" class="status-dot" aria-hidden="true"></span>
+        <span id="sync-summary" class="sync-summary">Verificando a sincronização…</span>
+        <svg class="i chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <div class="sync-body">
+        <div>
+          <h2 class="panel-heading">Computadores com esta lista</h2>
+          <ul id="device-list" class="device-list"></ul>
+        </div>
+
+        <div id="sync-help" class="sync-help" hidden>
+          <h2 class="panel-heading">Como ligar a sincronização</h2>
+          <p class="help-intro">O Chrome só leva os dados de extensões para outros computadores quando a opção <strong>Extensões</strong> está ligada na sincronização da sua conta Google. Nas versões recentes do Chrome, essa opção costuma vir <strong>desligada</strong> para quem já estava conectado antes. Faça isto <strong>nos dois computadores</strong>:</p>
+          <ol class="help-steps">
+            <li>Entre no Chrome com a <strong>mesma conta Google</strong> (foto de perfil no canto superior direito).</li>
+            <li>Abra as configurações de sincronização e ligue <strong>Extensões</strong>.
+              <button id="btn-open-sync-settings" class="btn-ghost btn-inline" type="button">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+                Abrir configurações de sincronização
+              </button>
+              <span class="help-hint">Se a tela for diferente, procure por “Extensões” em Configurações → Você e o Google.</span>
+            </li>
+            <li>Instale esta mesma versão no outro computador e confira em <code>chrome://extensions</code> que o ID é <code id="ext-id"></code>.</li>
+            <li>Abra esta lista no outro computador. Em alguns minutos ele aparece acima, e as páginas salvas passam de um para o outro.</li>
+          </ol>
+        </div>
+
+        <p class="sync-warning">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          <span><strong>Para atualizar, nunca remova a extensão</strong>: remover apaga as páginas salvas deste computador. Substitua os arquivos da pasta e clique em ↻ em <code>chrome://extensions</code>.</span>
+        </p>
+      </div>
+    </details>
+
+    <div class="controls">
+      <div class="search-wrap">
+        <svg class="i search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" class="input input-search" type="search" placeholder="Buscar por título, site, nota ou categoria" aria-label="Buscar páginas salvas" />
+        <kbd class="search-kbd" aria-hidden="true">/</kbd>
+      </div>
+      <div class="segmented" role="group" aria-label="Filtrar por status">
+        <button type="button" data-status="all" aria-pressed="true">Todas <span class="seg-count" id="count-all"></span></button>
+        <button type="button" data-status="unread" aria-pressed="false">Não lidas <span class="seg-count" id="count-unread"></span></button>
+        <button type="button" data-status="read" aria-pressed="false">Lidas <span class="seg-count" id="count-read"></span></button>
+      </div>
+      <label class="sort-wrap">
+        <span class="sr-only">Ordenar</span>
+        <select id="sort" class="input select">
+          <option value="newest">Mais recentes</option>
+          <option value="oldest">Mais antigas</option>
+          <option value="az">Título (A–Z)</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="chips" class="chips" role="group" aria-label="Filtrar por categoria"></div>
+
+    <main id="list" class="list" aria-live="polite"></main>
+
+    <div id="empty-state" class="empty-state" hidden>
+      <div class="empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1Z"/></svg>
+      </div>
+      <h2>Nenhuma página salva ainda</h2>
+      <p>Em qualquer site, clique no ícone da extensão (ou use <kbd>Alt+Shift+S</kbd>) e em <strong>Salvar página</strong>. A aba continua aberta e a página aparece aqui.</p>
+    </div>
+
+    <div id="no-results" class="empty-state" hidden>
+      <h2>Nada encontrado</h2>
+      <p>Nenhuma página corresponde à busca ou aos filtros atuais.</p>
+    </div>
+
+    <footer class="page-footer">
+      <span class="footer-meta"><span id="count" class="count"></span><span id="version" class="version"></span></span>
+      <div class="footer-actions">
+        <button id="btn-clear-read" class="btn-ghost" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          <span id="btn-clear-read-label">Excluir lidas</span>
+        </button>
+        <button id="btn-export" class="btn-ghost" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Exportar
+        </button>
+        <button id="btn-import" class="btn-ghost" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Importar
+        </button>
+        <input id="file-import" type="file" accept="application/json,.json" hidden />
+      </div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="store.js"></script>
+  <script src="pages.js"></script>
+</body>
+</html>

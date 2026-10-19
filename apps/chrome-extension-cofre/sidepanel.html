@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cofre de Conhecimento</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="app-header">
+    <p class="overline"><span class="glow-dot" aria-hidden="true"></span>A Nova Advocacia</p>
+    <h1>Cofre de Conhecimento</h1>
+  </header>
+
+  <!-- ═══ VISTA: LISTA ═══ -->
+  <section id="view-list" class="view">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" class="input input-search" type="search" placeholder="Buscar no cofre..." aria-label="Buscar no cofre" />
+      </div>
+    </div>
+
+    <div id="chips" class="chips" role="group" aria-label="Filtros"></div>
+
+    <div id="item-list" class="item-list" aria-live="polite"></div>
+
+    <div id="empty-state" class="empty-state" hidden>
+      <div class="empty-glyph" aria-hidden="true">◈</div>
+      <h2>Seu cofre está vazio</h2>
+      <p>Na página da IA, <strong>selecione a resposta</strong> que quer guardar, clique com o botão direito e escolha <strong>"Salvar no Cofre de Conhecimento"</strong> — ou use <kbd>Ctrl/⌘+Shift+S</kbd>.</p>
+    </div>
+
+    <div id="no-results" class="empty-state" hidden>
+      <h2>Nada encontrado</h2>
+      <p>Nenhum item corresponde à busca ou ao filtro atual.</p>
+    </div>
+
+    <footer class="app-footer">
+      <span id="count" class="count"></span>
+      <div class="footer-actions">
+        <button id="btn-export-md" class="btn-ghost" type="button" title="Exportar tudo em Markdown">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          .md
+        </button>
+        <button id="btn-export" class="btn-ghost" type="button" title="Backup completo em JSON">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          .json
+        </button>
+        <button id="btn-import" class="btn-ghost" type="button" title="Importar backup JSON">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Importar
+        </button>
+        <input id="file-import" type="file" accept="application/json,.json" hidden />
+      </div>
+    </footer>
+  </section>
+
+  <!-- ═══ VISTA: SALVAR CAPTURA / EDITAR ═══ -->
+  <section id="view-editor" class="view" hidden>
+    <h2 id="editor-title" class="editor-heading">Salvar no Cofre</h2>
+    <p id="editor-source" class="editor-source"></p>
+    <form id="form-editor" autocomplete="off">
+      <div class="field">
+        <label class="input-label" for="f-title">Título</label>
+        <input id="f-title" class="input" type="text" maxlength="120" required placeholder="Um nome para reencontrar depois" />
+      </div>
+      <div class="field">
+        <label class="input-label" for="f-category">Categoria</label>
+        <input id="f-category" class="input" type="text" maxlength="40" list="category-options" placeholder="Ex.: Petições, Teses, Pesquisa..." />
+        <datalist id="category-options"></datalist>
+      </div>
+      <div class="field">
+        <label class="input-label" for="f-prompt">Prompt que gerou a resposta</label>
+        <textarea id="f-prompt" class="input textarea textarea-sm" rows="4" placeholder="Detectado automaticamente quando possível — ou cole aqui"></textarea>
+      </div>
+      <div class="field">
+        <label class="input-label" for="f-content">Resposta (Markdown)</label>
+        <textarea id="f-content" class="input textarea" rows="12" required placeholder="O conteúdo capturado aparece aqui"></textarea>
+      </div>
+      <div class="editor-actions">
+        <button type="submit" class="btn-primary">Salvar no Cofre</button>
+        <button type="button" id="btn-cancel" class="btn-ghost">Descartar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ═══ VISTA: DETALHE ═══ -->
+  <section id="view-detail" class="view" hidden>
+    <button id="btn-back" class="btn-ghost btn-back" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      Voltar
+    </button>
+    <h2 id="d-title" class="editor-heading"></h2>
+    <p id="d-meta" class="editor-source"></p>
+    <div id="d-prompt-wrap" class="detail-prompt" hidden>
+      <p class="input-label">Prompt que gerou</p>
+      <div id="d-prompt" class="detail-block"></div>
+      <button id="btn-copy-prompt" class="btn-ghost" type="button">Copiar prompt</button>
+    </div>
+    <p class="input-label">Resposta</p>
+    <div id="d-content" class="detail-block detail-content"></div>
+    <div class="editor-actions">
+      <button id="btn-copy-detail" class="btn-primary" type="button">Copiar resposta</button>
+      <button id="btn-edit-detail" class="btn-ghost" type="button">Editar</button>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
