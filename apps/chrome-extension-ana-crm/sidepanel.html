@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ANA CRM — WhatsApp Sync</title>
+  <link rel="stylesheet" href="base.css" />
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H10l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path class="arrow" d="M12 14V7m-3 3 3-3 3 3"/></svg>
+      </div>
+      <div>
+        <h1 class="brand-title">ANA CRM</h1>
+        <p class="brand-sub">WhatsApp Sync</p>
+      </div>
+    </div>
+    <button id="btn-settings" class="icon-btn" type="button" aria-label="Configurações" title="Configurações">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+    </button>
+  </header>
+
+  <!-- ═══ PRINCIPAL ═══ -->
+  <main id="view-main">
+    <div id="setup-banner" class="banner banner-warn" hidden>
+      <p>Configure a URL da API, a chave de integração e o seu e-mail para sincronizar.</p>
+      <button id="btn-setup" class="btn-ghost btn-small" type="button">Abrir configurações</button>
+    </div>
+
+    <div class="chat-status">
+      <span id="status-dot" class="status-dot" aria-hidden="true"></span>
+      <p id="status-text" class="status-text">Procurando o WhatsApp Web…</p>
+      <button id="btn-refresh" class="icon-btn" type="button" aria-label="Ler a conversa de novo" title="Ler a conversa de novo">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+      </button>
+    </div>
+
+    <section id="state-no-wa" class="empty" hidden>
+      <h2>Abra o WhatsApp Web</h2>
+      <p>O ANA CRM lê a conversa que estiver aberta em <strong>web.whatsapp.com</strong>.</p>
+      <button id="btn-open-wa" class="btn-primary" type="button">Abrir WhatsApp Web</button>
+    </section>
+
+    <section id="state-no-chat" class="empty" hidden>
+      <h2>Abra uma conversa</h2>
+      <p id="no-chat-text">Clique em uma conversa no WhatsApp Web. Os dados do contato aparecem aqui na hora.</p>
+    </section>
+
+    <section id="state-error" class="empty" hidden>
+      <h2>Não consegui ler o WhatsApp Web</h2>
+      <p id="error-text"></p>
+      <button id="btn-retry" class="btn-ghost" type="button">Tentar de novo</button>
+    </section>
+
+    <form id="form-lead" novalidate hidden>
+      <div id="group-banner" class="banner banner-warn" hidden>
+        <p>Esta é uma <strong>conversa em grupo</strong>. O CRM recebe um lead por contato: abra a conversa individual com a pessoa.</p>
+      </div>
+
+      <section class="card">
+        <h2 class="card-label">Contato</h2>
+        <div class="field">
+          <label class="input-label" for="f-name">Nome</label>
+          <input id="f-name" class="input" type="text" maxlength="120" autocomplete="off" placeholder="Nome do lead" />
+        </div>
+        <div class="field">
+          <label class="input-label" for="f-phone">Telefone</label>
+          <input id="f-phone" class="input" type="tel" maxlength="30" autocomplete="off" placeholder="Ex.: +55 (11) 98765-4321" />
+          <p id="phone-hint" class="field-hint"></p>
+          <button id="btn-lookup-phone" class="btn-ghost btn-small" type="button" hidden>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            Buscar telefone no perfil do contato
+          </button>
+        </div>
+        <div class="field">
+          <label class="input-label" for="f-email">E-mail <span class="optional">(opcional)</span></label>
+          <input id="f-email" class="input" type="email" maxlength="254" autocomplete="off" placeholder="lead@email.com" />
+        </div>
+        <div class="field">
+          <label class="input-label" for="f-notes">Notas rápidas / briefing</label>
+          <textarea id="f-notes" class="input textarea" rows="4" maxlength="5000" placeholder="Ex.: quer revisão de aposentadoria, tem CNIS em mãos, prefere contato à tarde…"></textarea>
+        </div>
+      </section>
+
+      <section class="card msgs-card">
+        <div class="counter">
+          <span id="msg-count" class="counter-num">0</span>
+          <div>
+            <p class="counter-label">mensagens prontas para envio</p>
+            <p id="msg-breakdown" class="counter-sub"></p>
+          </div>
+        </div>
+        <button id="btn-load-older" class="btn-ghost btn-small btn-full" type="button">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>
+          <span id="btn-load-older-label">Buscar mensagens mais antigas</span>
+        </button>
+        <details id="msg-preview" class="msg-preview">
+          <summary>Ver mensagens</summary>
+          <ol id="msg-list" class="msg-list"></ol>
+        </details>
+        <p id="last-sync" class="last-sync" hidden></p>
+      </section>
+
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+
+      <button id="btn-sync" class="btn-primary btn-block" type="submit">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+        <span id="btn-sync-label">Sincronizar Lead no CRM</span>
+      </button>
+
+      <section id="result" class="result" role="status" hidden>
+        <div class="result-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19.5 7"/></svg>
+        </div>
+        <div class="result-body">
+          <h2 id="result-title">Lead sincronizado no CRM</h2>
+          <p id="result-text"></p>
+          <a id="result-link" class="btn-ghost btn-small" target="_blank" rel="noopener" hidden>
+            Abrir card do lead no CRM
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+          </a>
+        </div>
+      </section>
+    </form>
+  </main>
+
+  <!-- ═══ CONFIGURAÇÕES ═══ -->
+  <section id="view-settings" hidden>
+    <button id="btn-back" class="btn-ghost btn-small" type="button">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      Voltar
+    </button>
+    <h2 class="view-title">Configurações</h2>
+    <p id="settings-intro" class="settings-intro" hidden>Preencha os dados abaixo para sincronizar leads com o CRM.</p>
+
+    <form id="form-settings" class="card" novalidate>
+      <div class="field">
+        <label class="input-label" for="s-api">URL da API do CRM</label>
+        <input id="s-api" class="input" type="url" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label class="input-label" for="s-key">Chave de integração <span class="optional">(x-extension-key)</span></label>
+        <div class="input-with-btn">
+          <input id="s-key" class="input" type="password" autocomplete="off" spellcheck="false" />
+          <button id="btn-toggle-key" class="icon-btn" type="button" aria-label="Mostrar chave" title="Mostrar chave">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="input-label" for="s-email">Seu e-mail (sócio ou closer)</label>
+        <input id="s-email" class="input" type="email" autocomplete="off" placeholder="voce@escritorio.com.br" />
+      </div>
+      <div class="field">
+        <label class="input-label" for="s-limit">Mensagens por sincronização</label>
+        <select id="s-limit" class="input select">
+          <option value="100">Últimas 100</option>
+          <option value="50">Últimas 50</option>
+        </select>
+      </div>
+      <p class="field-hint">As configurações, inclusive a chave, ficam salvas na sua conta do Chrome e podem ir para os seus outros computadores. Se perder o acesso a um deles, peça ao administrador do CRM para trocar a chave.</p>
+      <p id="settings-error" class="form-error" role="alert" hidden></p>
+      <button class="btn-primary btn-block" type="submit">Salvar configurações</button>
+    </form>
+
+    <section class="card">
+      <h2 class="card-label">Diagnóstico do WhatsApp Web</h2>
+      <p class="field-hint">Se a captura falhar, copie o diagnóstico e envie ao suporte. Ele mostra quais partes da página foram reconhecidas e <strong>não inclui o texto das conversas</strong>.</p>
+      <button id="btn-diagnose" class="btn-ghost btn-small" type="button">Copiar diagnóstico</button>
+    </section>
+
+    <p id="version" class="version"></p>
+  </section>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="content/wa-parse.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

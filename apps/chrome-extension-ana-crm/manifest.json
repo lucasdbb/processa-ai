@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "ANA CRM — WhatsApp Sync",
+  "short_name": "ANA CRM",
+  "description": "Sincronize a conversa aberta no WhatsApp Web com o ANA CRM: contato, notas e as últimas mensagens, com um clique.",
+  "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqZxIxlY77EA69o6hyObdNrFcb4LICcDWV/Z1/QuzdHTfjYMonXP2nOxhtId8oPwQ6b+SVk8qJbkWtkdizj8wM8OBrcxKEqGm/AdnIwKRZ+q+tlQSz0Z8est9uLiDWv/Enp83DYAqOU/mw0TfX8tPKPQZqAw99D3L9SsmtVqoTXFUYI7Dlsffx8cAC23oqKBxZ/iZDRE5JltqEJYFv1uBndUstbLwIdk6ewbhUyXZMTPfENclF2NarjzOOgR5hssT6pzAmQIUzwhlg3+2w4H66gUSncY8QlVZ8vIdSD1qAI292njxI2IwwZtyVQ2yn+frov9b/XaYiktmd1WWy8Z6KQIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Abrir ANA CRM"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://crm.anovaadvocacia.ai/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "content/wa-parse.js",
+        "content/wa-capture.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "minimum_chrome_version": "116"
+}
