@@ -1,0 +1,437 @@
+/* Painel lateral — ANA CRM WhatsApp Sync */
+
+body {
+  min-height: 100vh;
+  padding: 0.9rem 1rem 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background-attachment: fixed;
+}
+
+#view-main,
+#view-settings,
+#form-lead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ─── Cabeçalho ─── */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--gradient-neural);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.25);
+  flex-shrink: 0;
+}
+.brand-mark svg {
+  width: 22px;
+  height: 22px;
+  fill: var(--color-bg-void);
+  stroke: none;
+}
+.brand-mark svg .arrow {
+  fill: none;
+  stroke: var(--color-cyan);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.brand-sub {
+  margin: 0;
+  font-family: 'Sora', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-gray-300);
+}
+
+/* ─── Status da conversa ─── */
+
+.chat-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.5rem 0.55rem 0.85rem;
+  background: rgba(10, 22, 40, 0.6);
+  border: 1px solid rgba(0, 240, 255, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-gray-500);
+}
+.status-dot.on { background: var(--color-success); box-shadow: 0 0 8px rgba(16, 185, 129, 0.7); }
+.status-dot.warn { background: var(--color-warning); box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
+.status-dot.busy { background: var(--color-cyan); box-shadow: var(--glow-cyan-sm); animation: pulse 1s ease-in-out infinite; }
+
+.status-text {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+  font-size: 0.8125rem;
+  color: var(--color-gray-100);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-text strong { color: var(--color-white); }
+
+#btn-refresh.spinning svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Avisos ─── */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.banner p { margin: 0; }
+.banner-warn {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #FDE68A;
+}
+.banner-warn strong { color: #FCD34D; }
+
+/* ─── Estados vazios ─── */
+
+.empty {
+  text-align: center;
+  padding: 2rem 0.75rem;
+}
+.empty h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.empty p {
+  margin: 0 auto 1.1rem;
+  max-width: 19rem;
+  color: var(--color-gray-300);
+  font-size: 0.8125rem;
+}
+.empty strong { color: var(--color-white); }
+
+/* ─── Cartões e campos ─── */
+
+.card {
+  background: rgba(10, 22, 40, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.card-label {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-gray-300);
+}
+
+.field { display: flex; flex-direction: column; }
+.field .btn-ghost { align-self: flex-start; margin-top: 0.45rem; }
+
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-gray-500);
+}
+.field-hint.ok { color: #6EE7B7; }
+.field-hint.warn { color: #FCD34D; }
+.field-hint strong { color: var(--color-gray-100); }
+
+.input.is-invalid { border-color: rgba(239, 68, 68, 0.6); }
+
+.textarea { min-height: 5.5rem; }
+
+.select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 16px;
+}
+.select option { background: var(--color-bg-surface); color: var(--color-white); }
+
+.input-with-btn { position: relative; }
+.input-with-btn .input { padding-right: 2.75rem; }
+.input-with-btn .icon-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.btn-small {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+}
+.btn-full { width: 100%; justify-content: center; }
+.btn-block { width: 100%; }
+
+/* ─── Mensagens ─── */
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.counter-num {
+  font-family: 'Sora', sans-serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  background: var(--gradient-neural);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  flex-shrink: 0;
+  padding-right: 0.05em;
+}
+
+.counter-label {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-gray-100);
+}
+
+.counter-sub {
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-gray-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.msg-preview summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-cyan);
+  list-style: none;
+}
+.msg-preview summary::-webkit-details-marker { display: none; }
+.msg-preview summary::before { content: '▸ '; }
+.msg-preview[open] summary::before { content: '▾ '; }
+
+.msg-list {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.msg {
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: rgba(5, 11, 17, 0.55);
+  border-left: 2px solid rgba(99, 102, 241, 0.6);
+}
+.msg.from-me { border-left-color: rgba(0, 240, 255, 0.6); }
+
+.msg-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--color-gray-500);
+  font-variant-numeric: tabular-nums;
+}
+.msg-who { font-weight: 600; color: #A5B4FC; }
+.msg.from-me .msg-who { color: var(--color-cyan); }
+
+.msg-text {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-gray-100);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.last-sync {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-gray-500);
+}
+.last-sync a { color: var(--color-cyan); text-decoration: none; }
+.last-sync .pending { color: #FCD34D; font-weight: 600; }
+.last-sync .up-to-date { color: #6EE7B7; font-weight: 600; }
+.last-sync a:hover { text-decoration: underline; }
+
+/* ─── Erro e resultado ─── */
+
+.form-error {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #FCA5A5;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.result {
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.9rem;
+  border-radius: var(--radius-lg);
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  animation: rise 0.3s ease both;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45);
+}
+.result-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--color-bg-void);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.result-body h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #A7F3D0;
+}
+.result-body p {
+  margin: 0.2rem 0 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--color-gray-100);
+}
+.result-body a { text-decoration: none; }
+
+/* ─── Configurações ─── */
+
+#view-settings > .btn-ghost { align-self: flex-start; }
+
+.view-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.settings-intro {
+  margin: -0.4rem 0 0;
+  color: #FCD34D;
+  font-size: 0.8125rem;
+}
+
+.version {
+  margin: 0;
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--color-gray-500);
+}
+
+/* ─── Botão principal em sincronização ─── */
+
+#btn-sync.is-busy svg { animation: spin 0.9s linear infinite; }
+
+/* ─── Remetente e atalho ─── */
+
+.sending-as {
+  margin: -0.35rem 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--color-gray-500);
+}
+.sending-as strong { color: var(--color-gray-300); font-weight: 600; }
+
+.link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-cyan);
+  font: inherit;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+.shortcut-hint { display: block; }
+
+/* Aviso no topo: no rodapé ele cobriria o resultado da sincronização */
+.toast {
+  top: 0.9rem;
+  bottom: auto;
+}

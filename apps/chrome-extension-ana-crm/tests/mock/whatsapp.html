@@ -1,0 +1,502 @@
+<!doctype html>
+<!--
+  Simulação do WhatsApp Web para os testes do ANA CRM.
+
+  Tela (HTML):
+    - padrão: estrutura antiga (data-id "<true|false>_<jid>_<id>", .message-in/.message-out);
+    - ?dom=2026: estrutura de nov/2026 (data-id só com o ID, sem .message-in/out, marcas
+      data-testid: conv-msg-*, tail-out, msg-meta, selectable-text, quoted-message, author,
+      conversation-info-header-chat-title; mensagens longe da tela ficam vazias).
+
+  Dados internos (window.require), com ?store=1:
+    - WAWebCollections (Chat, Contact, WAWebNewsletterCollection), WAWebApiContact
+      (getPhoneNumber: LID → número), WAWebChatLoadMessages (loadEarlierMsgs({ chat }));
+    - ?ids=old: Wid/MsgKey com _serialized; padrão: só $1 (jul/2026); ?ids=min: só $1;
+    - ?loader=chat: loadEarlierMsgs(chat), a forma antiga.
+
+  Conversas: ?chat=saved|unsaved|lid|lid2|lidnone|group|old9|channel|maria2|stalled|none
+  (maria2 tem o mesmo nome de saved; stalled tem histórico antigo só no celular)
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>WhatsApp</title>
+<style>
+  body { margin: 0; font-family: sans-serif; height: 100vh; }
+  #app { display: flex; height: 100vh; }
+  #pane-side { width: 280px; overflow: auto; border-right: 1px solid #ddd; }
+  #pane-side [role="row"] { padding: 12px; cursor: pointer; }
+  #pane-side [aria-selected="true"] { background: #eee; }
+  #slot { flex: 1; display: flex; min-width: 0; }
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #main header { height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #f0f2f5; }
+  .copyable-area { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .scroller { flex: 1; overflow-y: auto; }
+  .message-in, .message-out, .bubble2026 { margin: 4px 12px; padding: 6px 10px; border-radius: 8px; max-width: 70%; }
+  .message-in, .bubble2026.in { background: #fff; border: 1px solid #eee; }
+  .message-out, .bubble2026.out { background: #d9fdd3; margin-left: auto; }
+  .placeholder2026 { height: 48px; }
+  .divider { text-align: center; margin: 10px; color: #667; font-size: 12px; }
+  #drawer { position: fixed; right: 0; top: 0; width: 320px; height: 100%; background: #fff; border-left: 1px solid #ccc; padding: 12px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <!-- isca: botão de limpar a busca, que não pode ser clicado ao fechar o painel do contato -->
+    <div class="search"><span role="button" id="search-clear" data-icon="x-alt">×</span></div>
+    <div id="pane-side" aria-label="Lista de conversas"></div>
+  </div>
+  <div id="slot"></div>
+</div>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const STORE = params.get('store') === '1';
+  const MODERN = params.get('dom') === '2026';
+  const IDS = params.get('ids') || 'new';
+  const LOADER = params.get('loader') || 'object';
+
+  const CHATS = {
+    saved: { title: 'Maria Silva', jid: '5511987654321@c.us', total: 130, phone: '+55 11 98765-4321', saved: true, pushname: 'Maria S.' },
+    // contato não salvo: o WhatsApp cerca o número com marcas invisíveis de direção de texto
+    unsaved: { title: '‪+55 11 91234-5678‬', jid: '5511912345678@c.us', total: 12, phone: '‪+55 11 91234-5678‬', pushname: 'Ana Paula' },
+    // LID: o número vem de WAWebApiContact.getPhoneNumber
+    lid: { title: 'Dr. João Pereira', jid: '123456789012345@lid', total: 8, phone: '+55 21 99876-5432', saved: true },
+    // LID: o número só está no contato (contact.phoneNumber), como no caso real da Joana
+    lid2: { title: 'Joana Stanieski', jid: '987654321098765@lid', total: 20, phone: '+55 41 99887-7665', saved: true, pnContact: '5541998877665@c.us' },
+    // LID sem número em lugar nenhum
+    lidnone: { title: 'Contato Reservado', jid: '555444333222111@lid', total: 5, saved: true },
+    group: { title: 'Família Silva', jid: '120363025123456789@g.us', total: 10, group: true },
+    old9: { title: 'Carlos Antigo', jid: '551187654321@c.us', total: 6, phone: '+55 11 8765-4321', saved: true },
+    channel: { title: 'Canal A Nova Advocacia', jid: '120363999888777@newsletter', total: 5, channel: true },
+    // outro contato com o MESMO nome da Maria, com outro número
+    maria2: { title: 'Maria Silva', jid: '5511900001111@c.us', total: 6, phone: '+55 11 90000-1111', saved: true },
+    // histórico antigo só no celular: o carregador não traz nada, mas a conversa não acabou
+    stalled: { title: 'Pedro Histórico', jid: '5511955554444@c.us', total: 60, phone: '+55 11 95555-4444', saved: true, stall: true },
+  };
+  const PN_BY_LID = { '123456789012345@lid': '5521998765432@c.us' };
+  const ME = 'Lucas Braga';
+  const INITIAL = 40;
+  const PAGE = 30;
+  const PLACEHOLDERS_2026 = 3;
+  const WEEKDAYS = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
+  const pad = (n) => String(n).padStart(2, '0');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
+  const IMG_BLOB = URL.createObjectURL(new Blob([PNG], { type: 'image/png' }));
+  const MAPS = 'https://maps.google.com/?q=-23.5505,-46.6333';
+
+  function buildMessages(key) {
+    const c = CHATS[key];
+    const now = new Date();
+    const list = [];
+    for (let i = 0; i < c.total; i++) {
+      const daysAgo = Math.floor((c.total - 1 - i) / 13);
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
+      const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9 + (i % 13), (i * 7) % 60, (i * 13) % 60);
+      const fromMe = i % 2 === 1;
+      list.push({
+        i, daysAgo, date, fromMe, kind: 'text',
+        text: fromMe ? `Resposta ${i}: vou verificar e te retorno.` : `Mensagem ${i} do contato sobre o caso.`,
+        id: `3EB0${key.toUpperCase().slice(0, 3)}${i.toString(16).toUpperCase().padStart(6, '0')}`,
+      });
+    }
+    if (key === 'saved') {
+      const n = c.total;
+      Object.assign(list[n - 1], { fromMe: true, kind: 'text', text: 'Perfeito, Maria! Vou te enviar o contrato hoje.' });
+      Object.assign(list[n - 2], { fromMe: false, kind: 'emoji', text: '⁦Obrigada!⁩ ' });
+      Object.assign(list[n - 3], { fromMe: false, kind: 'reply', text: 'Fechado, pode seguir', quoted: 'Qual o valor dos honorários?' });
+      Object.assign(list[n - 4], { fromMe: false, kind: 'audio' });
+      Object.assign(list[n - 5], { fromMe: true, kind: 'image' });
+      Object.assign(list[n - 6], { fromMe: false, kind: 'deleted' });
+      Object.assign(list[n - 7], { fromMe: false, kind: 'long', text: 'Começo do texto longo. ' + 'Detalhes do caso trabalhista. '.repeat(20) + 'FIM DO TEXTO LONGO' });
+      Object.assign(list[n - 8], { fromMe: false, kind: 'multiline', text: 'Linha um do endereço\nLinha dois do endereço' });
+      Object.assign(list[n - 9], { fromMe: false, kind: 'text', text: 'Por que esta mensagem foi apagada?' });
+      Object.assign(list[n - 10], { fromMe: false, kind: 'document' });
+      Object.assign(list[n - 11], { fromMe: false, kind: 'location' });
+      Object.assign(list[n - 20], { fromMe: false, kind: 'audio' }); // dia anterior: data vem da divisória "ONTEM"
+    }
+    return list;
+  }
+
+  function dividerLabel(daysAgo, date) {
+    if (daysAgo === 0) return 'HOJE';
+    if (daysAgo === 1) return 'ONTEM';
+    if (daysAgo < 7) return WEEKDAYS[date.getDay()];
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+  }
+
+  function el(tag, attrs = {}, children = []) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'text') node.textContent = v;
+      else if (k === 'class') node.className = v;
+      else node.setAttribute(k, v);
+    }
+    for (const child of children) node.append(child);
+    return node;
+  }
+
+  function timeLabel(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+  function textWithBreaks(text) {
+    const span = el('span');
+    text.split('\n').forEach((line, idx) => {
+      if (idx) span.append(el('br'));
+      span.append(document.createTextNode(line));
+    });
+    return span;
+  }
+
+  // Conteúdo do balão, igual nas duas estruturas (muda só o marcador do texto e da citação)
+  function bubbleContent(bubble, m, pre) {
+    const textAttrs = MODERN ? { dir: 'ltr', 'data-testid': 'selectable-text' } : { dir: 'ltr', class: 'selectable-text copyable-text' };
+    const copyable = (content) => el('div', { class: 'copyable-text', 'data-pre-plain-text': pre }, [
+      el('div', {}, [el('span', textAttrs, [content])]),
+    ]);
+    if (m.kind === 'text' || m.kind === 'multiline') bubble.append(copyable(textWithBreaks(m.text)));
+    if (m.kind === 'emoji') {
+      const span = el('span', {}, [document.createTextNode(m.text), el('img', { alt: '🙏', class: 'emoji', src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' })]);
+      bubble.append(copyable(span));
+    }
+    if (m.kind === 'reply') {
+      const quoteAttrs = MODERN ? { 'data-testid': 'quoted-message', role: 'button' } : { 'aria-label': 'Mensagem citada', role: 'button' };
+      bubble.append(el('div', quoteAttrs, [
+        el('span', MODERN ? { dir: 'auto' } : { dir: 'auto', class: 'quoted-mention' }, [el('span', { text: m.quoted })]),
+      ]));
+      bubble.append(copyable(textWithBreaks(m.text)));
+    }
+    if (m.kind === 'long') {
+      const short = m.text.slice(0, 80) + '…';
+      const content = el('span', {}, [document.createTextNode(short)]);
+      const more = el('span', { role: 'button', class: 'read-more', text: 'Ler mais' });
+      more.addEventListener('click', () => { content.textContent = m.text; more.remove(); });
+      bubble.append(copyable(el('span', {}, [content, more])));
+    }
+    if (m.kind === 'audio') {
+      bubble.append(el('button', { 'aria-label': 'Reproduzir mensagem de voz' }, [el('span', { 'data-icon': 'audio-play' })]));
+      bubble.append(el('span', { text: '0:42' }));
+    }
+    if (m.kind === 'image') bubble.append(el('img', { src: IMG_BLOB, alt: '' }));
+    if (m.kind === 'document') {
+      bubble.append(el('div', { role: 'button' }, [el('span', { 'data-icon': 'document-pdf' }), el('span', { title: 'contrato.pdf', text: 'contrato.pdf' })]));
+    }
+    if (m.kind === 'location') bubble.append(el('a', { href: MAPS }, [el('img', { src: IMG_BLOB, alt: '' })]));
+    if (m.kind === 'deleted') {
+      bubble.append(el('span', { class: 'deleted' }, [el('span', { 'data-icon': 'recalled' }), el('span', { dir: 'auto', text: 'Esta mensagem foi apagada' })]));
+    }
+  }
+
+  function preFor(key, m) {
+    const c = CHATS[key];
+    const sender = m.fromMe ? ME : (c.group ? '+55 21 99876-5432' : c.title);
+    return `[${timeLabel(m.date)}, ${pad(m.date.getDate())}/${pad(m.date.getMonth() + 1)}/${m.date.getFullYear()}] ${sender}: `;
+  }
+
+  // Estrutura antiga: data-id com direção e conversa, classes .message-in/.message-out
+  function legacyRow(key, m) {
+    const c = CHATS[key];
+    let dataId = `${m.fromMe}_${c.jid}_${m.id}`;
+    if (c.group && !m.fromMe) dataId += '_5521998765432@c.us';
+    const meta = el('div', { class: 'meta' }, [el('span', { dir: 'auto', text: '‎' + timeLabel(m.date) })]);
+    if (m.fromMe) meta.append(el('span', { 'data-icon': 'msg-dblcheck' }));
+    const bubble = el('div', { class: 'bubble' });
+    bubbleContent(bubble, m, preFor(key, m));
+    bubble.append(meta);
+    const msg = el('div', { class: m.fromMe ? 'message-out focusable-list-item' : 'message-in focusable-list-item' }, [bubble]);
+    const holder = el('div', { tabindex: '-1', class: 'focusable-list-item', 'data-id': dataId }, [el('span'), msg]);
+    return el('div', { role: 'row' }, [holder]);
+  }
+
+  // Estrutura de nov/2026: data-id só com o ID; direção só pelas marcas data-testid
+  function modernRow(key, m, prevFromMe, placeholder) {
+    const c = CHATS[key];
+    const holderAttrs = { 'data-id': m.id, 'data-testid': `conv-msg-${m.id}`, tabindex: '-1' };
+    if (placeholder) return el('div', { role: 'row' }, [el('div', { ...holderAttrs, class: 'placeholder2026' })]);
+    const bubble = el('div', { class: `bubble2026 ${m.fromMe ? 'out' : 'in'}` });
+    if (c.group && !m.fromMe) bubble.append(el('span', { 'data-testid': 'author', dir: 'auto', text: '+55 21 99876-5432' }));
+    if (m.fromMe && !prevFromMe) bubble.append(el('span', { 'data-testid': 'tail-out' }));
+    bubbleContent(bubble, m, preFor(key, m));
+    const time = el('span', { dir: 'auto', text: '‎' + timeLabel(m.date) });
+    bubble.append(m.fromMe
+      ? el('div', { 'data-testid': 'msg-meta', role: 'button' }, [time, el('span', { 'data-icon': 'msg-dblcheck' })])
+      : el('div', { 'data-testid': 'msg-meta' }, [time]));
+    return el('div', { role: 'row' }, [el('div', holderAttrs, [bubble])]);
+  }
+
+  const state = { key: null, messages: [], start: 0, loading: false };
+
+  function renderList(scroller, keepOffset) {
+    const app = scroller.querySelector('[role="application"]');
+    const prevHeight = scroller.scrollHeight;
+    const prevTop = scroller.scrollTop;
+    app.textContent = '';
+    if (state.start === 0) {
+      app.append(el('div', { role: 'row' }, [el('div', { class: 'divider', text: 'As mensagens e as ligações são protegidas com a criptografia de ponta a ponta. Toque para saber mais.' })]));
+    }
+    let lastDay = null;
+    let prevFromMe = null;
+    state.messages.slice(state.start).forEach((m, idx) => {
+      if (m.daysAgo !== lastDay) {
+        lastDay = m.daysAgo;
+        prevFromMe = null;
+        app.append(el('div', { role: 'row' }, [el('div', { class: 'divider' }, [el('span', { dir: 'auto', text: dividerLabel(m.daysAgo, m.date) })])]));
+      }
+      app.append(MODERN ? modernRow(state.key, m, prevFromMe, idx < PLACEHOLDERS_2026) : legacyRow(state.key, m));
+      prevFromMe = m.fromMe;
+    });
+    if (keepOffset) scroller.scrollTop = scroller.scrollHeight - prevHeight + prevTop;
+    else scroller.scrollTop = scroller.scrollHeight;
+  }
+
+  function openDrawer() {
+    if (document.getElementById('drawer')) return;
+    const c = CHATS[state.key];
+    const close = el('div', { role: 'button', 'aria-label': 'Fechar' }, [el('span', { 'data-icon': 'x' })]);
+    close.addEventListener('click', () => drawer.remove());
+    const drawer = el('div', { id: 'drawer' }, [
+      el('header', {}, [close, el('span', { text: 'Dados do contato' })]),
+      el('section', {}, [
+        el('div', {}, [el('span', { dir: 'auto', text: c.title })]),
+        c.phone ? el('div', {}, [el('span', { class: 'selectable-text copyable-text' }, [el('span', { text: c.phone })])]) : el('div'),
+      ]),
+    ]);
+    document.getElementById('app').append(drawer);
+  }
+
+  function renderChat(key) {
+    const slot = document.getElementById('slot');
+    slot.textContent = '';
+    const old = document.getElementById('drawer');
+    if (old) old.remove();
+    renderSide(key);
+    if (key === 'none' || !CHATS[key]) {
+      state.key = null;
+      slot.append(el('div', { text: 'Baixe o WhatsApp para Windows' }));
+      return;
+    }
+    const c = CHATS[key];
+    state.key = key;
+    state.messages = buildMessages(key);
+    state.start = Math.max(0, state.messages.length - INITIAL);
+
+    const titleAttrs = MODERN
+      ? { 'data-testid': 'conversation-info-header-chat-title', dir: 'auto', text: c.title }
+      : { dir: 'auto', class: 'title', text: c.title };
+    const subtitle = c.group ? 'Ana, Bruno, Você' : 'clique para mostrar os dados do contato';
+    const info = el('div', { role: 'button', tabindex: '0', class: 'info' }, [
+      el('div', {}, [el('span', titleAttrs)]),
+      el('div', {}, [el('span', { title: subtitle, text: subtitle, ...(MODERN ? { 'data-testid': 'chat-subtitle' } : {}) })]),
+    ]);
+    info.addEventListener('click', openDrawer);
+    const header = el('header', {}, [el('div', { role: 'button', class: 'avatar' }, [el('img', { alt: '', src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' })]), info]);
+    const scroller = el('div', { tabindex: '-1', class: 'scroller' }, [el('div', { role: 'application' })]);
+    const main = el('div', { id: 'main' }, [header, el('div', { class: 'copyable-area' }, [scroller])]);
+    slot.append(main);
+    renderList(scroller, false);
+
+    scroller.addEventListener('scroll', () => {
+      if (scroller.scrollTop > 5 || state.start === 0 || state.loading) return;
+      state.loading = true;
+      setTimeout(() => {
+        state.start = Math.max(0, state.start - PAGE);
+        renderList(scroller, true);
+        state.loading = false;
+      }, 300);
+    });
+  }
+
+  function renderSide(active) {
+    const side = document.getElementById('pane-side');
+    side.textContent = '';
+    for (const [key, c] of Object.entries(CHATS)) {
+      const item = el('div', { role: 'listitem' }, [
+        el('div', { role: 'row', 'aria-selected': String(key === active), 'data-chat': key }, [el('span', { title: c.title, text: c.title })]),
+      ]);
+      item.addEventListener('click', () => renderChat(key));
+      side.append(item);
+    }
+  }
+
+  // ─── Dados internos (window.require), como no WhatsApp Web de 2026 ───
+
+  class Wid {
+    constructor(serialized) {
+      this.$1 = serialized;
+      if (IDS !== 'min') {
+        const [user, server] = serialized.split('@');
+        this.user = user;
+        this.server = server;
+      }
+      if (IDS === 'old') this._serialized = serialized;
+    }
+    toString() { return this.$1; }
+    isLid() { return /@lid$/.test(this.$1); }
+  }
+
+  class MsgKey {
+    constructor(fromMe, remote, id) {
+      this.$1 = `${fromMe}_${remote}_${id}`;
+      if (IDS !== 'min') {
+        this.fromMe = fromMe;
+        this.remote = remote;
+        this.id = id;
+      }
+      if (IDS === 'old') this._serialized = this.$1;
+    }
+    toString() { return this.$1; }
+  }
+
+  window.__storeCalls = { loadEarlier: 0, getPhoneNumber: 0 };
+  const modelCache = new Map();
+
+  function modelFor(key, m) {
+    if (modelCache.has(m.id)) return modelCache.get(m.id);
+    const c = CHATS[key];
+    const model = {
+      id: new MsgKey(m.fromMe, new Wid(c.jid), m.id),
+      t: Math.floor(m.date.getTime() / 1000),
+      type: 'chat',
+      body: '',
+      isNotification: false,
+    };
+    if (['text', 'multiline', 'long', 'reply'].includes(m.kind)) model.body = m.text;
+    if (m.kind === 'emoji') model.body = `${m.text}🙏`;
+    if (m.kind === 'audio') Object.assign(model, { type: 'ptt', duration: 42 });
+    // miniatura em base64 no body: nunca pode chegar ao CRM
+    if (m.kind === 'image') Object.assign(model, { type: 'image', body: `/9j/4AAQSkZJRgABAQ${'A'.repeat(300)}`, caption: '' });
+    if (m.kind === 'document') Object.assign(model, { type: 'document', filename: 'contrato.pdf', body: `JVBERi0xLjQK${'Q'.repeat(200)}` });
+    if (m.kind === 'location') Object.assign(model, { type: 'location', lat: -23.5505, lng: -46.6333, body: `/9j/${'B'.repeat(300)}` });
+    if (m.kind === 'deleted') model.type = 'revoked';
+    modelCache.set(m.id, model);
+    return model;
+  }
+
+  // avisos do sistema entre as mensagens (só existem nos dados internos)
+  function notificationModels(key) {
+    if (key !== 'saved') return [];
+    const ref = state.messages[state.messages.length - 12];
+    if (!ref) return [];
+    const t = Math.floor(ref.date.getTime() / 1000);
+    return [
+      { id: new MsgKey(false, new Wid(CHATS[key].jid), 'NOTIF000001'), t, type: 'e2e_notification', body: 'Mensagens protegidas', isNotification: true },
+      { id: new MsgKey(false, new Wid(CHATS[key].jid), 'NOTIF000002'), t, type: 'notification_template', body: 'Aviso', isNotification: false },
+    ];
+  }
+
+  const chatModels = {};
+  function chatModel(key) {
+    if (chatModels[key]) return chatModels[key];
+    const c = CHATS[key];
+    const id = new Wid(c.jid);
+    const contact = {
+      id,
+      name: c.saved ? c.title : undefined,
+      pushname: c.pushname,
+      phoneNumber: c.pnContact ? new Wid(c.pnContact) : undefined,
+    };
+    const msgs = {
+      getModelsArray() {
+        if (state.key !== key) return [];
+        const loaded = state.messages.slice(state.start).map((m) => modelFor(key, m));
+        if (state.start <= state.messages.length - 12) {
+          const at = loaded.length - 11;
+          loaded.splice(at, 0, ...notificationModels(key));
+        }
+        return loaded;
+      },
+      msgLoadState: {
+        get noEarlierMsgs() { return state.key === key && state.start === 0; },
+        isLoadingEarlierMsgs: false,
+      },
+    };
+    chatModels[key] = {
+      id,
+      formattedTitle: c.title,
+      isGroup: Boolean(c.group),
+      get active() { return state.key === key; },
+      contact,
+      msgs,
+    };
+    return chatModels[key];
+  }
+
+  async function loadEarlierMsgs(arg) {
+    window.__storeCalls.loadEarlier++;
+    const chat = LOADER === 'chat' ? arg : arg && arg.chat;
+    if (!chat || !chat.msgs) throw new TypeError("Cannot read properties of undefined (reading 'msgs')");
+    if (!chat.active || state.start === 0) return [];
+    await sleep(150);
+    if (CHATS[state.key].stall) return [];
+    const before = state.start;
+    state.start = Math.max(0, state.start - PAGE);
+    renderList(document.querySelector('.scroller'), true);
+    return state.messages.slice(state.start, before).map((m) => modelFor(state.key, m));
+  }
+
+  if (STORE) {
+    const chatKeys = () => Object.keys(CHATS).filter((k) => !CHATS[k].channel);
+    const MODULES = {
+      WAWebCollections: {
+        Chat: {
+          getActive: () => (state.key && !CHATS[state.key].channel ? chatModel(state.key) : undefined),
+          getModelsArray: () => chatKeys().map(chatModel),
+        },
+        Contact: {
+          get: (wid) => {
+            const key = Object.keys(CHATS).find((k) => CHATS[k].jid === String(wid));
+            return key ? chatModel(key).contact : undefined;
+          },
+        },
+        WAWebNewsletterCollection: {
+          getModelsArray: () => Object.keys(CHATS).filter((k) => CHATS[k].channel).map(chatModel),
+        },
+      },
+      WAWebApiContact: {
+        getPhoneNumber: (wid) => {
+          window.__storeCalls.getPhoneNumber++;
+          const pn = PN_BY_LID[String(wid)];
+          return pn ? new Wid(pn) : undefined;
+        },
+      },
+      WAWebChatLoadMessages: { loadEarlierMsgs },
+    };
+    // window.__breakStore = true simula uma falha passageira dos dados internos
+    window.require = (name) => {
+      if (window.__breakStore || !MODULES[name]) throw new Error(`Requiring unknown module "${name}"`);
+      return MODULES[name];
+    };
+    window.Debug = { VERSION: '2.3000.1050000000' };
+  }
+
+  window.__switchChat = renderChat;
+  window.__decoyClicked = false;
+  document.getElementById('search-clear').addEventListener('click', () => { window.__decoyClicked = true; });
+
+  // nova mensagem recebida na conversa aberta
+  window.__addIncoming = (text) => {
+    const now = new Date();
+    const i = state.messages.length;
+    state.messages.push({
+      i, daysAgo: 0, date: now, fromMe: false, kind: 'text', text,
+      id: `3EB0NEW${i.toString(16).toUpperCase().padStart(6, '0')}`,
+    });
+    renderList(document.querySelector('.scroller'), false);
+  };
+
+  // painel com o SEU perfil aberto ao lado da conversa (outro número fora do #main)
+  window.__openOwnProfile = () => {
+    if (document.getElementById('own-profile')) return;
+    document.getElementById('slot').append(el('div', { id: 'own-profile', style: 'position:fixed;left:0;bottom:0;background:#fff;padding:8px' }, [
+      el('header', {}, [el('span', { text: 'Perfil' })]),
+      el('div', {}, [el('span', { dir: 'auto', text: 'Lucas Braga' })]),
+      el('div', {}, [el('span', { text: '+55 11 90000-0000' })]),
+    ]));
+  };
+  window.__mockState = state;
+  renderChat(params.get('chat') || 'saved');
+})();
+</script>
+</body>
+</html>

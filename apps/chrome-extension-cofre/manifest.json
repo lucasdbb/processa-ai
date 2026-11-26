@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Cofre de Conhecimento — A Nova Advocacia",
+  "description": "Salve respostas valiosas de IAs (ChatGPT, Claude, Gemini...) em Markdown, com o prompt que as gerou, e encontre tudo depois.",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Abrir Cofre de Conhecimento"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "commands": {
+    "salvar-selecao": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Salvar a seleção atual no Cofre"
+    }
+  },
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "unlimitedStorage",
+    "contextMenus",
+    "scripting",
+    "activeTab"
+  ],
+  "minimum_chrome_version": "116"
+}
