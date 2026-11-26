@@ -149,23 +149,44 @@
 
   // ─── Leitura pelos dados internos ───
 
-  async function captureFromStore({ limit, loadOlder }) {
-    if (!bridgePresent()) return null;
+  // A ponte já respondeu com uma conversa nesta página. Uma falha isolada depois disso
+  // ganha uma nova tentativa rápida antes de cair para a leitura da tela, porque a tela
+  // identifica a conversa de outro jeito (pelo título) e o painel a trataria como outra.
+  let storeWorked = false;
+
+  async function storeSnapshot(limit, loadOlder) {
     const maxMs = loadOlder ? 20000 : 6000;
-    const startTitle = headerTitle();
-    let snap;
     try {
-      snap = await bridgeCall('snapshot', { limit, maxMs }, maxMs + 5000);
+      return await bridgeCall('snapshot', { limit, maxMs, force: loadOlder }, maxMs + 10000);
+    } catch {
+      if (!storeWorked) return null;
+    }
+    try {
+      return await bridgeCall('snapshot', { limit, maxMs: 0 }, 6000);
     } catch {
       return null;
     }
+  }
+
+  async function captureFromStore({ limit, loadOlder }) {
+    if (!bridgePresent()) return null;
+    const startTitle = headerTitle();
+    let snap = await storeSnapshot(limit, loadOlder);
     if (!snap || !snap.store) return null;
     if (snap.changed) return chatChanged();
+    if (!snap.chat && storeWorked && document.querySelector(SEL.main)) {
+      // conversa trocando bem nesta hora: espera um instante e pergunta de novo
+      await sleep(400);
+      snap = await storeSnapshot(limit, false);
+      if (!snap || !snap.store) return null;
+      if (snap.changed) return chatChanged();
+    }
     if (!snap.chat) {
       // sem conversa ativa nos dados internos, mas com conversa na tela: a tela decide
       if (document.querySelector(SEL.main)) return null;
       return { ok: true, chat: null, messages: [], reason: loginOrEmpty(), source: 'store' };
     }
+    storeWorked = true;
     if (startTitle && headerTitle() && headerTitle() !== startTitle) return chatChanged();
 
     const c = snap.chat;
@@ -337,9 +358,10 @@
     // em grupos, as mensagens dos outros trazem o nome de quem escreveu
     if (outsideQuote(el.querySelectorAll(SEL.groupAuthor))) return false;
     // o título de um grupo não é o nome de quem escreve: a regra do autor só vale a dois
-    if (pre && ctx.title && !ctx.groupSeen) {
+    // nomes que não dá para comparar (só emojis): na dúvida, a mensagem é do contato
+    if (pre && W.nameKey(ctx.title) && !ctx.groupSeen) {
       const parsed = W.parsePrePlainText(pre.getAttribute('data-pre-plain-text'), ctx.dateOrder);
-      if (parsed && parsed.sender) return !W.sameName(parsed.sender, ctx.title);
+      if (parsed && W.nameKey(parsed.sender)) return !W.sameName(parsed.sender, ctx.title);
     }
     return false;
   }
@@ -503,11 +525,14 @@
 
     // Se o usuário trocar de conversa no meio da leitura (ex.: durante a busca de
     // mensagens antigas), a captura é abortada para não misturar duas conversas.
+    // Sem jid (HTML de nov/2026), duas conversas de mesmo nome só se distinguem pela
+    // tela da conversa (#main recriado ao trocar).
     const start = currentChatIdentity();
     const view = viewToken();
     const sameChat = () => {
       const now = currentChatIdentity();
       if (now.title !== start.title) return false;
+      if (!start.jid && viewToken() !== view) return false;
       return !(start.jid && now.jid && now.jid !== start.jid);
     };
 
@@ -779,7 +804,7 @@
     try {
       const hasMain = Boolean(document.querySelector(SEL.main));
       const { jid, title } = hasMain ? currentChatIdentity() : { jid: '', title: '' };
-      const signature = hasMain || bridgeActive ? `${title}|${jid}|${bridgeActive}` : '';
+      const signature = hasMain || bridgeActive ? `${title}|${jid}|${bridgeActive}|${viewToken()}` : '';
       if (signature !== lastSignature) {
         const first = lastSignature === null;
         lastSignature = signature;

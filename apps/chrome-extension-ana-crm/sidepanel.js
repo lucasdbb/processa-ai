@@ -198,16 +198,24 @@ function friendlyCaptureError(err) {
   return `${msg} Recarregue a página do WhatsApp Web e tente de novo.`;
 }
 
+// Conversa identificada só pelo nome (leitura da tela sem o número): duas conversas de
+// mesmo nome se distinguem pela tela da conversa no WhatsApp (viewToken).
+const isTitleKey = (key) => String(key || '').startsWith('title:');
+const identityOf = (c) => (c ? (isTitleKey(c.key) ? `${c.key}#${c.viewToken || 0}` : c.key) : '');
+
 async function applyCapture(res) {
   const incoming = res.chat;
-  // conversa aberta antes de as mensagens carregarem: a chave passa de "title:Nome" para o jid
-  if (chat && chat.key !== incoming.key && chat.key.startsWith('title:') && incoming.key
-      && !incoming.key.startsWith('title:') && chat.title === incoming.title
-      && chat.viewToken && chat.viewToken === incoming.viewToken) {
+  // mesma conversa, agora com o jid (as mensagens carregaram ou os dados internos voltaram
+  // a responder): a chave passa de "title:Nome" para o jid, juntando os dois rascunhos
+  if (chat && isTitleKey(chat.key) && incoming.key && !isTitleKey(incoming.key)
+      && chat.title === incoming.title && chat.viewToken && chat.viewToken === incoming.viewToken) {
+    await flushDraft();
     await moveDraft(chat.key, incoming.key);
-    chat.key = incoming.key;
+    const form = await loadFormFor(incoming);
+    chat = { ...chat, key: incoming.key, phoneSource: form.phoneSource || incoming.phoneSource };
+    applyForm(form);
   }
-  const changed = !chat || chat.key !== incoming.key;
+  const changed = !chat || identityOf(chat) !== identityOf(incoming);
   if (changed) {
     await flushDraft();
     // lê o rascunho ANTES de trocar a conversa ativa: um salvamento no meio do caminho
@@ -242,10 +250,17 @@ const draftKey = (key) => `draft:${key}`;
 
 // Guarda só os campos que o usuário mudou: o que não foi editado continua vindo
 // do WhatsApp (ex.: o contato renomeado aparece com o nome novo).
+const draftFields = (draft) => (draft
+  ? draft.fields || { name: draft.name, phone: draft.phone, email: draft.email, notes: draft.notes }
+  : {});
+
 async function loadFormFor(target) {
   const stored = await chrome.storage.local.get(draftKey(target.key));
   const draft = stored[draftKey(target.key)];
-  const fields = draft ? draft.fields || { name: draft.name, phone: draft.phone, email: draft.email, notes: draft.notes } : {};
+  // Rascunho guardado só pelo nome (leitura da tela sem o número) pode ser de outro
+  // contato com o mesmo nome: não é restaurado. Ele só serve para a mesma conversa,
+  // quando ela volta a ser reconhecida pelo número (ver moveDraft em applyCapture).
+  const fields = isTitleKey(target.key) ? {} : draftFields(draft);
   return {
     edited: Object.keys(FIELD_IDS).filter((f) => fields[f] != null),
     name: fields.name != null ? fields.name : target.name || '',
@@ -286,10 +301,19 @@ async function flushDraft() {
   });
 }
 
+// Junta o rascunho de "title:Nome" ao do jid: o que foi editado sob o nome (mais recente)
+// prevalece, e o resto do rascunho do jid (ex.: notas antigas) é mantido.
 async function moveDraft(fromKey, toKey) {
   const stored = await chrome.storage.local.get([draftKey(fromKey), draftKey(toKey)]);
-  if (stored[draftKey(fromKey)] && !stored[draftKey(toKey)]) {
-    await chrome.storage.local.set({ [draftKey(toKey)]: stored[draftKey(fromKey)] });
+  const from = stored[draftKey(fromKey)];
+  const to = stored[draftKey(toKey)];
+  if (from) {
+    const fromFields = Object.fromEntries(Object.entries(draftFields(from)).filter(([, v]) => v != null));
+    const toFields = Object.fromEntries(Object.entries(draftFields(to)).filter(([, v]) => v != null));
+    const phoneSource = fromFields.phone != null ? from.phoneSource || '' : (to && to.phoneSource) || '';
+    await chrome.storage.local.set({
+      [draftKey(toKey)]: { fields: { ...toFields, ...fromFields }, phoneSource, updatedAt: Date.now() },
+    });
   }
   await chrome.storage.local.remove(draftKey(fromKey));
 }
@@ -404,11 +428,11 @@ function renderPhoneHint() {
 async function onLookupPhone() {
   if (!waTabId || !chat) return;
   const btn = $('btn-lookup-phone');
-  const keyBefore = chat.key;
+  const keyBefore = identityOf(chat);
   btn.disabled = true;
   try {
     const res = await sendToTab(waTabId, { type: 'ANA_LOOKUP_PHONE' });
-    if (!chat || chat.key !== keyBefore) return;
+    if (!chat || identityOf(chat) !== keyBefore) return;
     if (res && res.phone && W.isValidPhone(res.phone)) {
       $('f-phone').value = W.formatPhone(res.phone);
       chat.phoneSource = 'profile';
@@ -656,9 +680,9 @@ async function onSync(event) {
   if (email && !EMAIL_RE.test(email)) return showFormError('O e-mail do lead não parece válido.', 'f-email');
 
   // lê de novo a conversa (sem rolar) para incluir mensagens que chegaram agora
-  const keyBefore = chat.key;
+  const keyBefore = identityOf(chat);
   const fresh = await refresh();
-  if (!fresh || !chat || chat.key !== keyBefore) {
+  if (!fresh || !chat || identityOf(chat) !== keyBefore) {
     if (chat && !$('form-lead').hidden) {
       showFormError('A conversa aberta no WhatsApp mudou. Confira os dados e sincronize de novo.');
     }
@@ -667,8 +691,8 @@ async function onSync(event) {
 
   syncing = true;
   renderSyncButton();
-  const keyAtSend = chat.key;
-  const sameChat = () => Boolean(chat && chat.key === keyAtSend);
+  const keyAtSend = identityOf(chat);
+  const sameChat = () => Boolean(chat && identityOf(chat) === keyAtSend);
   try {
     const payload = buildPayload({ name, phone, email, notes });
     const data = await postLead(payload);

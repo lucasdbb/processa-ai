@@ -127,13 +127,18 @@
 
   // Mesmo nome exibido? Ignora acentos, maiúsculas, emojis e pontuação ("Maria 🌸" = "maria").
   // Números de telefone são comparados pelos dígitos.
+  // Chave de comparação de um nome: só letras e números. Vazia para nomes feitos só de
+  // emojis ou símbolos ("❤️", "★★"), que não dá para comparar.
+  function nameKey(value) {
+    return fold(value).replace(/[^\p{L}\p{N}]/gu, '');
+  }
+
   function sameName(a, b) {
     const A = stripMarks(a).trim();
     const B = stripMarks(b).trim();
     if (!A || !B) return false;
     if (looksLikePhone(A) && looksLikePhone(B)) return digits(A) === digits(B);
-    const key = (s) => fold(s).replace(/[^\p{L}\p{N}]/gu, '');
-    return key(A) !== '' && key(A) === key(B);
+    return nameKey(A) !== '' && nameKey(A) === nameKey(B);
   }
 
   // ─── Datas e horas ───
@@ -387,6 +392,7 @@
     isValidPhone,
     formatPhone,
     looksLikePhone,
+    nameKey,
     sameName,
     storeMessageText,
     startOfDay,

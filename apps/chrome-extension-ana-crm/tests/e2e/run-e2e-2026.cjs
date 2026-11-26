@@ -188,6 +188,48 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   check('troca durante a leitura: segue a conversa nova', (await value('#f-name')) === 'Carlos Antigo' && (await text('#msg-count')) === '6', await text('#msg-count'));
   check('troca durante a leitura: nada da conversa anterior', !/Maria|Mensagem (9\d|1[0-2]\d) do contato/.test(listAfter));
 
+  // ── A9b. Histórico antigo só no celular: a leitura automática não insiste ──
+  const loaderCalls = () => wa.evaluate(() => window.__storeCalls.loadEarlier);
+  const idle = () => waitFor(async () => !(await panel.isDisabled('#btn-refresh')), 15000);
+  await switchChat('stalled', 'Pedro Histórico');
+  await waitFor(async () => (await text('#msg-count')) === '40', 10000);
+  await idle();
+  check('histórico só no celular: lê o que há (40)', (await text('#msg-count')) === '40', await text('#msg-count'));
+  const stallCalls = await loaderCalls();
+  await panel.click('#btn-refresh');
+  await idle();
+  await panel.click('#btn-refresh');
+  await idle();
+  check('histórico só no celular: atualizar não chama o carregador de novo', (await loaderCalls()) === stallCalls, `${stallCalls} → ${await loaderCalls()}`);
+  check('histórico só no celular: botão de buscar antigas continua disponível', await panel.isEnabled('#btn-load-older'));
+  await panel.click('#btn-load-older');
+  await waitFor(async () => (await loaderCalls()) > stallCalls, 8000);
+  await idle();
+  check('histórico só no celular: o botão força uma nova tentativa', (await loaderCalls()) > stallCalls);
+
+  // ── A9c. Falha passageira dos dados internos: as notas do contato não se perdem ──
+  await switchChat('old9', 'Carlos Antigo');
+  await idle();
+  await panel.fill('#f-notes', 'Prefere contato à tarde');
+  await sleep(700);
+  await wa.evaluate(() => { window.__breakStore = true; });
+  await panel.click('#btn-refresh');
+  await idle();
+  const phoneDuring = await value('#f-phone');
+  await wa.evaluate(() => { window.__breakStore = false; });
+  await panel.click('#btn-refresh');
+  await waitFor(async () => (await value('#f-phone')) === '+55 (11) 98765-4321' && (await value('#f-notes')) === 'Prefere contato à tarde', 10000);
+  check('falha passageira: a leitura caiu para a tela', phoneDuring === '', phoneDuring);
+  check('falha passageira: notas do contato voltam', (await value('#f-notes')) === 'Prefere contato à tarde', await value('#f-notes'));
+  check('falha passageira: telefone volta', (await value('#f-phone')) === '+55 (11) 98765-4321', await value('#f-phone'));
+  const drafts = await panel.evaluate(() => chrome.storage.local.get(null));
+  const old9Draft = drafts['draft:551187654321@c.us'];
+  check('falha passageira: rascunho continua no jid e nenhum fica pelo nome',
+    Boolean(old9Draft) && old9Draft.fields.notes === 'Prefere contato à tarde' && !Object.keys(drafts).some((k) => k.startsWith('draft:title:')),
+    JSON.stringify(Object.keys(drafts)));
+  await panel.fill('#f-notes', '');
+  await sleep(700);
+
   // ── A10. Diagnóstico ──
   await switchChat('saved', 'Maria Silva');
   await panel.click('#btn-settings');
@@ -213,7 +255,8 @@ async function waitFor(fn, timeout = 8000, step = 150) {
     Object.defineProperty(window, key, { configurable: true, value: { version: 0, dispose() { window.__oldBridgeDisposed = true; } } });
   });
   await injectBridge();
-  check('ponte de versão antiga é substituída', await wa.evaluate(() => window.__oldBridgeDisposed === true && window[Symbol.for('ana-crm.bridge')].version >= 1));
+  const extVersion = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).version;
+  check('ponte de versão antiga é substituída', await wa.evaluate((v) => window.__oldBridgeDisposed === true && window[Symbol.for('ana-crm.bridge')].version === v, extVersion));
   await panel.click('#btn-refresh');
   await waitFor(async () => (await value('#f-name')) === 'Maria Silva' && (await text('#msg-count')) === '100');
   check('nova ponte responde', (await text('#msg-count')) === '100');
@@ -253,6 +296,24 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   await panel.click('#btn-load-older');
   await waitFor(async () => (await text('#msg-count')) === '100', 25000);
   check('tela 2026: busca as antigas rolando a conversa', (await text('#msg-count')) === '100', await text('#msg-count'));
+
+  // ── B2. Outro contato com o mesmo nome: nada da primeira Maria passa para a segunda ──
+  await panel.fill('#f-notes', 'Notas da primeira Maria');
+  await sleep(700);
+  await wa.evaluate(() => window.__switchChat('maria2'));
+  await waitFor(async () => (await text('#msg-count')) === '3', 10000);
+  check('mesmo nome: o painel percebe a troca', (await text('#msg-count')) === '3', await text('#msg-count'));
+  check('mesmo nome: telefone da primeira Maria não passa', (await value('#f-phone')) === '', await value('#f-phone'));
+  check('mesmo nome: notas da primeira Maria não passam', (await value('#f-notes')) === '', await value('#f-notes'));
+  await panel.click('#btn-lookup-phone');
+  await waitFor(async () => (await value('#f-phone')) === '+55 (11) 90000-1111', 8000);
+  const beforeM2 = requests.length;
+  await panel.click('#btn-sync');
+  await waitFor(async () => requests.length === beforeM2 + 1, 10000);
+  const m2 = JSON.parse(requests[requests.length - 1].body);
+  check('mesmo nome: envio só com os dados da segunda Maria',
+    m2.contact.phone === '5511900001111' && m2.notes === '' && m2.messages.length === 3 && m2.messages.every((m) => /^3EB0MAR/.test(m.external_id)),
+    JSON.stringify({ phone: m2.contact.phone, notes: m2.notes, n: m2.messages.length }));
 
   await switchChat('group');
   await waitFor(async () => panel.isVisible('#group-banner'), 10000);

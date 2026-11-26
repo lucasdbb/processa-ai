@@ -53,8 +53,12 @@ conversas.
 | Mensagens antigas | carregador do próprio WhatsApp (`WAWebChatLoadMessages`), até o limite, sem rolar a tela |
 | Mídia | descrição do tipo: `[Imagem]`, `[Vídeo]`, `[Áudio]`, `[Documento: nome]`, `[Figurinha]`, `[Localização] <link do mapa>`, `[Contato compartilhado: nome]`, `[Enquete] …`, `[Mensagem apagada]`; a legenda vem junto |
 
-Avisos do sistema (criptografia, mudanças de grupo etc.) ficam de fora. A ponte só lê
-informação que já está no navegador: não consulta os servidores do WhatsApp.
+Avisos do sistema (criptografia, mudanças de grupo etc.) ficam de fora. Para o telefone, a
+ponte só usa o que já está no navegador, sem consultar os servidores do WhatsApp. As
+mensagens antigas vêm pelo mesmo carregador que o WhatsApp usa quando você rola a conversa
+para cima. Numa conversa em que ele não traz mais nada (por exemplo, histórico antigo que
+só está no celular), a leitura automática não insiste; o botão **Buscar mensagens mais
+antigas** tenta de novo.
 
 ### Reserva: a leitura da tela
 
@@ -85,6 +89,10 @@ nono dígito ganham o 9.
   por contato.
 - **Troca de conversa durante a leitura.** A leitura é cancelada e refeita na conversa
   nova, sem misturar as duas.
+- **Rascunho na leitura da tela.** Sem os dados internos e sem o número na tela, o painel
+  só conhece o nome do contato, e dois contatos podem ter o mesmo nome. Por isso, nesse
+  modo, o rascunho não é restaurado ao voltar para a conversa. Ele volta quando a mesma
+  conversa é reconhecida pelo número.
 - **Histórico antigo.** A extensão só alcança o que o WhatsApp Web consegue carregar (ele
   pode pedir para buscar mensagens antigas no celular).
 - **Mudanças no WhatsApp.** Os nomes internos ficam em `content/wa-bridge.js` e os
@@ -225,6 +233,13 @@ apps/chrome-extension-ana-crm/
     legendas de foto e vídeo.
   - O painel se atualiza sozinho quando chega mensagem nova.
   - Corrigido: uma troca de conversa logo depois de abrir o painel podia não ser percebida.
+  - Leitura da tela (reserva):
+    - dois contatos com o mesmo nome não se misturam (telefone, notas e mensagens);
+    - uma falha passageira dos dados internos não apaga mais as notas do contato;
+    - um contato com nome só de emojis não tem as mensagens dele marcadas como suas.
+  - O carregador de mensagens antigas espera o do próprio WhatsApp e não insiste em
+    conversas sem mais histórico.
+  - A ponte antiga é sempre substituída ao atualizar a extensão.
   - Diagnóstico inclui a ponte (módulos encontrados, formato dos IDs), ainda sem nomes,
     números ou textos.
 - **1.1.0**

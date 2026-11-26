@@ -14,7 +14,8 @@
     - ?ids=old: Wid/MsgKey com _serialized; padrão: só $1 (jul/2026); ?ids=min: só $1;
     - ?loader=chat: loadEarlierMsgs(chat), a forma antiga.
 
-  Conversas: ?chat=saved|unsaved|lid|lid2|lidnone|group|old9|channel|none
+  Conversas: ?chat=saved|unsaved|lid|lid2|lidnone|group|old9|channel|maria2|stalled|none
+  (maria2 tem o mesmo nome de saved; stalled tem histórico antigo só no celular)
 -->
 <html lang="pt-BR">
 <head>
@@ -69,6 +70,10 @@
     group: { title: 'Família Silva', jid: '120363025123456789@g.us', total: 10, group: true },
     old9: { title: 'Carlos Antigo', jid: '551187654321@c.us', total: 6, phone: '+55 11 8765-4321', saved: true },
     channel: { title: 'Canal A Nova Advocacia', jid: '120363999888777@newsletter', total: 5, channel: true },
+    // outro contato com o MESMO nome da Maria, com outro número
+    maria2: { title: 'Maria Silva', jid: '5511900001111@c.us', total: 6, phone: '+55 11 90000-1111', saved: true },
+    // histórico antigo só no celular: o carregador não traz nada, mas a conversa não acabou
+    stalled: { title: 'Pedro Histórico', jid: '5511955554444@c.us', total: 60, phone: '+55 11 95555-4444', saved: true, stall: true },
   };
   const PN_BY_LID = { '123456789012345@lid': '5521998765432@c.us' };
   const ME = 'Lucas Braga';
@@ -423,6 +428,7 @@
     if (!chat || !chat.msgs) throw new TypeError("Cannot read properties of undefined (reading 'msgs')");
     if (!chat.active || state.start === 0) return [];
     await sleep(150);
+    if (CHATS[state.key].stall) return [];
     const before = state.start;
     state.start = Math.max(0, state.start - PAGE);
     renderList(document.querySelector('.scroller'), true);
@@ -456,8 +462,9 @@
       },
       WAWebChatLoadMessages: { loadEarlierMsgs },
     };
+    // window.__breakStore = true simula uma falha passageira dos dados internos
     window.require = (name) => {
-      if (!MODULES[name]) throw new Error(`Requiring unknown module "${name}"`);
+      if (window.__breakStore || !MODULES[name]) throw new Error(`Requiring unknown module "${name}"`);
       return MODULES[name];
     };
     window.Debug = { VERSION: '2.3000.1050000000' };

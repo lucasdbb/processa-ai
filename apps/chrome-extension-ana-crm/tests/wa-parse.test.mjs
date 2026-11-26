@@ -181,3 +181,19 @@ test('storeMessageText: tipos de mensagem dos dados internos', () => {
   assert.equal(t({ type: 'interactive', body: 'Escolha uma opção' }), 'Escolha uma opção');
   assert.equal(t({ type: 'novo_tipo', body: `/9j/${'A'.repeat(300)}` }), '[Mensagem: novo_tipo]');
 });
+
+test('nameKey: nomes só com emojis ou símbolos não têm chave de comparação', () => {
+  assert.equal(W.nameKey('Maria Sílva 🌸'), 'mariasilva');
+  assert.equal(W.nameKey('❤️'), '');
+  assert.equal(W.nameKey('★★'), '');
+  assert.equal(W.nameKey('+55 11 91234-5678'), '5511912345678');
+});
+
+test('versão da ponte (wa-bridge.js) acompanha a do manifest', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
+  const bridge = await readFile(new URL('../content/wa-bridge.js', import.meta.url), 'utf8');
+  const m = /const VERSION = '([^']+)'/.exec(bridge);
+  assert.ok(m, 'VERSION não encontrada em wa-bridge.js');
+  assert.equal(m[1], manifest.version);
+});

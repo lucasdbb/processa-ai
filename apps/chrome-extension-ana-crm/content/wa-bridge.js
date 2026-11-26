@@ -13,14 +13,16 @@
 (() => {
   'use strict';
 
-  const VERSION = 1;
+  // Igual à versão do manifest (conferido em tests/wa-parse.test.mjs)
+  const VERSION = '1.2.0';
   const IN = 'ana-crm:cs';
   const OUT = 'ana-crm:page';
   const KEY = Symbol.for('ana-crm.bridge');
 
-  // Ao atualizar a extensão, a ponte antiga continua na página: a nova a substitui
+  // Ao atualizar a extensão, a ponte antiga continua na página: qualquer outra versão
+  // é substituída; a mesma versão injetada de novo mantém a que já está rodando.
   const previous = window[KEY];
-  if (previous && previous.version >= VERSION) return;
+  if (previous && previous.version === VERSION) return;
   if (previous && typeof previous.dispose === 'function') previous.dispose();
 
   // ─── Acesso defensivo aos módulos e modelos do WhatsApp ───
@@ -182,7 +184,7 @@
     for (const source of sources) {
       let value = null;
       try {
-        value = await Promise.race([Promise.resolve(source()), sleep(1500).then(() => null)]);
+        value = await Promise.race([Promise.resolve(source()), sleep(800).then(() => null)]);
       } catch {
         value = null;
       }
@@ -248,6 +250,10 @@
   // Cada forma é tentada até uma trazer mensagens, e a que funcionou é reaproveitada.
   const LOADER_FORMS = ['object', 'chat', 'chat+msgs'];
   let loaderForm = null;
+  let loaderBroken = false; // nenhuma forma funcionou nesta página: só tenta de novo se o usuário pedir
+  // conversas em que o carregador parou de trazer mensagens nesta página: a leitura
+  // automática não insiste (o botão "Buscar mensagens mais antigas" força)
+  const exhausted = new Set();
 
   function loaderArgs(form, chat) {
     if (form === 'object') return [{ chat }];
@@ -262,13 +268,19 @@
   async function loadEarlierOnce(chat, deadline) {
     const loader = earlierLoader();
     if (!loader) return { ok: false, reason: 'sem-carregador' };
-    for (const form of loaderForm ? [loaderForm] : LOADER_FORMS) {
+    // o próprio WhatsApp pode estar carregando (o usuário rolou a conversa): espera
+    await waitWhileLoading(chat, deadline);
+    if (loadState(chat).loading) return { ok: false, reason: 'whatsapp-carregando' };
+    const forms = loaderForm ? [loaderForm] : LOADER_FORMS;
+    let threw = 0;
+    for (const form of forms) {
       const before = msgsOf(chat).length;
       try {
         const wait = Math.max(500, Math.min(8000, deadline - Date.now()));
         await Promise.race([Promise.resolve(loader(...loaderArgs(form, chat))), sleep(wait)]);
         await waitWhileLoading(chat, deadline);
       } catch {
+        threw++;
         continue;
       }
       const added = msgsOf(chat).length - before;
@@ -278,12 +290,20 @@
       }
     }
     // a forma que já funcionou não trouxe nada agora: o histórico pode estar a caminho
-    return loaderForm ? { ok: true, added: 0 } : { ok: false, reason: 'carregador-sem-efeito' };
+    if (loaderForm) return { ok: true, added: 0 };
+    // todas as formas deram erro: o carregador mudou nesta versão do WhatsApp
+    if (threw === forms.length) {
+      loaderBroken = true;
+      return { ok: false, reason: 'carregador-com-erro' };
+    }
+    // nenhuma trouxe nada (ex.: histórico antigo só no celular): vale só para esta conversa
+    return { ok: false, reason: 'carregador-sem-efeito' };
   }
 
   // ─── Pedidos do content script ───
 
-  async function snapshot({ limit = 100, maxMs = 6000, loadEarlier = true } = {}) {
+  // force: o usuário clicou em "Buscar mensagens mais antigas"
+  async function snapshot({ limit = 100, maxMs = 6000, loadEarlier = true, force = false } = {}) {
     if (!chatCollection()) return { store: false };
     const chat = activeChat();
     if (!chat) return { store: true, chat: null };
@@ -298,7 +318,13 @@
     const waitUntil = Math.min(deadline, Date.now() + 1500);
     while (!msgsOf(chat).length && Date.now() < waitUntil) await sleep(100);
 
-    if (loadEarlier && (kind === 'user' || kind === 'lid' || kind === 'unknown')) {
+    const supported = kind === 'user' || kind === 'lid' || kind === 'unknown';
+    const allowed = force || (!loaderBroken && !exhausted.has(parts.serialized));
+    if (loadEarlier && supported && allowed && countable(chat) < limit) {
+      if (force) {
+        loaderBroken = false;
+        exhausted.delete(parts.serialized);
+      }
       let stale = 0;
       while (countable(chat) < limit && Date.now() < deadline && load.rounds < 12) {
         if (loadState(chat).noEarlier) {
@@ -319,6 +345,9 @@
         }
       }
       if (!load.stopped) load.stopped = countable(chat) >= limit ? 'limite' : 'tempo';
+      if (['sem-novas', 'carregador-sem-efeito', 'carregador-com-erro', 'sem-carregador'].includes(load.stopped)) {
+        exhausted.add(parts.serialized);
+      }
     }
     if (!sameChat()) return { store: true, changed: true };
 
@@ -380,6 +409,7 @@
       loaded: chat ? msgsOf(chat).length : 0,
       complete: chat ? loadState(chat).noEarlier : null,
       loaderForm,
+      loaderBroken,
     };
   }
 
