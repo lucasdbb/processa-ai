@@ -20,7 +20,7 @@ A interface é um painel lateral com o design system da A Nova Advocacia.
    visíveis, e se atualiza quando você troca de conversa.
 4. Confira os dados e escreva o briefing. Se quiser mais histórico, clique em **Buscar
    mensagens mais antigas**: a extensão rola a conversa até juntar o limite (50 ou 100) e
-   volta para o fim.
+   devolve a rolagem ao ponto em que você estava lendo.
 5. Clique em **Sincronizar Lead no CRM** (ou `Ctrl/⌘ + Enter`). Quando der certo, aparece o
    link para o card do lead: `https://crm.anovaadvocacia.ai/admin/pipeline?booking=<booking_id>`.
 
@@ -92,8 +92,8 @@ automática do mesmo envio):
 
 Resposta esperada (2xx), em JSON:
 
-- o ID do card em `booking_id`; também são aceitos `bookingId`, `data.booking_id` e
-  `booking.id`;
+- o ID do card em `booking_id`; também são aceitos `bookingId`, `data.booking_id`,
+  `booking.id` e `lead.booking_id`;
 - opcionalmente, os contadores `messages_inserted` e `messages_skipped`, que aparecem no
   resultado.
 
@@ -153,7 +153,7 @@ CHROME_PATH=/caminho/do/chrome NODE_PATH=/pasta/node_modules \
 
 A simulação (`tests/mock/whatsapp.html`) reproduz a estrutura que a extensão lê e cobre:
 
-- contato salvo, não salvo, com LID, grupo e número sem o nono dígito;
+- contato salvo, não salvo, com LID, grupo, canal e número sem o nono dígito;
 - emojis, respostas citadas, áudio, imagem, mensagem apagada, "Ler mais" e várias linhas;
 - divisórias de data e carregamento de mensagens antigas ao rolar.
 
