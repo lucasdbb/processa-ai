@@ -62,6 +62,15 @@
     };
   }
 
+  // ID da mensagem a partir do data-id. Desde out/2026 o WhatsApp Web põe só o ID
+  // ("3EB0C4F5…"), sem a direção nem a conversa; antes era "<true|false>_<jid>_<id>".
+  function messageIdFromDataId(value) {
+    const old = parseDataId(value);
+    if (old) return old.messageId;
+    const s = String(value || '').trim();
+    return /^[A-Za-z0-9][\w\-.:]{5,199}$/.test(s) ? s : '';
+  }
+
   function jidKind(jid) {
     const j = String(jid || '').toLowerCase();
     if (!j) return 'unknown';
@@ -114,6 +123,17 @@
   function looksLikePhone(value) {
     const s = stripMarks(value).trim();
     return /^\+?[\d\s().\-]{8,24}$/.test(s) && digits(s).length >= 8;
+  }
+
+  // Mesmo nome exibido? Ignora acentos, maiúsculas, emojis e pontuação ("Maria 🌸" = "maria").
+  // Números de telefone são comparados pelos dígitos.
+  function sameName(a, b) {
+    const A = stripMarks(a).trim();
+    const B = stripMarks(b).trim();
+    if (!A || !B) return false;
+    if (looksLikePhone(A) && looksLikePhone(B)) return digits(A) === digits(B);
+    const key = (s) => fold(s).replace(/[^\p{L}\p{N}]/gu, '');
+    return key(A) !== '' && key(A) === key(B);
   }
 
   // ─── Datas e horas ───
@@ -262,6 +282,82 @@
     return DELETED_RE.test(String(foldedText || '').trim());
   }
 
+  // ─── Mensagens lidas dos dados internos do WhatsApp (content/wa-bridge.js) ───
+
+  // Avisos do sistema e registros técnicos: não são mensagens da conversa
+  const STORE_SKIP_TYPES = new Set([
+    'e2e_notification', 'notification', 'notification_template', 'gp2', 'protocol', 'ciphertext',
+    'reaction', 'debug', 'unknown', 'broadcast_notification', 'pinned_message', 'keep_in_chat',
+    'newsletter_notification', 'admin',
+  ]);
+
+  // Miniatura em base64 (imagem, documento, localização): nunca é texto
+  const looksLikeBase64 = (s) => s.length >= 100 && /^[A-Za-z0-9+/]+={0,2}$/.test(s);
+
+  function vcardName(text) {
+    const m = /(?:^|\n)FN[^:\n]*:(.*)/.exec(String(text || ''));
+    return m ? m[1].trim() : '';
+  }
+
+  // Texto enviado ao CRM para uma mensagem da ponte. null: a mensagem não entra.
+  function storeMessageText(m) {
+    if (!m || m.notification) return null;
+    const type = String(m.type || '');
+    if (STORE_SKIP_TYPES.has(type)) return null;
+    const clean = (s) => stripMarks(s).replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').trim();
+    const caption = clean(m.caption);
+    const withCaption = (label) => (caption ? `${label} ${caption}` : label);
+    switch (type) {
+      case 'chat': {
+        const body = clean(m.body);
+        return body || null;
+      }
+      case 'image':
+        return m.viewOnce ? '[Imagem de visualização única]' : withCaption('[Imagem]');
+      case 'video':
+      case 'ptv':
+        if (m.viewOnce) return '[Vídeo de visualização única]';
+        return withCaption(m.isGif ? '[GIF]' : '[Vídeo]');
+      case 'audio':
+      case 'ptt':
+        return '[Áudio]';
+      case 'document': {
+        const name = clean(m.filename);
+        return withCaption(name ? `[Documento: ${name}]` : '[Documento]');
+      }
+      case 'sticker':
+        return '[Figurinha]';
+      case 'location':
+      case 'live_location': {
+        const parts = ['[Localização]'];
+        const place = clean(m.loc);
+        if (place) parts.push(place);
+        if (Number.isFinite(m.lat) && Number.isFinite(m.lng)) parts.push(`https://maps.google.com/?q=${m.lat},${m.lng}`);
+        return parts.join(' ');
+      }
+      case 'vcard': {
+        const name = vcardName(m.body);
+        return name ? `[Contato compartilhado: ${name}]` : '[Contato compartilhado]';
+      }
+      case 'multi_vcard':
+        return '[Contatos compartilhados]';
+      case 'revoked':
+        return '[Mensagem apagada]';
+      case 'poll_creation':
+        return m.pollName ? `[Enquete] ${clean(m.pollName)}` : '[Enquete]';
+      case 'event_creation':
+        return m.eventName ? `[Evento] ${clean(m.eventName)}` : '[Evento]';
+      case 'call_log':
+        return m.isVideoCall ? '[Chamada de vídeo]' : '[Chamada de voz]';
+      default: {
+        if (caption) return caption;
+        const body = clean(m.body);
+        if (body && !looksLikeBase64(body)) return body;
+        return type ? `[Mensagem: ${type}]` : null;
+      }
+    }
+  }
+
   // Diagnóstico: mantém só o formato (letras viram "a", números "9", símbolos "*"),
   // em qualquer alfabeto, para não expor nomes nem conteúdo.
   function maskText(value) {
@@ -284,12 +380,15 @@
     fold,
     digits,
     parseDataId,
+    messageIdFromDataId,
     jidKind,
     phoneFromJid,
     normalizePhone,
     isValidPhone,
     formatPhone,
     looksLikePhone,
+    sameName,
+    storeMessageText,
     startOfDay,
     parseTimeOnly,
     parsePrePlainText,

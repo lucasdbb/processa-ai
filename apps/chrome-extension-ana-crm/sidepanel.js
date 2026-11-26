@@ -14,6 +14,7 @@ const DEFAULTS = {
 const DEFAULT_ORIGIN = 'https://crm.anovaadvocacia.ai';
 const WA_URL = 'https://web.whatsapp.com/';
 const WA_MATCH = /^https:\/\/web\.whatsapp\.com\//;
+const BRIDGE_FILES = ['content/wa-bridge.js'];
 const CONTENT_FILES = ['content/wa-parse.js', 'content/wa-capture.js'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const REQUEST_TIMEOUT_MS = 30000;
@@ -36,6 +37,7 @@ let changeTimer = null;
 let toastTimer = null;
 let lastSyncToken = 0;
 let captureCount = 0;
+const bridgeInjected = new Set(); // abas em que a ponte já foi injetada por este painel
 
 class UserError extends Error {}
 // falha de rede ou indisponibilidade momentânea: reenviar é seguro (o CRM ignora duplicatas)
@@ -69,12 +71,25 @@ async function findWhatsAppTab() {
   return tabs.find((t) => t.active) || tabs[0] || null;
 }
 
+// Ponte com os dados internos do WhatsApp (mundo da página). Falhar aqui não impede
+// a leitura: o content script usa a leitura da tela.
+async function injectBridge(tabId) {
+  bridgeInjected.add(tabId);
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: BRIDGE_FILES, world: 'MAIN' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function sendToTab(tabId, message) {
   try {
     return await chrome.tabs.sendMessage(tabId, message);
   } catch (err) {
     if (!/Receiving end does not exist|Could not establish connection/i.test(String((err && err.message) || err))) throw err;
-    // aba aberta antes da instalação: injeta a captura e tenta de novo
+    // aba aberta antes da instalação: injeta a ponte e a captura e tenta de novo
+    await injectBridge(tabId);
     await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_FILES });
     return chrome.tabs.sendMessage(tabId, message);
   }
@@ -140,7 +155,12 @@ async function refresh({ loadOlder = false } = {}) {
       return false;
     }
     waTabId = tab.id;
-    const res = await sendToTab(tab.id, { type: 'ANA_CAPTURE', limit: settings.messageLimit, loadOlder });
+    const request = { type: 'ANA_CAPTURE', limit: settings.messageLimit, loadOlder };
+    let res = await sendToTab(tab.id, request);
+    // ponte ausente (aba aberta antes da instalação): injeta uma vez e lê de novo
+    if (res && res.ok && res.bridge === 'ausente' && !bridgeInjected.has(tab.id) && await injectBridge(tab.id)) {
+      res = await sendToTab(tab.id, request);
+    }
     if (res && res.code === 'chat-changed') {
       refreshQueued = true;
       return false;
@@ -205,6 +225,8 @@ async function applyCapture(res) {
     chat = { ...chat, ...incoming, phoneSource: keepSource || chat.phoneSource };
     if (!$('f-phone').value.trim() && incoming.phone) $('f-phone').value = W.formatPhone(incoming.phone);
   }
+  chat.source = res.source || 'dom';
+  chat.complete = Boolean(res.stats && res.stats.complete);
   captureCount++;
   res.messages.forEach((m, i) => messages.set(m.external_id, { ...m, seq: captureCount * 100000 + i }));
   trimMessages();
@@ -336,10 +358,12 @@ function renderMessages() {
 function renderLoadOlder() {
   const btn = $('btn-load-older');
   const full = messages.size >= settings.messageLimit;
-  btn.disabled = busy || syncing || full;
-  $('btn-load-older-label').textContent = full
-    ? `Limite de ${settings.messageLimit} mensagens atingido`
-    : `Buscar mensagens mais antigas (até ${settings.messageLimit})`;
+  const complete = Boolean(chat && chat.complete) && !full;
+  btn.disabled = busy || syncing || full || complete;
+  let label = `Buscar mensagens mais antigas (até ${settings.messageLimit})`;
+  if (full) label = `Limite de ${settings.messageLimit} mensagens atingido`;
+  else if (complete) label = 'A conversa inteira já foi lida';
+  $('btn-load-older-label').textContent = label;
 }
 
 // ─── Telefone ───
@@ -354,6 +378,9 @@ function renderPhoneHint() {
   const detected = W.isValidPhone(typed);
   if (chat.phoneSource === 'jid' && detected) {
     hint.textContent = 'Identificado pelo número da conversa no WhatsApp.';
+    hint.classList.add('ok');
+  } else if (chat.phoneSource === 'wa' && detected) {
+    hint.textContent = 'Identificado pelo WhatsApp (o contato usa identificador privado).';
     hint.classList.add('ok');
   } else if (chat.phoneSource === 'header' && detected) {
     hint.textContent = 'Identificado no cabeçalho da conversa (contato não salvo).';
@@ -826,7 +853,9 @@ function scheduleRefresh(delay = 700) {
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (!msg || msg.type !== 'ANA_CHAT_CHANGED' || !sender.tab) return;
-  if (waTabId == null || sender.tab.id === waTabId) scheduleRefresh();
+  if (waTabId != null && sender.tab.id !== waTabId) return;
+  // mensagem nova na conversa aberta: atualiza o contador e as pendentes sem pressa
+  scheduleRefresh(msg.reason === 'messages' ? 1200 : 700);
 });
 
 chrome.tabs.onActivated.addListener(() => scheduleRefresh(300));

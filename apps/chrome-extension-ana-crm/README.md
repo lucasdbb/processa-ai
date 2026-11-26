@@ -16,11 +16,9 @@ A interface é um painel lateral com o design system da A Nova Advocacia.
    - **URL da API** (padrão `https://crm.anovaadvocacia.ai/api/public/whatsapp-extension-lead`);
    - **Chave de integração**, enviada no cabeçalho `x-extension-key`;
    - **seu e-mail** (sócio ou closer).
-3. Abra uma conversa no WhatsApp Web. O painel lê sozinho o nome, o telefone e as mensagens
-   visíveis, e se atualiza quando você troca de conversa.
-4. Confira os dados e escreva o briefing. Se quiser mais histórico, clique em **Buscar
-   mensagens mais antigas**: a extensão rola a conversa até juntar o limite (50 ou 100) e
-   devolve a rolagem ao ponto em que você estava lendo.
+3. Abra uma conversa no WhatsApp Web. O painel puxa sozinho o nome, o telefone e as últimas
+   50 ou 100 mensagens, e se atualiza quando você troca de conversa ou chega mensagem nova.
+4. Confira os dados e escreva o briefing.
 5. Clique em **Sincronizar Lead no CRM** (ou `Ctrl/⌘ + Enter`). Quando der certo, aparece o
    link para o card do lead: `https://crm.anovaadvocacia.ai/admin/pipeline?booking=<booking_id>`.
 
@@ -35,37 +33,64 @@ Detalhes do dia a dia:
 
 ## Como os dados são lidos
 
-A extensão só lê a página quando o painel pede e **nunca envia mensagens** no WhatsApp.
+A extensão só lê a página quando o painel pede e **nunca envia, apaga ou marca mensagens**
+no WhatsApp.
 
-| Dado | Fonte principal | Reservas |
+### Fonte principal: os dados internos do WhatsApp Web
+
+Desde outubro de 2026 o HTML do WhatsApp Web não traz mais o número do contato nem quem
+enviou cada mensagem. Por isso, a extensão lê os mesmos dados que o próprio WhatsApp Web
+usa para desenhar a tela, pelo script `content/wa-bridge.js`, que roda no contexto da
+página (`"world": "MAIN"`). É o caminho usado pelas extensões de CRM e de exportação de
+conversas.
+
+| Dado | De onde vem |
+|---|---|
+| Conversa aberta | `WAWebCollections.Chat.getActive()` |
+| Nome | nome salvo na agenda (título da conversa); em contato não salvo, o nome que a pessoa definiu no WhatsApp |
+| Telefone | número da conversa (`5511…@c.us`); em contatos com identificador privado (`…@lid`), a correspondência LID → número que o WhatsApp guarda (`WAWebApiContact.getPhoneNumber`, `contact.phoneNumber`) |
+| Mensagens | `chat.msgs`, com data e hora exatas (com segundos) e quem enviou |
+| Mensagens antigas | carregador do próprio WhatsApp (`WAWebChatLoadMessages`), até o limite, sem rolar a tela |
+| Mídia | descrição do tipo: `[Imagem]`, `[Vídeo]`, `[Áudio]`, `[Documento: nome]`, `[Figurinha]`, `[Localização] <link do mapa>`, `[Contato compartilhado: nome]`, `[Enquete] …`, `[Mensagem apagada]`; a legenda vem junto |
+
+Avisos do sistema (criptografia, mudanças de grupo etc.) ficam de fora. A ponte só lê
+informação que já está no navegador: não consulta os servidores do WhatsApp.
+
+### Reserva: a leitura da tela
+
+Se os dados internos não responderem (o WhatsApp renomeia o código interno entre
+versões), a extensão lê a tela, nos dois formatos de HTML:
+
+| Dado | Formato de nov/2026 | Formato antigo |
 |---|---|---|
-| Conversa aberta | `#main` e o título no `header` | item selecionado na lista de conversas |
-| Telefone | número da conversa no `data-id` das mensagens (`5511…@c.us`) | título da conversa (contato não salvo) e botão **Buscar telefone no perfil do contato** |
-| ID da mensagem | ID do WhatsApp no `data-id` (`true_<conversa>_<ID>`) | hash SHA-256 de conversa + direção + horário + texto |
-| Enviada por você | prefixo `true_`/`false_` do `data-id` | classe `.message-out` |
-| Texto | `.selectable-text` dentro de `[data-pre-plain-text]`; emojis viram caractere; o trecho citado em respostas é ignorado; "Ler mais" é expandido | descrição do tipo: `[Áudio]`, `[Imagem]`, `[Vídeo]`, `[Documento: nome]`, `[Figurinha]`, `[Localização]`, `[Mensagem apagada]` |
-| Data e hora | `data-pre-plain-text` (`[14:10, 26/11/2026] Nome: `), com dia/mês ou mês/dia deduzido da própria conversa | hora no balão + divisória de data (`HOJE`, `ONTEM`, dia da semana, data) |
+| Conversa aberta | título em `[data-testid="conversation-info-header-chat-title"]` | `#main header` e o item selecionado na lista |
+| ID da mensagem | `data-id` só com o ID | `data-id` `true_<conversa>_<ID>` |
+| Enviada por você | `[data-testid="tail-out"]`, `[data-testid="msg-meta"][role="button"]`, tiques de entrega; sem nenhum deles, o autor no `data-pre-plain-text` | prefixo `true_`/`false_`, classe `.message-out` |
+| Telefone | não aparece na tela: título (contato não salvo) ou **Buscar telefone no perfil do contato** | número da conversa no `data-id` |
+| Texto e data | `[data-pre-plain-text]` e `.selectable-text`/`[data-testid="selectable-text"]`; citações ignoradas; "Ler mais" expandido | igual |
+
+Mensagens que o WhatsApp ainda não desenhou (vazias, longe da tela) são ignoradas. Grupos
+são reconhecidos pelo nome do autor nas mensagens.
 
 O telefone é normalizado para dígitos com código do país (`5511987654321`). Números
 brasileiros sem o 55 recebem o código. Celulares antigos registrados no WhatsApp sem o
 nono dígito ganham o 9.
 
-Limitações conhecidas:
+### Limitações conhecidas
 
-- **Identificador privado (LID).** Em alguns contatos, o WhatsApp esconde o número na
-  conversa (`…@lid`). O painel avisa e oferece buscar o número no perfil do contato;
-  se não houver, digite-o.
+- **Contato com identificador privado sem número disponível.** Se o WhatsApp não tiver o
+  número de um contato com LID (por exemplo, quem nunca compartilhou o número com você),
+  o painel avisa e oferece buscar no perfil do contato; se não houver, digite-o.
 - **Grupos, canais e listas de transmissão não são sincronizados.** O CRM recebe um lead
   por contato.
-- **Troca de conversa durante a leitura.** Se você trocar de conversa enquanto a extensão
-  busca mensagens antigas, a leitura é cancelada e refeita na conversa nova, sem misturar
-  as duas.
-- **"Ler mais".** Mensagens longas são expandidas no próprio WhatsApp Web para capturar o
-  texto completo.
-- **Mudanças no WhatsApp.** O WhatsApp Web muda o HTML sem aviso. Todos os seletores
-  ficam em `SEL`, no início de `content/wa-capture.js`. Em Configurações, o botão **Copiar
-  diagnóstico** mostra quais partes da página ainda são reconhecidas, sem incluir o texto
-  das conversas.
+- **Troca de conversa durante a leitura.** A leitura é cancelada e refeita na conversa
+  nova, sem misturar as duas.
+- **Histórico antigo.** A extensão só alcança o que o WhatsApp Web consegue carregar (ele
+  pode pedir para buscar mensagens antigas no celular).
+- **Mudanças no WhatsApp.** Os nomes internos ficam em `content/wa-bridge.js` e os
+  seletores da tela em `SEL`, no início de `content/wa-capture.js`. Em Configurações, o
+  botão **Copiar diagnóstico** mostra o que ainda é reconhecido (módulos internos, formatos
+  e contagens), sem nomes, números nem texto das conversas.
 
 ## Contrato da API
 
@@ -138,6 +163,9 @@ campo antes de publicar na Chrome Web Store, porque a loja recusa itens novos co
 - As conversas contêm dados pessoais dos leads (LGPD). O escritório precisa de base legal
   para tratá-los no CRM, e o acesso ao CRM deve seguir a mesma regra de sigilo do
   atendimento.
+- A ponte com os dados internos só lê. Ela não envia mensagens, não automatiza ações no
+  WhatsApp e não faz requisições aos servidores dele. Ainda assim, ler o código interno do
+  WhatsApp Web não é um recurso oficial: o WhatsApp pode mudá-lo a qualquer momento.
 
 ## Testes
 
@@ -147,15 +175,21 @@ node --test 'apps/chrome-extension-ana-crm/tests/*.test.mjs'
 
 # ponta a ponta no Chrome, com WhatsApp Web simulado e API do CRM interceptada
 npm i playwright   # em qualquer pasta
-CHROME_PATH=/caminho/do/chrome NODE_PATH=/pasta/node_modules \
-  node apps/chrome-extension-ana-crm/tests/e2e/run-e2e.cjs
+export CHROME_PATH=/caminho/do/chrome NODE_PATH=/pasta/node_modules
+node apps/chrome-extension-ana-crm/tests/e2e/run-e2e-2026.cjs  # WhatsApp de nov/2026
+node apps/chrome-extension-ana-crm/tests/e2e/run-e2e.cjs       # HTML antigo, sem dados internos
 ```
 
-A simulação (`tests/mock/whatsapp.html`) reproduz a estrutura que a extensão lê e cobre:
+A simulação (`tests/mock/whatsapp.html`) reproduz as duas gerações do WhatsApp Web:
 
-- contato salvo, não salvo, com LID, grupo, canal e número sem o nono dígito;
-- emojis, respostas citadas, áudio, imagem, mensagem apagada, "Ler mais" e várias linhas;
-- divisórias de data e carregamento de mensagens antigas ao rolar.
+- dados internos (`?store=1`): módulos, IDs no formato `$1` de jul/2026 (ou `_serialized`,
+  ou só o texto do ID), carregador de mensagens antigas nas formas nova e antiga,
+  correspondência LID → número e avisos do sistema;
+- HTML de nov/2026 (`?dom=2026`) e o antigo;
+- contato salvo, não salvo, com LID (número na correspondência, só no contato ou em lugar
+  nenhum), grupo, canal e número sem o nono dígito;
+- emojis, respostas citadas, áudio, imagem, documento, localização, mensagem apagada,
+  "Ler mais", várias linhas, divisórias de data e mensagens antigas.
 
 ## Estrutura
 
@@ -164,8 +198,9 @@ apps/chrome-extension-ana-crm/
 ├── manifest.json        # MV3: side panel, storage, activeTab, scripting, hosts
 ├── background.js        # abre o painel pelo ícone; injeta a captura em abas já abertas
 ├── content/
-│   ├── wa-parse.js      # funções puras: data-id, telefone, datas, IDs estáveis
-│   └── wa-capture.js    # leitura do DOM do WhatsApp Web (seletores em SEL)
+│   ├── wa-bridge.js     # ponte com os dados internos do WhatsApp (mundo da página)
+│   ├── wa-parse.js      # funções puras: data-id, telefone, datas, tipos de mensagem
+│   └── wa-capture.js    # captura: dados internos primeiro, tela como reserva (SEL)
 ├── sidepanel.html/.css/.js  # painel: contato, notas, mensagens, envio, configurações
 ├── base.css             # design system A Nova Advocacia
 ├── fonts/ icons/
@@ -174,6 +209,24 @@ apps/chrome-extension-ana-crm/
 
 ## Histórico de versões
 
+- **1.2.0**
+  - **Correção principal:** no WhatsApp Web atual (out/2026 em diante), a extensão não
+    achava o telefone nem as mensagens, porque o HTML deixou de trazer o número do contato
+    e quem enviou cada mensagem. Agora ela lê os dados internos do WhatsApp Web e puxa
+    sozinha:
+    - o telefone, inclusive de contatos com identificador privado (LID);
+    - as últimas 50 ou 100 mensagens, sem rolar a tela, com data e hora exatas.
+  - A leitura da tela continua como reserva e entende o HTML novo:
+    - ID "puro" no `data-id` e direção pelas marcas `data-testid`;
+    - mensagens vazias fora da tela são ignoradas;
+    - grupos são reconhecidos pelo autor.
+  - Contato não salvo vem com o nome que a pessoa definiu no WhatsApp.
+  - Documento com o nome do arquivo, localização com link do mapa, contatos, enquetes e
+    legendas de foto e vídeo.
+  - O painel se atualiza sozinho quando chega mensagem nova.
+  - Corrigido: uma troca de conversa logo depois de abrir o painel podia não ser percebida.
+  - Diagnóstico inclui a ponte (módulos encontrados, formato dos IDs), ainda sem nomes,
+    números ou textos.
 - **1.1.0**
   - **Correções**
     - trocar de conversa durante a busca de mensagens antigas não mistura mais as duas conversas;

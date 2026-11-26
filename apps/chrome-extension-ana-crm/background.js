@@ -1,9 +1,11 @@
 // ANA CRM — service worker.
 // O clique no ícone abre o painel lateral. Ao instalar ou atualizar, injeta a
-// captura nas abas do WhatsApp Web já abertas, para não precisar recarregá-las.
+// ponte (mundo da página) e a captura (mundo isolado) nas abas do WhatsApp Web já
+// abertas, para não precisar recarregá-las.
 
 'use strict';
 
+const BRIDGE_FILES = ['content/wa-bridge.js'];
 const CONTENT_FILES = ['content/wa-parse.js', 'content/wa-capture.js'];
 
 chrome.sidePanel
@@ -13,6 +15,8 @@ chrome.sidePanel
 chrome.runtime.onInstalled.addListener(async () => {
   const tabs = await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' });
   for (const tab of tabs) {
-    chrome.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_FILES }).catch(() => {});
+    const target = { tabId: tab.id };
+    chrome.scripting.executeScript({ target, files: BRIDGE_FILES, world: 'MAIN' }).catch(() => {});
+    chrome.scripting.executeScript({ target, files: CONTENT_FILES }).catch(() => {});
   }
 });

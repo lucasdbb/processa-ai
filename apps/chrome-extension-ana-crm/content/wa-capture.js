@@ -1,9 +1,16 @@
 // ANA CRM — leitura da conversa aberta no WhatsApp Web (content script).
 //
 // Só lê a página quando o painel pede (ANA_CAPTURE) e nunca envia mensagens.
-// Todos os seletores do WhatsApp ficam em SEL: quando o WhatsApp mudar o
-// layout, é aqui que se ajusta. ANA_DIAGNOSE conta quantos elementos cada
-// seletor encontra, sem expor o conteúdo das conversas.
+//
+// Fonte principal: os dados internos do WhatsApp, pela ponte content/wa-bridge.js
+// (mundo MAIN da página). Ela traz o número real do contato, inclusive com LID, e
+// as mensagens com data e hora exatas, sem rolar a tela.
+//
+// Reserva: a leitura da tela. Todos os seletores ficam em SEL; quando o WhatsApp
+// mudar o layout, é aqui que se ajusta. Desde out/2026 o data-id das mensagens traz
+// só o ID (sem a conversa e sem a direção) e as classes .message-in/.message-out
+// sumiram; os dois formatos são aceitos. ANA_DIAGNOSE conta o que cada parte
+// encontra, sem expor o conteúdo das conversas.
 (() => {
   'use strict';
 
@@ -19,15 +26,21 @@
   const SEL = {
     main: '#main',
     header: '#main header',
+    headerTitle: '[data-testid="conversation-info-header-chat-title"]',
     headerText: 'span[dir="auto"], span[title]',
     selectedChat: '#pane-side [aria-selected="true"]',
     dataId: '[data-id]',
-    messageId: '[data-id^="true_"], [data-id^="false_"]',
     row: '[role="row"]',
     prePlain: '[data-pre-plain-text]',
-    selectableText: '.selectable-text',
-    quoted: '.quoted-mention, [aria-label*="citada" i], [aria-label*="quoted" i], [aria-label*="citado" i]',
+    selectableText: '.selectable-text, [data-testid="selectable-text"]',
+    quoted: '[data-testid="quoted-message"], .quoted-mention, [aria-label*="citada" i], [aria-label*="quoted" i], [aria-label*="citado" i]',
     outgoing: '.message-out',
+    incoming: '.message-in',
+    // marcas que só as SUAS mensagens têm: rabicho da primeira de uma sequência,
+    // status de entrega clicável e os tiques de enviada/entregue/lida
+    outgoingMarks: '[data-testid="tail-out"], [data-testid="msg-meta"][role="button"], [data-icon^="msg-check"], [data-icon^="msg-dblcheck"], [data-icon="msg-time"]',
+    groupAuthor: '[data-testid="author"]',
+    media: 'img, video, audio, canvas, [data-icon], a[href]',
     drawerClose: '[aria-label="Fechar"], [aria-label="Close"], [aria-label="Cerrar"], [data-icon="x"], [data-icon="close"], [data-icon="x-alt"]',
   };
 
@@ -39,16 +52,63 @@
   const PROFILE_PHONE_RE = /^\+\d[\d\s().\-]{7,}$/;
   const MAX_OLDER_ROUNDS = 15;
   const OLDER_WAIT_MS = 900;
+  const UNSUPPORTED = { group: 'group', newsletter: 'channel', broadcast: 'broadcast' };
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const isMessageDataId = (value) => /^(true|false)_/i.test(value || '');
+  const isMessageDataId = (value) => Boolean(W.messageIdFromDataId(value));
   const pageLocale = () => document.documentElement.lang || navigator.language || '';
+  const chatChanged = () => ({ ok: false, code: 'chat-changed', error: 'A conversa mudou durante a leitura.' });
+
+  // ─── Ponte com os dados internos do WhatsApp (content/wa-bridge.js) ───
+
+  const BRIDGE_IN = 'ana-crm:cs';
+  const BRIDGE_OUT = 'ana-crm:page';
+  const pending = new Map();
+  let bridgeActive = '';
+  let bridgeTick = 0;
+
+  function onBridgeMessage(event) {
+    if (event.source !== window) return;
+    const data = event.data;
+    if (!data || data.source !== BRIDGE_OUT) return;
+    if (data.event === 'active-chat') {
+      bridgeActive = String(data.id || '');
+      return;
+    }
+    if (data.event === 'messages') {
+      bridgeTick++;
+      return;
+    }
+    const waiting = pending.get(data.reqId);
+    if (!waiting) return;
+    pending.delete(data.reqId);
+    clearTimeout(waiting.timer);
+    if (data.ok) waiting.resolve(data.result);
+    else waiting.reject(new Error(data.error || 'erro na ponte'));
+  }
+  window.addEventListener('message', onBridgeMessage);
+
+  const bridgePresent = () => document.documentElement.hasAttribute('data-ana-crm-bridge');
+
+  function bridgeCall(type, payload, timeoutMs = 3000) {
+    return new Promise((resolve, reject) => {
+      const reqId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      const timer = setTimeout(() => {
+        pending.delete(reqId);
+        reject(new Error('a ponte não respondeu'));
+      }, timeoutMs);
+      pending.set(reqId, { resolve, reject, timer });
+      window.postMessage({ source: BRIDGE_IN, reqId, type, payload }, location.origin);
+    });
+  }
 
   // ─── Cabeçalho da conversa ───
 
   function headerTitleElement() {
     const header = document.querySelector(SEL.header);
     if (!header) return null;
+    const marked = header.querySelector(SEL.headerTitle);
+    if (marked && W.stripMarks(marked.getAttribute('title') || marked.textContent).trim()) return marked;
     for (const el of header.querySelectorAll(SEL.headerText)) {
       const text = W.stripMarks(el.getAttribute('title') || el.textContent).trim();
       if (text && !STATUS_RE.test(text)) return el;
@@ -75,21 +135,116 @@
     return viewIds.get(main);
   }
 
-  // Conversa aberta agora: jid da última mensagem visível + título do cabeçalho
+  // Conversa aberta agora: jid da última mensagem visível (só no formato antigo do
+  // data-id) + título do cabeçalho
   function currentChatIdentity() {
     const nodes = messageNodes();
     const id = nodes.length ? W.parseDataId(nodes[nodes.length - 1].getAttribute('data-id')) : null;
     return { jid: id ? id.chatJid : '', title: headerTitle() };
   }
 
-  // ─── Mensagens ───
+  function loginOrEmpty() {
+    return document.querySelector('canvas, [data-ref]') ? 'login' : 'sem-conversa';
+  }
+
+  // ─── Leitura pelos dados internos ───
+
+  async function captureFromStore({ limit, loadOlder }) {
+    if (!bridgePresent()) return null;
+    const maxMs = loadOlder ? 20000 : 6000;
+    const startTitle = headerTitle();
+    let snap;
+    try {
+      snap = await bridgeCall('snapshot', { limit, maxMs }, maxMs + 5000);
+    } catch {
+      return null;
+    }
+    if (!snap || !snap.store) return null;
+    if (snap.changed) return chatChanged();
+    if (!snap.chat) {
+      // sem conversa ativa nos dados internos, mas com conversa na tela: a tela decide
+      if (document.querySelector(SEL.main)) return null;
+      return { ok: true, chat: null, messages: [], reason: loginOrEmpty(), source: 'store' };
+    }
+    if (startTitle && headerTitle() && headerTitle() !== startTitle) return chatChanged();
+
+    const c = snap.chat;
+    const list = [];
+    const occurrences = new Map();
+    for (let i = 0; i < (snap.messages || []).length; i++) {
+      const m = snap.messages[i];
+      const text = W.storeMessageText(m);
+      if (text == null || !m.t) continue;
+      const parsed = W.parseDataId(m.ser);
+      const fromMe = typeof m.fromMe === 'boolean' ? m.fromMe : Boolean(parsed && parsed.fromMe);
+      const iso = new Date(m.t * 1000).toISOString();
+      let externalId = m.id || (parsed && parsed.messageId) || '';
+      if (!externalId) {
+        const base = `${fromMe ? 1 : 0}|${iso}|${text}`;
+        const n = occurrences.get(base) || 0;
+        occurrences.set(base, n + 1);
+        externalId = await W.stableId([c.id, String(fromMe), iso, text, String(n)]);
+      }
+      list.push({ external_id: externalId, from_me: fromMe, text, timestamp: iso, approx: false, pos: i });
+    }
+    const unique = new Map();
+    for (const m of list) unique.set(m.external_id, m);
+    const all = [...unique.values()].sort((a, b) =>
+      a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : a.pos - b.pos);
+    const kept = all.slice(-limit);
+
+    const kind = W.jidKind(c.id) !== 'unknown' ? W.jidKind(c.id) : (c.kind || 'unknown');
+    const title = W.stripMarks(c.title || headerTitle()).trim();
+    let phone = c.phone ? W.normalizePhone(c.phone, { international: true }) : '';
+    let phoneSource = phone ? (c.phoneFrom === 'lid' ? 'wa' : 'jid') : '';
+    if (!phone && !UNSUPPORTED[kind] && W.looksLikePhone(title)) {
+      phone = W.normalizePhone(title);
+      phoneSource = 'header';
+    }
+    // contato não salvo: o título é o número; o nome é o que a pessoa definiu no WhatsApp
+    const name = W.looksLikePhone(title) ? W.stripMarks(c.pushname || c.verifiedName || '').trim() : title;
+
+    return {
+      ok: true,
+      source: 'store',
+      chat: {
+        key: c.id || (title ? `title:${title}` : ''),
+        title,
+        name,
+        phone,
+        phoneSource,
+        jidKind: kind,
+        isGroup: kind === 'group',
+        isLid: kind === 'lid',
+        unsupported: UNSUPPORTED[kind] || null,
+        viewToken: viewToken(),
+      },
+      messages: kept.map(({ external_id, from_me, text, timestamp, approx }) => ({ external_id, from_me, text, timestamp, approx })),
+      stats: {
+        found: all.length,
+        loaded: snap.loaded,
+        complete: Boolean(snap.complete),
+        older: snap.load,
+      },
+    };
+  }
+
+  // ─── Leitura da tela: mensagens ───
 
   function messageNodes() {
     const main = document.querySelector(SEL.main);
     if (!main) return [];
-    return [...main.querySelectorAll(SEL.dataId)].filter((el) =>
-      isMessageDataId(el.getAttribute('data-id'))
-      && !(el.parentElement && el.parentElement.closest(SEL.messageId)));
+    return [...main.querySelectorAll(SEL.dataId)].filter((el) => {
+      if (!isMessageDataId(el.getAttribute('data-id'))) return false;
+      const outer = el.parentElement && el.parentElement.closest(SEL.dataId);
+      return !(outer && main.contains(outer) && isMessageDataId(outer.getAttribute('data-id')));
+    });
+  }
+
+  // Mensagem ainda não desenhada (o WhatsApp deixa vazias as que estão longe da tela)
+  function isPlaceholder(el) {
+    return !el.querySelector(SEL.prePlain) && !el.querySelector(SEL.selectableText)
+      && !el.querySelector(SEL.media) && !W.stripMarks(el.textContent).trim();
   }
 
   function textFrom(node) {
@@ -169,14 +324,35 @@
     return clicked;
   }
 
-  function readMessage(el, dateOrder) {
-    const id = W.parseDataId(el.getAttribute('data-id'));
-    const fromMe = id ? id.fromMe : Boolean(el.matches(SEL.outgoing) || el.querySelector(SEL.outgoing));
+  const outsideQuote = (nodes) => [...nodes].some((n) => !n.closest(SEL.quoted));
+
+  // Quem enviou: o prefixo antigo do data-id, as classes antigas, as marcas que só as
+  // suas mensagens têm e, sem nenhuma delas, o autor no data-pre-plain-text (numa
+  // conversa individual, quem não é o contato é você).
+  function directionOf(el, id, pre, ctx) {
+    if (id) return id.fromMe;
+    if (el.matches(SEL.outgoing) || el.querySelector(SEL.outgoing)) return true;
+    if (el.matches(SEL.incoming) || el.querySelector(SEL.incoming)) return false;
+    if (outsideQuote(el.querySelectorAll(SEL.outgoingMarks))) return true;
+    // em grupos, as mensagens dos outros trazem o nome de quem escreveu
+    if (outsideQuote(el.querySelectorAll(SEL.groupAuthor))) return false;
+    // o título de um grupo não é o nome de quem escreve: a regra do autor só vale a dois
+    if (pre && ctx.title && !ctx.groupSeen) {
+      const parsed = W.parsePrePlainText(pre.getAttribute('data-pre-plain-text'), ctx.dateOrder);
+      if (parsed && parsed.sender) return !W.sameName(parsed.sender, ctx.title);
+    }
+    return false;
+  }
+
+  function readMessage(el, ctx) {
+    const raw = el.getAttribute('data-id');
+    const id = W.parseDataId(raw);
     const pre = el.querySelector(SEL.prePlain);
+    const fromMe = directionOf(el, id, pre, ctx);
 
     let date = null;
     if (pre) {
-      const parsed = W.parsePrePlainText(pre.getAttribute('data-pre-plain-text'), dateOrder);
+      const parsed = W.parsePrePlainText(pre.getAttribute('data-pre-plain-text'), ctx.dateOrder);
       if (parsed) date = parsed.date;
     }
     const timeOnly = date ? null : W.parseTimeOnly(metaTime(el));
@@ -192,8 +368,9 @@
 
     return {
       chatJid: id ? id.chatJid : '',
-      messageId: id ? id.messageId : '',
+      messageId: W.messageIdFromDataId(raw),
       fromMe,
+      groupAuthor: outsideQuote(el.querySelectorAll(SEL.groupAuthor)),
       text,
       date,
       timeOnly,
@@ -235,24 +412,26 @@
   }
 
   // Lê a conversa na ordem da tela, acompanhando as divisórias de data
-  async function readDom() {
+  async function readDom(title) {
     const main = document.querySelector(SEL.main);
     if (!main) return [];
     const nodes = messageNodes();
     await expandReadMore(nodes);
 
     let rows = [...main.querySelectorAll(SEL.row)];
-    const rowsHaveMessages = rows.some((r) => isMessageDataId(r.getAttribute('data-id')) || r.querySelector(SEL.messageId));
+    const rowsHaveMessages = rows.some((r) => isMessageDataId(r.getAttribute('data-id')) || r.querySelector(SEL.dataId));
     if (!rowsHaveMessages) rows = nodes;
+    const nodeSet = new Set(nodes);
 
     const dateOrder = W.inferDateOrder([...main.querySelectorAll(SEL.prePlain)]
       .map((e) => e.getAttribute('data-pre-plain-text'))) || pageLocale();
+    const ctx = { title, dateOrder, groupSeen: outsideQuote(main.querySelectorAll(SEL.groupAuthor)) };
 
     const out = [];
     const seen = new Set();
     let knownDay = null; // dia confiável: de uma divisória ou de mensagem com data completa
     for (const row of rows) {
-      const el = isMessageDataId(row.getAttribute('data-id')) ? row : row.querySelector(SEL.messageId);
+      const el = nodeSet.has(row) ? row : [...row.querySelectorAll(SEL.dataId)].find((n) => nodeSet.has(n));
       if (!el) {
         const label = W.stripMarks(row.textContent).trim();
         if (label && label.length <= 40) {
@@ -263,7 +442,8 @@
       }
       if (seen.has(el)) continue;
       seen.add(el);
-      const msg = readMessage(el, dateOrder);
+      if (isPlaceholder(el)) continue;
+      const msg = readMessage(el, ctx);
       if (msg.date) knownDay = W.startOfDay(msg.date);
       else if (msg.timeOnly && knownDay) msg.date = atTime(knownDay, msg.timeOnly);
       out.push(msg);
@@ -311,14 +491,15 @@
     return { rounds, stopped: count >= target ? 'limite' : stale >= 3 ? 'fim-da-conversa' : 'tentativas' };
   }
 
-  // ─── Captura completa ───
+  // ─── Leitura da tela: captura completa ───
 
-  async function capture({ limit = 100, loadOlder = false } = {}) {
+  async function captureFromDom({ limit, loadOlder }) {
     if (!document.querySelector(SEL.main)) {
-      return { ok: true, chat: null, messages: [], reason: document.querySelector('canvas, [data-ref]') ? 'login' : 'sem-conversa' };
+      return { ok: true, chat: null, messages: [], reason: loginOrEmpty() };
     }
     const collected = new Map();
     let pass = 0;
+    let groupSeen = false;
 
     // Se o usuário trocar de conversa no meio da leitura (ex.: durante a busca de
     // mensagens antigas), a captura é abortada para não misturar duas conversas.
@@ -329,16 +510,16 @@
       if (now.title !== start.title) return false;
       return !(start.jid && now.jid && now.jid !== start.jid);
     };
-    const chatChanged = () => ({ ok: false, code: 'chat-changed', error: 'A conversa mudou durante a leitura.' });
 
     const scan = async () => {
       if (!sameChat()) return -1;
       pass++;
-      const list = (await readDom()).filter((m) => !start.jid || !m.chatJid || m.chatJid === start.jid);
+      const list = (await readDom(start.title)).filter((m) => !start.jid || !m.chatJid || m.chatJid === start.jid);
       const chatKeyForHash = start.jid || start.title;
       const occurrences = new Map();
       for (let i = 0; i < list.length; i++) {
         const m = list[i];
+        if (m.groupAuthor) groupSeen = true;
         const iso = m.date.toISOString();
         let externalId = m.messageId;
         if (!externalId) {
@@ -372,7 +553,8 @@
     const kept = all.slice(-limit);
 
     const jid = start.jid || ([...all].reverse().find((m) => m.chatJid) || {}).chatJid || '';
-    const kind = W.jidKind(jid);
+    let kind = W.jidKind(jid);
+    if (kind === 'unknown' && groupSeen) kind = 'group';
     const title = start.title;
     let phone = '';
     let phoneSource = '';
@@ -380,13 +562,14 @@
       phone = W.normalizePhone(W.phoneFromJid(jid), { international: true });
       phoneSource = 'jid';
     }
-    if (!phone && W.looksLikePhone(title)) {
+    if (!phone && !UNSUPPORTED[kind] && W.looksLikePhone(title)) {
       phone = W.normalizePhone(title);
       phoneSource = 'header';
     }
 
     return {
       ok: true,
+      source: 'dom',
       chat: {
         key: jid || (title ? `title:${title}` : ''),
         title,
@@ -396,7 +579,7 @@
         jidKind: kind,
         isGroup: kind === 'group',
         isLid: kind === 'lid',
-        unsupported: { group: 'group', newsletter: 'channel', broadcast: 'broadcast' }[kind] || null,
+        unsupported: UNSUPPORTED[kind] || null,
         viewToken: view,
       },
       messages: kept.map(({ external_id, from_me, text, timestamp, approx }) => ({ external_id, from_me, text, timestamp, approx })),
@@ -407,7 +590,17 @@
     };
   }
 
-  // ─── Telefone pelo perfil do contato (fallback acionado pelo usuário) ───
+  // ─── Captura: dados internos primeiro, tela como reserva ───
+
+  async function capture({ limit = 100, loadOlder = false } = {}) {
+    const fromStore = await captureFromStore({ limit, loadOlder });
+    if (fromStore) return fromStore;
+    const res = await captureFromDom({ limit, loadOlder });
+    if (res && res.ok) res.bridge = bridgePresent() ? 'sem-acesso' : 'ausente';
+    return res;
+  }
+
+  // ─── Telefone pelo perfil do contato (reserva acionada pelo usuário) ───
 
   const OUTSIDE_CONVERSATION = '#main, #pane-side, #side';
 
@@ -477,32 +670,50 @@
 
   // ─── Diagnóstico (sem conteúdo das mensagens) ───
 
-  function diagnose() {
+  async function diagnose() {
     const main = document.querySelector(SEL.main);
     const nodes = messageNodes();
-    const kinds = {};
+    const formats = {};
+    let placeholders = 0;
     for (const el of nodes) {
-      const id = W.parseDataId(el.getAttribute('data-id'));
-      const kind = id ? W.jidKind(id.chatJid) : 'sem-data-id';
-      kinds[kind] = (kinds[kind] || 0) + 1;
+      const raw = el.getAttribute('data-id');
+      const id = W.parseDataId(raw);
+      const format = id ? `antigo:${W.jidKind(id.chatJid)}` : 'so-id';
+      formats[format] = (formats[format] || 0) + 1;
+      if (isPlaceholder(el)) placeholders++;
     }
     const pre = main ? main.querySelector(SEL.prePlain) : null;
+    const count = (selector) => (main ? main.querySelectorAll(selector).length : 0);
+    let bridge = { present: bridgePresent() };
+    if (bridge.present) {
+      try {
+        bridge = { present: true, ...(await bridgeCall('diagnose', {}, 4000)) };
+      } catch (err) {
+        bridge = { present: true, error: String((err && err.message) || err) };
+      }
+    }
     return {
       ok: true,
       extensionVersion: chrome.runtime.getManifest().version,
       locale: pageLocale(),
       userAgent: navigator.userAgent,
+      bridge,
       main: Boolean(main),
       header: Boolean(document.querySelector(SEL.header)),
+      headerTitleMarked: Boolean(document.querySelector(`${SEL.header} ${SEL.headerTitle}`)),
       headerTitleChars: headerTitle().length,
       selectedChat: Boolean(document.querySelector(SEL.selectedChat)),
-      rows: main ? main.querySelectorAll(SEL.row).length : 0,
+      rows: count(SEL.row),
       messageNodes: nodes.length,
-      jidKinds: kinds,
-      incoming: main ? main.querySelectorAll('.message-in').length : 0,
-      outgoing: main ? main.querySelectorAll('.message-out').length : 0,
-      prePlainText: main ? main.querySelectorAll(SEL.prePlain).length : 0,
-      selectableText: main ? main.querySelectorAll(SEL.selectableText).length : 0,
+      dataIdFormats: formats,
+      placeholders,
+      testidRows: count('[data-testid^="conv-msg-"]'),
+      incomingClass: count(SEL.incoming),
+      outgoingClass: count(SEL.outgoing),
+      outgoingMarks: count(SEL.outgoingMarks),
+      groupAuthors: count(SEL.groupAuthor),
+      prePlainText: count(SEL.prePlain),
+      selectableText: count(SEL.selectableText),
       scrollContainer: Boolean(scrollContainer()),
       samplePrePlainFormat: pre ? W.maskText(pre.getAttribute('data-pre-plain-text')) : null,
       sampleDataIdFormat: nodes[0] ? W.maskText(nodes[0].getAttribute('data-id')) : null,
@@ -514,7 +725,7 @@
   async function handle(msg) {
     switch (msg.type) {
       case 'ANA_PING':
-        return { ok: true, version: chrome.runtime.getManifest().version };
+        return { ok: true, version: chrome.runtime.getManifest().version, bridge: bridgePresent() };
       case 'ANA_CAPTURE':
         return capture({ limit: Number(msg.limit) || 100, loadOlder: Boolean(msg.loadOlder) });
       case 'ANA_LOOKUP_PHONE':
@@ -532,7 +743,7 @@
     return true;
   });
 
-  // ─── Aviso de troca de conversa para o painel ───
+  // ─── Aviso de troca de conversa (e de mensagem nova) para o painel ───
 
   function isAlive() {
     try {
@@ -543,23 +754,50 @@
   }
 
   let lastSignature = null;
-  const watcher = setInterval(() => {
+  let lastTick = 0;
+  let watcher = null;
+
+  function stop() {
+    clearInterval(watcher);
+    window.removeEventListener('message', onBridgeMessage);
+  }
+
+  function notify(reason, signature) {
+    try {
+      chrome.runtime.sendMessage({ type: 'ANA_CHAT_CHANGED', reason, signature }).catch(() => {});
+    } catch {
+      // extensão recarregada: o próximo ciclo para o vigia
+    }
+  }
+
+  function watch() {
     if (!isAlive()) {
       // a extensão foi atualizada ou recarregada: este script antigo para de observar
-      clearInterval(watcher);
+      stop();
       return;
     }
     try {
-      const { jid, title } = document.querySelector(SEL.main) ? currentChatIdentity() : { jid: '', title: '' };
-      const signature = document.querySelector(SEL.main) ? `${title}|${jid}` : '';
-      if (signature === lastSignature) return;
-      const first = lastSignature === null;
-      lastSignature = signature;
-      if (!first) chrome.runtime.sendMessage({ type: 'ANA_CHAT_CHANGED', signature }).catch(() => {});
+      const hasMain = Boolean(document.querySelector(SEL.main));
+      const { jid, title } = hasMain ? currentChatIdentity() : { jid: '', title: '' };
+      const signature = hasMain || bridgeActive ? `${title}|${jid}|${bridgeActive}` : '';
+      if (signature !== lastSignature) {
+        const first = lastSignature === null;
+        lastSignature = signature;
+        lastTick = bridgeTick;
+        if (!first) notify('chat', signature);
+      } else if (bridgeTick !== lastTick) {
+        lastTick = bridgeTick;
+        notify('messages', signature);
+      }
     } catch {
-      clearInterval(watcher);
+      // página no meio de uma troca de tela: tenta no próximo ciclo
     }
-  }, 1000);
+  }
 
-  globalThis.__anaCrmCapture = { isAlive, stop: () => clearInterval(watcher) };
+  // A referência é tirada já na injeção, antes de o painel conseguir ler a conversa:
+  // uma troca logo depois de abrir o painel não pode virar a referência sem aviso.
+  watch();
+  watcher = setInterval(watch, 1000);
+
+  globalThis.__anaCrmCapture = { isAlive, stop };
 })();

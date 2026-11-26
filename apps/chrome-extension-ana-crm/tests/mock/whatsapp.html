@@ -1,11 +1,20 @@
 <!doctype html>
 <!--
   Simulação do WhatsApp Web para os testes do ANA CRM.
-  Reproduz a estrutura que a extensão lê (#main, header, [role=row], [data-id],
-  .message-in/.message-out, [data-pre-plain-text], .selectable-text), incluindo
-  divisórias de data, mensagens sem texto, "Ler mais", resposta citada,
-  carregamento de mensagens antigas ao rolar para o topo e o painel de dados do
-  contato. Variantes: ?chat=saved|unsaved|lid|group|old9|none
+
+  Tela (HTML):
+    - padrão: estrutura antiga (data-id "<true|false>_<jid>_<id>", .message-in/.message-out);
+    - ?dom=2026: estrutura de nov/2026 (data-id só com o ID, sem .message-in/out, marcas
+      data-testid: conv-msg-*, tail-out, msg-meta, selectable-text, quoted-message, author,
+      conversation-info-header-chat-title; mensagens longe da tela ficam vazias).
+
+  Dados internos (window.require), com ?store=1:
+    - WAWebCollections (Chat, Contact, WAWebNewsletterCollection), WAWebApiContact
+      (getPhoneNumber: LID → número), WAWebChatLoadMessages (loadEarlierMsgs({ chat }));
+    - ?ids=old: Wid/MsgKey com _serialized; padrão: só $1 (jul/2026); ?ids=min: só $1;
+    - ?loader=chat: loadEarlierMsgs(chat), a forma antiga.
+
+  Conversas: ?chat=saved|unsaved|lid|lid2|lidnone|group|old9|channel|none
 -->
 <html lang="pt-BR">
 <head>
@@ -22,9 +31,10 @@
   #main header { height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #f0f2f5; }
   .copyable-area { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .scroller { flex: 1; overflow-y: auto; }
-  .message-in, .message-out { margin: 4px 12px; padding: 6px 10px; border-radius: 8px; max-width: 70%; }
-  .message-in { background: #fff; border: 1px solid #eee; }
-  .message-out { background: #d9fdd3; margin-left: auto; }
+  .message-in, .message-out, .bubble2026 { margin: 4px 12px; padding: 6px 10px; border-radius: 8px; max-width: 70%; }
+  .message-in, .bubble2026.in { background: #fff; border: 1px solid #eee; }
+  .message-out, .bubble2026.out { background: #d9fdd3; margin-left: auto; }
+  .placeholder2026 { height: 48px; }
   .divider { text-align: center; margin: 10px; color: #667; font-size: 12px; }
   #drawer { position: fixed; right: 0; top: 0; width: 320px; height: 100%; background: #fff; border-left: 1px solid #ccc; padding: 12px; }
 </style>
@@ -40,22 +50,37 @@
 </div>
 <script>
 (() => {
+  const params = new URLSearchParams(location.search);
+  const STORE = params.get('store') === '1';
+  const MODERN = params.get('dom') === '2026';
+  const IDS = params.get('ids') || 'new';
+  const LOADER = params.get('loader') || 'object';
+
   const CHATS = {
-    saved: { title: 'Maria Silva', jid: '5511987654321@c.us', total: 130, phone: '+55 11 98765-4321' },
+    saved: { title: 'Maria Silva', jid: '5511987654321@c.us', total: 130, phone: '+55 11 98765-4321', saved: true, pushname: 'Maria S.' },
     // contato não salvo: o WhatsApp cerca o número com marcas invisíveis de direção de texto
-    unsaved: { title: '\u202a+55 11 91234-5678\u202c', jid: '5511912345678@c.us', total: 12, phone: '\u202a+55 11 91234-5678\u202c' },
-    lid: { title: 'Dr. João Pereira', jid: '123456789012345@lid', total: 8, phone: '+55 21 99876-5432' },
+    unsaved: { title: '‪+55 11 91234-5678‬', jid: '5511912345678@c.us', total: 12, phone: '‪+55 11 91234-5678‬', pushname: 'Ana Paula' },
+    // LID: o número vem de WAWebApiContact.getPhoneNumber
+    lid: { title: 'Dr. João Pereira', jid: '123456789012345@lid', total: 8, phone: '+55 21 99876-5432', saved: true },
+    // LID: o número só está no contato (contact.phoneNumber), como no caso real da Joana
+    lid2: { title: 'Joana Stanieski', jid: '987654321098765@lid', total: 20, phone: '+55 41 99887-7665', saved: true, pnContact: '5541998877665@c.us' },
+    // LID sem número em lugar nenhum
+    lidnone: { title: 'Contato Reservado', jid: '555444333222111@lid', total: 5, saved: true },
     group: { title: 'Família Silva', jid: '120363025123456789@g.us', total: 10, group: true },
-    old9: { title: 'Carlos Antigo', jid: '551187654321@c.us', total: 6, phone: '+55 11 8765-4321' },
-    channel: { title: 'Canal A Nova Advocacia', jid: '120363999888777@newsletter', total: 5 },
+    old9: { title: 'Carlos Antigo', jid: '551187654321@c.us', total: 6, phone: '+55 11 8765-4321', saved: true },
+    channel: { title: 'Canal A Nova Advocacia', jid: '120363999888777@newsletter', total: 5, channel: true },
   };
+  const PN_BY_LID = { '123456789012345@lid': '5521998765432@c.us' };
   const ME = 'Lucas Braga';
   const INITIAL = 40;
   const PAGE = 30;
+  const PLACEHOLDERS_2026 = 3;
   const WEEKDAYS = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
   const pad = (n) => String(n).padStart(2, '0');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
   const IMG_BLOB = URL.createObjectURL(new Blob([PNG], { type: 'image/png' }));
+  const MAPS = 'https://maps.google.com/?q=-23.5505,-46.6333';
 
   function buildMessages(key) {
     const c = CHATS[key];
@@ -64,7 +89,7 @@
     for (let i = 0; i < c.total; i++) {
       const daysAgo = Math.floor((c.total - 1 - i) / 13);
       const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
-      const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9 + (i % 13), (i * 7) % 60);
+      const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9 + (i % 13), (i * 7) % 60, (i * 13) % 60);
       const fromMe = i % 2 === 1;
       list.push({
         i, daysAgo, date, fromMe, kind: 'text',
@@ -75,7 +100,7 @@
     if (key === 'saved') {
       const n = c.total;
       Object.assign(list[n - 1], { fromMe: true, kind: 'text', text: 'Perfeito, Maria! Vou te enviar o contrato hoje.' });
-      Object.assign(list[n - 2], { fromMe: false, kind: 'emoji', text: '\u2066Obrigada!\u2069 ' });
+      Object.assign(list[n - 2], { fromMe: false, kind: 'emoji', text: '⁦Obrigada!⁩ ' });
       Object.assign(list[n - 3], { fromMe: false, kind: 'reply', text: 'Fechado, pode seguir', quoted: 'Qual o valor dos honorários?' });
       Object.assign(list[n - 4], { fromMe: false, kind: 'audio' });
       Object.assign(list[n - 5], { fromMe: true, kind: 'image' });
@@ -83,6 +108,8 @@
       Object.assign(list[n - 7], { fromMe: false, kind: 'long', text: 'Começo do texto longo. ' + 'Detalhes do caso trabalhista. '.repeat(20) + 'FIM DO TEXTO LONGO' });
       Object.assign(list[n - 8], { fromMe: false, kind: 'multiline', text: 'Linha um do endereço\nLinha dois do endereço' });
       Object.assign(list[n - 9], { fromMe: false, kind: 'text', text: 'Por que esta mensagem foi apagada?' });
+      Object.assign(list[n - 10], { fromMe: false, kind: 'document' });
+      Object.assign(list[n - 11], { fromMe: false, kind: 'location' });
       Object.assign(list[n - 20], { fromMe: false, kind: 'audio' }); // dia anterior: data vem da divisória "ONTEM"
     }
     return list;
@@ -117,28 +144,21 @@
     return span;
   }
 
-  function messageRow(key, m) {
-    const c = CHATS[key];
-    let dataId = `${m.fromMe}_${c.jid}_${m.id}`;
-    if (c.group && !m.fromMe) dataId += '_5521998765432@c.us';
-    const sender = m.fromMe ? ME : (c.group ? '+55 21 99876-5432' : c.title);
-    const pre = `[${timeLabel(m.date)}, ${pad(m.date.getDate())}/${pad(m.date.getMonth() + 1)}/${m.date.getFullYear()}] ${sender}: `;
-    const meta = el('div', { class: 'meta' }, [el('span', { dir: 'auto', text: '\u200e' + timeLabel(m.date) })]);
-    if (m.fromMe) meta.append(el('span', { 'data-icon': 'msg-dblcheck' }));
-    const bubble = el('div', { class: 'bubble' });
-
+  // Conteúdo do balão, igual nas duas estruturas (muda só o marcador do texto e da citação)
+  function bubbleContent(bubble, m, pre) {
+    const textAttrs = MODERN ? { dir: 'ltr', 'data-testid': 'selectable-text' } : { dir: 'ltr', class: 'selectable-text copyable-text' };
     const copyable = (content) => el('div', { class: 'copyable-text', 'data-pre-plain-text': pre }, [
-      el('div', {}, [el('span', { dir: 'ltr', class: 'selectable-text copyable-text' }, [content])]),
+      el('div', {}, [el('span', textAttrs, [content])]),
     ]);
-
     if (m.kind === 'text' || m.kind === 'multiline') bubble.append(copyable(textWithBreaks(m.text)));
     if (m.kind === 'emoji') {
       const span = el('span', {}, [document.createTextNode(m.text), el('img', { alt: '🙏', class: 'emoji', src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' })]);
       bubble.append(copyable(span));
     }
     if (m.kind === 'reply') {
-      bubble.append(el('div', { 'aria-label': 'Mensagem citada', role: 'button' }, [
-        el('span', { dir: 'auto', class: 'quoted-mention' }, [el('span', { text: m.quoted })]),
+      const quoteAttrs = MODERN ? { 'data-testid': 'quoted-message', role: 'button' } : { 'aria-label': 'Mensagem citada', role: 'button' };
+      bubble.append(el('div', quoteAttrs, [
+        el('span', MODERN ? { dir: 'auto' } : { dir: 'auto', class: 'quoted-mention' }, [el('span', { text: m.quoted })]),
       ]));
       bubble.append(copyable(textWithBreaks(m.text)));
     }
@@ -147,22 +167,57 @@
       const content = el('span', {}, [document.createTextNode(short)]);
       const more = el('span', { role: 'button', class: 'read-more', text: 'Ler mais' });
       more.addEventListener('click', () => { content.textContent = m.text; more.remove(); });
-      const wrap = el('span', {}, [content, more]);
-      bubble.append(copyable(wrap));
+      bubble.append(copyable(el('span', {}, [content, more])));
     }
     if (m.kind === 'audio') {
       bubble.append(el('button', { 'aria-label': 'Reproduzir mensagem de voz' }, [el('span', { 'data-icon': 'audio-play' })]));
       bubble.append(el('span', { text: '0:42' }));
     }
     if (m.kind === 'image') bubble.append(el('img', { src: IMG_BLOB, alt: '' }));
+    if (m.kind === 'document') {
+      bubble.append(el('div', { role: 'button' }, [el('span', { 'data-icon': 'document-pdf' }), el('span', { title: 'contrato.pdf', text: 'contrato.pdf' })]));
+    }
+    if (m.kind === 'location') bubble.append(el('a', { href: MAPS }, [el('img', { src: IMG_BLOB, alt: '' })]));
     if (m.kind === 'deleted') {
       bubble.append(el('span', { class: 'deleted' }, [el('span', { 'data-icon': 'recalled' }), el('span', { dir: 'auto', text: 'Esta mensagem foi apagada' })]));
     }
-    bubble.append(meta);
+  }
 
+  function preFor(key, m) {
+    const c = CHATS[key];
+    const sender = m.fromMe ? ME : (c.group ? '+55 21 99876-5432' : c.title);
+    return `[${timeLabel(m.date)}, ${pad(m.date.getDate())}/${pad(m.date.getMonth() + 1)}/${m.date.getFullYear()}] ${sender}: `;
+  }
+
+  // Estrutura antiga: data-id com direção e conversa, classes .message-in/.message-out
+  function legacyRow(key, m) {
+    const c = CHATS[key];
+    let dataId = `${m.fromMe}_${c.jid}_${m.id}`;
+    if (c.group && !m.fromMe) dataId += '_5521998765432@c.us';
+    const meta = el('div', { class: 'meta' }, [el('span', { dir: 'auto', text: '‎' + timeLabel(m.date) })]);
+    if (m.fromMe) meta.append(el('span', { 'data-icon': 'msg-dblcheck' }));
+    const bubble = el('div', { class: 'bubble' });
+    bubbleContent(bubble, m, preFor(key, m));
+    bubble.append(meta);
     const msg = el('div', { class: m.fromMe ? 'message-out focusable-list-item' : 'message-in focusable-list-item' }, [bubble]);
     const holder = el('div', { tabindex: '-1', class: 'focusable-list-item', 'data-id': dataId }, [el('span'), msg]);
     return el('div', { role: 'row' }, [holder]);
+  }
+
+  // Estrutura de nov/2026: data-id só com o ID; direção só pelas marcas data-testid
+  function modernRow(key, m, prevFromMe, placeholder) {
+    const c = CHATS[key];
+    const holderAttrs = { 'data-id': m.id, 'data-testid': `conv-msg-${m.id}`, tabindex: '-1' };
+    if (placeholder) return el('div', { role: 'row' }, [el('div', { ...holderAttrs, class: 'placeholder2026' })]);
+    const bubble = el('div', { class: `bubble2026 ${m.fromMe ? 'out' : 'in'}` });
+    if (c.group && !m.fromMe) bubble.append(el('span', { 'data-testid': 'author', dir: 'auto', text: '+55 21 99876-5432' }));
+    if (m.fromMe && !prevFromMe) bubble.append(el('span', { 'data-testid': 'tail-out' }));
+    bubbleContent(bubble, m, preFor(key, m));
+    const time = el('span', { dir: 'auto', text: '‎' + timeLabel(m.date) });
+    bubble.append(m.fromMe
+      ? el('div', { 'data-testid': 'msg-meta', role: 'button' }, [time, el('span', { 'data-icon': 'msg-dblcheck' })])
+      : el('div', { 'data-testid': 'msg-meta' }, [time]));
+    return el('div', { role: 'row' }, [el('div', holderAttrs, [bubble])]);
   }
 
   const state = { key: null, messages: [], start: 0, loading: false };
@@ -176,13 +231,16 @@
       app.append(el('div', { role: 'row' }, [el('div', { class: 'divider', text: 'As mensagens e as ligações são protegidas com a criptografia de ponta a ponta. Toque para saber mais.' })]));
     }
     let lastDay = null;
-    for (const m of state.messages.slice(state.start)) {
+    let prevFromMe = null;
+    state.messages.slice(state.start).forEach((m, idx) => {
       if (m.daysAgo !== lastDay) {
         lastDay = m.daysAgo;
+        prevFromMe = null;
         app.append(el('div', { role: 'row' }, [el('div', { class: 'divider' }, [el('span', { dir: 'auto', text: dividerLabel(m.daysAgo, m.date) })])]));
       }
-      app.append(messageRow(state.key, m));
-    }
+      app.append(MODERN ? modernRow(state.key, m, prevFromMe, idx < PLACEHOLDERS_2026) : legacyRow(state.key, m));
+      prevFromMe = m.fromMe;
+    });
     if (keepOffset) scroller.scrollTop = scroller.scrollHeight - prevHeight + prevTop;
     else scroller.scrollTop = scroller.scrollHeight;
   }
@@ -218,9 +276,13 @@
     state.messages = buildMessages(key);
     state.start = Math.max(0, state.messages.length - INITIAL);
 
+    const titleAttrs = MODERN
+      ? { 'data-testid': 'conversation-info-header-chat-title', dir: 'auto', text: c.title }
+      : { dir: 'auto', class: 'title', text: c.title };
+    const subtitle = c.group ? 'Ana, Bruno, Você' : 'clique para mostrar os dados do contato';
     const info = el('div', { role: 'button', tabindex: '0', class: 'info' }, [
-      el('div', {}, [el('span', { dir: 'auto', class: 'title', text: c.title })]),
-      el('div', {}, [el('span', { title: c.group ? 'Ana, Bruno, Você' : 'clique para mostrar os dados do contato', text: c.group ? 'Ana, Bruno, Você' : 'clique para mostrar os dados do contato' })]),
+      el('div', {}, [el('span', titleAttrs)]),
+      el('div', {}, [el('span', { title: subtitle, text: subtitle, ...(MODERN ? { 'data-testid': 'chat-subtitle' } : {}) })]),
     ]);
     info.addEventListener('click', openDrawer);
     const header = el('header', {}, [el('div', { role: 'button', class: 'avatar' }, [el('img', { alt: '', src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' })]), info]);
@@ -252,6 +314,155 @@
     }
   }
 
+  // ─── Dados internos (window.require), como no WhatsApp Web de 2026 ───
+
+  class Wid {
+    constructor(serialized) {
+      this.$1 = serialized;
+      if (IDS !== 'min') {
+        const [user, server] = serialized.split('@');
+        this.user = user;
+        this.server = server;
+      }
+      if (IDS === 'old') this._serialized = serialized;
+    }
+    toString() { return this.$1; }
+    isLid() { return /@lid$/.test(this.$1); }
+  }
+
+  class MsgKey {
+    constructor(fromMe, remote, id) {
+      this.$1 = `${fromMe}_${remote}_${id}`;
+      if (IDS !== 'min') {
+        this.fromMe = fromMe;
+        this.remote = remote;
+        this.id = id;
+      }
+      if (IDS === 'old') this._serialized = this.$1;
+    }
+    toString() { return this.$1; }
+  }
+
+  window.__storeCalls = { loadEarlier: 0, getPhoneNumber: 0 };
+  const modelCache = new Map();
+
+  function modelFor(key, m) {
+    if (modelCache.has(m.id)) return modelCache.get(m.id);
+    const c = CHATS[key];
+    const model = {
+      id: new MsgKey(m.fromMe, new Wid(c.jid), m.id),
+      t: Math.floor(m.date.getTime() / 1000),
+      type: 'chat',
+      body: '',
+      isNotification: false,
+    };
+    if (['text', 'multiline', 'long', 'reply'].includes(m.kind)) model.body = m.text;
+    if (m.kind === 'emoji') model.body = `${m.text}🙏`;
+    if (m.kind === 'audio') Object.assign(model, { type: 'ptt', duration: 42 });
+    // miniatura em base64 no body: nunca pode chegar ao CRM
+    if (m.kind === 'image') Object.assign(model, { type: 'image', body: `/9j/4AAQSkZJRgABAQ${'A'.repeat(300)}`, caption: '' });
+    if (m.kind === 'document') Object.assign(model, { type: 'document', filename: 'contrato.pdf', body: `JVBERi0xLjQK${'Q'.repeat(200)}` });
+    if (m.kind === 'location') Object.assign(model, { type: 'location', lat: -23.5505, lng: -46.6333, body: `/9j/${'B'.repeat(300)}` });
+    if (m.kind === 'deleted') model.type = 'revoked';
+    modelCache.set(m.id, model);
+    return model;
+  }
+
+  // avisos do sistema entre as mensagens (só existem nos dados internos)
+  function notificationModels(key) {
+    if (key !== 'saved') return [];
+    const ref = state.messages[state.messages.length - 12];
+    if (!ref) return [];
+    const t = Math.floor(ref.date.getTime() / 1000);
+    return [
+      { id: new MsgKey(false, new Wid(CHATS[key].jid), 'NOTIF000001'), t, type: 'e2e_notification', body: 'Mensagens protegidas', isNotification: true },
+      { id: new MsgKey(false, new Wid(CHATS[key].jid), 'NOTIF000002'), t, type: 'notification_template', body: 'Aviso', isNotification: false },
+    ];
+  }
+
+  const chatModels = {};
+  function chatModel(key) {
+    if (chatModels[key]) return chatModels[key];
+    const c = CHATS[key];
+    const id = new Wid(c.jid);
+    const contact = {
+      id,
+      name: c.saved ? c.title : undefined,
+      pushname: c.pushname,
+      phoneNumber: c.pnContact ? new Wid(c.pnContact) : undefined,
+    };
+    const msgs = {
+      getModelsArray() {
+        if (state.key !== key) return [];
+        const loaded = state.messages.slice(state.start).map((m) => modelFor(key, m));
+        if (state.start <= state.messages.length - 12) {
+          const at = loaded.length - 11;
+          loaded.splice(at, 0, ...notificationModels(key));
+        }
+        return loaded;
+      },
+      msgLoadState: {
+        get noEarlierMsgs() { return state.key === key && state.start === 0; },
+        isLoadingEarlierMsgs: false,
+      },
+    };
+    chatModels[key] = {
+      id,
+      formattedTitle: c.title,
+      isGroup: Boolean(c.group),
+      get active() { return state.key === key; },
+      contact,
+      msgs,
+    };
+    return chatModels[key];
+  }
+
+  async function loadEarlierMsgs(arg) {
+    window.__storeCalls.loadEarlier++;
+    const chat = LOADER === 'chat' ? arg : arg && arg.chat;
+    if (!chat || !chat.msgs) throw new TypeError("Cannot read properties of undefined (reading 'msgs')");
+    if (!chat.active || state.start === 0) return [];
+    await sleep(150);
+    const before = state.start;
+    state.start = Math.max(0, state.start - PAGE);
+    renderList(document.querySelector('.scroller'), true);
+    return state.messages.slice(state.start, before).map((m) => modelFor(state.key, m));
+  }
+
+  if (STORE) {
+    const chatKeys = () => Object.keys(CHATS).filter((k) => !CHATS[k].channel);
+    const MODULES = {
+      WAWebCollections: {
+        Chat: {
+          getActive: () => (state.key && !CHATS[state.key].channel ? chatModel(state.key) : undefined),
+          getModelsArray: () => chatKeys().map(chatModel),
+        },
+        Contact: {
+          get: (wid) => {
+            const key = Object.keys(CHATS).find((k) => CHATS[k].jid === String(wid));
+            return key ? chatModel(key).contact : undefined;
+          },
+        },
+        WAWebNewsletterCollection: {
+          getModelsArray: () => Object.keys(CHATS).filter((k) => CHATS[k].channel).map(chatModel),
+        },
+      },
+      WAWebApiContact: {
+        getPhoneNumber: (wid) => {
+          window.__storeCalls.getPhoneNumber++;
+          const pn = PN_BY_LID[String(wid)];
+          return pn ? new Wid(pn) : undefined;
+        },
+      },
+      WAWebChatLoadMessages: { loadEarlierMsgs },
+    };
+    window.require = (name) => {
+      if (!MODULES[name]) throw new Error(`Requiring unknown module "${name}"`);
+      return MODULES[name];
+    };
+    window.Debug = { VERSION: '2.3000.1050000000' };
+  }
+
   window.__switchChat = renderChat;
   window.__decoyClicked = false;
   document.getElementById('search-clear').addEventListener('click', () => { window.__decoyClicked = true; });
@@ -277,7 +488,7 @@
     ]));
   };
   window.__mockState = state;
-  renderChat(new URLSearchParams(location.search).get('chat') || 'saved');
+  renderChat(params.get('chat') || 'saved');
 })();
 </script>
 </body>

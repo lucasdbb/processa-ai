@@ -135,3 +135,49 @@ test('correções da revisão: apagada ancorada, dia da semana exato, operadora 
   assert.equal(masked, '[99:99, 99/99/9999] aaaaaa aaaaaa *: ');
   assert.ok(!/[ŁМ😀]/u.test(masked));
 });
+
+test('messageIdFromDataId: formato antigo e o de nov/2026 (só o ID)', () => {
+  assert.equal(W.messageIdFromDataId('false_5511987654321@c.us_3EB0A1B2C3D4E5F6'), '3EB0A1B2C3D4E5F6');
+  assert.equal(W.messageIdFromDataId('3EB0C4F5A1B2C3D4E5'), '3EB0C4F5A1B2C3D4E5');
+  assert.equal(W.messageIdFromDataId('A5F1E2D3C4B5'), 'A5F1E2D3C4B5');
+  assert.equal(W.messageIdFromDataId(''), '');
+  assert.equal(W.messageIdFromDataId('com espaço'), '');
+  assert.equal(W.messageIdFromDataId('abc'), '');
+});
+
+test('sameName: ignora acentos, emojis e marcas; telefones pelos dígitos', () => {
+  assert.equal(W.sameName('Maria Silva', 'maria silva'), true);
+  assert.equal(W.sameName('João 🌸', 'Joao'), true);
+  assert.equal(W.sameName('‪+55 11 91234-5678‬', '+55 11 91234-5678'), true);
+  assert.equal(W.sameName('Lucas Braga', 'Maria Silva'), false);
+  assert.equal(W.sameName('', 'Maria'), false);
+  assert.equal(W.sameName('🙂', '🙂'), false);
+});
+
+test('storeMessageText: tipos de mensagem dos dados internos', () => {
+  const t = (m) => W.storeMessageText(m);
+  assert.equal(t({ type: 'chat', body: '⁦Obrigada!⁩ 🙏' }), 'Obrigada! 🙏');
+  assert.equal(t({ type: 'chat', body: 'Linha um\r\nLinha dois' }), 'Linha um\nLinha dois');
+  assert.equal(t({ type: 'chat', body: '   ' }), null);
+  assert.equal(t({ type: 'image', caption: '' }), '[Imagem]');
+  assert.equal(t({ type: 'image', caption: 'RG frente' }), '[Imagem] RG frente');
+  assert.equal(t({ type: 'image', viewOnce: true, caption: 'x' }), '[Imagem de visualização única]');
+  assert.equal(t({ type: 'video', isGif: true }), '[GIF]');
+  assert.equal(t({ type: 'ptt' }), '[Áudio]');
+  assert.equal(t({ type: 'document', filename: 'contrato.pdf', caption: 'assinado' }), '[Documento: contrato.pdf] assinado');
+  assert.equal(t({ type: 'sticker' }), '[Figurinha]');
+  assert.equal(t({ type: 'location', lat: -23.5505, lng: -46.6333 }), '[Localização] https://maps.google.com/?q=-23.5505,-46.6333');
+  assert.equal(t({ type: 'location', loc: 'Fórum Trabalhista', lat: null, lng: null }), '[Localização] Fórum Trabalhista');
+  assert.equal(t({ type: 'vcard', body: 'BEGIN:VCARD\nVERSION:3.0\nFN:Dr. Pedro\nEND:VCARD' }), '[Contato compartilhado: Dr. Pedro]');
+  assert.equal(t({ type: 'revoked' }), '[Mensagem apagada]');
+  assert.equal(t({ type: 'poll_creation', pollName: 'Melhor horário?' }), '[Enquete] Melhor horário?');
+  assert.equal(t({ type: 'call_log', isVideoCall: true }), '[Chamada de vídeo]');
+  // avisos do sistema e registros técnicos ficam de fora
+  assert.equal(t({ type: 'e2e_notification', body: 'x' }), null);
+  assert.equal(t({ type: 'chat', body: 'x', notification: true }), null);
+  assert.equal(t({ type: 'notification_template' }), null);
+  assert.equal(t({ type: 'ciphertext' }), null);
+  // tipo desconhecido: legenda ou texto, nunca uma miniatura em base64
+  assert.equal(t({ type: 'interactive', body: 'Escolha uma opção' }), 'Escolha uma opção');
+  assert.equal(t({ type: 'novo_tipo', body: `/9j/${'A'.repeat(300)}` }), '[Mensagem: novo_tipo]');
+});
