@@ -17,6 +17,9 @@ const WA_MATCH = /^https:\/\/web\.whatsapp\.com\//;
 const CONTENT_FILES = ['content/wa-parse.js', 'content/wa-capture.js'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const REQUEST_TIMEOUT_MS = 30000;
+const RETRY_DELAY_MS = 1500;
+const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const FIELD_IDS = { name: 'f-name', phone: 'f-phone', email: 'f-email', notes: 'f-notes' };
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,11 +29,16 @@ let chat = null;
 let messages = new Map();
 let busy = false;
 let syncing = false;
+let refreshQueued = false;
+let edited = new Set(); // campos que o usuário mudou na conversa atual
 let draftTimer = null;
 let changeTimer = null;
 let toastTimer = null;
+let lastSyncToken = 0;
 
 class UserError extends Error {}
+// falha de rede ou indisponibilidade momentânea: reenviar é seguro (o CRM ignora duplicatas)
+class RetryableError extends UserError {}
 
 // ─── Configurações ───
 
@@ -117,7 +125,11 @@ function setBusy(on, label) {
 }
 
 async function refresh({ loadOlder = false } = {}) {
-  if (busy) return false;
+  if (busy) {
+    // uma troca de conversa durante outra leitura não pode ser perdida
+    refreshQueued = true;
+    return false;
+  }
   setBusy(true, loadOlder ? 'Carregando mensagens mais antigas…' : null);
   try {
     const tab = await findWhatsAppTab();
@@ -128,6 +140,10 @@ async function refresh({ loadOlder = false } = {}) {
     }
     waTabId = tab.id;
     const res = await sendToTab(tab.id, { type: 'ANA_CAPTURE', limit: settings.messageLimit, loadOlder });
+    if (res && res.code === 'chat-changed') {
+      refreshQueued = true;
+      return false;
+    }
     if (!res || !res.ok) throw new Error((res && res.error) || 'O WhatsApp Web não respondeu.');
     if (!res.chat) {
       await flushDraft();
@@ -145,6 +161,10 @@ async function refresh({ loadOlder = false } = {}) {
   } finally {
     setBusy(false);
     if (chat && !$('form-lead').hidden) showState('ready');
+    if (refreshQueued) {
+      refreshQueued = false;
+      setTimeout(requestRefresh, 0);
+    }
   }
 }
 
@@ -159,6 +179,12 @@ function friendlyCaptureError(err) {
 
 async function applyCapture(res) {
   const incoming = res.chat;
+  // conversa aberta antes de as mensagens carregarem: a chave passa de "title:Nome" para o jid
+  if (chat && chat.key !== incoming.key && chat.key.startsWith('title:') && incoming.key
+      && !incoming.key.startsWith('title:') && chat.title === incoming.title) {
+    await moveDraft(chat.key, incoming.key);
+    chat.key = incoming.key;
+  }
   const changed = !chat || chat.key !== incoming.key;
   if (changed) {
     await flushDraft();
@@ -184,15 +210,24 @@ async function applyCapture(res) {
 
 const draftKey = (key) => `draft:${key}`;
 
+// Guarda só os campos que o usuário mudou: o que não foi editado continua vindo
+// do WhatsApp (ex.: o contato renomeado aparece com o nome novo).
 async function fillFormForChat() {
   const stored = await chrome.storage.local.get(draftKey(chat.key));
-  const draft = stored[draftKey(chat.key)] || {};
-  $('f-name').value = draft.name != null ? draft.name : chat.name || '';
-  $('f-phone').value = draft.phone ? draft.phone : W.formatPhone(chat.phone);
-  $('f-email').value = draft.email || '';
-  $('f-notes').value = draft.notes || '';
-  if (draft.phoneSource === 'profile' && draft.phone) chat.phoneSource = 'profile';
-  for (const id of ['f-name', 'f-phone', 'f-email']) $(id).classList.remove('is-invalid');
+  const draft = stored[draftKey(chat.key)];
+  const fields = draft ? draft.fields || { name: draft.name, phone: draft.phone, email: draft.email, notes: draft.notes } : {};
+  edited = new Set(Object.keys(FIELD_IDS).filter((f) => fields[f] != null));
+  $('f-name').value = fields.name != null ? fields.name : chat.name || '';
+  $('f-phone').value = fields.phone ? fields.phone : W.formatPhone(chat.phone);
+  $('f-email').value = fields.email || '';
+  $('f-notes').value = fields.notes || '';
+  if (draft && draft.phoneSource && fields.phone) chat.phoneSource = draft.phoneSource;
+  for (const id of Object.values(FIELD_IDS)) $(id).classList.remove('is-invalid');
+}
+
+function markEdited(field) {
+  edited.add(field);
+  scheduleDraftSave();
 }
 
 function scheduleDraftSave() {
@@ -203,17 +238,28 @@ function scheduleDraftSave() {
 async function flushDraft() {
   clearTimeout(draftTimer);
   draftTimer = null;
-  if (!chat || !chat.key) return;
+  if (!chat || !chat.key || !edited.size) return;
+  const fields = {};
+  for (const f of edited) fields[f] = $(FIELD_IDS[f]).value;
   await chrome.storage.local.set({
-    [draftKey(chat.key)]: {
-      name: $('f-name').value,
-      phone: $('f-phone').value,
-      email: $('f-email').value,
-      notes: $('f-notes').value,
-      phoneSource: chat.phoneSource || '',
-      updatedAt: Date.now(),
-    },
+    [draftKey(chat.key)]: { fields, phoneSource: chat.phoneSource || '', updatedAt: Date.now() },
   });
+}
+
+async function moveDraft(fromKey, toKey) {
+  const stored = await chrome.storage.local.get([draftKey(fromKey), draftKey(toKey)]);
+  if (stored[draftKey(fromKey)] && !stored[draftKey(toKey)]) {
+    await chrome.storage.local.set({ [draftKey(toKey)]: stored[draftKey(fromKey)] });
+  }
+  await chrome.storage.local.remove(draftKey(fromKey));
+}
+
+async function cleanupOldDrafts() {
+  const all = await chrome.storage.local.get(null);
+  const old = Object.entries(all)
+    .filter(([k, v]) => k.startsWith('draft:') && (!v || !v.updatedAt || Date.now() - v.updatedAt > DRAFT_MAX_AGE_MS))
+    .map(([k]) => k);
+  if (old.length) await chrome.storage.local.remove(old);
 }
 
 // ─── Mensagens ───
@@ -311,17 +357,20 @@ function renderPhoneHint() {
 }
 
 async function onLookupPhone() {
-  if (!waTabId) return;
+  if (!waTabId || !chat) return;
   const btn = $('btn-lookup-phone');
+  const keyBefore = chat.key;
   btn.disabled = true;
   try {
     const res = await sendToTab(waTabId, { type: 'ANA_LOOKUP_PHONE' });
+    if (!chat || chat.key !== keyBefore) return;
     if (res && res.phone && W.isValidPhone(res.phone)) {
       $('f-phone').value = W.formatPhone(res.phone);
       chat.phoneSource = 'profile';
       $('f-phone').classList.remove('is-invalid');
       renderPhoneHint();
-      scheduleDraftSave();
+      markEdited('phone');
+      renderLastSync();
       showToast('Telefone encontrado no perfil do contato');
     } else {
       showToast('Não encontrei o telefone no perfil. Digite manualmente.', true);
@@ -338,6 +387,7 @@ async function onLookupPhone() {
 const syncKey = (phone) => `sync:${phone}`;
 
 async function renderLastSync() {
+  const token = ++lastSyncToken;
   const el = $('last-sync');
   const phone = W.normalizePhone($('f-phone').value);
   if (!W.isValidPhone(phone)) {
@@ -345,12 +395,23 @@ async function renderLastSync() {
     return;
   }
   const stored = await chrome.storage.local.get(syncKey(phone));
+  if (token !== lastSyncToken) return;
   const last = stored[syncKey(phone)];
   if (!last) {
     el.hidden = true;
     return;
   }
-  el.textContent = `Última sincronização: ${new Date(last.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} (${last.count} mensagens)`;
+  el.textContent = `Última sincronização: ${new Date(last.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`;
+  if (Array.isArray(last.ids)) {
+    const sent = new Set(last.ids);
+    const pending = sortedMessages().filter((m) => !sent.has(m.external_id)).length;
+    const note = document.createElement('strong');
+    note.className = pending ? 'pending' : 'up-to-date';
+    note.textContent = pending
+      ? ` · ${pending} ${pending === 1 ? 'mensagem ainda não enviada' : 'mensagens ainda não enviadas'}`
+      : ' · tudo já enviado';
+    el.append(note);
+  }
   if (last.url) {
     el.append(' · ');
     const a = document.createElement('a');
@@ -370,6 +431,12 @@ function renderSyncButton() {
   btn.disabled = busy || syncing || Boolean(chat && chat.isGroup);
   btn.classList.toggle('is-busy', syncing);
   $('btn-sync-label').textContent = syncing ? 'Sincronizando…' : 'Sincronizar Lead no CRM';
+}
+
+function renderSendingAs() {
+  const ok = isConfigured();
+  $('sending-as').hidden = !ok;
+  if (ok) $('sending-as-email').textContent = settings.partnerEmail;
 }
 
 function showFormError(message, fieldId) {
@@ -414,37 +481,57 @@ function httpErrorMessage(status, data) {
   return `O CRM respondeu com erro ${status}${detail ? `: ${detail}` : ''}.`;
 }
 
-async function postLead(payload) {
+function networkError(err) {
+  if (err && err.name === 'AbortError') {
+    return new RetryableError('O CRM demorou mais de 30 segundos para responder. Tente de novo.');
+  }
+  return new RetryableError(`Não foi possível conectar ao CRM (${new URL(settings.apiUrl).host}). Verifique a internet e a URL da API.`);
+}
+
+async function postOnce(payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  let response;
   try {
-    response = await fetch(settings.apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-extension-key': settings.extensionKey,
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-  } catch (err) {
-    if (err && err.name === 'AbortError') {
-      throw new UserError('O CRM demorou mais de 30 segundos para responder. Tente de novo.');
+    let response;
+    let raw = '';
+    try {
+      response = await fetch(settings.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-extension-key': settings.extensionKey,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      raw = await response.text();
+    } catch (err) {
+      throw networkError(err);
     }
-    throw new UserError(`Não foi possível conectar ao CRM (${new URL(settings.apiUrl).host}). Verifique a internet e a URL da API.`);
+    let data = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch {
+      data = null;
+    }
+    if (!response.ok) {
+      const message = httpErrorMessage(response.status, data);
+      throw [502, 503, 504].includes(response.status) ? new RetryableError(message) : new UserError(message);
+    }
+    return data || {};
   } finally {
     clearTimeout(timer);
   }
-  const raw = await response.text();
-  let data = null;
+}
+
+async function postLead(payload) {
   try {
-    data = raw ? JSON.parse(raw) : null;
-  } catch {
-    data = null;
+    return await postOnce(payload);
+  } catch (err) {
+    if (!(err instanceof RetryableError)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return postOnce(payload);
   }
-  if (!response.ok) throw new UserError(httpErrorMessage(response.status, data));
-  return data || {};
 }
 
 function bookingIdFrom(data) {
@@ -499,9 +586,11 @@ async function onSync(event) {
 
   // lê de novo a conversa (sem rolar) para incluir mensagens que chegaram agora
   const keyBefore = chat.key;
-  await refresh();
-  if (!chat || chat.key !== keyBefore) {
-    showFormError('A conversa aberta no WhatsApp mudou. Confira os dados e sincronize de novo.');
+  const fresh = await refresh();
+  if (!fresh || !chat || chat.key !== keyBefore) {
+    if (chat && !$('form-lead').hidden) {
+      showFormError('A conversa aberta no WhatsApp mudou. Confira os dados e sincronize de novo.');
+    }
     return;
   }
 
@@ -513,7 +602,13 @@ async function onSync(event) {
     const bookingId = bookingIdFrom(data);
     const url = cardUrlFor(bookingId, data);
     await chrome.storage.local.set({
-      [syncKey(phone)]: { at: Date.now(), bookingId, url, count: payload.messages.length },
+      [syncKey(phone)]: {
+        at: Date.now(),
+        bookingId,
+        url,
+        count: payload.messages.length,
+        ids: payload.messages.map((m) => m.external_id),
+      },
     });
     $('f-phone').value = W.formatPhone(phone);
     await flushDraft();
@@ -524,6 +619,10 @@ async function onSync(event) {
   } finally {
     syncing = false;
     renderSyncButton();
+    if (refreshQueued) {
+      refreshQueued = false;
+      refresh();
+    }
   }
 }
 
@@ -621,6 +720,7 @@ async function onSaveSettings(event) {
   await chrome.storage.sync.set({ apiUrl, extensionKey, partnerEmail, messageLimit });
   settings = { apiUrl, extensionKey, partnerEmail, messageLimit };
   renderSetupBanner();
+  renderSendingAs();
   trimMessages();
   renderMessages();
   closeSettings();
@@ -658,11 +758,18 @@ function showToast(message, isError = false) {
 
 // ─── Eventos do navegador ───
 
+// Durante um envio, a releitura espera: onSync a executa ao terminar.
+function requestRefresh() {
+  if (syncing) {
+    refreshQueued = true;
+    return;
+  }
+  refresh();
+}
+
 function scheduleRefresh(delay = 700) {
   clearTimeout(changeTimer);
-  changeTimer = setTimeout(() => {
-    if (!syncing) refresh();
-  }, delay);
+  changeTimer = setTimeout(requestRefresh, delay);
 }
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
@@ -684,8 +791,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('version').textContent = `ANA CRM v${chrome.runtime.getManifest().version}`;
   await loadSettings();
   renderSetupBanner();
+  renderSendingAs();
+  cleanupOldDrafts();
 
   $('btn-settings').addEventListener('click', () => openSettings(false));
+  $('btn-change-sender').addEventListener('click', () => openSettings(false));
   $('btn-setup').addEventListener('click', () => openSettings(false));
   $('btn-back').addEventListener('click', closeSettings);
   $('form-settings').addEventListener('submit', onSaveSettings);
@@ -712,10 +822,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   $('form-lead').addEventListener('submit', onSync);
-  for (const id of ['f-name', 'f-phone', 'f-email', 'f-notes']) {
+  $('form-lead').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      $('form-lead').requestSubmit();
+    }
+  });
+  for (const [field, id] of Object.entries(FIELD_IDS)) {
     $(id).addEventListener('input', () => {
       $(id).classList.remove('is-invalid');
-      scheduleDraftSave();
+      markEdited(field);
     });
   }
   $('f-phone').addEventListener('input', () => {

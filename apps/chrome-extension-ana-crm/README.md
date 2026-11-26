@@ -21,10 +21,17 @@ A interface é um painel lateral com o design system da A Nova Advocacia.
 4. Confira os dados e escreva o briefing. Se quiser mais histórico, clique em **Buscar
    mensagens mais antigas**: a extensão rola a conversa até juntar o limite (50 ou 100) e
    volta para o fim.
-5. Clique em **Sincronizar Lead no CRM**. Quando der certo, aparece o link para o card do
-   lead: `https://crm.anovaadvocacia.ai/admin/pipeline?booking=<booking_id>`.
+5. Clique em **Sincronizar Lead no CRM** (ou `Ctrl/⌘ + Enter`). Quando der certo, aparece o
+   link para o card do lead: `https://crm.anovaadvocacia.ai/admin/pipeline?booking=<booking_id>`.
 
-As notas e os dados editados ficam salvos **por contato** enquanto você troca de conversa.
+Detalhes do dia a dia:
+
+- **Rascunho por contato:** as notas e os campos que você editar ficam salvos por contato
+  enquanto você troca de conversa. Rascunhos sem uso por 30 dias são apagados.
+- **Mensagens pendentes:** depois da primeira sincronização, o painel mostra quantas
+  mensagens da conversa ainda não foram enviadas ao CRM ("3 mensagens ainda não
+  enviadas" ou "tudo já enviado").
+- **Atalho:** `Alt+Shift+C` abre o painel. Dá para trocar em `chrome://extensions/shortcuts`.
 
 ## Como os dados são lidos
 
@@ -49,6 +56,11 @@ Limitações conhecidas:
   conversa (`…@lid`). O painel avisa e oferece buscar o número no perfil do contato;
   se não houver, digite-o.
 - **Grupos não são sincronizados.** O CRM recebe um lead por contato.
+- **Troca de conversa durante a leitura.** Se você trocar de conversa enquanto a extensão
+  busca mensagens antigas, a leitura é cancelada e refeita na conversa nova, sem misturar
+  as duas.
+- **"Ler mais".** Mensagens longas são expandidas no próprio WhatsApp Web para capturar o
+  texto completo.
 - **Mudanças no WhatsApp.** O WhatsApp Web muda o HTML sem aviso. Todos os seletores
   ficam em `SEL`, no início de `content/wa-capture.js`. Em Configurações, o botão **Copiar
   diagnóstico** mostra quais partes da página ainda são reconhecidas, sem incluir o texto
@@ -91,6 +103,9 @@ Erros tratados com mensagem própria:
 | 400 / 422 | o motivo enviado pelo servidor em `error`, `message` ou `detail` |
 | 429 | aguardar e tentar de novo |
 | 5xx | erro interno do CRM |
+
+Em falha de rede, tempo esgotado ou resposta 502/503/504, a extensão **reenvia uma vez
+sozinha** após 1,5 s. Isso é seguro porque o servidor ignora `external_id` repetidos.
 
 O servidor **não precisa de CORS**: a extensão declara permissão de host para
 `crm.anovaadvocacia.ai`. Se a URL da API apontar para outro domínio (homologação, por
@@ -150,3 +165,23 @@ apps/chrome-extension-ana-crm/
 ├── fonts/ icons/
 └── tests/               # unitários, simulação do WhatsApp e ponta a ponta
 ```
+
+## Histórico de versões
+
+- **1.1.0**
+  - **Correções**
+    - trocar de conversa durante a busca de mensagens antigas não mistura mais as duas conversas;
+    - trocas de conversa durante uma leitura entram na fila em vez de serem perdidas;
+    - telefones e horários cercados por marcas invisíveis de direção de texto são reconhecidos;
+    - a duração de um áudio não é mais confundida com o horário;
+    - a busca no perfil só aceita o número que está junto do nome do contato;
+    - a captura volta a funcionar depois de atualizar a extensão sem recarregar o WhatsApp;
+    - o tempo limite cobre também a leitura da resposta.
+  - **Melhorias**
+    - mensagens ainda não enviadas;
+    - reenvio automático em falhas temporárias;
+    - `Ctrl/⌘ + Enter` e atalho `Alt+Shift+C`;
+    - "Enviando como" com o e-mail do sócio;
+    - rascunho guarda só os campos editados e expira em 30 dias;
+    - a busca de mensagens antigas devolve você ao ponto em que estava lendo.
+- **1.0.0**: versão inicial.

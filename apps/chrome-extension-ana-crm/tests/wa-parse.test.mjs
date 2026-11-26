@@ -108,3 +108,15 @@ test('stableId é estável e muda com o conteúdo', async () => {
   assert.notEqual(a, c);
   assert.match(a, /^h_[0-9a-f]{24}$/);
 });
+
+test('marcas invisíveis de direção de texto do WhatsApp', () => {
+  const title = '‪+55 11 91234-5678‬';
+  assert.ok(W.looksLikePhone(title));
+  assert.equal(W.normalizePhone(title), '5511912345678');
+  assert.deepEqual(W.parseTimeOnly('‎14:10'), { h: 14, m: 10, s: 0 });
+  assert.deepEqual(W.parseTimeOnly('2:10 PM'), { h: 14, m: 10, s: 0 });
+  assert.equal(W.stripMarks('⁨Maria⁩'), 'Maria');
+  const pre = W.parsePrePlainText('‎[14:10, 26/11/2026] ‪Maria‬: ');
+  assert.deepEqual(ymdhm(pre.date), [2026, 11, 26, 14, 10]);
+  assert.deepEqual(ymdhm(W.parseDateLabel('‎HOJE', new Date(2026, 10, 26))), [2026, 11, 26, 0, 0]);
+});

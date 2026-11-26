@@ -27,8 +27,16 @@
 
   const DELETED_RE = /(esta mensagem foi apagada|voce apagou esta mensagem|this message was deleted|you deleted this message|se elimino este mensaje|eliminaste este mensaje)/;
 
+  // O WhatsApp cerca números e horários com marcas invisíveis de direção de texto
+  // (ex.: "‪+55 11 91234-5678‬"), que quebram comparações e regex ancoradas.
+  const BIDI_MARKS_RE = /[‎‏‪-‮⁦-⁩﻿]/g;
+
+  function stripMarks(value) {
+    return String(value == null ? '' : value).replace(BIDI_MARKS_RE, '');
+  }
+
   function fold(value) {
-    return String(value == null ? '' : value)
+    return stripMarks(value)
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase()
@@ -102,7 +110,7 @@
   }
 
   function looksLikePhone(value) {
-    const s = String(value || '').trim();
+    const s = stripMarks(value).trim();
     return /^\+?[\d\s().\-]{8,24}$/.test(s) && digits(s).length >= 8;
   }
 
@@ -160,7 +168,7 @@
 
   // Hora isolada, como a exibida no canto da mensagem ("14:10", "2:10 PM")
   function parseTimeOnly(value) {
-    const m = /^\s*(\d{1,2})[:.](\d{2})(?:\s*([ap])\.?\s?m\.?)?\s*$/i.exec(String(value || ''));
+    const m = /^\s*(\d{1,2})[:.](\d{2})(?:\s*([ap])\.?\s?m\.?)?\s*$/i.exec(stripMarks(value));
     return m ? to24h(m[1], m[2], 0, m[3]) : null;
   }
 
@@ -171,7 +179,7 @@
 
   // data-pre-plain-text: "[14:10, 26/11/2026] Maria Silva: " (formato varia com o idioma)
   function parsePrePlainText(value, hint) {
-    const m = /^\s*\[([^\]]+)\]\s*([\s\S]*?):\s*$/.exec(String(value || ''));
+    const m = /^\s*\[([^\]]+)\]\s*([\s\S]*?):\s*$/.exec(stripMarks(value));
     if (!m) return null;
     let inside = m[1];
     const dm = /(\d{1,4})[/.\-](\d{1,2})[/.\-](\d{1,4})/.exec(inside);
@@ -259,6 +267,7 @@
   }
 
   const api = {
+    stripMarks,
     fold,
     digits,
     parseDataId,

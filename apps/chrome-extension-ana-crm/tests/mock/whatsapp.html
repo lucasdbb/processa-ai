@@ -38,7 +38,8 @@
 (() => {
   const CHATS = {
     saved: { title: 'Maria Silva', jid: '5511987654321@c.us', total: 130, phone: '+55 11 98765-4321' },
-    unsaved: { title: '+55 11 91234-5678', jid: '5511912345678@c.us', total: 12, phone: '+55 11 91234-5678' },
+    // contato não salvo: o WhatsApp cerca o número com marcas invisíveis de direção de texto
+    unsaved: { title: '\u202a+55 11 91234-5678\u202c', jid: '5511912345678@c.us', total: 12, phone: '\u202a+55 11 91234-5678\u202c' },
     lid: { title: 'Dr. João Pereira', jid: '123456789012345@lid', total: 8, phone: '+55 21 99876-5432' },
     group: { title: 'Família Silva', jid: '120363025123456789@g.us', total: 10, group: true },
     old9: { title: 'Carlos Antigo', jid: '551187654321@c.us', total: 6, phone: '+55 11 8765-4321' },
@@ -116,7 +117,7 @@
     if (c.group && !m.fromMe) dataId += '_5521998765432@c.us';
     const sender = m.fromMe ? ME : (c.group ? '+55 21 99876-5432' : c.title);
     const pre = `[${timeLabel(m.date)}, ${pad(m.date.getDate())}/${pad(m.date.getMonth() + 1)}/${m.date.getFullYear()}] ${sender}: `;
-    const meta = el('div', { class: 'meta' }, [el('span', { dir: 'auto', text: timeLabel(m.date) })]);
+    const meta = el('div', { class: 'meta' }, [el('span', { dir: 'auto', text: '\u200e' + timeLabel(m.date) })]);
     if (m.fromMe) meta.append(el('span', { 'data-icon': 'msg-dblcheck' }));
     const bubble = el('div', { class: 'bubble' });
 
@@ -246,6 +247,27 @@
   }
 
   window.__switchChat = renderChat;
+
+  // nova mensagem recebida na conversa aberta
+  window.__addIncoming = (text) => {
+    const now = new Date();
+    const i = state.messages.length;
+    state.messages.push({
+      i, daysAgo: 0, date: now, fromMe: false, kind: 'text', text,
+      id: `3EB0NEW${i.toString(16).toUpperCase().padStart(6, '0')}`,
+    });
+    renderList(document.querySelector('.scroller'), false);
+  };
+
+  // painel com o SEU perfil aberto (outro número fora da conversa)
+  window.__openOwnProfile = () => {
+    if (document.getElementById('own-profile')) return;
+    document.getElementById('app').append(el('div', { id: 'own-profile', style: 'position:fixed;left:0;bottom:0;background:#fff;padding:8px' }, [
+      el('header', {}, [el('span', { text: 'Perfil' })]),
+      el('div', {}, [el('span', { dir: 'auto', text: 'Lucas Braga' })]),
+      el('div', {}, [el('span', { text: '+55 11 90000-0000' })]),
+    ]));
+  };
   window.__mockState = state;
   renderChat(new URLSearchParams(location.search).get('chat') || 'saved');
 })();

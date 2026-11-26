@@ -6,8 +6,13 @@
 // seletor encontra, sem expor o conteúdo das conversas.
 (() => {
   'use strict';
-  if (globalThis.__anaCrmCaptureLoaded) return;
-  globalThis.__anaCrmCaptureLoaded = true;
+
+  // Ao atualizar a extensão, o script antigo fica órfão no mesmo mundo isolado.
+  // A trava só bloqueia uma nova injeção se a instância anterior ainda estiver viva.
+  const RUNTIME = chrome.runtime;
+  const previous = globalThis.__anaCrmCapture;
+  if (previous && typeof previous.isAlive === 'function' && previous.isAlive()) return;
+  if (previous && typeof previous.stop === 'function') previous.stop();
 
   const W = globalThis.AnaWa;
 
@@ -28,6 +33,7 @@
 
   const STATUS_RE = /^(online|digitando|typing|escribiendo|gravando|recording|grabando|visto por [uú]ltimo|last seen|[uú]lt\. vez|clique |click |toque |tap |haz clic|dados do contato|contact info)/i;
   const READ_MORE_RE = /^(ler mais|read more|leer m[aá]s|mostrar mais)$/i;
+  const READ_MORE_SEL = '[role="button"], button, [class*="read-more" i]';
   const TIME_ONLY_RE = /^\s*\d{1,2}[:.]\d{2}(\s*[ap]\.?\s?m\.?)?\s*$/i;
   const PROFILE_PHONE_RE = /^\+\d[\d\s().\-]{7,}$/;
   const MAX_OLDER_ROUNDS = 15;
@@ -43,7 +49,7 @@
     const header = document.querySelector(SEL.header);
     if (!header) return null;
     for (const el of header.querySelectorAll(SEL.headerText)) {
-      const text = (el.getAttribute('title') || el.textContent || '').trim();
+      const text = W.stripMarks(el.getAttribute('title') || el.textContent).trim();
       if (text && !STATUS_RE.test(text)) return el;
     }
     return null;
@@ -51,10 +57,17 @@
 
   function headerTitle() {
     const el = headerTitleElement();
-    if (el) return (el.getAttribute('title') || el.textContent || '').trim();
+    if (el) return W.stripMarks(el.getAttribute('title') || el.textContent).trim();
     const selected = document.querySelector(SEL.selectedChat);
     const span = selected && selected.querySelector('span[title]');
-    return span ? span.getAttribute('title').trim() : '';
+    return span ? W.stripMarks(span.getAttribute('title')).trim() : '';
+  }
+
+  // Conversa aberta agora: jid da última mensagem visível + título do cabeçalho
+  function currentChatIdentity() {
+    const nodes = messageNodes();
+    const id = nodes.length ? W.parseDataId(nodes[nodes.length - 1].getAttribute('data-id')) : null;
+    return { jid: id ? id.chatJid : '', title: headerTitle() };
   }
 
   // ─── Mensagens ───
@@ -93,9 +106,11 @@
       .trim();
   }
 
+  // Hora exibida no canto do balão. É o último texto em formato de hora: antes dele
+  // pode haver a duração de um áudio ("0:42"), que não é horário.
   function metaTime(el) {
     const times = [...el.querySelectorAll('span')]
-      .map((s) => (s.textContent || '').trim())
+      .map((s) => W.stripMarks(s.textContent).trim())
       .filter((t) => TIME_ONLY_RE.test(t));
     return times.length ? times[times.length - 1] : '';
   }
@@ -119,7 +134,7 @@
     if (has('[data-icon*="location" i], a[href*="maps.google"], a[href*="google.com/maps"]')) return '[Localização]';
     if (has('[data-icon*="vcard" i], [data-icon*="contact-card" i]')) return '[Contato compartilhado]';
     if (has('img[src^="blob:"], img[src^="data:image"]:not(.emoji)')) return '[Imagem]';
-    const leftover = (el.innerText || el.textContent || '')
+    const leftover = W.stripMarks(el.innerText || el.textContent)
       .split('\n')
       .map((s) => s.trim())
       .filter((s) => s && !TIME_ONLY_RE.test(s))
@@ -132,9 +147,9 @@
   async function expandReadMore(nodes) {
     let clicked = 0;
     for (const el of nodes) {
-      for (const btn of el.querySelectorAll('[role="button"], span, div')) {
-        if (btn.children.length > 1) continue;
-        if (READ_MORE_RE.test((btn.textContent || '').trim())) {
+      for (const btn of el.querySelectorAll(READ_MORE_SEL)) {
+        if (btn.closest(SEL.quoted)) continue;
+        if (READ_MORE_RE.test(W.stripMarks(btn.textContent).trim())) {
           btn.click();
           clicked++;
         }
@@ -236,10 +251,12 @@
     return null;
   }
 
-  // Rola a conversa para o topo até carregar `target` mensagens (ou parar de vir mais)
+  // Rola a conversa para o topo até carregar `target` mensagens (ou parar de vir mais).
+  // No fim, devolve a rolagem para o ponto em que o usuário estava lendo.
   async function loadOlderMessages(target, onRound) {
     const box = scrollContainer();
     if (!box) return { rounds: 0, stopped: 'sem-rolagem' };
+    const fromBottom = box.scrollHeight - box.scrollTop;
     let count = await onRound();
     let rounds = 0;
     let stale = 0;
@@ -249,6 +266,7 @@
       box.dispatchEvent(new Event('scroll'));
       await sleep(OLDER_WAIT_MS);
       const next = await onRound();
+      if (next < 0) return { rounds, stopped: 'conversa-trocada' };
       if (next > count) {
         count = next;
         stale = 0;
@@ -256,7 +274,7 @@
         stale++;
       }
     }
-    box.scrollTop = box.scrollHeight;
+    box.scrollTop = Math.max(0, box.scrollHeight - fromBottom);
     box.dispatchEvent(new Event('scroll'));
     return { rounds, stopped: count >= target ? 'limite' : stale >= 3 ? 'fim-da-conversa' : 'tentativas' };
   }
@@ -270,11 +288,21 @@
     const collected = new Map();
     let pass = 0;
 
+    // Se o usuário trocar de conversa no meio da leitura (ex.: durante a busca de
+    // mensagens antigas), a captura é abortada para não misturar duas conversas.
+    const start = currentChatIdentity();
+    const sameChat = () => {
+      const now = currentChatIdentity();
+      if (now.title !== start.title) return false;
+      return !(start.jid && now.jid && now.jid !== start.jid);
+    };
+    const chatChanged = () => ({ ok: false, code: 'chat-changed', error: 'A conversa mudou durante a leitura.' });
+
     const scan = async () => {
+      if (!sameChat()) return -1;
       pass++;
-      const list = await readDom();
-      const lastJid = [...list].reverse().find((m) => m.chatJid);
-      const chatKeyForHash = (lastJid && lastJid.chatJid) || headerTitle();
+      const list = (await readDom()).filter((m) => !start.jid || !m.chatJid || m.chatJid === start.jid);
+      const chatKeyForHash = start.jid || start.title;
       const occurrences = new Map();
       for (let i = 0; i < list.length; i++) {
         const m = list[i];
@@ -299,20 +327,20 @@
       return collected.size;
     };
 
-    await scan();
+    if ((await scan()) < 0) return chatChanged();
     let older = null;
     if (loadOlder && collected.size < limit) {
       older = await loadOlderMessages(limit, scan);
-      await scan();
+      if (older.stopped === 'conversa-trocada' || (await scan()) < 0) return chatChanged();
     }
 
     const all = [...collected.values()].sort((a, b) =>
       a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : a.pos - b.pos);
     const kept = all.slice(-limit);
 
-    const jid = ([...all].reverse().find((m) => m.chatJid) || {}).chatJid || '';
+    const jid = start.jid || ([...all].reverse().find((m) => m.chatJid) || {}).chatJid || '';
     const kind = W.jidKind(jid);
-    const title = headerTitle();
+    const title = start.title;
     let phone = '';
     let phoneSource = '';
     if (kind === 'user') {
@@ -346,13 +374,23 @@
 
   // ─── Telefone pelo perfil do contato (fallback acionado pelo usuário) ───
 
-  function phoneTextsOutsideConversation() {
+  // Telefones exibidos fora da conversa e da lista de conversas (painel "Dados do
+  // contato"). Só vale o número que está no mesmo bloco que o nome do contato, para
+  // não pegar o número de outro painel aberto (o seu perfil, por exemplo).
+  function profilePhoneCandidates(title) {
+    const wanted = W.looksLikePhone(title) ? '' : W.fold(title);
     const found = [];
     for (const el of document.querySelectorAll('span, div')) {
       if (el.children.length) continue;
       if (el.closest('#main, #pane-side')) continue;
-      const text = (el.textContent || '').trim();
-      if (text.length >= 8 && text.length <= 26 && PROFILE_PHONE_RE.test(text)) found.push(text);
+      const text = W.stripMarks(el.textContent).trim();
+      if (text.length < 8 || text.length > 26 || !PROFILE_PHONE_RE.test(text)) continue;
+      let near = !wanted;
+      for (let node = el.parentElement, depth = 0; node && depth < 10 && !near; node = node.parentElement, depth++) {
+        if (node === document.body || node.id === 'app') break;
+        if (W.fold(node.textContent).includes(wanted)) near = true;
+      }
+      if (near) found.push(text);
     }
     return found;
   }
@@ -367,19 +405,20 @@
   }
 
   async function lookupPhoneInProfile() {
-    const already = phoneTextsOutsideConversation();
+    const title = headerTitle();
+    const already = profilePhoneCandidates(title);
     if (already.length) return { ok: true, phone: W.normalizePhone(already[0]) };
 
-    const titleEl = headerTitleElement();
     const header = document.querySelector(SEL.header);
     if (!header) return { ok: true, phone: '' };
+    const titleEl = headerTitleElement();
     const target = (titleEl && (titleEl.closest('[role="button"]') || titleEl.closest('[tabindex]'))) || header;
     target.click();
 
     let found = '';
     for (let i = 0; i < 20 && !found; i++) {
       await sleep(150);
-      found = phoneTextsOutsideConversation()[0] || '';
+      found = profilePhoneCandidates(title)[0] || '';
     }
     closeContactDrawer();
     return { ok: true, phone: found ? W.normalizePhone(found) : '' };
@@ -448,19 +487,32 @@
 
   // ─── Aviso de troca de conversa para o painel ───
 
+  function isAlive() {
+    try {
+      return Boolean(RUNTIME && RUNTIME.id);
+    } catch {
+      return false;
+    }
+  }
+
   let lastSignature = null;
   const watcher = setInterval(() => {
+    if (!isAlive()) {
+      // a extensão foi atualizada ou recarregada: este script antigo para de observar
+      clearInterval(watcher);
+      return;
+    }
     try {
-      const nodes = document.querySelector(SEL.main) ? messageNodes() : [];
-      const id = nodes.length ? W.parseDataId(nodes[nodes.length - 1].getAttribute('data-id')) : null;
-      const signature = document.querySelector(SEL.main) ? `${headerTitle()}|${id ? id.chatJid : ''}` : '';
+      const { jid, title } = document.querySelector(SEL.main) ? currentChatIdentity() : { jid: '', title: '' };
+      const signature = document.querySelector(SEL.main) ? `${title}|${jid}` : '';
       if (signature === lastSignature) return;
       const first = lastSignature === null;
       lastSignature = signature;
       if (!first) chrome.runtime.sendMessage({ type: 'ANA_CHAT_CHANGED', signature }).catch(() => {});
     } catch {
-      // a extensão foi recarregada: este script antigo para de observar
       clearInterval(watcher);
     }
   }, 1000);
+
+  globalThis.__anaCrmCapture = { isAlive, stop: () => clearInterval(watcher) };
 })();
