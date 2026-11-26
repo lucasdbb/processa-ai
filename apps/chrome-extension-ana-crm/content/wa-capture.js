@@ -35,6 +35,7 @@
   const READ_MORE_RE = /^(ler mais|read more|leer m[aá]s|mostrar mais)$/i;
   const READ_MORE_SEL = '[role="button"], button, [class*="read-more" i]';
   const TIME_ONLY_RE = /^\s*\d{1,2}[:.]\d{2}(\s*[ap]\.?\s?m\.?)?\s*$/i;
+  const TRAILING_TIME_RE = /\s*\d{1,2}[:.]\d{2}(\s*[ap]\.?\s?m\.?)?\s*$/i;
   const PROFILE_PHONE_RE = /^\+\d[\d\s().\-]{7,}$/;
   const MAX_OLDER_ROUNDS = 15;
   const OLDER_WAIT_MS = 900;
@@ -61,6 +62,17 @@
     const selected = document.querySelector(SEL.selectedChat);
     const span = selected && selected.querySelector('span[title]');
     return span ? W.stripMarks(span.getAttribute('title')).trim() : '';
+  }
+
+  // Cada #main recebe um número: trocar de conversa recria o elemento, o que distingue
+  // duas conversas de mesmo nome quando a primeira ainda não tem mensagens.
+  const viewIds = new WeakMap();
+  let nextViewId = 1;
+  function viewToken() {
+    const main = document.querySelector(SEL.main);
+    if (!main) return 0;
+    if (!viewIds.has(main)) viewIds.set(main, nextViewId++);
+    return viewIds.get(main);
   }
 
   // Conversa aberta agora: jid da última mensagem visível + título do cabeçalho
@@ -99,8 +111,7 @@
       }
     };
     walk(node);
-    return out
-      .replace(/[‎‏]/g, '')
+    return W.stripMarks(out)
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
@@ -122,7 +133,11 @@
 
   // Mensagens sem texto: descreve o tipo em vez de enviar vazio
   function placeholderFor(el) {
-    if (W.isDeletedText(W.fold(el.textContent))) return '[Mensagem apagada]';
+    const lines = W.stripMarks(el.innerText || el.textContent)
+      .split('\n')
+      .map((s) => s.replace(TRAILING_TIME_RE, '').trim())
+      .filter((s) => s && !TIME_ONLY_RE.test(s));
+    if (lines.some((line) => W.isDeletedText(W.fold(line)))) return '[Mensagem apagada]';
     const has = (selector) => Boolean(el.querySelector(selector));
     if (has('[data-icon*="sticker" i], img[alt*="figurinha" i], img[alt*="sticker" i]')) return '[Figurinha]';
     if (has('audio, [data-icon*="audio" i], [data-icon*="ptt" i], [aria-label*="áudio" i], [aria-label*="audio" i], [aria-label*="mensagem de voz" i], [aria-label*="voice" i]')) return '[Áudio]';
@@ -134,12 +149,7 @@
     if (has('[data-icon*="location" i], a[href*="maps.google"], a[href*="google.com/maps"]')) return '[Localização]';
     if (has('[data-icon*="vcard" i], [data-icon*="contact-card" i]')) return '[Contato compartilhado]';
     if (has('img[src^="blob:"], img[src^="data:image"]:not(.emoji)')) return '[Imagem]';
-    const leftover = W.stripMarks(el.innerText || el.textContent)
-      .split('\n')
-      .map((s) => s.trim())
-      .filter((s) => s && !TIME_ONLY_RE.test(s))
-      .join(' ')
-      .trim();
+    const leftover = lines.join(' ').trim();
     return leftover ? leftover.slice(0, 500) : '[Mensagem sem texto]';
   }
 
@@ -159,25 +169,17 @@
     return clicked;
   }
 
-  function readMessage(el, dateOrder, currentDay) {
+  function readMessage(el, dateOrder) {
     const id = W.parseDataId(el.getAttribute('data-id'));
     const fromMe = id ? id.fromMe : Boolean(el.matches(SEL.outgoing) || el.querySelector(SEL.outgoing));
     const pre = el.querySelector(SEL.prePlain);
 
     let date = null;
-    let approx = false;
     if (pre) {
       const parsed = W.parsePrePlainText(pre.getAttribute('data-pre-plain-text'), dateOrder);
       if (parsed) date = parsed.date;
     }
-    if (!date) {
-      const t = W.parseTimeOnly(metaTime(el));
-      if (t) {
-        const base = currentDay || W.startOfDay(new Date());
-        date = new Date(base.getFullYear(), base.getMonth(), base.getDate(), t.h, t.m);
-        approx = !currentDay;
-      }
-    }
+    const timeOnly = date ? null : W.parseTimeOnly(metaTime(el));
 
     let text = '';
     if (pre) text = textFrom(pre.querySelector(SEL.selectableText) || pre);
@@ -194,8 +196,42 @@
       fromMe,
       text,
       date,
-      approx,
+      timeOnly,
+      approx: false,
     };
+  }
+
+  const atTime = (day, t) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), t.h, t.m);
+  const previousDay = (day) => new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1);
+
+  // Mensagens só com a hora (áudio, imagem…) antes de qualquer data conhecida: usa o
+  // dia da próxima mensagem datada (ou o dia anterior, se a hora passar dela).
+  // Nunca deixa um horário no futuro.
+  function resolvePendingDates(out) {
+    const now = new Date();
+    let next = null;
+    for (let i = out.length - 1; i >= 0; i--) {
+      const m = out[i];
+      if (m.date) {
+        next = m.date;
+        continue;
+      }
+      if (!m.timeOnly) continue;
+      const limit = next || now;
+      let d = atTime(W.startOfDay(limit), m.timeOnly);
+      if (d > limit) d = atTime(previousDay(W.startOfDay(limit)), m.timeOnly);
+      m.date = d;
+      m.approx = true;
+      next = d;
+    }
+    // sem hora legível: herda o horário da vizinha para manter a ordem
+    for (let i = 0; i < out.length; i++) {
+      if (out[i].date) continue;
+      const prev = out[i - 1];
+      const after = out.slice(i + 1).find((m) => m.date);
+      out[i].date = new Date(((prev && prev.date) || (after && after.date) || now).getTime());
+      out[i].approx = true;
+    }
   }
 
   // Lê a conversa na ordem da tela, acompanhando as divisórias de data
@@ -214,29 +250,25 @@
 
     const out = [];
     const seen = new Set();
-    let currentDay = null;
+    let knownDay = null; // dia confiável: de uma divisória ou de mensagem com data completa
     for (const row of rows) {
       const el = isMessageDataId(row.getAttribute('data-id')) ? row : row.querySelector(SEL.messageId);
       if (!el) {
-        const label = (row.textContent || '').trim();
+        const label = W.stripMarks(row.textContent).trim();
         if (label && label.length <= 40) {
           const day = W.parseDateLabel(label, new Date(), dateOrder);
-          if (day) currentDay = day;
+          if (day) knownDay = day;
         }
         continue;
       }
       if (seen.has(el)) continue;
       seen.add(el);
-      const msg = readMessage(el, dateOrder, currentDay);
-      if (!msg.date) {
-        // sem horário legível: herda o da mensagem anterior para manter a ordem
-        const prev = out[out.length - 1];
-        msg.date = prev ? new Date(prev.date.getTime()) : new Date();
-        msg.approx = true;
-      }
-      currentDay = W.startOfDay(msg.date);
+      const msg = readMessage(el, dateOrder);
+      if (msg.date) knownDay = W.startOfDay(msg.date);
+      else if (msg.timeOnly && knownDay) msg.date = atTime(knownDay, msg.timeOnly);
       out.push(msg);
     }
+    resolvePendingDates(out);
     return out;
   }
 
@@ -291,6 +323,7 @@
     // Se o usuário trocar de conversa no meio da leitura (ex.: durante a busca de
     // mensagens antigas), a captura é abortada para não misturar duas conversas.
     const start = currentChatIdentity();
+    const view = viewToken();
     const sameChat = () => {
       const now = currentChatIdentity();
       if (now.title !== start.title) return false;
@@ -363,6 +396,8 @@
         jidKind: kind,
         isGroup: kind === 'group',
         isLid: kind === 'lid',
+        unsupported: { group: 'group', newsletter: 'channel', broadcast: 'broadcast' }[kind] || null,
+        viewToken: view,
       },
       messages: kept.map(({ external_id, from_me, text, timestamp, approx }) => ({ external_id, from_me, text, timestamp, approx })),
       stats: {
@@ -374,40 +409,56 @@
 
   // ─── Telefone pelo perfil do contato (fallback acionado pelo usuário) ───
 
-  // Telefones exibidos fora da conversa e da lista de conversas (painel "Dados do
-  // contato"). Só vale o número que está no mesmo bloco que o nome do contato, para
-  // não pegar o número de outro painel aberto (o seu perfil, por exemplo).
+  const OUTSIDE_CONVERSATION = '#main, #pane-side, #side';
+
+  // Sobe do elemento até um container que ainda não inclua a conversa (#main):
+  // assim o "mesmo bloco" nunca é a página inteira.
+  function* ancestorsOutsideMain(el, maxDepth) {
+    const main = document.querySelector(SEL.main);
+    for (let node = el.parentElement, depth = 0; node && depth < maxDepth; node = node.parentElement, depth++) {
+      if (node === document.body || node.id === 'app' || (main && node.contains(main))) return;
+      yield node;
+    }
+  }
+
+  // Telefones exibidos fora da conversa (painel "Dados do contato"). Só vale o número
+  // que está no mesmo bloco que o nome do contato, para não pegar o número de outro
+  // painel aberto (o seu perfil, por exemplo).
   function profilePhoneCandidates(title) {
     const wanted = W.looksLikePhone(title) ? '' : W.fold(title);
     const found = [];
     for (const el of document.querySelectorAll('span, div')) {
       if (el.children.length) continue;
-      if (el.closest('#main, #pane-side')) continue;
+      if (el.closest(OUTSIDE_CONVERSATION)) continue;
       const text = W.stripMarks(el.textContent).trim();
       if (text.length < 8 || text.length > 26 || !PROFILE_PHONE_RE.test(text)) continue;
       let near = !wanted;
-      for (let node = el.parentElement, depth = 0; node && depth < 10 && !near; node = node.parentElement, depth++) {
-        if (node === document.body || node.id === 'app') break;
+      for (const node of ancestorsOutsideMain(el, 10)) {
+        if (near) break;
         if (W.fold(node.textContent).includes(wanted)) near = true;
       }
-      if (near) found.push(text);
+      if (near) found.push({ text, el });
     }
     return found;
   }
 
-  function closeContactDrawer() {
-    const close = [...document.querySelectorAll(SEL.drawerClose)].find((e) => !e.closest('#main, #pane-side'));
-    if (close) {
-      (close.closest('[role="button"], button') || close).click();
-      return;
+  // Fecha o painel em que o número foi achado (o botão de fechar mais próximo dele).
+  // Sem botão por perto, deixa o painel aberto: um Escape poderia fechar a conversa.
+  function closeDrawerAround(el) {
+    for (const node of ancestorsOutsideMain(el, 15)) {
+      const close = [...node.querySelectorAll(SEL.drawerClose)].find((c) => !c.closest(OUTSIDE_CONVERSATION));
+      if (close) {
+        (close.closest('[role="button"], button') || close).click();
+        return true;
+      }
     }
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+    return false;
   }
 
   async function lookupPhoneInProfile() {
     const title = headerTitle();
     const already = profilePhoneCandidates(title);
-    if (already.length) return { ok: true, phone: W.normalizePhone(already[0]) };
+    if (already.length) return { ok: true, phone: W.normalizePhone(already[0].text) };
 
     const header = document.querySelector(SEL.header);
     if (!header) return { ok: true, phone: '' };
@@ -415,20 +466,16 @@
     const target = (titleEl && (titleEl.closest('[role="button"]') || titleEl.closest('[tabindex]'))) || header;
     target.click();
 
-    let found = '';
+    let found = null;
     for (let i = 0; i < 20 && !found; i++) {
       await sleep(150);
-      found = profilePhoneCandidates(title)[0] || '';
+      found = profilePhoneCandidates(title)[0] || null;
     }
-    closeContactDrawer();
-    return { ok: true, phone: found ? W.normalizePhone(found) : '' };
+    if (found) closeDrawerAround(found.el);
+    return { ok: true, phone: found ? W.normalizePhone(found.text) : '' };
   }
 
   // ─── Diagnóstico (sem conteúdo das mensagens) ───
-
-  function mask(value) {
-    return String(value || '').replace(/[A-Za-zÀ-ÿ]/g, 'a').replace(/\d/g, '9').slice(0, 60);
-  }
 
   function diagnose() {
     const main = document.querySelector(SEL.main);
@@ -457,8 +504,8 @@
       prePlainText: main ? main.querySelectorAll(SEL.prePlain).length : 0,
       selectableText: main ? main.querySelectorAll(SEL.selectableText).length : 0,
       scrollContainer: Boolean(scrollContainer()),
-      samplePrePlainFormat: pre ? mask(pre.getAttribute('data-pre-plain-text')) : null,
-      sampleDataIdFormat: nodes[0] ? mask(nodes[0].getAttribute('data-id')) : null,
+      samplePrePlainFormat: pre ? W.maskText(pre.getAttribute('data-pre-plain-text')) : null,
+      sampleDataIdFormat: nodes[0] ? W.maskText(nodes[0].getAttribute('data-id')) : null,
     };
   }
 

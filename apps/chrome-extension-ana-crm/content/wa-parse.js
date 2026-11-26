@@ -25,7 +25,8 @@
     lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5,
   };
 
-  const DELETED_RE = /(esta mensagem foi apagada|voce apagou esta mensagem|this message was deleted|you deleted this message|se elimino este mensaje|eliminaste este mensaje)/;
+  // Ancorado: "Por que esta mensagem foi apagada?" é uma mensagem de verdade.
+  const DELETED_RE = /^(esta mensagem foi apagada|voce apagou esta mensagem|this message was deleted|you deleted this message|se elimino este mensaje|eliminaste este mensaje)\.?$/;
 
   // O WhatsApp cerca números e horários com marcas invisíveis de direção de texto
   // (ex.: "‪+55 11 91234-5678‬"), que quebram comparações e regex ancoradas.
@@ -88,6 +89,7 @@
     const international = Boolean(opts.international) || str.startsWith('+') || d.startsWith('00');
     if (d.startsWith('00')) d = d.slice(2);
     if (!international) {
+      if (/^0\d{12,13}$/.test(d)) d = d.slice(3); // 0 + operadora + DDD + número
       if (/^0\d{10,11}$/.test(d)) d = d.slice(1); // 0 + DDD + número
       if (d.length === 10 || d.length === 11) d = '55' + d; // DDD + número, sem o 55
     }
@@ -225,9 +227,10 @@
     if (/^(hoje|today|hoy)$/.test(s)) return today;
     if (/^(ontem|yesterday|ayer)$/.test(s)) return addDays(today, -1);
 
-    const firstWord = s.split(/[\s-]/)[0];
-    if (WEEKDAYS[firstWord] != null && /^[a-z\s-]+$/.test(s)) {
-      let diff = (today.getDay() - WEEKDAYS[firstWord] + 7) % 7;
+    // a linha inteira precisa ser o dia da semana ("SEGUNDA-FEIRA"), não uma frase que começa com ele
+    const weekday = /^([a-z]+)(?:[- ]feira)?$/.exec(s);
+    if (weekday && WEEKDAYS[weekday[1]] != null) {
+      let diff = (today.getDay() - WEEKDAYS[weekday[1]] + 7) % 7;
       if (diff === 0) diff = 7;
       return addDays(today, -diff);
     }
@@ -256,7 +259,17 @@
   // ─── Outros ───
 
   function isDeletedText(foldedText) {
-    return DELETED_RE.test(foldedText);
+    return DELETED_RE.test(String(foldedText || '').trim());
+  }
+
+  // Diagnóstico: mantém só o formato (letras viram "a", números "9", símbolos "*"),
+  // em qualquer alfabeto, para não expor nomes nem conteúdo.
+  function maskText(value) {
+    return stripMarks(value)
+      .replace(/\p{N}/gu, '9')
+      .replace(/[\p{L}\p{M}]/gu, 'a')
+      .replace(/[\p{So}\p{Sk}\p{Co}]/gu, '*')
+      .slice(0, 60);
   }
 
   // ID estável para mensagens sem data-id: hash de conversa + direção + horário + texto
@@ -283,6 +296,7 @@
     inferDateOrder,
     parseDateLabel,
     isDeletedText,
+    maskText,
     stableId,
   };
 

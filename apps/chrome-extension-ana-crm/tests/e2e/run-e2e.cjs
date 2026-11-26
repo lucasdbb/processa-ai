@@ -56,6 +56,7 @@ async function waitFor(fn, timeout = 8000, step = 150) {
     const req = route.request();
     requests.push({ method: req.method(), url: req.url(), headers: req.headers(), body: req.postData() });
     const res = queuedResponses.length ? queuedResponses.shift() : nextResponse;
+    if (res.delay) await sleep(res.delay);
     await route.fulfill({ status: res.status, contentType: 'application/json', body: JSON.stringify(res.body) });
   });
 
@@ -71,8 +72,8 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   const panel = await ctx.newPage();
   await panel.setViewportSize({ width: 400, height: 1000 });
   panel.on('console', (m) => {
-    // o próprio teste provoca respostas 401, 422 e 503 para conferir as mensagens de erro
-    if (m.type() === 'error' && !/Failed to load resource: .* (401|422|503)/.test(m.text())) errors.push(`painel: ${m.text()}`);
+    // o próprio teste provoca respostas 401, 422, 503 e 504 para conferir as mensagens de erro
+    if (m.type() === 'error' && !/Failed to load resource: .* (401|422|503|504)/.test(m.text())) errors.push(`painel: ${m.text()}`);
   });
   panel.on('pageerror', (e) => errors.push(`painel: ${e}`));
   await panel.goto(`chrome-extension://${extId}/sidepanel.html`);
@@ -156,7 +157,9 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   check('resposta sem o texto citado', Boolean(reply) && !msgs.some((m) => /Qual o valor dos honorários/.test(m.text)));
   check('áudio vira [Áudio]', msgs.filter((m) => m.text === '[Áudio]').length === 2);
   check('imagem vira [Imagem]', Boolean(byText(/^\[Imagem\]$/)));
-  check('mensagem apagada vira [Mensagem apagada]', Boolean(byText(/^\[Mensagem apagada\]$/)));
+  check('mensagem apagada vira [Mensagem apagada]', msgs.filter((m) => m.text === '[Mensagem apagada]').length === 1);
+  check('"Por que esta mensagem foi apagada?" continua sendo texto', Boolean(byText(/^Por que esta mensagem foi apagada\?$/)));
+  check('marcas invisíveis removidas do texto', msgs.every((m) => !/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/.test(m.text)));
   const longMsg = byText(/^Começo do texto longo/);
   check('"Ler mais" expandido: texto completo', Boolean(longMsg) && /FIM DO TEXTO LONGO$/.test(longMsg.text));
   check('quebras de linha preservadas', Boolean(byText(/^Linha um do endereço\nLinha dois do endereço$/)));
@@ -210,6 +213,33 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   check('reenvio inclui a mensagem nova', lastBody.messages.some((m) => /parcelamento/.test(m.text)) && lastBody.messages.length === 100);
   await waitFor(async () => /tudo já enviado/.test(await panel.textContent('#last-sync')));
   check('pendentes zeram depois do envio', /tudo já enviado/.test(await panel.textContent('#last-sync')));
+  const k1 = requests[requests.length - 2].headers['idempotency-key'];
+  const k2 = requests[requests.length - 1].headers['idempotency-key'];
+  check('reenvio usa a mesma Idempotency-Key', Boolean(k1) && k1 === k2, k1);
+
+  const before504 = requests.length;
+  queuedResponses.push({ status: 504, body: {} });
+  await panel.click('#btn-sync');
+  await waitFor(async () => /erro interno \(504\)/.test(await panel.textContent('#form-error')), 10000);
+  await sleep(2000);
+  check('504 não é reenviado sozinho', requests.length === before504 + 1 && /504/.test(await panel.textContent('#form-error')), String(requests.length - before504));
+
+  // ── 6c. Envio lento + troca de conversa no meio (o telefone não pode vazar) ──
+  const beforeSlow = requests.length;
+  queuedResponses.push({ status: 201, body: { booking_id: 'bk_slow' }, delay: 3000 });
+  await panel.click('#btn-sync');
+  await waitFor(async () => requests.length === beforeSlow + 1, 8000);
+  check('ler de novo fica desativado durante o envio', await panel.isDisabled('#btn-refresh') && await panel.isDisabled('#btn-load-older'));
+  await wa.evaluate(() => window.__switchChat('unsaved'));
+  await panel.evaluate(() => document.getElementById('btn-refresh').click());
+  await waitFor(async () => (await panel.inputValue('#f-phone')) === '+55 (11) 91234-5678', 15000);
+  await sleep(800);
+  check('depois do envio lento, o painel segue a conversa nova', (await panel.inputValue('#f-phone')) === '+55 (11) 91234-5678', await panel.inputValue('#f-phone'));
+  const unsavedDraft = (await panel.evaluate(() => chrome.storage.local.get('draft:5511912345678@c.us')))['draft:5511912345678@c.us'];
+  check('telefone do lead anterior não vaza para a conversa nova', !unsavedDraft || !/98765-4321/.test(JSON.stringify(unsavedDraft)));
+  check('resultado do envio anterior não aparece na conversa nova', await panel.isHidden('#result'));
+  await wa.evaluate(() => window.__switchChat('saved'));
+  await waitFor(async () => (await panel.inputValue('#f-name')) === 'Maria Silva');
 
   // ── 7. Troca de conversa e rascunho por contato ──
   await panel.fill('#f-notes', 'Rascunho: retornar na sexta');
@@ -228,9 +258,9 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   check('rascunho guarda só os campos editados', mariaDraft && JSON.stringify(Object.keys(mariaDraft.fields).sort()) === JSON.stringify(['email', 'notes']), JSON.stringify(mariaDraft && Object.keys(mariaDraft.fields)));
 
   // ── 8. Contato com identificador privado (LID) ──
-  await wa.evaluate(() => window.__openOwnProfile()); // seu perfil aberto: o número dele não pode ser usado
   await wa.evaluate(() => window.__switchChat('lid'));
   await waitFor(async () => (await panel.inputValue('#f-name')) === 'Dr. João Pereira');
+  await wa.evaluate(() => window.__openOwnProfile()); // seu perfil aberto ao lado da conversa: o número dele não pode ser usado
   check('LID: telefone não aparece na conversa', (await panel.inputValue('#f-phone')) === '');
   check('LID: explica o identificador privado', /identificador privado/.test(await panel.textContent('#phone-hint')));
   check('LID: oferece buscar no perfil', await panel.isVisible('#btn-lookup-phone'));
@@ -240,6 +270,7 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   check('telefone encontrado no perfil do contato (ignora o seu perfil aberto)', (await panel.inputValue('#f-phone')) === '+55 (21) 99876-5432', await panel.inputValue('#f-phone'));
   check('dica: encontrado no perfil', /perfil do contato/.test(await panel.textContent('#phone-hint')));
   check('painel do perfil fechado depois da leitura', await wa.evaluate(() => !document.getElementById('drawer')));
+  check('não clica em outros botões de fechar (busca)', await wa.evaluate(() => window.__decoyClicked === false));
 
   // ── 9. Grupo ──
   await wa.evaluate(() => window.__switchChat('group'));
@@ -247,6 +278,10 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   check('grupo: aviso exibido', await panel.isVisible('#group-banner'));
   check('grupo: botão de sincronizar desativado', await panel.isDisabled('#btn-sync'));
   await panel.screenshot({ path: path.join(OUT, '5-grupo.png'), fullPage: true });
+
+  await wa.evaluate(() => window.__switchChat('channel'));
+  await waitFor(async () => /canal/.test(await panel.textContent('#group-banner')));
+  check('canal do WhatsApp: aviso e envio bloqueado', /canal/.test(await panel.textContent('#group-banner')) && await panel.isDisabled('#btn-sync'));
 
   // ── 10. Número antigo sem o nono dígito ──
   await wa.evaluate(() => window.__switchChat('old9'));
@@ -280,6 +315,38 @@ async function waitFor(fn, timeout = 8000, step = 150) {
   const diag = JSON.parse(await panel.evaluate(() => navigator.clipboard.readText()));
   check('diagnóstico reconhece a estrutura', diag.main && diag.header && diag.messageNodes > 0 && diag.prePlainText > 0 && diag.scrollContainer);
   check('diagnóstico não expõe texto das mensagens', !/Maria|Perfeito|contrato/.test(JSON.stringify(diag)), diag.samplePrePlainFormat);
+
+  // ── 12b. Áudio no topo da conversa, sem divisória de data acima ──
+  await panel.click('#btn-back');
+  await wa.evaluate(() => {
+    const holder = document.querySelector('[data-id$="_3EB0SAV00005A"]');
+    const bubble = holder.querySelector('.bubble');
+    bubble.querySelector('.copyable-text').remove();
+    const audio = document.createElement('span');
+    audio.setAttribute('data-icon', 'audio-play');
+    bubble.prepend(audio);
+    let prev = holder.closest('[role="row"]').previousElementSibling;
+    while (prev) {
+      const remove = prev;
+      prev = prev.previousElementSibling;
+      remove.remove();
+    }
+  });
+  await panel.click('#btn-refresh');
+  await sleep(1200);
+  const beforeTop = requests.length;
+  await panel.click('#btn-sync');
+  await waitFor(async () => requests.length === beforeTop + 1, 10000);
+  const topMsgs = JSON.parse(requests[requests.length - 1].body).messages;
+  const topAudio = topMsgs.find((m) => m.external_id === '3EB0SAV00005A');
+  const expected = new Date();
+  expected.setDate(expected.getDate() - 3);
+  const got = topAudio && new Date(topAudio.timestamp);
+  check('áudio sem divisória: data pela mensagem seguinte',
+    Boolean(got) && topAudio.text === '[Áudio]' && got.getDate() === expected.getDate() && got.getHours() === 21 && got.getMinutes() === 30,
+    got ? got.toString() : 'não encontrado');
+  const topIdx = topMsgs.findIndex((m) => m.external_id === '3EB0SAV00005A');
+  check('áudio sem divisória fica antes da mensagem seguinte', topIdx === 0 && topMsgs[0].timestamp < topMsgs[1].timestamp);
 
   // ── 13. Reinjeção do script (ex.: depois de atualizar a extensão) ──
   const waTab = await panel.evaluate(async () => (await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' }))[0].id);

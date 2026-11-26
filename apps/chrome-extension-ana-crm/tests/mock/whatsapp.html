@@ -31,7 +31,11 @@
 </head>
 <body>
 <div id="app">
-  <div id="side"><div id="pane-side" aria-label="Lista de conversas"></div></div>
+  <div id="side">
+    <!-- isca: botão de limpar a busca, que não pode ser clicado ao fechar o painel do contato -->
+    <div class="search"><span role="button" id="search-clear" data-icon="x-alt">×</span></div>
+    <div id="pane-side" aria-label="Lista de conversas"></div>
+  </div>
   <div id="slot"></div>
 </div>
 <script>
@@ -43,6 +47,7 @@
     lid: { title: 'Dr. João Pereira', jid: '123456789012345@lid', total: 8, phone: '+55 21 99876-5432' },
     group: { title: 'Família Silva', jid: '120363025123456789@g.us', total: 10, group: true },
     old9: { title: 'Carlos Antigo', jid: '551187654321@c.us', total: 6, phone: '+55 11 8765-4321' },
+    channel: { title: 'Canal A Nova Advocacia', jid: '120363999888777@newsletter', total: 5 },
   };
   const ME = 'Lucas Braga';
   const INITIAL = 40;
@@ -70,13 +75,14 @@
     if (key === 'saved') {
       const n = c.total;
       Object.assign(list[n - 1], { fromMe: true, kind: 'text', text: 'Perfeito, Maria! Vou te enviar o contrato hoje.' });
-      Object.assign(list[n - 2], { fromMe: false, kind: 'emoji', text: 'Obrigada! ' });
+      Object.assign(list[n - 2], { fromMe: false, kind: 'emoji', text: '\u2066Obrigada!\u2069 ' });
       Object.assign(list[n - 3], { fromMe: false, kind: 'reply', text: 'Fechado, pode seguir', quoted: 'Qual o valor dos honorários?' });
       Object.assign(list[n - 4], { fromMe: false, kind: 'audio' });
       Object.assign(list[n - 5], { fromMe: true, kind: 'image' });
       Object.assign(list[n - 6], { fromMe: false, kind: 'deleted' });
       Object.assign(list[n - 7], { fromMe: false, kind: 'long', text: 'Começo do texto longo. ' + 'Detalhes do caso trabalhista. '.repeat(20) + 'FIM DO TEXTO LONGO' });
       Object.assign(list[n - 8], { fromMe: false, kind: 'multiline', text: 'Linha um do endereço\nLinha dois do endereço' });
+      Object.assign(list[n - 9], { fromMe: false, kind: 'text', text: 'Por que esta mensagem foi apagada?' });
       Object.assign(list[n - 20], { fromMe: false, kind: 'audio' }); // dia anterior: data vem da divisória "ONTEM"
     }
     return list;
@@ -247,6 +253,8 @@
   }
 
   window.__switchChat = renderChat;
+  window.__decoyClicked = false;
+  document.getElementById('search-clear').addEventListener('click', () => { window.__decoyClicked = true; });
 
   // nova mensagem recebida na conversa aberta
   window.__addIncoming = (text) => {
@@ -259,10 +267,10 @@
     renderList(document.querySelector('.scroller'), false);
   };
 
-  // painel com o SEU perfil aberto (outro número fora da conversa)
+  // painel com o SEU perfil aberto ao lado da conversa (outro número fora do #main)
   window.__openOwnProfile = () => {
     if (document.getElementById('own-profile')) return;
-    document.getElementById('app').append(el('div', { id: 'own-profile', style: 'position:fixed;left:0;bottom:0;background:#fff;padding:8px' }, [
+    document.getElementById('slot').append(el('div', { id: 'own-profile', style: 'position:fixed;left:0;bottom:0;background:#fff;padding:8px' }, [
       el('header', {}, [el('span', { text: 'Perfil' })]),
       el('div', {}, [el('span', { dir: 'auto', text: 'Lucas Braga' })]),
       el('div', {}, [el('span', { text: '+55 11 90000-0000' })]),

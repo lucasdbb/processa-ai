@@ -120,3 +120,18 @@ test('marcas invisíveis de direção de texto do WhatsApp', () => {
   assert.deepEqual(ymdhm(pre.date), [2026, 11, 26, 14, 10]);
   assert.deepEqual(ymdhm(W.parseDateLabel('‎HOJE', new Date(2026, 10, 26))), [2026, 11, 26, 0, 0]);
 });
+
+test('correções da revisão: apagada ancorada, dia da semana exato, operadora e máscara', () => {
+  assert.ok(W.isDeletedText(W.fold('Esta mensagem foi apagada')));
+  assert.ok(W.isDeletedText(W.fold('Você apagou esta mensagem.')));
+  assert.ok(!W.isDeletedText(W.fold('Por que esta mensagem foi apagada?')));
+  const now = new Date(2026, 10, 26);
+  assert.equal(W.parseDateLabel('Domingo saiu', now), null);
+  assert.deepEqual(ymdhm(W.parseDateLabel('SEGUNDA FEIRA', now)), [2026, 11, 23, 0, 0]);
+  assert.deepEqual(ymdhm(W.parseDateLabel('domingo', now)), [2026, 11, 22, 0, 0]);
+  assert.equal(W.normalizePhone('021 11 98765-4321'), '5511987654321');
+  assert.equal(W.normalizePhone('0 15 11 3456-7890'), '551134567890');
+  const masked = W.maskText('[14:10, 26/11/2026] Łukasz Михаил 😀: ');
+  assert.equal(masked, '[99:99, 99/99/9999] aaaaaa aaaaaa *: ');
+  assert.ok(!/[ŁМ😀]/u.test(masked));
+});

@@ -55,7 +55,8 @@ Limitações conhecidas:
 - **Identificador privado (LID).** Em alguns contatos, o WhatsApp esconde o número na
   conversa (`…@lid`). O painel avisa e oferece buscar o número no perfil do contato;
   se não houver, digite-o.
-- **Grupos não são sincronizados.** O CRM recebe um lead por contato.
+- **Grupos, canais e listas de transmissão não são sincronizados.** O CRM recebe um lead
+  por contato.
 - **Troca de conversa durante a leitura.** Se você trocar de conversa enquanto a extensão
   busca mensagens antigas, a leitura é cancelada e refeita na conversa nova, sem misturar
   as duas.
@@ -68,7 +69,9 @@ Limitações conhecidas:
 
 ## Contrato da API
 
-`POST <URL da API>` com `Content-Type: application/json` e `x-extension-key: <chave>`:
+`POST <URL da API>` com os cabeçalhos `Content-Type: application/json`,
+`x-extension-key: <chave>` e `Idempotency-Key: <uuid>` (o mesmo valor numa nova tentativa
+automática do mesmo envio):
 
 ```json
 {
@@ -104,8 +107,11 @@ Erros tratados com mensagem própria:
 | 429 | aguardar e tentar de novo |
 | 5xx | erro interno do CRM |
 
-Em falha de rede, tempo esgotado ou resposta 502/503/504, a extensão **reenvia uma vez
-sozinha** após 1,5 s. Isso é seguro porque o servidor ignora `external_id` repetidos.
+Em falha de conexão ou resposta 502/503, a extensão **reenvia uma vez sozinha** após 1,5 s,
+com a mesma `Idempotency-Key`. Em tempo esgotado (30 s) ou 504 ela **não** reenvia, porque o
+CRM pode ter processado o pedido. Nesse caso, o sócio confere o card antes de tentar de novo.
+Se o servidor guardar as `notes` a cada envio, recomenda-se usar a `Idempotency-Key` para
+não duplicá-las.
 
 O servidor **não precisa de CORS**: a extensão declara permissão de host para
 `crm.anovaadvocacia.ai`. Se a URL da API apontar para outro domínio (homologação, por
@@ -174,12 +180,23 @@ apps/chrome-extension-ana-crm/
     - trocas de conversa durante uma leitura entram na fila em vez de serem perdidas;
     - telefones e horários cercados por marcas invisíveis de direção de texto são reconhecidos;
     - a duração de um áudio não é mais confundida com o horário;
-    - a busca no perfil só aceita o número que está junto do nome do contato;
+    - a busca no perfil só aceita o número que está junto do nome do contato e fecha apenas
+      esse painel (nunca envia Escape, que fecharia a conversa);
+    - um envio lento não grava mais o telefone do lead anterior na conversa aberta depois;
+      ler a conversa fica bloqueado durante o envio;
+    - áudios e imagens no topo da conversa, sem divisória de data acima, recebem o dia certo
+      e nunca um horário no futuro;
+    - "Por que esta mensagem foi apagada?" não é mais tratada como mensagem apagada;
+    - uma linha que só começa com um dia da semana não vira divisória de data;
+    - telefones com prefixo de operadora (`0 21 11 …`) são normalizados;
+    - o diagnóstico mascara nomes em qualquer alfabeto, e as marcas invisíveis saem do texto
+      das mensagens;
+    - canais e listas de transmissão bloqueados, como os grupos;
     - a captura volta a funcionar depois de atualizar a extensão sem recarregar o WhatsApp;
     - o tempo limite cobre também a leitura da resposta.
   - **Melhorias**
     - mensagens ainda não enviadas;
-    - reenvio automático em falhas temporárias;
+    - reenvio automático em falhas temporárias, com `Idempotency-Key`;
     - `Ctrl/⌘ + Enter` e atalho `Alt+Shift+C`;
     - "Enviando como" com o e-mail do sócio;
     - rascunho guarda só os campos editados e expira em 30 dias;

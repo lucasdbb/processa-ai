@@ -35,6 +35,7 @@ let draftTimer = null;
 let changeTimer = null;
 let toastTimer = null;
 let lastSyncToken = 0;
+let captureCount = 0;
 
 class UserError extends Error {}
 // falha de rede ou indisponibilidade momentânea: reenviar é seguro (o CRM ignora duplicatas)
@@ -103,7 +104,7 @@ function showState(state, detail = '') {
     text.textContent = 'Erro ao ler a conversa';
     $('error-text').textContent = detail;
   } else if (state === 'ready' && chat) {
-    dot.classList.add(chat.isGroup ? 'warn' : 'on');
+    dot.classList.add(chat.unsupported ? 'warn' : 'on');
     text.textContent = '';
     text.append('Conversa ativa: ');
     const strong = document.createElement('strong');
@@ -125,8 +126,8 @@ function setBusy(on, label) {
 }
 
 async function refresh({ loadOlder = false } = {}) {
-  if (busy) {
-    // uma troca de conversa durante outra leitura não pode ser perdida
+  if (busy || syncing) {
+    // uma troca de conversa durante outra leitura ou um envio não pode ser perdida
     refreshQueued = true;
     return false;
   }
@@ -181,26 +182,33 @@ async function applyCapture(res) {
   const incoming = res.chat;
   // conversa aberta antes de as mensagens carregarem: a chave passa de "title:Nome" para o jid
   if (chat && chat.key !== incoming.key && chat.key.startsWith('title:') && incoming.key
-      && !incoming.key.startsWith('title:') && chat.title === incoming.title) {
+      && !incoming.key.startsWith('title:') && chat.title === incoming.title
+      && chat.viewToken && chat.viewToken === incoming.viewToken) {
     await moveDraft(chat.key, incoming.key);
     chat.key = incoming.key;
   }
   const changed = !chat || chat.key !== incoming.key;
   if (changed) {
     await flushDraft();
+    // lê o rascunho ANTES de trocar a conversa ativa: um salvamento no meio do caminho
+    // não pode gravar os campos da conversa anterior com a chave da nova
+    const form = await loadFormFor(incoming);
+    clearTimeout(draftTimer);
     chat = { ...incoming };
+    if (form.phoneSource) chat.phoneSource = form.phoneSource;
+    applyForm(form);
     messages = new Map();
     hideResult();
     hideFormError();
-    await fillFormForChat();
   } else {
     const keepSource = ['profile', 'manual'].includes(chat.phoneSource) ? chat.phoneSource : incoming.phoneSource;
     chat = { ...chat, ...incoming, phoneSource: keepSource || chat.phoneSource };
     if (!$('f-phone').value.trim() && incoming.phone) $('f-phone').value = W.formatPhone(incoming.phone);
   }
-  res.messages.forEach((m, i) => messages.set(m.external_id, { ...m, seq: i }));
+  captureCount++;
+  res.messages.forEach((m, i) => messages.set(m.external_id, { ...m, seq: captureCount * 100000 + i }));
   trimMessages();
-  $('group-banner').hidden = !chat.isGroup;
+  renderUnsupported();
   renderPhoneHint();
   renderMessages();
   await renderLastSync();
@@ -212,16 +220,26 @@ const draftKey = (key) => `draft:${key}`;
 
 // Guarda só os campos que o usuário mudou: o que não foi editado continua vindo
 // do WhatsApp (ex.: o contato renomeado aparece com o nome novo).
-async function fillFormForChat() {
-  const stored = await chrome.storage.local.get(draftKey(chat.key));
-  const draft = stored[draftKey(chat.key)];
+async function loadFormFor(target) {
+  const stored = await chrome.storage.local.get(draftKey(target.key));
+  const draft = stored[draftKey(target.key)];
   const fields = draft ? draft.fields || { name: draft.name, phone: draft.phone, email: draft.email, notes: draft.notes } : {};
-  edited = new Set(Object.keys(FIELD_IDS).filter((f) => fields[f] != null));
-  $('f-name').value = fields.name != null ? fields.name : chat.name || '';
-  $('f-phone').value = fields.phone ? fields.phone : W.formatPhone(chat.phone);
-  $('f-email').value = fields.email || '';
-  $('f-notes').value = fields.notes || '';
-  if (draft && draft.phoneSource && fields.phone) chat.phoneSource = draft.phoneSource;
+  return {
+    edited: Object.keys(FIELD_IDS).filter((f) => fields[f] != null),
+    name: fields.name != null ? fields.name : target.name || '',
+    phone: fields.phone ? fields.phone : W.formatPhone(target.phone),
+    email: fields.email || '',
+    notes: fields.notes || '',
+    phoneSource: draft && draft.phoneSource && fields.phone ? draft.phoneSource : '',
+  };
+}
+
+function applyForm(form) {
+  edited = new Set(form.edited);
+  $('f-name').value = form.name;
+  $('f-phone').value = form.phone;
+  $('f-email').value = form.email;
+  $('f-notes').value = form.notes;
   for (const id of Object.values(FIELD_IDS)) $(id).classList.remove('is-invalid');
 }
 
@@ -318,7 +336,7 @@ function renderMessages() {
 function renderLoadOlder() {
   const btn = $('btn-load-older');
   const full = messages.size >= settings.messageLimit;
-  btn.disabled = busy || full;
+  btn.disabled = busy || syncing || full;
   $('btn-load-older-label').textContent = full
     ? `Limite de ${settings.messageLimit} mensagens atingido`
     : `Buscar mensagens mais antigas (até ${settings.messageLimit})`;
@@ -426,9 +444,30 @@ async function renderLastSync() {
 
 // ─── Sincronização ───
 
+const UNSUPPORTED_TEXT = {
+  group: 'Esta é uma <conversa em grupo>. O CRM recebe um lead por contato: abra a conversa individual com a pessoa.',
+  channel: 'Este é um <canal> do WhatsApp, não uma conversa com um lead.',
+  broadcast: 'Esta é uma <lista de transmissão>. Abra a conversa individual com o lead.',
+};
+
+function renderUnsupported() {
+  const banner = $('group-banner');
+  const kind = chat && chat.unsupported;
+  banner.hidden = !kind;
+  if (!kind) return;
+  const p = banner.querySelector('p');
+  p.textContent = '';
+  const [before, strong, after] = UNSUPPORTED_TEXT[kind].split(/[<>]/);
+  const b = document.createElement('strong');
+  b.textContent = strong;
+  p.append(before, b, after);
+}
+
 function renderSyncButton() {
   const btn = $('btn-sync');
-  btn.disabled = busy || syncing || Boolean(chat && chat.isGroup);
+  btn.disabled = busy || syncing || Boolean(chat && chat.unsupported);
+  $('btn-refresh').disabled = busy || syncing;
+  renderLoadOlder();
   btn.classList.toggle('is-busy', syncing);
   $('btn-sync-label').textContent = syncing ? 'Sincronizando…' : 'Sincronizar Lead no CRM';
 }
@@ -482,13 +521,14 @@ function httpErrorMessage(status, data) {
 }
 
 function networkError(err) {
+  // tempo esgotado: o CRM pode ter processado o pedido, então não reenvia sozinho
   if (err && err.name === 'AbortError') {
-    return new RetryableError('O CRM demorou mais de 30 segundos para responder. Tente de novo.');
+    return new UserError('O CRM demorou mais de 30 segundos para responder. Confira o lead no CRM antes de tentar de novo.');
   }
   return new RetryableError(`Não foi possível conectar ao CRM (${new URL(settings.apiUrl).host}). Verifique a internet e a URL da API.`);
 }
 
-async function postOnce(payload) {
+async function postOnce(payload, idempotencyKey) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -500,6 +540,7 @@ async function postOnce(payload) {
         headers: {
           'Content-Type': 'application/json',
           'x-extension-key': settings.extensionKey,
+          'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
@@ -516,7 +557,8 @@ async function postOnce(payload) {
     }
     if (!response.ok) {
       const message = httpErrorMessage(response.status, data);
-      throw [502, 503, 504].includes(response.status) ? new RetryableError(message) : new UserError(message);
+      // 502/503: o pedido não chegou a ser processado; 504 pode ter sido, então não reenvia
+      throw [502, 503].includes(response.status) ? new RetryableError(message) : new UserError(message);
     }
     return data || {};
   } finally {
@@ -525,12 +567,14 @@ async function postOnce(payload) {
 }
 
 async function postLead(payload) {
+  // a mesma chave na nova tentativa permite ao CRM reconhecer o pedido repetido
+  const idempotencyKey = crypto.randomUUID();
   try {
-    return await postOnce(payload);
+    return await postOnce(payload, idempotencyKey);
   } catch (err) {
     if (!(err instanceof RetryableError)) throw err;
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-    return postOnce(payload);
+    return postOnce(payload, idempotencyKey);
   }
 }
 
@@ -571,8 +615,8 @@ async function onSync(event) {
     return;
   }
   if (!chat) return;
-  if (chat.isGroup) {
-    showFormError('Conversas em grupo não são sincronizadas. Abra a conversa individual com o lead.');
+  if (chat.unsupported) {
+    showFormError('Este tipo de conversa não é sincronizado. Abra a conversa individual com o lead.');
     return;
   }
 
@@ -596,6 +640,8 @@ async function onSync(event) {
 
   syncing = true;
   renderSyncButton();
+  const keyAtSend = chat.key;
+  const sameChat = () => Boolean(chat && chat.key === keyAtSend);
   try {
     const payload = buildPayload({ name, phone, email, notes });
     const data = await postLead(payload);
@@ -610,12 +656,18 @@ async function onSync(event) {
         ids: payload.messages.map((m) => m.external_id),
       },
     });
-    $('f-phone').value = W.formatPhone(phone);
-    await flushDraft();
-    showResult(payload.messages.length, data, url);
-    await renderLastSync();
+    if (sameChat()) {
+      $('f-phone').value = W.formatPhone(phone);
+      await flushDraft();
+      showResult(payload.messages.length, data, url);
+      await renderLastSync();
+    } else {
+      showToast(`Lead ${name} sincronizado no CRM`);
+    }
   } catch (err) {
-    showFormError(err instanceof UserError ? err.message : `Erro inesperado: ${String((err && err.message) || err)}`);
+    const message = err instanceof UserError ? err.message : `Erro inesperado: ${String((err && err.message) || err)}`;
+    if (sameChat()) showFormError(message);
+    else showToast(`Falha ao sincronizar ${name}: ${message}`, true);
   } finally {
     syncing = false;
     renderSyncButton();
